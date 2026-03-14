@@ -13,6 +13,7 @@ import {
   Zap,
   FileText,
 } from "lucide-react";
+
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
@@ -22,6 +23,35 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+
+// ── TopicCell: inline editable topic field per session ───────────────────────
+function TopicCell({ session, user }) {
+  const [val, setVal] = useState(session.mainTopic || "");
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setVal(session.mainTopic || "");
+  }, [session.mainTopic]);
+  return (
+    <input
+      value={val}
+      placeholder="分类..."
+      onFocus={() => { focused.current = true; }}
+      onBlur={() => {
+        focused.current = false;
+        if (user) {
+          setDoc(doc(db, "sessions", session.code), { mainTopic: val }, { merge: true }).catch(console.error);
+        }
+      }}
+      onChange={e => setVal(e.target.value)}
+      style={{
+        width: "100%", fontSize: 11, padding: "3px 7px",
+        background: "var(--surface)", border: "1px solid var(--border-dim)",
+        borderRadius: 5, color: "var(--text)", fontFamily: "Outfit, sans-serif",
+        outline: "none",
+      }}
+    />
+  );
+}
 
 // ── Member color palette (dark-theme tuned) ───────────────────────────────────
 const COLORS = [
@@ -127,6 +157,7 @@ export default function App() {
       const startIdx = headers.findIndex((h) => h.includes("start"));
       const endIdx   = headers.findIndex((h) => h.includes("end"));
       const roomIdx  = headers.findIndex((h) => h.includes("room"));
+      const topicIdx = headers.findIndex((h) => h.includes("topic") || h.includes("主题"));
 
       if (codeIdx === -1 || titleIdx === -1) {
         alert("无法识别的 CSV 格式。请确保包含 Session Code 和 Session Title 列。");
@@ -145,11 +176,12 @@ export default function App() {
         if (!existing) {
           map[code] = {
             code,
-            title: row[titleIdx] || "",
-            date:  dateIdx  !== -1 ? row[dateIdx]  : "",
-            start: startIdx !== -1 ? row[startIdx] : "",
-            end:   endIdx   !== -1 ? row[endIdx]   : "",
-            room:  roomIdx  !== -1 ? row[roomIdx]  : "",
+            title:     row[titleIdx] || "",
+            date:      dateIdx  !== -1 ? row[dateIdx]  : "",
+            start:     startIdx !== -1 ? row[startIdx] : "",
+            end:       endIdx   !== -1 ? row[endIdx]   : "",
+            room:      roomIdx  !== -1 ? row[roomIdx]  : "",
+            mainTopic: topicIdx !== -1 ? row[topicIdx] : "",
             attendees: new Set([activeUploadMember]),
           };
         } else {
@@ -253,11 +285,12 @@ export default function App() {
   const exportToCSV = () => {
     const toExport = sortedSessions.filter((s) => exportDates.has(s.date || "TBD"));
     if (!toExport.length) { alert("请至少选择一个日期！"); return; }
-    let csv = "Date,Start,End,Code,Title,Room," + members.map((m) => m.name).join(",") + "\n";
+    let csv = "Date,Start,End,Code,Title,Room,主要主题," + members.map((m) => m.name).join(",") + "\n";
     toExport.forEach((s) => {
       const safeTitle = s.title.includes(",") ? `"${s.title}"` : s.title;
       const safeRoom  = s.room.includes(",")  ? `"${s.room}"`  : s.room;
-      csv += `${s.date},${s.start},${s.end},${s.code},${safeTitle},${safeRoom},`;
+      const safeTopic = (s.mainTopic || "").includes(",") ? `"${s.mainTopic}"` : (s.mainTopic || "");
+      csv += `${s.date},${s.start},${s.end},${s.code},${safeTitle},${safeRoom},${safeTopic},`;
       csv += members.map((m) => (s.attendees.has(m.id) ? "是" : "")).join(",") + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -515,6 +548,7 @@ export default function App() {
                   <tr>
                     <th style={{ width: 180, textAlign: "left" }}>时间 / 地点</th>
                     <th style={{ textAlign: "left", maxWidth: 380 }}>Session</th>
+                    <th style={{ width: 110, textAlign: "left" }}>主要主题</th>
                     {members.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
@@ -586,6 +620,11 @@ export default function App() {
                                 {session.title}
                               </p>
                             </div>
+                          </td>
+
+                          {/* Main topic */}
+                          <td style={{ width: 110, maxWidth: 110, verticalAlign: "top", paddingTop: 12 }}>
+                            <TopicCell session={session} user={user} />
                           </td>
 
                           {/* Attendance toggles */}
