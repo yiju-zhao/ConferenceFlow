@@ -411,7 +411,8 @@ export default function DailyReport() {
 
         {/* Title bar */}
         <div className="report-title-bar">
-          <h1>GTC 2026 日报 —【{date}】</h1>
+          <div className="report-title-eyebrow">GTC 2026 · DAILY BRIEFING</div>
+          <h1>【{date}】日报</h1>
         </div>
 
         {/* Header: TOC + Summary */}
@@ -420,9 +421,7 @@ export default function DailyReport() {
           {/* TOC – organized by topic, drag-to-reorder */}
           <div className="report-toc">
             <h2 className="report-section-title">目录</h2>
-            <p className="no-print" style={{ fontSize: 11, color: "#AAA", margin: "0 0 8px" }}>
-              拖拽主题可调整顺序
-            </p>
+            <p className="no-print report-toc-hint">⠿ 拖拽主题调整顺序</p>
             {orderedTopics.map(topic => (
               <div
                 key={topic}
@@ -469,17 +468,10 @@ export default function DailyReport() {
           {orderedTopics.map(topic => (
             <div key={topic}>
               {/* Topic section header */}
-              <div style={{
-                background: "#FFF0F0",
-                borderLeft: "4px solid #CF0A2C",
-                padding: "8px 16px",
-                marginBottom: 14,
-                marginTop: 24,
-                fontSize: 14,
-                fontWeight: 700,
-                color: "#CF0A2C",
-              }}>
-                {topic}
+              <div className="report-topic-divider">
+                <span className="report-topic-bar" />
+                <span className="report-topic-name">{topic}</span>
+                <span className="report-topic-line" />
               </div>
 
               {(topicsMap[topic] || []).map(session => {
@@ -512,9 +504,7 @@ export default function DailyReport() {
 
                     {/* Speakers */}
                     <div className="report-session-meta">
-                      <div style={{ marginBottom: 6 }}>
-                        <span className="report-field-label">演讲者：</span>
-                      </div>
+                      <span className="report-field-label" style={{ display: "block", marginBottom: 5 }}>演讲者</span>
                       <SpeakersEditor
                         code={session.code}
                         speakers={speakers}
@@ -584,13 +574,9 @@ export default function DailyReport() {
 
                       {/* 贡献人 at the end */}
                       {contributors && (
-                        <div style={{
-                          marginTop: 12, paddingTop: 10,
-                          borderTop: "1px solid #F0F0F0",
-                          display: "flex", alignItems: "center", gap: 4, fontSize: 13,
-                        }}>
-                          <span className="report-field-label">贡献人：</span>
-                          <span className="report-contributors">{contributors}</span>
+                        <div className="report-contributors-row">
+                          <span className="report-contributors-label">贡献人</span>
+                          <span className="report-contributors-names">{contributors}</span>
                         </div>
                       )}
                     </div>
@@ -628,7 +614,9 @@ export default function DailyReport() {
 
         {/* Footer */}
         <div className="report-footer">
-          <p>GTC 2026 日报 · {date} · 团队协作生成</p>
+          <div className="report-footer-inner">
+            <p>GTC 2026 · {date} · 团队协作生成</p>
+          </div>
         </div>
 
       </div>
