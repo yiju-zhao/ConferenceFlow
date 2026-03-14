@@ -753,10 +753,101 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 /* ── Responsive ────────────────────────────────── */
+
+/* DailyReport mobile */
 @media (max-width: 700px) {
   .report-header { grid-template-columns: 1fr; gap: 20px; }
-  .report-container { margin: 12px; }
-  .report-title-bar { padding: 20px 24px; }
-  .report-title-bar h1 { font-size: 20px; }
-  .report-sessions, .report-onsite, .report-header { padding-left: 20px; padding-right: 20px; }
+  .report-container { margin: 10px; border-radius: 2px; }
+  .report-title-bar { padding: 18px 20px; }
+  .report-title-bar h1 { font-size: 18px; }
+  .report-sessions, .report-onsite { padding-left: 16px; padding-right: 16px; }
+  .report-header { padding: 20px 16px; }
+  .report-session-header { padding: 12px 14px 10px; }
+  .report-session-meta { padding: 10px 14px; }
+  .report-session-body { padding: 12px 14px; }
+  .report-toolbar-inner { padding: 8px 14px; gap: 4px; }
+  .report-export-btn { font-size: 12px; padding: 7px 12px; }
+  .report-tool-btn { width: 30px; height: 30px; }
+}
+
+/* App main page + schedule table mobile */
+@media (max-width: 640px) {
+  /* Page outer padding */
+  .gtc-page-outer { padding: 14px 10px !important; }
+
+  /* Header title size */
+  .gtc-header-title { font-size: 19px !important; }
+
+  /* Dropdown: constrain so it doesn't overflow viewport */
+  .dropdown-panel {
+    right: 0;
+    left: auto;
+    width: calc(100vw - 44px);
+    max-width: 280px;
+  }
+
+  /* Larger touch targets for attendance toggles */
+  .attend-btn { width: 36px; height: 36px; }
+
+  /* ── Schedule table → card layout ── */
+  .schedule-table,
+  .schedule-table tbody { display: block; }
+  .schedule-table thead { display: none; }
+
+  /* Date separator row */
+  .schedule-table tr.date-header-row { display: block; }
+  .schedule-table tr.date-header-row > td { display: block; }
+
+  /* Session row: flex card */
+  .schedule-table tr.session-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    border-left: 2px solid transparent;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .schedule-table tr.session-row:hover {
+    background: rgba(61,255,164,0.03);
+    border-left-color: var(--accent);
+  }
+  .schedule-table tr.session-row > td {
+    border: none !important;
+  }
+
+  /* Code + title: full width, first */
+  .schedule-table tr.session-row > td.col-session {
+    order: 1;
+    width: 100%;
+    max-width: 100% !important;
+    padding: 10px 14px 4px !important;
+    border-bottom: none !important;
+  }
+
+  /* Time/room: left 55% */
+  .schedule-table tr.session-row > td.col-time {
+    order: 2;
+    width: 55%;
+    max-width: 55% !important;
+    padding: 2px 8px 6px 14px !important;
+  }
+
+  /* Topic: right 45% */
+  .schedule-table tr.session-row > td.col-topic {
+    order: 2;
+    width: 45%;
+    max-width: 45% !important;
+    padding: 2px 14px 6px 4px !important;
+  }
+
+  /* Attendance toggles: inline row */
+  .schedule-table tr.session-row > td.col-attend {
+    order: 3;
+    padding: 2px 3px 10px !important;
+  }
+  .schedule-table tr.session-row > td.col-attend:nth-child(4) {
+    padding-left: 14px !important;
+  }
+
+  /* Member section: smaller cards */
+  .member-card { min-width: 130px; }
 }

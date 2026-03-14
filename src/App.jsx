@@ -305,7 +305,7 @@ export default function App() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", padding: "28px 24px" }}>
+    <div className="gtc-page-outer" style={{ minHeight: "100vh", background: "var(--bg)", padding: "28px 24px" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
 
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
@@ -338,7 +338,7 @@ export default function App() {
                 </span>
               </div>
               <h1
-                className="font-display"
+                className="font-display gtc-header-title"
                 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", color: "#E8F4FF", display: "flex", alignItems: "center", gap: 10 }}
               >
                 <Zap size={22} color="var(--accent)" strokeWidth={2.5} />
@@ -564,7 +564,7 @@ export default function App() {
                     <React.Fragment key={group.date}>
                       {/* Date separator */}
                       <tr className="date-header-row">
-                        <td colSpan={members.length + 2}>
+                        <td colSpan={members.length + 3}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <div style={{ width: 3, height: 16, background: "var(--accent)", borderRadius: 2 }} />
                             <CalendarDays size={13} color="var(--accent)" />
@@ -593,7 +593,7 @@ export default function App() {
                       {group.sessions.map((session) => (
                         <tr key={session.code} className="session-row">
                           {/* Time + Room */}
-                          <td style={{ width: 160, maxWidth: 160 }}>
+                          <td className="col-time" style={{ width: 160, maxWidth: 160 }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                               <div style={{ display: "flex", alignItems: "center", gap: 5, color: "var(--text)" }}>
                                 <Clock size={11} color="var(--accent)" />
@@ -613,7 +613,7 @@ export default function App() {
                           </td>
 
                           {/* Session code + title */}
-                          <td style={{ width: 320, maxWidth: 320 }}>
+                          <td className="col-session" style={{ width: 320, maxWidth: 320 }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                               <span className="code-badge" style={{ alignSelf: "flex-start" }}>{session.code}</span>
                               <p style={{ margin: 0, fontSize: 13, color: "var(--text)", lineHeight: 1.45, fontWeight: 500, wordBreak: "break-word" }}>
@@ -623,7 +623,7 @@ export default function App() {
                           </td>
 
                           {/* Main topic */}
-                          <td style={{ width: 110, maxWidth: 110, verticalAlign: "top", paddingTop: 12 }}>
+                          <td className="col-topic" style={{ width: 110, maxWidth: 110, verticalAlign: "top", paddingTop: 12 }}>
                             <TopicCell session={session} user={user} />
                           </td>
 
@@ -632,7 +632,7 @@ export default function App() {
                             const c = COLORS[member.colorIndex];
                             const isOn = session.attendees.has(member.id);
                             return (
-                              <td key={member.id} style={{ textAlign: "center", background: "transparent" }}>
+                              <td key={member.id} className="col-attend" style={{ textAlign: "center", background: "transparent" }}>
                                 <button
                                   onClick={() => toggleAttendance(session.code, member.id)}
                                   className={`attend-btn${isOn ? " active" : ""}`}
