@@ -216,12 +216,17 @@ export default function App() {
   const removeMember = async (id) => {
     if (!user) return;
     await deleteDoc(doc(db, "members", id));
-    Object.values(sessions).forEach(async (session) => {
-      if (session.attendees.has(id)) {
-        const att = Array.from(session.attendees).filter((x) => x !== id);
-        await setDoc(doc(db, "sessions", session.code), { ...session, attendees: att }, { merge: true });
-      }
-    });
+    await Promise.all(
+      Object.values(sessions)
+        .filter((session) => session.attendees.has(id))
+        .map((session) => {
+          const att = Array.from(session.attendees).filter((x) => x !== id);
+          if (att.length === 0) {
+            return deleteDoc(doc(db, "sessions", session.code));
+          }
+          return setDoc(doc(db, "sessions", session.code), { ...session, attendees: att }, { merge: true });
+        })
+    );
   };
 
   const toggleAttendance = async (code, memberId) => {
