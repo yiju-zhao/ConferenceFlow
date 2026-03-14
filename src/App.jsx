@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   Upload,
   Download,
@@ -10,34 +11,17 @@ import {
   FileSpreadsheet,
   ChevronDown,
   Zap,
+  FileText,
 } from "lucide-react";
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
-  getFirestore,
   collection,
   doc,
   setDoc,
   deleteDoc,
   onSnapshot,
 } from "firebase/firestore";
-
-// ── Firebase ──────────────────────────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyA7QWECA-aKiIjxINnKiCj5gasiQwkcL1M",
-  authDomain: "gtc-2026-session-daal.firebaseapp.com",
-  projectId: "gtc-2026-session-daal",
-  storageBucket: "gtc-2026-session-daal.firebasestorage.app",
-  messagingSenderId: "194660870117",
-  appId: "1:194660870117:web:49144e1f3f38d17324f10c",
-  measurementId: "G-0FBZ6NZ15Z",
-};
-
-const app = initializeApp(firebaseConfig);
-const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { auth, db } from "./firebase";
 
 // ── Member color palette (dark-theme tuned) ───────────────────────────────────
 const COLORS = [
@@ -559,6 +543,14 @@ export default function App() {
                             <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>
                               {group.sessions.length} sessions
                             </span>
+                            <Link
+                              to={`/report/${group.date}`}
+                              className="btn-ghost"
+                              style={{ padding: "4px 10px", fontSize: 11, gap: 4, textDecoration: "none" }}
+                            >
+                              <FileText size={12} />
+                              生成日报
+                            </Link>
                           </div>
                         </td>
                       </tr>
