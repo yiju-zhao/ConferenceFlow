@@ -655,12 +655,102 @@ input[type="checkbox"].gtc-check:checked::after {
   margin: 0;
 }
 
-/* ── PDF Export Mode ───────────────────────────── */
-.exporting-pdf .no-print { display: none !important; }
-.exporting-pdf .report-editable:empty::before { content: none; }
-.exporting-pdf .report-inline-editable:empty::before { content: none; }
-.exporting-pdf .report-editable { border-color: transparent !important; }
-.exporting-pdf .report-inline-editable { border-color: transparent !important; }
+/* ── Print / PDF export ────────────────────────── */
+.print-only { display: none !important; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: #F2F2F2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .report-page { background: #F2F2F2 !important; }
+  .report-toolbar { display: none !important; }
+  .report-container { box-shadow: none !important; margin: 0 auto !important; }
+  .report-editable { border-color: transparent !important; background: transparent !important; }
+  .report-editable:empty::before { content: none !important; }
+  .report-inline-editable { border-bottom-color: transparent !important; }
+  .report-inline-editable:empty::before { content: none !important; }
+  .report-session { break-inside: avoid; page-break-inside: avoid; }
+  .report-header { break-inside: avoid; }
+  .toc-drag-handle { display: none !important; }
+  .speaker-field-input {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+  .speaker-block { border: none !important; background: transparent !important; padding: 0 !important; }
+  .session-illustration { max-height: 240px; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+
+/* ── Speaker editor ─────────────────────────────── */
+.speaker-block {
+  border: 1px solid #F0E0E0;
+  border-radius: 4px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  background: #FFFAFA;
+}
+.speaker-fields {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.speaker-field-input {
+  flex: 1;
+  min-width: 70px;
+  border: none;
+  border-bottom: 1px dashed #D0D0D0;
+  outline: none;
+  font-size: 13px;
+  color: #333;
+  background: transparent;
+  padding: 2px 4px;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.speaker-field-input:focus { border-bottom-color: #CF0A2C; }
+.speaker-field-input::placeholder { color: #C0C0C0; }
+
+/* ── Illustration ───────────────────────────────── */
+.session-illustration {
+  max-width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  border-radius: 4px;
+  margin: 4px 0;
+  display: block;
+}
+
+/* ── Topic group (TOC drag-and-drop) ─────────────── */
+.toc-topic-group {
+  margin-bottom: 10px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: grab;
+  transition: background 0.12s, border-color 0.12s;
+  user-select: none;
+}
+.toc-topic-group:active { cursor: grabbing; }
+.toc-topic-group.drag-over {
+  background: #FFF5F5;
+  border-color: #CF0A2C;
+}
+.toc-topic-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #CF0A2C;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.toc-drag-handle {
+  color: #CCCCCC;
+  font-size: 12px;
+  cursor: grab;
+}
 
 /* ── Responsive ────────────────────────────────── */
 @media (max-width: 700px) {
