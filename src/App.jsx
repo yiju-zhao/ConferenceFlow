@@ -328,13 +328,15 @@ export default function App() {
         if (lines[i].includes("Session Code") || lines[i].includes("Session Title")) { hi = i; break; }
       }
       const headers = parseCSVLine(lines[hi]).map((h) => h.toLowerCase());
-      const titleIdx = headers.findIndex((h) => h.includes("title"));
-      const codeIdx  = headers.findIndex((h) => h.includes("code"));
-      const dateIdx  = headers.findIndex((h) => h.includes("date"));
-      const startIdx = headers.findIndex((h) => h.includes("start"));
-      const endIdx   = headers.findIndex((h) => h.includes("end"));
-      const roomIdx  = headers.findIndex((h) => h.includes("room"));
-      const topicIdx = headers.findIndex((h) => h.includes("topic") || h.includes("主题"));
+      const titleIdx     = headers.findIndex((h) => h.includes("title"));
+      const codeIdx      = headers.findIndex((h) => h.includes("code"));
+      const dateIdx      = headers.findIndex((h) => h.includes("date"));
+      const startIdx     = headers.findIndex((h) => h.includes("start"));
+      const endIdx       = headers.findIndex((h) => h.includes("end"));
+      const roomIdx      = headers.findIndex((h) => h.includes("room"));
+      const topicIdx     = headers.findIndex((h) => h.includes("topic") || h.includes("主题"));
+      const scheduledIdx = headers.findIndex((h) => h.includes("scheduled"));
+      const favoritedIdx = headers.findIndex((h) => h.includes("favorit"));
 
       if (codeIdx === -1 || titleIdx === -1) {
         alert("无法识别的 CSV 格式。请确保包含 Session Code 和 Session Title 列。");
@@ -354,11 +356,13 @@ export default function App() {
           map[code] = {
             code,
             title:     row[titleIdx] || "",
-            date:      dateIdx  !== -1 ? row[dateIdx]  : "",
-            start:     startIdx !== -1 ? row[startIdx] : "",
-            end:       endIdx   !== -1 ? row[endIdx]   : "",
-            room:      roomIdx  !== -1 ? row[roomIdx]  : "",
-            mainTopic: topicIdx !== -1 ? row[topicIdx] : "",
+            date:      dateIdx      !== -1 ? row[dateIdx]      : "",
+            start:     startIdx     !== -1 ? row[startIdx]     : "",
+            end:       endIdx       !== -1 ? row[endIdx]       : "",
+            room:      roomIdx      !== -1 ? row[roomIdx]      : "",
+            mainTopic: topicIdx     !== -1 ? row[topicIdx]     : "",
+            scheduled: scheduledIdx !== -1 ? row[scheduledIdx] : "",
+            favorited: favoritedIdx !== -1 ? row[favoritedIdx] : "",
             attendees: new Set([activeUploadMember]),
           };
         } else {
