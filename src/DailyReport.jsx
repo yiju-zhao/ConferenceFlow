@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import { useParams, Link } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -165,6 +167,7 @@ export default function DailyReport() {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [dragTopic, setDragTopic] = useState(null);
   const [dragOverTopic, setDragOverTopic] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
@@ -324,8 +327,46 @@ export default function DailyReport() {
     e.target.value = "";
   }, [saveSessionField]);
 
-  // Print (browser native vector PDF)
-  const handlePrint = () => window.print();
+  // Export PDF using jsPDF + html2canvas
+  const handleExportPDF = async () => {
+    setExporting(true);
+    const container = document.querySelector(".report-container");
+    const noPrintEls = document.querySelectorAll(".report-toolbar, .report-nav-bar, .no-print");
+    noPrintEls.forEach(el => (el.style.visibility = "hidden"));
+    try {
+      const canvas = await html2canvas(container, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const contentW = pageW - margin * 2;
+      const contentH = pageH - margin * 2;
+      const pxPerMm = canvas.width / pageW;
+      const pageHeightPx = contentH * pxPerMm;
+      let offsetY = 0;
+      while (offsetY < canvas.height) {
+        if (offsetY > 0) pdf.addPage();
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = Math.ceil(pageHeightPx);
+        const ctx = sliceCanvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        ctx.drawImage(canvas, 0, -offsetY);
+        const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.95);
+        pdf.addImage(sliceData, "JPEG", margin, margin, contentW, contentH);
+        offsetY += pageHeightPx;
+      }
+      pdf.save(`GTC2026_日报_${date}.pdf`);
+    } finally {
+      noPrintEls.forEach(el => (el.style.visibility = ""));
+      setExporting(false);
+    }
+  };
 
   // Topic drag-and-drop
   const handleTopicDragStart = (e, topic) => {
@@ -399,8 +440,8 @@ export default function DailyReport() {
               )}
             </div>
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
-            <button className="report-export-btn" onClick={handlePrint}>
-              打印 / 导出 PDF
+            <button className="report-export-btn" onClick={handleExportPDF} disabled={exporting}>
+              {exporting ? "生成中..." : "导出 PDF"}
             </button>
           </div>
         </div>
