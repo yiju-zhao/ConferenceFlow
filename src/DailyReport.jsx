@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { useParams, Link } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -327,43 +325,38 @@ export default function DailyReport() {
     e.target.value = "";
   }, [saveSessionField]);
 
-  // Export PDF using jsPDF + html2canvas
+  // Export PDF via local Puppeteer server (true vector PDF)
   const handleExportPDF = async () => {
     setExporting(true);
-    const container = document.querySelector(".report-container");
-    const noPrintEls = document.querySelectorAll(".report-toolbar, .report-nav-bar, .no-print");
-    noPrintEls.forEach(el => (el.style.visibility = "hidden"));
     try {
-      const canvas = await html2canvas(container, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 10;
-      const contentW = pageW - margin * 2;
-      const contentH = pageH - margin * 2;
-      const pxPerMm = canvas.width / pageW;
-      const pageHeightPx = contentH * pxPerMm;
-      let offsetY = 0;
-      while (offsetY < canvas.height) {
-        if (offsetY > 0) pdf.addPage();
-        const sliceCanvas = document.createElement("canvas");
-        sliceCanvas.width = canvas.width;
-        sliceCanvas.height = Math.ceil(pageHeightPx);
-        const ctx = sliceCanvas.getContext("2d");
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        ctx.drawImage(canvas, 0, -offsetY);
-        const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.95);
-        pdf.addImage(sliceData, "JPEG", margin, margin, contentW, contentH);
-        offsetY += pageHeightPx;
+      const filename = `GTC2026_日报_${date}.pdf`;
+      const pageUrl = window.location.href;
+      const apiUrl =
+        `http://localhost:3001/api/pdf` +
+        `?url=${encodeURIComponent(pageUrl)}` +
+        `&filename=${encodeURIComponent(filename)}`;
+
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
       }
-      pdf.save(`GTC2026_日报_${date}.pdf`);
+      const blob = await response.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error("PDF export error:", err);
+      alert(
+        `PDF 导出失败：${err.message}\n\n` +
+        `请确认 PDF 服务正在运行（npm run server 或 npm run dev）\n` +
+        `并且系统已安装 Chrome / Chromium。`
+      );
     } finally {
-      noPrintEls.forEach(el => (el.style.visibility = ""));
       setExporting(false);
     }
   };
@@ -448,7 +441,8 @@ export default function DailyReport() {
       </div>
 
       {/* ── Report Content ───────────────────────────────────────── */}
-      <div className="report-container">
+      {/* data-pdf-ready is read by the Puppeteer server to know data is loaded */}
+      <div className="report-container" data-pdf-ready={!loading || undefined}>
 
         {/* Title bar */}
         <div className="report-title-bar">
