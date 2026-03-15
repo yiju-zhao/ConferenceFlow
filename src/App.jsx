@@ -14,7 +14,11 @@ import {
   FileText,
   LayoutList,
   CalendarRange,
+  VideoOff,
 } from "lucide-react";
+
+import catalogData from "../data/gtc-2026-sessions-detailed.json";
+const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
 
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -259,6 +263,31 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
   );
 }
 
+// ── Catalog badges ────────────────────────────────────────────────────────────
+const SessionTypeBadge = ({ type }) => (
+  <span style={{
+    fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 99,
+    border: "1px solid var(--border)", color: "var(--text-muted)", whiteSpace: "nowrap",
+  }}>{type}</span>
+);
+
+const FormatBadge = ({ format }) => (
+  <span style={{
+    fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 99,
+    border: "1px solid var(--border)", color: "var(--text-muted)", whiteSpace: "nowrap",
+  }}>{format}</span>
+);
+
+const NoRecordingBadge = () => (
+  <span style={{
+    fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 99,
+    border: "1px solid #f59e0b", color: "#f59e0b",
+    display: "inline-flex", alignItems: "center", gap: 3, whiteSpace: "nowrap",
+  }}>
+    <VideoOff size={9} />No Rec
+  </span>
+);
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
@@ -316,6 +345,28 @@ export default function App() {
     );
   }, [user]);
 
+  // Auto-enrich existing sessions with catalog data
+  useEffect(() => {
+    if (!user || Object.keys(sessions).length === 0) return;
+    const toEnrich = Object.values(sessions).filter(
+      (s) => !s.url && SESSION_CATALOG.has(s.code)
+    );
+    if (toEnrich.length === 0) return;
+    Promise.all(
+      toEnrich.map((s) => {
+        const info = SESSION_CATALOG.get(s.code);
+        return setDoc(doc(db, "sessions", s.code), {
+          url: info.url || "",
+          speakers: info.speakers || [],
+          format: info.format || "",
+          recording: info.recording || "",
+          session_type: info.session_type || "",
+        }, { merge: true });
+      })
+    ).catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, Object.keys(sessions).join(",")]);
+
   // CSV upload
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -365,6 +416,15 @@ export default function App() {
             favorited: favoritedIdx !== -1 ? row[favoritedIdx] : "",
             attendees: new Set([activeUploadMember]),
           };
+          // Merge catalog metadata for newly imported session
+          const info = SESSION_CATALOG.get(code);
+          if (info) {
+            map[code].url = info.url || "";
+            map[code].speakers = info.speakers || [];
+            map[code].format = info.format || "";
+            map[code].recording = info.recording || "";
+            map[code].session_type = info.session_type || "";
+          }
         } else {
           const att = new Set(existing.attendees);
           att.add(activeUploadMember);
@@ -772,7 +832,7 @@ export default function App() {
                 <thead>
                   <tr>
                     <th style={{ width: 180, textAlign: "left" }}>时间 / 地点</th>
-                    <th style={{ textAlign: "left", maxWidth: 380 }}>Session</th>
+                    <th style={{ textAlign: "left", maxWidth: 420 }}>Session</th>
                     <th style={{ width: 110, textAlign: "left" }}>主要主题</th>
                     {members.map((m) => {
                       const c = COLORS[m.colorIndex];
@@ -838,12 +898,41 @@ export default function App() {
                           </td>
 
                           {/* Session code + title */}
-                          <td className="col-session" style={{ width: 320, maxWidth: 320 }}>
+                          <td className="col-session" style={{ width: 380, maxWidth: 420 }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                              <span className="code-badge" style={{ alignSelf: "flex-start" }}>{session.code}</span>
+                              {/* Clickable code badge */}
+                              {session.url
+                                ? <a href={session.url} target="_blank" rel="noopener noreferrer"
+                                     style={{ textDecoration: "none", alignSelf: "flex-start" }}>
+                                    <span className="code-badge">{session.code}</span>
+                                  </a>
+                                : <span className="code-badge" style={{ alignSelf: "flex-start" }}>{session.code}</span>
+                              }
+
+                              {/* Type / Format / Recording pills */}
+                              {(session.session_type || session.format || session.recording === "No") && (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                  {session.session_type && <SessionTypeBadge type={session.session_type} />}
+                                  {session.format && <FormatBadge format={session.format} />}
+                                  {session.recording && session.recording !== "Yes" && <NoRecordingBadge />}
+                                </div>
+                              )}
+
+                              {/* Title */}
                               <p style={{ margin: 0, fontSize: 13, color: "var(--text)", lineHeight: 1.45, fontWeight: 500, wordBreak: "break-word" }}>
                                 {session.title}
                               </p>
+
+                              {/* Speakers */}
+                              {session.speakers?.length > 0 && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                  {session.speakers.map((sp, i) => (
+                                    <span key={i} style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                                      {sp.name}{sp.title ? ` · ${sp.title}` : ""}{sp.company ? `, ${sp.company}` : ""}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </td>
 
