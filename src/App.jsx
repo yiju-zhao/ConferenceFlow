@@ -12,6 +12,8 @@ import {
   ChevronDown,
   Zap,
   FileText,
+  LayoutList,
+  CalendarRange,
 } from "lucide-react";
 
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
@@ -83,6 +85,180 @@ function parseCSVLine(text) {
   return ret;
 }
 
+// ── Calendar view helpers ─────────────────────────────────────────────────────
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return 0;
+  const s = timeStr.trim().toUpperCase();
+  const isPM = s.includes("PM");
+  const isAM = s.includes("AM");
+  const clean = s.replace(/[^0-9:]/g, "");
+  const [hStr = "0", mStr = "0"] = clean.split(":");
+  let h = parseInt(hStr, 10) || 0;
+  const m = parseInt(mStr, 10) || 0;
+  if (isPM && h !== 12) h += 12;
+  if (isAM && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function formatHourBucket(startMinutes) {
+  const h = Math.floor(startMinutes / 60);
+  const fmt = (hr) => `${hr % 12 || 12}:00 ${hr < 12 ? "AM" : "PM"}`;
+  return `${fmt(h)} – ${fmt(h + 1)}`;
+}
+
+// ── Calendar session card ─────────────────────────────────────────────────────
+function CalendarSessionCard({ session, members, toggleAttendance, user }) {
+  return (
+    <div
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderLeft: "3px solid var(--accent)",
+        borderRadius: 8,
+        padding: "10px 14px",
+        width: 280,
+        flexShrink: 0,
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+        <span className="code-badge">{session.code}</span>
+        <span className="font-mono" style={{ fontSize: 10, color: "var(--text-dim)" }}>
+          {session.start}–{session.end}
+        </span>
+      </div>
+      <p style={{ margin: 0, fontSize: 12, color: "var(--text)", lineHeight: 1.45, fontWeight: 500 }}>
+        {session.title}
+      </p>
+      {session.room && (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <MapPin size={10} color="var(--text-dim)" />
+          <span style={{ fontSize: 10, color: "var(--text-dim)" }}>{session.room}</span>
+        </div>
+      )}
+      {members.length > 0 && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
+          {members.map((m) => {
+            const c = COLORS[m.colorIndex];
+            const isOn = session.attendees.has(m.id);
+            return (
+              <button
+                key={m.id}
+                onClick={() => user && toggleAttendance(session.code, m.id)}
+                style={{
+                  fontSize: 10, padding: "2px 8px", borderRadius: 99,
+                  cursor: user ? "pointer" : "default",
+                  background: isOn ? c.bg : "transparent",
+                  color: isOn ? c.hex : "var(--text-dim)",
+                  border: `1px solid ${isOn ? c.hex + "50" : "var(--border-dim)"}`,
+                  fontFamily: "'Outfit', sans-serif",
+                  fontWeight: isOn ? 700 : 400,
+                  transition: "all 0.15s",
+                }}
+              >
+                {m.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Calendar view ─────────────────────────────────────────────────────────────
+function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
+  return (
+    <div style={{ padding: "0 0 16px" }}>
+      {groupedSessions.map(({ date, sessions: dateSessions }) => {
+        // Group sessions into hourly buckets by start time
+        const buckets = {};
+        dateSessions.forEach((s) => {
+          const key = Math.floor(parseTimeToMinutes(s.start) / 60) * 60;
+          if (!buckets[key]) buckets[key] = [];
+          buckets[key].push(s);
+        });
+        const sortedBuckets = Object.entries(buckets).sort(([a], [b]) => Number(a) - Number(b));
+
+        return (
+          <div key={date}>
+            {/* Date header */}
+            <div
+              style={{
+                padding: "10px 24px",
+                borderBottom: "1px solid var(--border-dim)",
+                background: "rgba(255,255,255,0.02)",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div style={{ width: 3, height: 16, background: "var(--accent)", borderRadius: 2 }} />
+              <CalendarDays size={13} color="var(--accent)" />
+              <span
+                className="font-display"
+                style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.04em" }}
+              >
+                {date}
+              </span>
+              <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>
+                {dateSessions.length} sessions
+              </span>
+              <Link
+                to={`/report/${date}`}
+                className="btn-ghost"
+                style={{ padding: "4px 10px", fontSize: 11, gap: 4, textDecoration: "none" }}
+              >
+                <FileText size={12} />
+                生成日报
+              </Link>
+            </div>
+
+            {/* Hourly time slot groups */}
+            {sortedBuckets.map(([bucketKey, slotSessions]) => (
+              <div key={bucketKey} style={{ padding: "12px 24px 4px" }}>
+                {/* Slot header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <Clock size={11} color="var(--accent)" />
+                  <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.06em" }}>
+                    {formatHourBucket(Number(bucketKey))}
+                  </span>
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: 10, color: "var(--text-dim)",
+                      background: "var(--surface)",
+                      border: "1px solid var(--border-dim)",
+                      borderRadius: 99, padding: "1px 7px",
+                    }}
+                  >
+                    {slotSessions.length}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border-dim)" }} />
+                </div>
+                {/* Session cards */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, paddingBottom: 12 }}>
+                  {slotSessions.map((s) => (
+                    <CalendarSessionCard
+                      key={s.code}
+                      session={s}
+                      members={members}
+                      toggleAttendance={toggleAttendance}
+                      user={user}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
@@ -94,6 +270,7 @@ export default function App() {
   const [activeUploadMember, setActiveUploadMember] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportDates, setExportDates] = useState(new Set());
+  const [viewMode, setViewMode] = useState("table"); // "table" | "calendar"
 
   // Auth
   useEffect(() => {
@@ -533,16 +710,54 @@ export default function App() {
                 className="font-mono"
                 style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}
               >
-                日程矩阵
+                {viewMode === "table" ? "日程矩阵" : "日程日历"}
               </span>
             </div>
-            <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
-              {sortedSessions.length} sessions
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                {sortedSessions.length} sessions
+              </span>
+              <div style={{ display: "flex", gap: 2, background: "var(--bg)", borderRadius: 7, padding: 2 }}>
+                <button
+                  onClick={() => setViewMode("table")}
+                  title="表格视图"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 28, height: 26, borderRadius: 5, border: "none", cursor: "pointer",
+                    background: viewMode === "table" ? "var(--surface)" : "transparent",
+                    color: viewMode === "table" ? "var(--accent)" : "var(--text-dim)",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <LayoutList size={13} />
+                </button>
+                <button
+                  onClick={() => setViewMode("calendar")}
+                  title="日历视图"
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: 28, height: 26, borderRadius: 5, border: "none", cursor: "pointer",
+                    background: viewMode === "calendar" ? "var(--surface)" : "transparent",
+                    color: viewMode === "calendar" ? "var(--accent)" : "var(--text-dim)",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <CalendarRange size={13} />
+                </button>
+              </div>
+            </div>
           </div>
 
           <div style={{ overflowX: "auto" }}>
-            {groupedSessions.length > 0 ? (
+            {groupedSessions.length > 0 && viewMode === "calendar" && (
+              <CalendarView
+                groupedSessions={groupedSessions}
+                members={members}
+                toggleAttendance={toggleAttendance}
+                user={user}
+              />
+            )}
+            {groupedSessions.length > 0 && viewMode === "table" ? (
               <table className="schedule-table" style={{ tableLayout: "fixed", width: "100%" }}>
                 <thead>
                   <tr>
@@ -654,7 +869,7 @@ export default function App() {
                   ))}
                 </tbody>
               </table>
-            ) : (
+            ) : groupedSessions.length === 0 ? (
               /* Empty state */
               <div style={{
                 padding: "72px 32px",
@@ -688,7 +903,7 @@ export default function App() {
                   <span>点击成员卡片上的「导入 CSV」开始</span>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </section>
 
