@@ -496,7 +496,7 @@ export default function App() {
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <header
           className="card animate-fade-up"
-          style={{ padding: "24px 28px", overflow: "visible" }}
+          style={{ padding: "24px 28px", overflow: "visible", zIndex: 1 }}
         >
           {/* decorative GTC watermark – clipped in its own layer so the dropdown can overflow the header */}
           <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: "inherit", pointerEvents: "none" }}>
