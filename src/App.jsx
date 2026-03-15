@@ -355,7 +355,7 @@ export default function App() {
         if (!existing) {
           map[code] = {
             code,
-            title:     row[titleIdx] || "",
+            title:     (row[titleIdx] || "").replace(/^\(Favorited\)\s*/i, ""),
             date:      dateIdx      !== -1 ? row[dateIdx]      : "",
             start:     startIdx     !== -1 ? row[startIdx]     : "",
             end:       endIdx       !== -1 ? row[endIdx]       : "",
@@ -401,7 +401,11 @@ export default function App() {
       await setDoc(doc(db, "members", id), {
         id,
         name: newMemberName.trim(),
-        colorIndex: members.length % COLORS.length,
+        colorIndex: (() => {
+          const used = new Set(members.map((m) => m.colorIndex));
+          const free = COLORS.findIndex((_, i) => !used.has(i));
+          return free !== -1 ? free : members.length % COLORS.length;
+        })(),
       });
       setNewMemberName("");
     } catch (err) {
