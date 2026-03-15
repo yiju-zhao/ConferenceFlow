@@ -325,7 +325,7 @@ export default function DailyReport() {
     e.target.value = "";
   }, [saveSessionField]);
 
-  // Export PDF via local Puppeteer server (true vector PDF)
+  // Export PDF: try Puppeteer server first, fall back to window.print()
   const handleExportPDF = async () => {
     setExporting(true);
     try {
@@ -336,7 +336,7 @@ export default function DailyReport() {
         `?url=${encodeURIComponent(pageUrl)}` +
         `&filename=${encodeURIComponent(filename)}`;
 
-      const response = await fetch(apiUrl);
+      const response = await fetch(apiUrl, { signal: AbortSignal.timeout(5000) });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.error || `HTTP ${response.status}`);
@@ -350,12 +350,9 @@ export default function DailyReport() {
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
     } catch (err) {
-      console.error("PDF export error:", err);
-      alert(
-        `PDF 导出失败：${err.message}\n\n` +
-        `请确认 PDF 服务正在运行（npm run server 或 npm run dev）\n` +
-        `并且系统已安装 Chrome / Chromium。`
-      );
+      // Server not running or unreachable → fall back to browser print
+      console.info("PDF server unavailable, falling back to window.print():", err.message);
+      window.print();
     } finally {
       setExporting(false);
     }
