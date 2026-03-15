@@ -488,19 +488,21 @@ export default function App() {
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <header
           className="card animate-fade-up"
-          style={{ padding: "24px 28px", overflow: "hidden" }}
+          style={{ padding: "24px 28px" }}
         >
-          {/* decorative GTC watermark */}
-          <div
-            className="font-display"
-            style={{
-              position: "absolute", right: -10, top: -18,
-              fontSize: 130, fontWeight: 800, letterSpacing: "-0.04em",
-              color: "var(--accent)", opacity: 0.04,
-              userSelect: "none", lineHeight: 1, pointerEvents: "none",
-            }}
-          >
-            GTC
+          {/* decorative GTC watermark – clipped in its own layer so the dropdown can overflow the header */}
+          <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: "inherit", pointerEvents: "none" }}>
+            <div
+              className="font-display"
+              style={{
+                position: "absolute", right: -10, top: -18,
+                fontSize: 130, fontWeight: 800, letterSpacing: "-0.04em",
+                color: "var(--accent)", opacity: 0.04,
+                userSelect: "none", lineHeight: 1,
+              }}
+            >
+              GTC
+            </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative", zIndex: 1 }}>
