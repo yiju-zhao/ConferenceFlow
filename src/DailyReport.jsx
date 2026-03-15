@@ -219,7 +219,9 @@ export default function DailyReport() {
     const sessionMap = {};
     sessions.forEach((s) => {
       sessionMap[s.code] = {
-        speakers: [{ name: "", position: "", company: "" }],
+        speakers: s.speakers?.length > 0
+          ? s.speakers.map(sp => ({ name: sp.name || "", position: sp.title || "", company: sp.company || "" }))
+          : [{ name: "", position: "", company: "" }],
         takeaways: "",
         insights: "",
         illustration: "",
