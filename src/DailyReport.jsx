@@ -8,6 +8,8 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import catalogData from "../data/gtc-2026-sessions-detailed.json";
+const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
 
 // ── Debounce helper ──────────────────────────────────────────────────────────
 function useDebouncedSave(delay = 600) {
@@ -474,7 +476,9 @@ export default function DailyReport() {
                   {(topicsMap[topic] || []).map(s => (
                     <li key={s.code}>
                       <a href={`#session-${s.code}`} className="report-toc-link">
-                        <span className="report-toc-title">{s.title}</span>
+                        <span className="report-toc-title">
+                          {SESSION_CATALOG.get(s.code)?.title || s.title}
+                        </span>
                       </a>
                     </li>
                   ))}
@@ -528,7 +532,15 @@ export default function DailyReport() {
                           {session.code}
                         </span>
                         <h3 className="report-session-title" style={{ margin: 0 }}>
-                          {session.title}
+                          {SESSION_CATALOG.get(session.code)?.url
+                            ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
+                                 style={{ color: "inherit", textDecoration: "none" }}
+                                 onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                                 onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+                                {SESSION_CATALOG.get(session.code)?.title || session.title}
+                              </a>
+                            : SESSION_CATALOG.get(session.code)?.title || session.title
+                          }
                         </h3>
                       </div>
                       <div className="report-session-time">
