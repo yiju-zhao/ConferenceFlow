@@ -760,6 +760,58 @@ input[type="checkbox"].gtc-check:checked::after {
 .speaker-field-input:focus { border-bottom-color: #CF0A2C; }
 .speaker-field-input::placeholder { color: #C0C0C0; }
 
+/* ── Bullet Editor ──────────────────────────────── */
+.bullet-editor { padding: 4px 0; }
+
+.bullet-editor-empty {
+  font-size: 13.5px; color: #C8C8C8;
+  margin: 6px 10px; pointer-events: none;
+}
+
+.bullet-editor-list { list-style: none; margin: 0; padding: 0; }
+
+.bullet-editor-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 6px; border-radius: 3px; transition: background 0.1s;
+}
+.bullet-editor-item:hover { background: #FAFAFA; }
+.bullet-editor-item:hover .bullet-remove-btn { opacity: 1; }
+
+.bullet-dot {
+  color: #CF0A2C; font-size: 14px; line-height: 1;
+  flex-shrink: 0; user-select: none;
+}
+
+.bullet-input {
+  flex: 1; border: none; border-bottom: 1px solid transparent;
+  outline: none; font-size: 13.5px; line-height: 1.75;
+  color: #3D3D3D; background: transparent; font-family: inherit;
+  padding: 1px 2px; transition: border-color 0.12s;
+}
+.bullet-input:hover { border-bottom-color: #D0D0D0; }
+.bullet-input:focus { border-bottom-color: #CF0A2C; border-bottom-style: solid; }
+.bullet-input::placeholder { color: #C8C8C8; }
+
+.bullet-remove-btn {
+  opacity: 0; background: none; border: none; color: #BBBBBB;
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 0 3px;
+  flex-shrink: 0; transition: color 0.12s, opacity 0.12s; font-family: inherit;
+}
+.bullet-remove-btn:hover { color: #CF0A2C; }
+
+.bullet-add-btn {
+  background: none; border: 1px dashed #CF0A2C; color: #CF0A2C;
+  cursor: pointer; font-size: 11px; padding: 3px 12px;
+  border-radius: 4px; margin: 6px 6px 2px; font-family: inherit;
+  transition: background 0.12s;
+}
+.bullet-add-btn:hover { background: rgba(207,10,44,0.06); }
+
+@media print {
+  .bullet-editor-item { background: transparent !important; }
+  .bullet-input { border-bottom-color: transparent !important; }
+}
+
 /* ── Illustration ───────────────────────────────── */
 .session-illustration {
   max-width: 100%;
