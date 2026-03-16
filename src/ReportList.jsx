@@ -4,6 +4,21 @@ import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
+// ── Version helpers ──────────────────────────────────────────────────────────
+function parseReportId(reportId) {
+  const m = reportId.match(/^(.+)-v(\d+)$/);
+  return m
+    ? { date: m[1], version: parseInt(m[2]), isLegacy: false }
+    : { date: reportId, version: 1, isLegacy: true };
+}
+
+function nextVersionId(selectedDate, allDocs) {
+  const maxV = allDocs
+    .filter(r => parseReportId(r.id || r.date).date === selectedDate)
+    .reduce((max, r) => Math.max(max, parseReportId(r.id || r.date).version), 0);
+  return `${selectedDate}-v${maxV + 1}`;
+}
+
 const COLORS = [
   { hex: "#3DFFA4", bg: "rgba(61,255,164,0.10)" },
   { hex: "#4C8EFF", bg: "rgba(76,142,255,0.10)" },
@@ -32,8 +47,8 @@ export default function ReportList() {
     if (!user) return;
     return onSnapshot(collection(db, "dailyReports"), snap => {
       const docs = snap.docs
-        .map(d => ({ date: d.id, ...d.data() }))
-        .sort((a, b) => b.date.localeCompare(a.date));
+        .map(d => ({ id: d.id, ...d.data(), ...parseReportId(d.id) }))
+        .sort((a, b) => b.id.localeCompare(a.id));
       setReportDocs(docs);
     });
   }, [user]);
@@ -77,7 +92,11 @@ export default function ReportList() {
           <div className="report-list-create-row">
             <span>选择日期：</span>
             <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} />
-            <button onClick={() => { navigate(`/report/${newDate}`); setShowCreate(false); }}>生成</button>
+            <button onClick={() => {
+              const newId = nextVersionId(newDate, reportDocs);
+              navigate(`/report/${newId}`);
+              setShowCreate(false);
+            }}>生成</button>
           </div>
         )}
 
@@ -93,10 +112,11 @@ export default function ReportList() {
             const isDone = r.status === "done";
             const weekday = DAY_CN[new Date(r.date + "T00:00").getDay()];
             return (
-              <div key={r.date} className="report-card">
+              <div key={r.id} className="report-card">
                 <div className="report-card-main">
                   <div className="report-card-date">
                     {r.date} <span style={{ fontWeight: 400, color: "#888" }}>{weekday}</span>
+                    <span className="report-card-version-badge">v{r.version}</span>
                   </div>
                   <div className="report-card-meta">
                     <span style={{ fontSize: 12, color: "#888" }}>
@@ -123,7 +143,7 @@ export default function ReportList() {
                   <span className={`report-status-badge ${isDone ? "done" : "draft"}`}>
                     {isDone ? "✓ 已完成" : "● 草稿"}
                   </span>
-                  <Link to={`/report/${r.date}`} className="report-card-view-btn">
+                  <Link to={`/report/${r.id}`} className="report-card-view-btn">
                     查看日报 →
                   </Link>
                 </div>

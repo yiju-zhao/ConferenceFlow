@@ -16,46 +16,45 @@ import cors from "cors";
 const app = express();
 app.use(cors());
 
-// ── PDF endpoint ─────────────────────────────────────────────────────────────
+// ── Warm browser singleton ────────────────────────────────────────────────────
+let browserInstance = null;
+
+async function getBrowser() {
+  if (!browserInstance || !browserInstance.isConnected()) {
+    browserInstance = await chromium.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+    });
+    console.log("[PDF] Browser instance launched");
+  }
+  return browserInstance;
+}
+
+process.on("SIGINT", async () => { await browserInstance?.close(); process.exit(0); });
+
+// ── PDF endpoint ──────────────────────────────────────────────────────────────
 app.get("/api/pdf", async (req, res) => {
   const { url, filename = "GTC2026_report.pdf" } = req.query;
   if (!url) return res.status(400).json({ error: "Missing url parameter" });
 
-  let browser;
+  let page;
   try {
-    browser = await chromium.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
-
-    const page = await browser.newPage();
+    const browser = await getBrowser();
+    page = await browser.newPage();
     await page.setViewportSize({ width: 1280, height: 900 });
 
     console.log(`[PDF] Navigating to: ${decodeURIComponent(url)}`);
-    await page.goto(decodeURIComponent(url), {
-      waitUntil: "networkidle",
-      timeout: 30000,
-    });
+    await page.goto(decodeURIComponent(url), { waitUntil: "networkidle", timeout: 30000 });
 
-    // Wait until Firebase has loaded all data and the report is rendered
     console.log("[PDF] Waiting for report content...");
     await page.waitForSelector("[data-pdf-ready]", { timeout: 20000 });
-
-    // Small buffer for last renders (illustrations, fonts)
     await page.waitForTimeout(800);
 
-    // Hide interactive elements that should not appear in the PDF
     await page.addStyleTag({
       content: `
-        .report-nav-bar,
-        .report-toolbar,
-        .no-print { display: none !important; }
+        .report-nav-bar, .report-toolbar, .no-print { display: none !important; }
         .report-editable { border: none !important; outline: none !important; }
+        .report-inline-editable { border-bottom: none !important; }
       `,
     });
 
@@ -68,24 +67,20 @@ app.get("/api/pdf", async (req, res) => {
 
     const safeFilename = encodeURIComponent(filename);
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename*=UTF-8''${safeFilename}`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${safeFilename}`);
     res.send(Buffer.from(pdf));
     console.log(`[PDF] Done → ${filename}`);
   } catch (err) {
     console.error("[PDF] Error:", err.message);
-    res.status(500).json({ error: err.message });
+    const isTimeout = err.name === "TimeoutError" || err.message.includes("timeout");
+    res.status(isTimeout ? 504 : 500).json({ error: err.message });
   } finally {
-    await browser?.close();
+    await page?.close(); // page only — browser stays warm
   }
 });
 
-// ── Health check ─────────────────────────────────────────────────────────────
+// ── Health check ──────────────────────────────────────────────────────────────
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 const PORT = process.env.PDF_PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`\n PDF server running → http://localhost:${PORT}/api/pdf\n`);
-});
+app.listen(PORT, () => console.log(`\n PDF server running → http://localhost:${PORT}/api/pdf\n`));
