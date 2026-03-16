@@ -431,36 +431,65 @@ export default function DailyReport() {
     e.target.value = "";
   }, [saveSessionField]);
 
-  // Export PDF via Playwright (Vercel serverless in prod, local server in dev)
+  // Export report as self-contained HTML for offline PDF conversion
   const handleExportPDF = async () => {
     setExporting(true);
-    const filename = `GTC2026_日报_${date}.pdf`;
+
+    // Expand all collapsed sessions so content is visible in the export
+    const prevCollapsed = new Set(collapsedSessions);
+    setCollapsedSessions(new Set());
+    await new Promise(resolve => setTimeout(resolve, 150));
 
     try {
-      const pageUrl = window.location.href;
-      const apiBase = import.meta.env.DEV ? "http://localhost:3001" : "";
-      const apiUrl =
-        `${apiBase}/api/pdf` +
-        `?url=${encodeURIComponent(pageUrl)}` +
-        `&filename=${encodeURIComponent(filename)}`;
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
 
-      const response = await fetch(apiUrl, { signal: AbortSignal.timeout(60000) });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${response.status}`);
-      }
-      const blob = await response.blob();
+      // Clone report DOM and strip interactive / UI-only elements
+      const clone = container.cloneNode(true);
+      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn").forEach(el => el.remove());
+      clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
+
+      // Collect stylesheets from the page (link tags + style tags)
+      const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
+        .map(el => {
+          if (el.tagName === "LINK") {
+            const href = new URL(el.getAttribute("href"), window.location.href).href;
+            return `<link rel="stylesheet" href="${href}">`;
+          }
+          return el.outerHTML;
+        })
+        .join("\n");
+
+      const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTC2026 日报 ${date}</title>
+${styleTagsHtml}
+<style>
+  body { background: #fff; color: #111; }
+  .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+</style>
+</head>
+<body>
+${clone.outerHTML}
+</body>
+</html>`;
+
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = filename;
+      a.download = `GTC2026_日报_${date}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
     } catch (err) {
-      console.error("[PDF] Export failed:", err.message);
-      alert(`PDF 导出失败：${err.message}`);
+      console.error("[Export] Failed:", err.message);
+      alert(`导出失败：${err.message}`);
     } finally {
+      setCollapsedSessions(prevCollapsed);
       setExporting(false);
     }
   };
@@ -609,7 +638,7 @@ export default function DailyReport() {
             </div>
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
             <button className="report-export-btn" onClick={handleExportPDF} disabled={exporting}>
-              {exporting ? "生成中..." : "导出 PDF"}
+              {exporting ? "生成中..." : "导出 HTML"}
             </button>
           </div>
         </div>
