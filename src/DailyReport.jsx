@@ -36,6 +36,21 @@ function useDebouncedSave(delay = 600) {
   return { debouncedSave, saveState };
 }
 
+// ── Version helpers ──────────────────────────────────────────────────────────
+function parseReportId(reportId) {
+  const m = reportId.match(/^(.+)-v(\d+)$/);
+  return m
+    ? { date: m[1], version: parseInt(m[2]), isLegacy: false }
+    : { date: reportId, version: 1, isLegacy: true };
+}
+
+function nextVersionId(selectedDate, allDocs) {
+  const maxV = allDocs
+    .filter(r => parseReportId(r.id || r.date).date === selectedDate)
+    .reduce((max, r) => Math.max(max, parseReportId(r.id || r.date).version), 0);
+  return `${selectedDate}-v${maxV + 1}`;
+}
+
 // ── Color presets ────────────────────────────────────────────────────────────
 const COLOR_PRESETS = ["#333333", "#CF0A2C", "#E67E22", "#27AE60", "#2980B9", "#8E44AD"];
 
@@ -252,7 +267,8 @@ function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport() {
-  const { date } = useParams();
+  const { reportId } = useParams();
+  const { date, version } = parseReportId(reportId);
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -266,9 +282,11 @@ export default function DailyReport() {
   const [showNewReport, setShowNewReport] = useState(false);
   const [newReportDate, setNewReportDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [collapsedSessions, setCollapsedSessions] = useState(new Set());
+  const [allReportDocs, setAllReportDocs] = useState([]);
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
+  const reportContainerRef = useRef(null);
   const initDone = useRef(false);
   const collapsedInit = useRef(false);
   const { debouncedSave, saveState } = useDebouncedSave(600);
@@ -278,6 +296,14 @@ export default function DailyReport() {
     signInAnonymously(auth).catch(console.error);
     return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
+
+  // All report docs (for version computation)
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(collection(db, "dailyReports"), snap => {
+      setAllReportDocs(snap.docs.map(d => ({ id: d.id })));
+    });
+  }, [user]);
 
   // Members
   useEffect(() => {
@@ -307,11 +333,11 @@ export default function DailyReport() {
   // Report data
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(doc(db, "dailyReports", date), (snap) => {
+    return onSnapshot(doc(db, "dailyReports", reportId), (snap) => {
       setReportData(snap.exists() ? snap.data() : null);
       setLoading(false);
     });
-  }, [user, date]);
+  }, [user, reportId]);
 
   // Auto-init report
   useEffect(() => {
@@ -328,11 +354,11 @@ export default function DailyReport() {
         illustration: "",
       };
     });
-    setDoc(doc(db, "dailyReports", date), {
+    setDoc(doc(db, "dailyReports", reportId), {
       date, summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "",
-      sessions: sessionMap, topicOrder: [], status: "draft",
+      sessions: sessionMap, topicOrder: [], status: "draft", version,
     }).catch(console.error);
-  }, [user, loading, reportData, sessions, date]);
+  }, [user, loading, reportData, sessions, reportId, date, version]);
 
   // Keep sessionDataRef in sync
   const sessionData = reportData?.sessions || {};
@@ -373,46 +399,46 @@ export default function DailyReport() {
   const saveField = useCallback((field, html) => {
     if (!user) return;
     debouncedSave(field, () => {
-      setDoc(doc(db, "dailyReports", date), { [field]: html }, { merge: true }).catch(console.error);
+      setDoc(doc(db, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
     });
-  }, [user, date, debouncedSave]);
+  }, [user, reportId, debouncedSave]);
 
   const saveSessionField = useCallback((code, field, value) => {
     if (!user) return;
     debouncedSave(`${code}.${field}`, () => {
-      setDoc(doc(db, "dailyReports", date), {
+      setDoc(doc(db, "dailyReports", reportId), {
         sessions: { [code]: { [field]: value } }
       }, { merge: true }).catch(console.error);
     });
-  }, [user, date, debouncedSave]);
+  }, [user, reportId, debouncedSave]);
 
   // Speakers: save whole array debounced
   const saveSpeakers = useCallback((code, speakers) => {
     if (!user) return;
     debouncedSave(`${code}.speakers`, () => {
-      setDoc(doc(db, "dailyReports", date), {
+      setDoc(doc(db, "dailyReports", reportId), {
         sessions: { [code]: { speakers } }
       }, { merge: true }).catch(console.error);
     });
-  }, [user, date, debouncedSave]);
+  }, [user, reportId, debouncedSave]);
 
   const addSpeaker = useCallback((code) => {
     if (!user) return;
     const sd = sessionDataRef.current[code] || {};
     const speakers = [...(sd.speakers || []), { name: "", position: "", company: "" }];
-    setDoc(doc(db, "dailyReports", date), {
+    setDoc(doc(db, "dailyReports", reportId), {
       sessions: { [code]: { speakers } }
     }, { merge: true }).catch(console.error);
-  }, [user, date]);
+  }, [user, reportId]);
 
   const removeSpeaker = useCallback((code, idx) => {
     if (!user) return;
     const sd = sessionDataRef.current[code] || {};
     const speakers = (sd.speakers || []).filter((_, i) => i !== idx);
-    setDoc(doc(db, "dailyReports", date), {
+    setDoc(doc(db, "dailyReports", reportId), {
       sessions: { [code]: { speakers: speakers.length ? speakers : [{ name: "", position: "", company: "" }] } }
     }, { merge: true }).catch(console.error);
-  }, [user, date]);
+  }, [user, reportId]);
 
   const handleIllustration = useCallback((code, e) => {
     const file = e.target.files[0];
@@ -428,18 +454,20 @@ export default function DailyReport() {
     e.target.value = "";
   }, [saveSessionField]);
 
-  // Export PDF: try Puppeteer server first, fall back to window.print()
+  // Export PDF: Playwright server (primary, vector) → html_to_vector_pdf (fallback, vector)
   const handleExportPDF = async () => {
     setExporting(true);
+    const filename = `GTC2026_日报_${date}.pdf`;
+
+    // ── Primary: Playwright server ─────────────────────────────────────────────
     try {
-      const filename = `GTC2026_日报_${date}.pdf`;
       const pageUrl = window.location.href;
       const apiUrl =
         `http://localhost:3001/api/pdf` +
         `?url=${encodeURIComponent(pageUrl)}` +
         `&filename=${encodeURIComponent(filename)}`;
 
-      const response = await fetch(apiUrl, { signal: AbortSignal.timeout(5000) });
+      const response = await fetch(apiUrl, { signal: AbortSignal.timeout(60000) });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.error || `HTTP ${response.status}`);
@@ -452,10 +480,53 @@ export default function DailyReport() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
-    } catch (err) {
-      // Server not running or unreachable → fall back to browser print
-      console.info("PDF server unavailable, falling back to window.print():", err.message);
-      window.print();
+      return;
+    } catch (serverErr) {
+      console.info("[PDF] Server unavailable, using client-side vector fallback:", serverErr.message);
+    }
+
+    // ── Fallback: html_to_vector_pdf (client-side vector PDF) ─────────────────
+    try {
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
+
+      // Show .print-only elements (they're display:none on screen, needed in PDF)
+      const shownEls = [];
+      container.querySelectorAll(".print-only").forEach((el) => {
+        shownEls.push({ el, prev: el.style.display });
+        el.style.display = "block";
+      });
+
+      // Expand all collapsed sessions so content isn't hidden from PDF
+      const prevCollapsed = new Set(collapsedSessions);
+      setCollapsedSessions(new Set());
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      // Generate vector PDF — excludeSelectors handles .no-print, toolbar, etc.
+      await window.html_to_vector_pdf.generatePdf(container, {
+        filename,
+        pageSize: "a4",
+        margins: { top: 10, right: 10, bottom: 10, left: 10 },
+        excludeSelectors: [
+          ".no-print",
+          ".session-collapse-btn",
+          ".report-toolbar",
+          ".report-nav-bar",
+        ],
+        ui: { showLoader: false },
+        callbacks: {
+          onProgress: (stage) => {
+            console.log("[PDF] Stage:", stage);
+          },
+        },
+      });
+
+      // Restore DOM
+      shownEls.forEach(({ el, prev }) => { el.style.display = prev; });
+      setCollapsedSessions(prevCollapsed);
+    } catch (clientErr) {
+      console.error("[PDF] Client-side generation failed:", clientErr);
+      alert(`PDF 导出失败：${clientErr.message}`);
     } finally {
       setExporting(false);
     }
@@ -483,9 +554,9 @@ export default function DailyReport() {
     newOrder.splice(toIdx, 0, dragTopic);
     setDragTopic(null); setDragOverTopic(null);
     if (user) {
-      setDoc(doc(db, "dailyReports", date), { topicOrder: newOrder }, { merge: true }).catch(console.error);
+      setDoc(doc(db, "dailyReports", reportId), { topicOrder: newOrder }, { merge: true }).catch(console.error);
     }
-  }, [dragTopic, orderedTopics, user, date]);
+  }, [dragTopic, orderedTopics, user, reportId]);
   const handleTopicDragEnd = () => { setDragTopic(null); setDragOverTopic(null); };
 
   // Collapse init: sessions with content start collapsed
@@ -512,7 +583,7 @@ export default function DailyReport() {
   const handleToggleStatus = () => {
     if (!user) return;
     const newStatus = reportData?.status === "done" ? "draft" : "done";
-    setDoc(doc(db, "dailyReports", date), { status: newStatus }, { merge: true }).catch(console.error);
+    setDoc(doc(db, "dailyReports", reportId), { status: newStatus }, { merge: true }).catch(console.error);
   };
 
   // Toolbar
@@ -521,7 +592,10 @@ export default function DailyReport() {
 
   // New report navigation
   const handleCreateReport = () => {
-    if (newReportDate) { navigate(`/report/${newReportDate}`); setShowNewReport(false); }
+    if (!newReportDate) return;
+    const newId = nextVersionId(newReportDate, allReportDocs);
+    navigate(`/report/${newId}`);
+    setShowNewReport(false);
   };
 
   // ── Loading ─────────────────────────────────────────────────────────────────
@@ -545,13 +619,12 @@ export default function DailyReport() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Link to="/" className="report-back-btn">← 返回日程</Link>
             <div style={{ width: 1, height: 20, background: "#E8E8E8" }} />
-            <Link to="/reports" className="report-tool-btn" style={{ fontSize: 12, padding: "4px 10px", textDecoration: "none" }}>
+            <Link to="/reports" className="report-tool-btn" style={{ textDecoration: "none" }}>
               日报列表
             </Link>
             <button
               className="report-tool-btn"
               onClick={() => setShowNewReport(v => !v)}
-              style={{ fontSize: 12, padding: "4px 10px" }}
             >
               + 新建日报
             </button>
@@ -567,23 +640,26 @@ export default function DailyReport() {
             <button
               className="report-tool-btn"
               onClick={handleToggleStatus}
-              style={{
-                fontSize: 12, padding: "4px 10px",
-                ...(reportData?.status === "done" ? {
-                  background: "rgba(39,174,96,0.08)", color: "#27AE60",
-                  border: "1px solid rgba(39,174,96,0.3)", borderRadius: 4,
-                } : {}),
-              }}
+              style={reportData?.status === "done" ? {
+                background: "rgba(39,174,96,0.08)", color: "#27AE60",
+                border: "1px solid rgba(39,174,96,0.3)",
+              } : undefined}
             >
               {reportData?.status === "done" ? "✓ 已完成" : "标记完成"}
             </button>
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
-            <button className="report-tool-btn" onClick={execBold} title="加粗">
+            <button className="report-icon-btn" onClick={execBold} title="加粗">
               <strong>B</strong>
+            </button>
+            <button className="report-icon-btn" onClick={() => document.execCommand("italic")} title="斜体">
+              <em style={{ fontStyle: "italic" }}>I</em>
+            </button>
+            <button className="report-icon-btn" onClick={() => document.execCommand("underline")} title="下划线">
+              <span style={{ textDecoration: "underline" }}>U</span>
             </button>
             <div style={{ position: "relative" }}>
               <button
-                className="report-tool-btn"
+                className="report-icon-btn"
                 onClick={() => setShowColorPicker(!showColorPicker)}
                 title="字体颜色"
               >
@@ -627,12 +703,17 @@ export default function DailyReport() {
 
       {/* ── Report Content ───────────────────────────────────────── */}
       {/* data-pdf-ready is read by the Puppeteer server to know data is loaded */}
-      <div className="report-container" data-pdf-ready={!loading || undefined}>
+      <div className="report-container" ref={reportContainerRef} data-pdf-ready={!loading || undefined}>
 
         {/* Title bar */}
         <div className="report-title-bar">
           <div className="report-title-eyebrow">GTC 2026 · DAILY BRIEFING</div>
-          <h1>【{date}】日报</h1>
+          <h1>
+            【{date}】日报
+            {version > 1 && (
+              <span className="report-version-badge">v{version}</span>
+            )}
+          </h1>
         </div>
 
         {/* Header: TOC + Summary */}
