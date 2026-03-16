@@ -632,6 +632,80 @@ input[type="checkbox"].gtc-check:checked::after {
   margin: 0; letter-spacing: 0.06em;
 }
 
+/* ── Report List Page ──────────────────────────────── */
+.report-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 40px 16px;
+  border-bottom: 1px solid #EEEEEE;
+}
+.report-list-create-btn {
+  font-size: 13px; padding: 7px 16px; border-radius: 6px;
+  background: #CF0A2C; color: #fff; border: none; cursor: pointer;
+  font-family: inherit; font-weight: 600;
+  transition: opacity 0.15s;
+}
+.report-list-create-btn:hover { opacity: 0.88; }
+.report-list-create-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 40px 12px;
+  border-bottom: 1px solid #F5F5F5;
+  background: #FAFAFA;
+  font-size: 13px;
+}
+.report-list-create-row input[type="date"] {
+  font-size: 13px; padding: 4px 8px; border-radius: 6px;
+  border: 1px solid #DDDDDD; font-family: inherit;
+}
+.report-list-create-row button {
+  font-size: 13px; padding: 4px 14px; border-radius: 6px;
+  background: #CF0A2C; color: #fff; border: none; cursor: pointer; font-family: inherit;
+}
+.report-list-cards {
+  padding: 16px 40px 40px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.report-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border: 1px solid #E8E8E8;
+  border-left: 3px solid #CF0A2C;
+  border-radius: 4px;
+  background: #fff;
+  transition: box-shadow 0.15s;
+}
+.report-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+.report-card-main { display: flex; flex-direction: column; gap: 6px; }
+.report-card-date { font-size: 15px; font-weight: 700; color: #1A1A1A; }
+.report-card-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.report-card-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.report-status-badge {
+  font-size: 11px; padding: 3px 9px; border-radius: 99px; font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.report-status-badge.draft {
+  color: #888; background: #F5F5F5; border: 1px solid #E0E0E0;
+}
+.report-status-badge.done {
+  color: #27AE60; background: rgba(39,174,96,0.08); border: 1px solid rgba(39,174,96,0.3);
+}
+.report-card-view-btn {
+  font-size: 12px; padding: 5px 12px; border-radius: 6px;
+  background: #CF0A2C; color: #fff; text-decoration: none;
+  font-weight: 600; transition: opacity 0.15s;
+}
+.report-card-view-btn:hover { opacity: 0.88; }
+
+/* ── Session Collapse ──────────────────────────────── */
+.session-collapse-btn {
+  font-size: 11px; color: #BBBBBB;
+  flex-shrink: 0; padding-top: 3px;
+  user-select: none;
+  transition: color 0.1s;
+}
+.report-session-header:hover .session-collapse-btn { color: #888; }
+
 /* ── Print / PDF export ────────────────────────── */
 .print-only { display: none !important; }
 
