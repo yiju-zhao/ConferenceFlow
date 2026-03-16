@@ -420,8 +420,8 @@ export default function DailyReport() {
   const handleIllustration = useCallback((code, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 600 * 1024) {
-      alert("图片过大（超过600KB），请压缩后再上传。");
+    if (file.size > 5 * 1024 * 1024) {
+      alert("图片过大（超过5MB），请压缩后再上传。");
       e.target.value = "";
       return;
     }
