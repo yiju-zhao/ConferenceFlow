@@ -14,10 +14,26 @@ const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
 // ── Debounce helper ──────────────────────────────────────────────────────────
 function useDebouncedSave(delay = 600) {
   const timers = useRef({});
-  return useCallback((key, fn) => {
-    if (timers.current[key]) clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(fn, delay);
+  const pending = useRef(0);
+  const savedTimer = useRef(null);
+  const [saveState, setSaveState] = useState("idle");
+  const debouncedSave = useCallback((key, fn) => {
+    if (!timers.current[key]) pending.current += 1;
+    else clearTimeout(timers.current[key]);
+    setSaveState("saving");
+    timers.current[key] = setTimeout(() => {
+      delete timers.current[key];
+      pending.current -= 1;
+      Promise.resolve(fn()).finally(() => {
+        if (pending.current === 0) {
+          setSaveState("saved");
+          clearTimeout(savedTimer.current);
+          savedTimer.current = setTimeout(() => setSaveState("idle"), 2000);
+        }
+      });
+    }, delay);
   }, [delay]);
+  return { debouncedSave, saveState };
 }
 
 // ── Color presets ────────────────────────────────────────────────────────────
@@ -247,15 +263,15 @@ export default function DailyReport() {
   const [dragTopic, setDragTopic] = useState(null);
   const [dragOverTopic, setDragOverTopic] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [reportDates, setReportDates] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
   const [showNewReport, setShowNewReport] = useState(false);
   const [newReportDate, setNewReportDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [collapsedSessions, setCollapsedSessions] = useState(new Set());
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
   const initDone = useRef(false);
-  const debouncedSave = useDebouncedSave(600);
+  const collapsedInit = useRef(false);
+  const { debouncedSave, saveState } = useDebouncedSave(600);
 
   // Auth
   useEffect(() => {
@@ -297,15 +313,6 @@ export default function DailyReport() {
     });
   }, [user, date]);
 
-  // History: list of all saved report dates
-  useEffect(() => {
-    if (!user) return;
-    return onSnapshot(collection(db, "dailyReports"), (snap) => {
-      const dates = snap.docs.map((d) => d.id).sort((a, b) => b.localeCompare(a));
-      setReportDates(dates);
-    });
-  }, [user]);
-
   // Auto-init report
   useEffect(() => {
     if (!user || loading || reportData || initDone.current || sessions.length === 0) return;
@@ -323,7 +330,7 @@ export default function DailyReport() {
     });
     setDoc(doc(db, "dailyReports", date), {
       date, summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "",
-      sessions: sessionMap, topicOrder: [],
+      sessions: sessionMap, topicOrder: [], status: "draft",
     }).catch(console.error);
   }, [user, loading, reportData, sessions, date]);
 
@@ -481,6 +488,33 @@ export default function DailyReport() {
   }, [dragTopic, orderedTopics, user, date]);
   const handleTopicDragEnd = () => { setDragTopic(null); setDragOverTopic(null); };
 
+  // Collapse init: sessions with content start collapsed
+  useEffect(() => {
+    if (!reportData || collapsedInit.current) return;
+    collapsedInit.current = true;
+    const initial = new Set(
+      sessions.filter(s => {
+        const sd = reportData.sessions?.[s.code];
+        return sd?.takeaways && sd.takeaways !== "";
+      }).map(s => s.code)
+    );
+    setCollapsedSessions(initial);
+  }, [reportData, sessions]);
+
+  const toggleCollapse = useCallback((code) => {
+    setCollapsedSessions(prev => {
+      const next = new Set(prev);
+      next.has(code) ? next.delete(code) : next.add(code);
+      return next;
+    });
+  }, []);
+
+  const handleToggleStatus = () => {
+    if (!user) return;
+    const newStatus = reportData?.status === "done" ? "draft" : "done";
+    setDoc(doc(db, "dailyReports", date), { status: newStatus }, { merge: true }).catch(console.error);
+  };
+
   // Toolbar
   const execBold = () => document.execCommand("bold");
   const execColor = (color) => { document.execCommand("foreColor", false, color); setShowColorPicker(false); };
@@ -511,22 +545,39 @@ export default function DailyReport() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Link to="/" className="report-back-btn">← 返回日程</Link>
             <div style={{ width: 1, height: 20, background: "#E8E8E8" }} />
+            <Link to="/reports" className="report-tool-btn" style={{ fontSize: 12, padding: "4px 10px", textDecoration: "none" }}>
+              日报列表
+            </Link>
             <button
               className="report-tool-btn"
-              onClick={() => { setShowNewReport(v => !v); setShowHistory(false); }}
+              onClick={() => setShowNewReport(v => !v)}
               style={{ fontSize: 12, padding: "4px 10px" }}
             >
               + 新建日报
             </button>
-            <button
-              className="report-tool-btn"
-              onClick={() => { setShowHistory(v => !v); setShowNewReport(false); }}
-              style={{ fontSize: 12, padding: "4px 10px" }}
-            >
-              历史记录{reportDates.length > 0 ? ` (${reportDates.length})` : ""}
-            </button>
           </div>
           <div className="report-toolbar-actions">
+            {saveState === "saving" && (
+              <span style={{ fontSize: 11, color: "#AAAAAA", marginRight: 4 }}>● 保存中...</span>
+            )}
+            {saveState === "saved" && (
+              <span style={{ fontSize: 11, color: "#27AE60", marginRight: 4 }}>✓ 已保存</span>
+            )}
+            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
+            <button
+              className="report-tool-btn"
+              onClick={handleToggleStatus}
+              style={{
+                fontSize: 12, padding: "4px 10px",
+                ...(reportData?.status === "done" ? {
+                  background: "rgba(39,174,96,0.08)", color: "#27AE60",
+                  border: "1px solid rgba(39,174,96,0.3)", borderRadius: 4,
+                } : {}),
+              }}
+            >
+              {reportData?.status === "done" ? "✓ 已完成" : "标记完成"}
+            </button>
+            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
             <button className="report-tool-btn" onClick={execBold} title="加粗">
               <strong>B</strong>
             </button>
@@ -557,12 +608,12 @@ export default function DailyReport() {
         {/* New report form */}
         {showNewReport && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 24px", borderTop: "1px solid #E8E8E8" }}>
-            <span style={{ fontSize: 13, color: "var(--text)" }}>选择日期：</span>
+            <span style={{ fontSize: 13, color: "#3D3D3D" }}>选择日期：</span>
             <input
               type="date"
               value={newReportDate}
               onChange={e => setNewReportDate(e.target.value)}
-              style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", fontFamily: "inherit" }}
+              style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid #DDDDDD", fontFamily: "inherit" }}
             />
             <button
               onClick={handleCreateReport}
@@ -570,32 +621,6 @@ export default function DailyReport() {
             >
               生成
             </button>
-          </div>
-        )}
-
-        {/* History panel */}
-        {showHistory && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 24px", borderTop: "1px solid #E8E8E8" }}>
-            {reportDates.length === 0
-              ? <span style={{ fontSize: 13, color: "var(--text-dim)" }}>暂无历史记录</span>
-              : reportDates.map(d => (
-                  <Link
-                    key={d}
-                    to={`/report/${d}`}
-                    onClick={() => setShowHistory(false)}
-                    style={{
-                      fontSize: 12, padding: "3px 10px", borderRadius: 99,
-                      background: d === date ? "#CF0A2C" : "var(--surface)",
-                      color: d === date ? "#fff" : "var(--text)",
-                      border: `1px solid ${d === date ? "#CF0A2C" : "var(--border)"}`,
-                      textDecoration: "none",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    {d}
-                  </Link>
-                ))
-            }
           </div>
         )}
       </div>
@@ -680,32 +705,41 @@ export default function DailyReport() {
                 const contributors = Array.from(session.attendees)
                   .map(id => memberMap[id]).filter(Boolean).join("、");
 
+                const isCollapsed = collapsedSessions.has(session.code);
                 return (
                   <div key={session.code} id={`session-${session.code}`} className="report-session">
 
-                    {/* Session Header: code + title on same line */}
-                    <div className="report-session-header">
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
-                        <span className="report-session-code" style={{ marginBottom: 0, flexShrink: 0 }}>
-                          {session.code}
-                        </span>
-                        <h3 className="report-session-title" style={{ margin: 0 }}>
-                          {SESSION_CATALOG.get(session.code)?.url
-                            ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
-                                 style={{ color: "inherit", textDecoration: "none" }}
-                                 onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
-                                 onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
-                                {SESSION_CATALOG.get(session.code)?.title || session.title}
-                              </a>
-                            : SESSION_CATALOG.get(session.code)?.title || session.title
-                          }
-                        </h3>
+                    {/* Session Header: clickable to collapse */}
+                    <div className="report-session-header" onClick={() => toggleCollapse(session.code)}
+                      style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: isCollapsed ? 0 : 6 }}>
+                          <span className="report-session-code" style={{ marginBottom: 0, flexShrink: 0 }}>
+                            {session.code}
+                          </span>
+                          <h3 className="report-session-title" style={{ margin: 0 }}>
+                            {SESSION_CATALOG.get(session.code)?.url
+                              ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
+                                   style={{ color: "inherit", textDecoration: "none" }}
+                                   onClick={e => e.stopPropagation()}
+                                   onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                                   onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+                                  {SESSION_CATALOG.get(session.code)?.title || session.title}
+                                </a>
+                              : SESSION_CATALOG.get(session.code)?.title || session.title
+                            }
+                          </h3>
+                        </div>
+                        {!isCollapsed && (
+                          <div className="report-session-time">
+                            {session.start}–{session.end}{session.room && ` | ${session.room}`}
+                          </div>
+                        )}
                       </div>
-                      <div className="report-session-time">
-                        {session.start}–{session.end}{session.room && ` | ${session.room}`}
-                      </div>
+                      <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                     </div>
 
+                    {!isCollapsed && <>
                     {/* Speakers */}
                     <div className="report-session-meta">
                       <span className="report-field-label" style={{ display: "block", marginBottom: 5 }}>演讲者</span>
@@ -784,6 +818,7 @@ export default function DailyReport() {
                         </div>
                       )}
                     </div>
+                    </>}
                   </div>
                 );
               })}

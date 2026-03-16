@@ -604,6 +604,13 @@ export default function App() {
               </p>
             </div>
 
+            {/* Header right actions */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
+            <Link to="/reports" className="btn-ghost" style={{ padding: "6px 14px", fontSize: 13, textDecoration: "none", gap: 5 }}>
+              <FileText size={14} />
+              日报管理
+            </Link>
+
             {/* Export button + dropdown */}
             <div style={{ position: "relative" }}>
               <button
@@ -662,6 +669,7 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </div>
         </header>
