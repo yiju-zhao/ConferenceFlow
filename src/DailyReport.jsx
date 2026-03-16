@@ -336,7 +336,7 @@ export default function DailyReport() {
       };
     });
     setDoc(doc(db, "dailyReports", reportId), {
-      date, summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "", sitePhotos: [],
+      date, title: "", summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "", sitePhotos: [],
       sessions: sessionMap, topicOrder: [], status: "draft", version,
     }).catch(console.error);
   }, [user, loading, reportData, sessions, reportId, date, version]);
@@ -756,7 +756,11 @@ ${clone.outerHTML}
         <div className="report-title-bar">
           <div className="report-title-eyebrow">GTC 2026 · DAILY BRIEFING</div>
           <h1>
-            【{date}】日报
+            <span
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
+            >{reportData?.title || `【${date}】日报`}</span>
             {version > 1 && (
               <span className="report-version-badge">v{version}</span>
             )}
@@ -930,11 +934,11 @@ ${clone.outerHTML}
                         />
                       </div>
                       <div className="report-field-block">
-                        <h4 className="report-field-heading">深度见解</h4>
+                        <h4 className="report-field-heading">启示</h4>
                         <EditableField
                           value={sd.insights}
                           onSave={html => saveSessionField(session.code, "insights", html)}
-                          placeholder="记录深度见解与分析..."
+                          placeholder="记录启示与分析..."
                         />
                       </div>
 
@@ -981,12 +985,12 @@ ${clone.outerHTML}
 
         {/* Site Photos Section */}
         <div className="report-site-photos">
-          <h2 className="report-section-title" style={{ marginTop: 32 }}>现场图片</h2>
+          <h2 className="report-section-title" style={{ marginTop: 32 }}>现场记录</h2>
           <div className="site-photos-grid">
             {(reportData?.sitePhotos || []).map((photo, idx) => (
               <div key={idx} className="site-photo-card">
                 <div className="site-photo-img-wrapper">
-                  <img src={photo.image} alt={`现场图片 ${idx + 1}`} className="site-photo-img" />
+                  <img src={photo.image} alt={`现场记录 ${idx + 1}`} className="site-photo-img" />
                   <button
                     className="site-photo-delete-btn no-print"
                     onClick={() => handleSitePhotoDelete(idx)}
