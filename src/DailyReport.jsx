@@ -260,9 +260,13 @@ export default function DailyReport() {
   const [newReportDate, setNewReportDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [collapsedSessions, setCollapsedSessions] = useState(new Set());
   const [allReportDocs, setAllReportDocs] = useState([]);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
+  const reportDataRef = useRef(null);
+  const sitePhotoInputRef = useRef(null);
   const reportContainerRef = useRef(null);
   const initDone = useRef(false);
   const collapsedInit = useRef(false);
@@ -332,14 +336,15 @@ export default function DailyReport() {
       };
     });
     setDoc(doc(db, "dailyReports", reportId), {
-      date, summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "",
+      date, summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "", sitePhotos: [],
       sessions: sessionMap, topicOrder: [], status: "draft", version,
     }).catch(console.error);
   }, [user, loading, reportData, sessions, reportId, date, version]);
 
-  // Keep sessionDataRef in sync
+  // Keep sessionDataRef and reportDataRef in sync
   const sessionData = reportData?.sessions || {};
   sessionDataRef.current = sessionData;
+  reportDataRef.current = reportData;
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const memberMap = useMemo(() => {
@@ -430,6 +435,33 @@ export default function DailyReport() {
     reader.readAsDataURL(file);
     e.target.value = "";
   }, [saveSessionField]);
+
+  // ── Site Photos handlers ─────────────────────────────────────────────────
+  const handleSitePhotoAdd = useCallback((e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert("图片过大（超过5MB）"); e.target.value = ""; return; }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const photos = [...(reportDataRef.current?.sitePhotos || []), { image: ev.target.result, caption: "" }];
+      setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }, [reportId]);
+
+  const handleSitePhotoDelete = useCallback((idx) => {
+    const photos = (reportDataRef.current?.sitePhotos || []).filter((_, i) => i !== idx);
+    setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+  }, [reportId]);
+
+  const saveSitePhotoCaption = useCallback((idx, caption) => {
+    debouncedSave(`sitePhoto-caption-${idx}`, () => {
+      const photos = [...(reportDataRef.current?.sitePhotos || [])];
+      if (photos[idx]) photos[idx] = { ...photos[idx], caption };
+      return setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+    });
+  }, [reportId, debouncedSave]);
 
   // Export report as self-contained HTML for offline PDF conversion
   const handleExportPDF = async () => {
@@ -548,6 +580,43 @@ ${clone.outerHTML}
     setDoc(doc(db, "dailyReports", reportId), { status: newStatus }, { merge: true }).catch(console.error);
   };
 
+  const handleSyncFromCatalog = async () => {
+    if (!user || syncing) return;
+    setSyncing(true);
+    setSyncMsg("");
+    try {
+      const updatedMap = {};
+      let syncedCount = 0;
+      sessions.forEach((s) => {
+        const existing = sessionDataRef.current[s.code] || {};
+        const info = SESSION_CATALOG.get(s.code);
+        if (info?.speakers?.length > 0) {
+          updatedMap[s.code] = {
+            ...existing,
+            speakers: info.speakers.map(sp => ({
+              name:     sp.name    || "",
+              position: sp.title   || "",
+              company:  sp.company || "",
+            })),
+          };
+          syncedCount++;
+        }
+      });
+      if (syncedCount === 0) {
+        setSyncMsg("未找到匹配的 catalog 数据");
+      } else {
+        await setDoc(doc(db, "dailyReports", reportId), { sessions: updatedMap }, { merge: true });
+        setSyncMsg(`已同步 ${syncedCount} 个 session`);
+      }
+    } catch (err) {
+      console.error("Sync failed:", err);
+      setSyncMsg("同步失败，请重试");
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMsg(""), 3000);
+    }
+  };
+
   // Toolbar
   const execBold = () => document.execCommand("bold");
   const execColor = (color) => { document.execCommand("foreColor", false, color); setShowColorPicker(false); };
@@ -608,6 +677,22 @@ ${clone.outerHTML}
               } : undefined}
             >
               {reportData?.status === "done" ? "✓ 已完成" : "标记完成"}
+            </button>
+            {/* ── Sync from catalog ── */}
+            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
+            {syncMsg && (
+              <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>
+                {syncMsg}
+              </span>
+            )}
+            <button
+              className="report-tool-btn"
+              onClick={handleSyncFromCatalog}
+              disabled={syncing || !user}
+              title="从 JSON catalog 同步所有 session 的演讲者信息"
+              style={syncing ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+            >
+              {syncing ? "同步中..." : "同步外源信息"}
             </button>
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
             <button className="report-icon-btn" onClick={execBold} title="加粗">
@@ -891,6 +976,45 @@ ${clone.outerHTML}
             onSave={html => saveField("rumors", html)}
             placeholder="记录业界传闻与非公开信息..."
             minHeight={80}
+          />
+        </div>
+
+        {/* Site Photos Section */}
+        <div className="report-site-photos">
+          <h2 className="report-section-title" style={{ marginTop: 32 }}>现场图片</h2>
+          <div className="site-photos-grid">
+            {(reportData?.sitePhotos || []).map((photo, idx) => (
+              <div key={idx} className="site-photo-card">
+                <div className="site-photo-img-wrapper">
+                  <img src={photo.image} alt={`现场图片 ${idx + 1}`} className="site-photo-img" />
+                  <button
+                    className="site-photo-delete-btn no-print"
+                    onClick={() => handleSitePhotoDelete(idx)}
+                    title="删除图片"
+                  >×</button>
+                </div>
+                <textarea
+                  className="site-photo-caption"
+                  placeholder="添加图片说明..."
+                  defaultValue={photo.caption}
+                  onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
+                  rows={2}
+                />
+              </div>
+            ))}
+            <div className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
+              <div className="site-photo-add-inner">
+                <span className="site-photo-add-icon">+</span>
+                <span className="site-photo-add-label">添加图片</span>
+              </div>
+            </div>
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            ref={sitePhotoInputRef}
+            onChange={handleSitePhotoAdd}
           />
         </div>
 
