@@ -156,6 +156,84 @@ function SpeakerInput({ value, placeholder, onChange }) {
   );
 }
 
+// ── BulletEditor ──────────────────────────────────────────────────────────────
+function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
+  const [local, setLocal] = useState(points || []);
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setLocal(points || []);
+  }, [points]);
+
+  const commit = (next) => { setLocal(next); onSave(next); };
+
+  const handleChange = (idx, value) =>
+    commit(local.map((p, i) => (i === idx ? value : p)));
+
+  const handleAdd = () => commit([...local, ""]);
+
+  const handleRemove = (idx) => commit(local.filter((_, i) => i !== idx));
+
+  const handleKeyDown = (e, idx) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const next = [...local.slice(0, idx + 1), "", ...local.slice(idx + 1)];
+      commit(next);
+      setTimeout(() => {
+        const inputs = e.target.closest(".bullet-editor-list")
+          ?.querySelectorAll(".bullet-input");
+        if (inputs?.[idx + 1]) inputs[idx + 1].focus();
+      }, 0);
+    }
+    if (e.key === "Backspace" && local[idx] === "" && local.length > 1) {
+      e.preventDefault();
+      const next = local.filter((_, i) => i !== idx);
+      commit(next);
+      setTimeout(() => {
+        const inputs = e.target.closest(".bullet-editor-list")
+          ?.querySelectorAll(".bullet-input");
+        if (inputs?.[Math.max(0, idx - 1)]) inputs[Math.max(0, idx - 1)].focus();
+      }, 0);
+    }
+  };
+
+  return (
+    <div
+      className="bullet-editor"
+      onFocus={() => { focused.current = true; }}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) focused.current = false; }}
+    >
+      <ul className="bullet-editor-list">
+        {local.map((point, idx) => (
+          <li key={idx} className="bullet-editor-item">
+            <span className="bullet-dot" aria-hidden="true">•</span>
+            <input
+              className="bullet-input"
+              type="text"
+              value={point}
+              placeholder={placeholder}
+              onChange={(e) => handleChange(idx, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(e, idx)}
+            />
+            <button
+              className="bullet-remove-btn no-print"
+              onClick={() => handleRemove(idx)}
+              title="删除此要点"
+              tabIndex={-1}
+            >−</button>
+          </li>
+        ))}
+      </ul>
+      {local.length === 0 && (
+        <p className="bullet-editor-empty no-print">{placeholder}</p>
+      )}
+      <button className="bullet-add-btn no-print" onClick={handleAdd}>
+        + 添加要点
+      </button>
+    </div>
+  );
+}
+
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const { date } = useParams();
@@ -230,7 +308,7 @@ export default function DailyReport() {
       };
     });
     setDoc(doc(db, "dailyReports", date), {
-      date, summary: "", onsiteInfo: "", reflections: "", rumors: "",
+      date, summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "",
       sessions: sessionMap, topicOrder: [],
     }).catch(console.error);
   }, [user, loading, reportData, sessions, date]);
@@ -490,11 +568,10 @@ export default function DailyReport() {
           {/* Summary */}
           <div className="report-summary">
             <h2 className="report-section-title">核心要点</h2>
-            <EditableField
-              value={reportData?.summary}
-              onSave={html => saveField("summary", html)}
-              placeholder="请输入今日核心要点摘要..."
-              minHeight={100}
+            <BulletEditor
+              points={reportData?.summaryPoints}
+              onSave={pts => saveField("summaryPoints", pts)}
+              placeholder="请输入今日核心要点..."
             />
           </div>
         </div>
