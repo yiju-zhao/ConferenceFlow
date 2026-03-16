@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -78,31 +78,8 @@ function EditableField({ value, onSave, placeholder, minHeight = 60 }) {
   );
 }
 
-// ── InlineEditable ───────────────────────────────────────────────────────────
-function InlineEditable({ value, onSave, placeholder }) {
-  const ref = useRef(null);
-  const focused = useRef(false);
-  useEffect(() => {
-    if (ref.current && !focused.current && value !== undefined) {
-      if (ref.current.textContent !== (value || "")) ref.current.textContent = value || "";
-    }
-  }, [value]);
-  return (
-    <span
-      ref={ref}
-      className="report-inline-editable"
-      contentEditable
-      suppressContentEditableWarning
-      data-placeholder={placeholder}
-      onFocus={() => { focused.current = true; }}
-      onBlur={() => { focused.current = false; }}
-      onInput={() => { if (ref.current) onSave(ref.current.textContent); }}
-    />
-  );
-}
-
 // ── SpeakersEditor ───────────────────────────────────────────────────────────
-function SpeakersEditor({ code, speakers, onUpdate, onAdd, onRemove }) {
+function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
   return (
     <div>
       {speakers.map((spk, idx) => (
@@ -454,83 +431,38 @@ export default function DailyReport() {
     e.target.value = "";
   }, [saveSessionField]);
 
-  // Export PDF: Playwright server (primary, vector) → html_to_vector_pdf (fallback, vector)
+  // Export PDF via Playwright server (Chromium-based, correct fonts and Chinese rendering)
   const handleExportPDF = async () => {
     setExporting(true);
     const filename = `GTC2026_日报_${date}.pdf`;
 
     try {
-      // ── Primary: Playwright server ───────────────────────────────────────────
-      try {
-        const pageUrl = window.location.href;
-        const apiUrl =
-          `http://localhost:3001/api/pdf` +
-          `?url=${encodeURIComponent(pageUrl)}` +
-          `&filename=${encodeURIComponent(filename)}`;
+      const pageUrl = window.location.href;
+      const apiUrl =
+        `http://localhost:3001/api/pdf` +
+        `?url=${encodeURIComponent(pageUrl)}` +
+        `&filename=${encodeURIComponent(filename)}`;
 
-        const response = await fetch(apiUrl, { signal: AbortSignal.timeout(60000) });
-        if (!response.ok) {
-          const err = await response.json().catch(() => ({}));
-          throw new Error(err.error || `HTTP ${response.status}`);
-        }
-        const blob = await response.blob();
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
-        return; // success — finally will still run
-      } catch (serverErr) {
-        console.info("[PDF] Server unavailable, using client-side vector fallback:", serverErr.message);
+      const response = await fetch(apiUrl, { signal: AbortSignal.timeout(60000) });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
       }
-
-      // ── Fallback: html_to_vector_pdf (client-side vector PDF) ───────────────
-      const container = reportContainerRef.current;
-      if (!container) throw new Error("Report container not found");
-
-      // Show .print-only elements (display:none on screen, needed in PDF)
-      const shownEls = [];
-      container.querySelectorAll(".print-only").forEach((el) => {
-        shownEls.push({ el, prev: el.style.display });
-        el.style.display = "block";
-      });
-
-      // Expand all collapsed sessions so content isn't hidden from PDF
-      const prevCollapsed = new Set(collapsedSessions);
-      setCollapsedSessions(new Set());
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      try {
-        await window.html_to_vector_pdf.generatePdf(container, {
-          filename,
-          pageSize: "a4",
-          margins: { top: 10, right: 10, bottom: 10, left: 10 },
-          excludeSelectors: [
-            ".no-print",
-            ".session-collapse-btn",
-            ".report-toolbar",
-            ".report-nav-bar",
-          ],
-          errors: { failOnAssetError: false },
-          performance: { renderReadyTimeout: 15000 },
-          ui: { showLoader: false },
-          callbacks: {
-            onProgress: (stage, data) => console.log("[PDF] Stage:", stage, data),
-            onError: (err) => console.warn("[PDF] Asset error:", err),
-          },
-        });
-      } catch (clientErr) {
-        const cause = clientErr.cause;
-        const detail = cause?.message || cause?.toString() || clientErr.message;
-        console.error("[PDF] Client-side generation failed:", clientErr, "cause:", cause);
-        alert(`PDF 导出失败：${detail}`);
-      } finally {
-        // Always restore DOM regardless of success/failure
-        shownEls.forEach(({ el, prev }) => { el.style.display = prev; });
-        setCollapsedSessions(prevCollapsed);
-      }
+      const blob = await response.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error("[PDF] Export failed:", err.message);
+      const isServerDown = err.name === "TypeError" || err.message.includes("Failed to fetch") || err.message.includes("aborted");
+      const msg = isServerDown
+        ? "PDF 服务未启动，请运行：npm run server"
+        : `PDF 导出失败：${err.message}`;
+      alert(msg);
     } finally {
       setExporting(false);
     }
