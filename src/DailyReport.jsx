@@ -7,7 +7,8 @@ import {
   setDoc,
   onSnapshot,
 } from "firebase/firestore";
-import { auth, db } from "./firebase";
+import { auth, db, storage } from "./firebase";
+import { ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import catalogData from "../data/gtc-2026-sessions-detailed.json";
 const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
 
@@ -422,37 +423,60 @@ export default function DailyReport() {
     }, { merge: true }).catch(console.error);
   }, [user, reportId]);
 
+  const compressImage = useCallback((file, maxPx = 1200, quality = 0.75) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = url;
+    });
+  }, []);
+
+  const uploadToStorage = useCallback(async (base64DataUrl, path) => {
+    const storageRef = ref(storage, path);
+    await uploadString(storageRef, base64DataUrl, "data_url");
+    return getDownloadURL(storageRef);
+  }, []);
+
   const handleIllustration = useCallback((code, e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      alert("图片过大（超过5MB），请压缩后再上传。");
-      e.target.value = "";
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = ev => saveSessionField(code, "illustration", ev.target.result);
-    reader.readAsDataURL(file);
     e.target.value = "";
-  }, [saveSessionField]);
+    compressImage(file)
+      .then(compressed => uploadToStorage(compressed, `illustrations/${reportId}/${code}`))
+      .then(url => saveSessionField(code, "illustration", url));
+  }, [compressImage, uploadToStorage, reportId, saveSessionField]);
 
   // ── Site Photos handlers ─────────────────────────────────────────────────
   const handleSitePhotoAdd = useCallback((e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { alert("图片过大（超过5MB）"); e.target.value = ""; return; }
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const photos = [...(reportDataRef.current?.sitePhotos || []), { image: ev.target.result, caption: "" }];
-      setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
-  }, [reportId]);
+    const storagePath = `sitePhotos/${reportId}/${Date.now()}`;
+    compressImage(file)
+      .then(compressed => uploadToStorage(compressed, storagePath))
+      .then(url => {
+        const photos = [...(reportDataRef.current?.sitePhotos || []), { image: url, storagePath, caption: "" }];
+        setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      });
+  }, [compressImage, uploadToStorage, reportId]);
 
   const handleSitePhotoDelete = useCallback((idx) => {
-    const photos = (reportDataRef.current?.sitePhotos || []).filter((_, i) => i !== idx);
-    setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+    const photos = reportDataRef.current?.sitePhotos || [];
+    const photo = photos[idx];
+    if (photo?.storagePath) {
+      deleteObject(ref(storage, photo.storagePath)).catch(() => {});
+    }
+    const updated = photos.filter((_, i) => i !== idx);
+    setDoc(doc(db, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
   }, [reportId]);
 
   const saveSitePhotoCaption = useCallback((idx, caption) => {
