@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
@@ -159,6 +159,7 @@ function SpeakerInput({ value, placeholder, onChange }) {
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const { date } = useParams();
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [members, setMembers] = useState([]);
@@ -168,6 +169,10 @@ export default function DailyReport() {
   const [dragTopic, setDragTopic] = useState(null);
   const [dragOverTopic, setDragOverTopic] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [reportDates, setReportDates] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showNewReport, setShowNewReport] = useState(false);
+  const [newReportDate, setNewReportDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
@@ -213,6 +218,15 @@ export default function DailyReport() {
       setLoading(false);
     });
   }, [user, date]);
+
+  // History: list of all saved report dates
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(collection(db, "dailyReports"), (snap) => {
+      const dates = snap.docs.map((d) => d.id).sort((a, b) => b.localeCompare(a));
+      setReportDates(dates);
+    });
+  }, [user]);
 
   // Auto-init report
   useEffect(() => {
@@ -393,6 +407,11 @@ export default function DailyReport() {
   const execBold = () => document.execCommand("bold");
   const execColor = (color) => { document.execCommand("foreColor", false, color); setShowColorPicker(false); };
 
+  // New report navigation
+  const handleCreateReport = () => {
+    if (newReportDate) { navigate(`/report/${newReportDate}`); setShowNewReport(false); }
+  };
+
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -411,7 +430,24 @@ export default function DailyReport() {
       {/* ── Toolbar ──────────────────────────────────────────────── */}
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to="/" className="report-back-btn">← 返回日程</Link>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link to="/" className="report-back-btn">← 返回日程</Link>
+            <div style={{ width: 1, height: 20, background: "#E8E8E8" }} />
+            <button
+              className="report-tool-btn"
+              onClick={() => { setShowNewReport(v => !v); setShowHistory(false); }}
+              style={{ fontSize: 12, padding: "4px 10px" }}
+            >
+              + 新建日报
+            </button>
+            <button
+              className="report-tool-btn"
+              onClick={() => { setShowHistory(v => !v); setShowNewReport(false); }}
+              style={{ fontSize: 12, padding: "4px 10px" }}
+            >
+              历史记录{reportDates.length > 0 ? ` (${reportDates.length})` : ""}
+            </button>
+          </div>
           <div className="report-toolbar-actions">
             <button className="report-tool-btn" onClick={execBold} title="加粗">
               <strong>B</strong>
@@ -439,6 +475,51 @@ export default function DailyReport() {
             </button>
           </div>
         </div>
+
+        {/* New report form */}
+        {showNewReport && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 24px", borderTop: "1px solid #E8E8E8" }}>
+            <span style={{ fontSize: 13, color: "var(--text)" }}>选择日期：</span>
+            <input
+              type="date"
+              value={newReportDate}
+              onChange={e => setNewReportDate(e.target.value)}
+              style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid var(--border)", fontFamily: "inherit" }}
+            />
+            <button
+              onClick={handleCreateReport}
+              style={{ fontSize: 13, padding: "4px 14px", borderRadius: 6, background: "#CF0A2C", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+            >
+              生成
+            </button>
+          </div>
+        )}
+
+        {/* History panel */}
+        {showHistory && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "8px 24px", borderTop: "1px solid #E8E8E8" }}>
+            {reportDates.length === 0
+              ? <span style={{ fontSize: 13, color: "var(--text-dim)" }}>暂无历史记录</span>
+              : reportDates.map(d => (
+                  <Link
+                    key={d}
+                    to={`/report/${d}`}
+                    onClick={() => setShowHistory(false)}
+                    style={{
+                      fontSize: 12, padding: "3px 10px", borderRadius: 99,
+                      background: d === date ? "#CF0A2C" : "var(--surface)",
+                      color: d === date ? "#fff" : "var(--text)",
+                      border: `1px solid ${d === date ? "#CF0A2C" : "var(--border)"}`,
+                      textDecoration: "none",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {d}
+                  </Link>
+                ))
+            }
+          </div>
+        )}
       </div>
 
       {/* ── Report Content ───────────────────────────────────────── */}

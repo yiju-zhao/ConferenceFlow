@@ -134,7 +134,15 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
         </span>
       </div>
       <p style={{ margin: 0, fontSize: 12, color: "var(--text)", lineHeight: 1.45, fontWeight: 500 }}>
-        {session.title}
+        {SESSION_CATALOG.get(session.code)?.url
+          ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
+               style={{ color: "inherit", textDecoration: "none" }}
+               onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+               onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+              {SESSION_CATALOG.get(session.code)?.title || session.title}
+            </a>
+          : SESSION_CATALOG.get(session.code)?.title || session.title
+        }
       </p>
       {session.room && (
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
