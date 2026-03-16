@@ -837,7 +837,7 @@ export default function App() {
                     {members.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
-                        <th key={m.id} style={{ width: 80, textAlign: "center", color: c.hex }}>
+                        <th key={m.id} style={{ width: 80, textAlign: "center", color: c.hex, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
                           {m.name}
                         </th>
                       );
@@ -920,7 +920,15 @@ export default function App() {
 
                               {/* Title */}
                               <p style={{ margin: 0, fontSize: 13, color: "var(--text)", lineHeight: 1.45, fontWeight: 500, wordBreak: "break-word" }}>
-                                {session.title}
+                                {SESSION_CATALOG.get(session.code)?.url
+                                  ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
+                                       style={{ color: "inherit", textDecoration: "none" }}
+                                       onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                                       onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+                                      {SESSION_CATALOG.get(session.code)?.title || session.title}
+                                    </a>
+                                  : SESSION_CATALOG.get(session.code)?.title || session.title
+                                }
                               </p>
 
                               {/* Speakers */}
