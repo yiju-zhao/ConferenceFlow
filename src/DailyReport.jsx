@@ -431,15 +431,16 @@ export default function DailyReport() {
     e.target.value = "";
   }, [saveSessionField]);
 
-  // Export PDF via Playwright server (Chromium-based, correct fonts and Chinese rendering)
+  // Export PDF via Playwright (Vercel serverless in prod, local server in dev)
   const handleExportPDF = async () => {
     setExporting(true);
     const filename = `GTC2026_日报_${date}.pdf`;
 
     try {
       const pageUrl = window.location.href;
+      const apiBase = import.meta.env.DEV ? "http://localhost:3001" : "";
       const apiUrl =
-        `http://localhost:3001/api/pdf` +
+        `${apiBase}/api/pdf` +
         `?url=${encodeURIComponent(pageUrl)}` +
         `&filename=${encodeURIComponent(filename)}`;
 
@@ -458,11 +459,7 @@ export default function DailyReport() {
       URL.revokeObjectURL(a.href);
     } catch (err) {
       console.error("[PDF] Export failed:", err.message);
-      const isServerDown = err.name === "TypeError" || err.message.includes("Failed to fetch") || err.message.includes("aborted");
-      const msg = isServerDown
-        ? "PDF 服务未启动，请运行：npm run server"
-        : `PDF 导出失败：${err.message}`;
-      alert(msg);
+      alert(`PDF 导出失败：${err.message}`);
     } finally {
       setExporting(false);
     }
