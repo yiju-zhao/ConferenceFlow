@@ -79,10 +79,16 @@ function parseReportId(reportId) {
 }
 
 function latestOrNewVersionId(date, allDocs) {
-  const matching = allDocs.filter(r => parseReportId(r.id).date === date);
-  if (matching.length === 0) return `${date}-v1`;
-  const maxV = matching.reduce((max, r) => Math.max(max, parseReportId(r.id).version), 0);
-  return `${date}-v${maxV}`;
+  // If a plain-date doc already exists, navigate to it
+  if (allDocs.some(r => r.id === date)) return date;
+  // If only legacy v-docs exist, navigate to the latest one (backward compat)
+  const vDocs = allDocs.filter(r => parseReportId(r.id).date === date);
+  if (vDocs.length > 0) {
+    const maxV = vDocs.reduce((max, r) => Math.max(max, parseReportId(r.id).version), 0);
+    return `${date}-v${maxV}`;
+  }
+  // New report — use plain date
+  return date;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

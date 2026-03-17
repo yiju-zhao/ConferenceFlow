@@ -64,8 +64,10 @@ export default function ReportList() {
   const displayReports = (() => {
     const latestByDate = reportDocs.reduce((acc, doc) => {
       const { date, version } = parseReportId(doc.id);
-      if (!acc[date] || version > acc[date]._version) {
-        acc[date] = { ...doc, _date: date, _version: version };
+      const isPlain = doc.id === date;
+      const existing = acc[date];
+      if (!existing || isPlain || (!existing._isPlain && version > existing._version)) {
+        acc[date] = { ...doc, _date: date, _version: version, _isPlain: isPlain };
       }
       return acc;
     }, {});

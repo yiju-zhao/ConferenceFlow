@@ -388,7 +388,7 @@ function SnapshotViewer({ snapshot, currentData }) {
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const { reportId } = useParams();
-  const { date, version } = parseReportId(reportId);
+  const { date } = parseReportId(reportId);
   const [user, setUser] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [members, setMembers] = useState([]);
@@ -511,9 +511,9 @@ export default function DailyReport() {
     });
     setDoc(doc(db, "dailyReports", reportId), {
       date, title: "", summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "", sitePhotos: [],
-      sessions: sessionMap, topicOrder: [], status: "draft", version,
+      sessions: sessionMap, topicOrder: [], status: "draft",
     }).catch(console.error);
-  }, [user, loading, reportData, sessions, reportId, date, version]);
+  }, [user, loading, reportData, sessions, reportId, date]);
 
   // Keep sessionDataRef and reportDataRef in sync
   const sessionData = reportData?.sessions || {};
