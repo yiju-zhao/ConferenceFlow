@@ -197,7 +197,7 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
 }
 
 // ── Calendar view ─────────────────────────────────────────────────────────────
-function CalendarView({ groupedSessions, members, toggleAttendance, user, collapsedDates, toggleDateCollapse }) {
+function CalendarView({ groupedSessions, members, toggleAttendance, user, collapsedDates, toggleDateCollapse, navigate, reportDocs }) {
   return (
     <div style={{ padding: "0 0 16px" }}>
       {groupedSessions.map(({ date, sessions: dateSessions }) => {
@@ -243,7 +243,7 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
                 {dateSessions.length} sessions
               </span>
               <button
-                className="btn-ghost"
+                className="btn-accent"
                 onClick={(e) => { e.stopPropagation(); navigate(`/report/${latestOrNewVersionId(date, reportDocs)}`); }}
                 style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
               >
@@ -661,15 +661,15 @@ export default function App() {
 
             {/* Header right actions */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
-            <Link to="/reports" className="btn-ghost" style={{ padding: "6px 14px", fontSize: 13, textDecoration: "none", gap: 5 }}>
+            <Link to="/reports" className="btn-accent" style={{ padding: "6px 14px", fontSize: 13, textDecoration: "none", gap: 5 }}>
               <FileText size={14} />
-              日报管理
+              日报列表
             </Link>
 
             {/* Export button + dropdown */}
             <div style={{ position: "relative" }}>
               <button
-                className="btn-accent"
+                className="btn-ghost"
                 onClick={() => setShowExportMenu(!showExportMenu)}
               >
                 <Download size={15} />
@@ -935,6 +935,8 @@ export default function App() {
                 user={user}
                 collapsedDates={collapsedDates}
                 toggleDateCollapse={toggleDateCollapse}
+                navigate={navigate}
+                reportDocs={reportDocs}
               />
             )}
             {groupedSessions.length > 0 && viewMode === "table" ? (
@@ -984,7 +986,7 @@ export default function App() {
                               {group.sessions.length} sessions
                             </span>
                             <button
-                              className="btn-ghost"
+                              className="btn-accent"
                               onClick={(e) => { e.stopPropagation(); navigate(`/report/${latestOrNewVersionId(group.date, reportDocs)}`); }}
                               style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
                             >
