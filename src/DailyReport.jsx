@@ -398,6 +398,7 @@ export default function DailyReport() {
   const [dragTopic, setDragTopic] = useState(null);
   const [dragOverTopic, setDragOverTopic] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState(null);
@@ -424,6 +425,21 @@ export default function DailyReport() {
     signInAnonymously(auth).catch(console.error);
     return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
+
+  // Close export dropdown on outside click or Escape
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const close = (e) => {
+      if (!e.target.closest('.export-dropdown-wrapper')) setShowExportMenu(false);
+    };
+    const onEsc = (e) => { if (e.key === 'Escape') setShowExportMenu(false); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [showExportMenu]);
 
   // Snapshots subscription
   useEffect(() => {
@@ -775,11 +791,28 @@ export default function DailyReport() {
     });
   }, [reportId, debouncedSave]);
 
-  // Export report as self-contained HTML for offline PDF conversion
-  const handleExportPDF = async () => {
-    setExporting(true);
+  // Extract all CSS text via CSSOM — skips cross-origin sheets silently
+  const extractAllCSS = (skipPrint = false) => {
+    const parts = [];
+    for (const sheet of document.styleSheets) {
+      try {
+        for (const rule of sheet.cssRules) {
+          if (skipPrint && rule.type === CSSRule.MEDIA_RULE &&
+              rule.conditionText?.includes('print')) continue;
+          parts.push(rule.cssText);
+        }
+      } catch (_e) {
+        // Cross-origin stylesheet — skip silently
+      }
+    }
+    return parts.join('\n');
+  };
 
-    // Expand all collapsed sessions so content is visible in the export
+  // Unified export handler for all three formats
+  const handleExport = async (format) => {
+    setExporting(true);
+    setShowExportMenu(false);
+
     const prevCollapsed = new Set(collapsedSessions);
     setCollapsedSessions(new Set());
     await new Promise(resolve => setTimeout(resolve, 150));
@@ -793,18 +826,21 @@ export default function DailyReport() {
       clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn").forEach(el => el.remove());
       clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
 
-      // Collect stylesheets from the page (link tags + style tags)
-      const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
-        .map(el => {
-          if (el.tagName === "LINK") {
-            const href = new URL(el.getAttribute("href"), window.location.href).href;
-            return `<link rel="stylesheet" href="${href}">`;
-          }
-          return el.outerHTML;
-        })
-        .join("\n");
+      let blob, filename;
 
-      const html = `<!DOCTYPE html>
+      if (format === 'html') {
+        // Collect stylesheets from the page (link tags + style tags)
+        const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
+          .map(el => {
+            if (el.tagName === "LINK") {
+              const href = new URL(el.getAttribute("href"), window.location.href).href;
+              return `<link rel="stylesheet" href="${href}">`;
+            }
+            return el.outerHTML;
+          })
+          .join("\n");
+
+        const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -824,11 +860,49 @@ ${styleTagsHtml}
 ${clone.outerHTML}
 </body>
 </html>`;
+        blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        filename = `GTC2026_日报_${date}.html`;
 
-      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      } else if (format === 'email') {
+        const { default: juice } = await import('juice');
+        const cssText = extractAllCSS(true); // skip @media print for email
+        const inlinedBody = juice.inlineContent(clone.outerHTML, cssText, {
+          preserveMediaQueries: false,
+        });
+        const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTC2026 日报 ${date}</title>
+</head>
+<body>
+<div style="width:100%;max-width:800px;margin:0 auto;font-family:sans-serif;">
+${inlinedBody}
+</div>
+</body>
+</html>`;
+        blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        filename = `GTC2026_日报_${date}_email.html`;
+
+      } else if (format === 'markdown') {
+        const { default: TurndownService } = await import('turndown');
+        const { gfm } = await import('turndown-plugin-gfm');
+        const td = new TurndownService({
+          headingStyle: 'atx',
+          codeBlockStyle: 'fenced',
+          bulletListMarker: '-',
+        });
+        td.use(gfm);
+        const frontmatter = `---\ntitle: GTC 2026 日报 ${date}\ndate: ${date}\n---\n\n`;
+        const md = frontmatter + td.turndown(clone.outerHTML);
+        blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+        filename = `GTC2026_日报_${date}.md`;
+      }
+
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `GTC2026_日报_${date}.html`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1032,9 +1106,30 @@ ${clone.outerHTML}
               )}
             </div>
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
-            <button className="report-export-btn" onClick={handleExportPDF} disabled={exporting}>
-              {exporting ? "生成中..." : "导出 HTML"}
-            </button>
+            <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
+              <button
+                className="report-export-btn"
+                onClick={() => !exporting && setShowExportMenu(v => !v)}
+                disabled={exporting}
+                aria-haspopup="true"
+                aria-expanded={showExportMenu}
+              >
+                {exporting ? "生成中..." : "导出文件 ▾"}
+              </button>
+              {showExportMenu && (
+                <div className="dropdown-panel export-dropdown-menu">
+                  <button className="export-menu-item" onClick={() => handleExport('html')}>
+                    HTML — 离线查看
+                  </button>
+                  <button className="export-menu-item" onClick={() => handleExport('email')}>
+                    HTML Email — 邮件发送
+                  </button>
+                  <button className="export-menu-item" onClick={() => handleExport('markdown')}>
+                    Markdown — Notion/文档
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
