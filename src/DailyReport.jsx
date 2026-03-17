@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { marked } from "marked";
+marked.use({ breaks: true, gfm: true });
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -75,6 +77,51 @@ function EditableField({ value, onSave, placeholder, minHeight = 60 }) {
       onFocus={() => { focused.current = true; }}
       onBlur={() => { focused.current = false; }}
       onInput={() => { if (ref.current) onSave(ref.current.innerHTML); }}
+    />
+  );
+}
+
+// ── MarkdownField ────────────────────────────────────────────────────────────
+function MarkdownField({ value, onSave, placeholder, minHeight = 60 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+
+  useEffect(() => {
+    if (!editing) setDraft(value || "");
+  }, [value, editing]);
+
+  if (editing) {
+    return (
+      <textarea
+        className="report-editable report-editable--md-edit"
+        value={draft}
+        autoFocus
+        placeholder={placeholder}
+        style={{ minHeight, width: "100%", resize: "vertical" }}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { setEditing(false); onSave(draft); }}
+      />
+    );
+  }
+
+  if (!draft) {
+    return (
+      <div
+        className="report-editable"
+        style={{ minHeight, cursor: "text", color: "#AAAAAA" }}
+        onClick={() => setEditing(true)}
+      >
+        {placeholder}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="report-editable report-editable--md-rendered"
+      style={{ minHeight, cursor: "text" }}
+      onClick={() => setEditing(true)}
+      dangerouslySetInnerHTML={{ __html: marked.parse(draft) }}
     />
   );
 }
@@ -169,10 +216,19 @@ function SpeakerInput({ value, placeholder, onChange }) {
 function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
   const [local, setLocal] = useState(points || []);
   const focused = useRef(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     if (!focused.current) setLocal(points || []);
   }, [points]);
+
+  // Resize all textareas whenever content changes (handles initial load)
+  useEffect(() => {
+    containerRef.current?.querySelectorAll(".bullet-input").forEach(el => {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    });
+  }, [local]);
 
   const commit = (next) => { setLocal(next); onSave(next); };
 
@@ -208,6 +264,7 @@ function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
 
   return (
     <div
+      ref={containerRef}
       className="bullet-editor"
       onFocus={() => { focused.current = true; }}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) focused.current = false; }}
@@ -274,6 +331,7 @@ export default function DailyReport() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState({ code: null, contributorNames: [], nameInput: "", error: false });
+  const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
@@ -457,6 +515,7 @@ export default function DailyReport() {
   }, [user, reportId]);
 
   const openDeleteConfirm = useCallback((code, contributorNames) => {
+    setShowDeleteSelect(false);
     setDeleteConfirm({ code, contributorNames, nameInput: "", error: false });
   }, []);
 
@@ -580,6 +639,10 @@ ${styleTagsHtml}
 <style>
   body { background: #fff; color: #111; }
   .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  @media print {
+    .report-session { break-before: page; page-break-before: always; }
+    .report-session:first-of-type { break-before: auto; page-break-before: auto; }
+  }
 </style>
 </head>
 <body>
@@ -755,6 +818,16 @@ ${clone.outerHTML}
               } : undefined}
             >
               {reportData?.status === "done" ? "✓ 已完成" : "标记完成"}
+            </button>
+            {/* ── Delete session ── */}
+            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
+            <button
+              className="report-tool-btn"
+              onClick={() => setShowDeleteSelect(true)}
+              title="从日报移除一个 session"
+              style={{ color: "#CF0A2C" }}
+            >
+              删除 Session
             </button>
             {/* ── Sync from catalog ── */}
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
@@ -946,11 +1019,6 @@ ${clone.outerHTML}
                       </div>
                     )}
                   </div>
-                  <button
-                    className="session-delete-btn no-print"
-                    title="从日报移除此session"
-                    onClick={e => { e.stopPropagation(); openDeleteConfirm(session.code, contributorNames); }}
-                  >🗑</button>
                   <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                 </div>
                 {!isCollapsed && <>
@@ -1007,17 +1075,17 @@ ${clone.outerHTML}
                 <div className="report-session-body">
                   <div className="report-field-block">
                     <h4 className="report-field-heading">关键收获</h4>
-                    <EditableField
+                    <MarkdownField
                       value={sd.takeaways}
-                      onSave={html => saveSessionField(session.code, "takeaways", html)}
+                      onSave={md => saveSessionField(session.code, "takeaways", md)}
                       placeholder="记录本场会议的关键收获..."
                     />
                   </div>
                   <div className="report-field-block">
                     <h4 className="report-field-heading">启示</h4>
-                    <EditableField
+                    <MarkdownField
                       value={sd.insights}
-                      onSave={html => saveSessionField(session.code, "insights", html)}
+                      onSave={md => saveSessionField(session.code, "insights", md)}
                       placeholder="记录启示与分析..."
                     />
                   </div>
@@ -1083,11 +1151,6 @@ ${clone.outerHTML}
                           </div>
                         )}
                       </div>
-                      <button
-                        className="session-delete-btn no-print"
-                        title="从日报移除此session"
-                        onClick={e => { e.stopPropagation(); openDeleteConfirm(session.code, contributorNames); }}
-                      >🗑</button>
                       <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                     </div>
 
@@ -1150,17 +1213,17 @@ ${clone.outerHTML}
                     <div className="report-session-body">
                       <div className="report-field-block">
                         <h4 className="report-field-heading">关键收获</h4>
-                        <EditableField
+                        <MarkdownField
                           value={sd.takeaways}
-                          onSave={html => saveSessionField(session.code, "takeaways", html)}
+                          onSave={md => saveSessionField(session.code, "takeaways", md)}
                           placeholder="记录本场会议的关键收获..."
                         />
                       </div>
                       <div className="report-field-block">
                         <h4 className="report-field-heading">启示</h4>
-                        <EditableField
+                        <MarkdownField
                           value={sd.insights}
-                          onSave={html => saveSessionField(session.code, "insights", html)}
+                          onSave={md => saveSessionField(session.code, "insights", md)}
                           placeholder="记录启示与分析..."
                         />
                       </div>
@@ -1253,6 +1316,47 @@ ${clone.outerHTML}
         </div>
 
       </div>
+
+      {/* Delete session — select session modal */}
+      {showDeleteSelect && (
+        <div className="delete-confirm-overlay" onClick={() => setShowDeleteSelect(false)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: "90%" }}>
+            <h3 className="delete-confirm-title">选择要删除的 Session</h3>
+            <div style={{ maxHeight: 360, overflowY: "auto", margin: "8px 0" }}>
+              {activeSessions.map(s => {
+                const names = Array.from(s.attendees).map(id => memberMap[id]).filter(Boolean);
+                return (
+                  <button
+                    key={s.code}
+                    onClick={() => openDeleteConfirm(s.code, names)}
+                    style={{
+                      display: "flex", flexDirection: "column", gap: 2,
+                      width: "100%", textAlign: "left", padding: "8px 10px",
+                      background: "none", border: "none", borderRadius: 6,
+                      cursor: "pointer", borderBottom: "1px solid #F0F0F0",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#FFF5F5"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3D3D", fontFamily: "monospace" }}>
+                      {s.code}
+                    </span>
+                    <span style={{ fontSize: 12, color: "#3D3D3D", lineHeight: 1.4 }}>
+                      {SESSION_CATALOG.get(s.code)?.title || s.title}
+                    </span>
+                    {names.length > 0 && (
+                      <span style={{ fontSize: 11, color: "#888" }}>贡献人：{names.join("、")}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="delete-confirm-actions">
+              <button className="delete-confirm-cancel" onClick={() => setShowDeleteSelect(false)}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete session confirmation modal */}
       {deleteConfirm.code && (
