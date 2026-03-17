@@ -104,7 +104,6 @@ export default function ReportList() {
                 <div className="report-card-main">
                   <div className="report-card-date">
                     {r.date} <span style={{ fontWeight: 400, color: "#888" }}>{weekday}</span>
-                    <span className="report-card-version-badge">v{r.version}</span>
                   </div>
                   <div className="report-card-meta">
                     <span style={{ fontSize: 12, color: "#888" }}>
