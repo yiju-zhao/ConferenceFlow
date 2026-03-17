@@ -274,6 +274,7 @@ export default function DailyReport() {
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState({ code: null, contributorNames: [], nameInput: "", error: false });
+  const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
@@ -457,6 +458,7 @@ export default function DailyReport() {
   }, [user, reportId]);
 
   const openDeleteConfirm = useCallback((code, contributorNames) => {
+    setShowDeleteSelect(false);
     setDeleteConfirm({ code, contributorNames, nameInput: "", error: false });
   }, []);
 
@@ -756,6 +758,16 @@ ${clone.outerHTML}
             >
               {reportData?.status === "done" ? "✓ 已完成" : "标记完成"}
             </button>
+            {/* ── Delete session ── */}
+            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
+            <button
+              className="report-tool-btn"
+              onClick={() => setShowDeleteSelect(true)}
+              title="从日报移除一个 session"
+              style={{ color: "#CF0A2C" }}
+            >
+              删除 Session
+            </button>
             {/* ── Sync from catalog ── */}
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
             {syncMsg && (
@@ -946,11 +958,6 @@ ${clone.outerHTML}
                       </div>
                     )}
                   </div>
-                  <button
-                    className="session-delete-btn no-print"
-                    title="从日报移除此session"
-                    onClick={e => { e.stopPropagation(); openDeleteConfirm(session.code, contributorNames); }}
-                  >🗑</button>
                   <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                 </div>
                 {!isCollapsed && <>
@@ -1083,11 +1090,6 @@ ${clone.outerHTML}
                           </div>
                         )}
                       </div>
-                      <button
-                        className="session-delete-btn no-print"
-                        title="从日报移除此session"
-                        onClick={e => { e.stopPropagation(); openDeleteConfirm(session.code, contributorNames); }}
-                      >🗑</button>
                       <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                     </div>
 
@@ -1253,6 +1255,47 @@ ${clone.outerHTML}
         </div>
 
       </div>
+
+      {/* Delete session — select session modal */}
+      {showDeleteSelect && (
+        <div className="delete-confirm-overlay" onClick={() => setShowDeleteSelect(false)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: "90%" }}>
+            <h3 className="delete-confirm-title">选择要删除的 Session</h3>
+            <div style={{ maxHeight: 360, overflowY: "auto", margin: "8px 0" }}>
+              {activeSessions.map(s => {
+                const names = Array.from(s.attendees).map(id => memberMap[id]).filter(Boolean);
+                return (
+                  <button
+                    key={s.code}
+                    onClick={() => openDeleteConfirm(s.code, names)}
+                    style={{
+                      display: "flex", flexDirection: "column", gap: 2,
+                      width: "100%", textAlign: "left", padding: "8px 10px",
+                      background: "none", border: "none", borderRadius: 6,
+                      cursor: "pointer", borderBottom: "1px solid #F0F0F0",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#FFF5F5"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3D3D", fontFamily: "monospace" }}>
+                      {s.code}
+                    </span>
+                    <span style={{ fontSize: 12, color: "#3D3D3D", lineHeight: 1.4 }}>
+                      {SESSION_CATALOG.get(s.code)?.title || s.title}
+                    </span>
+                    {names.length > 0 && (
+                      <span style={{ fontSize: 11, color: "#888" }}>贡献人：{names.join("、")}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="delete-confirm-actions">
+              <button className="delete-confirm-cancel" onClick={() => setShowDeleteSelect(false)}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete session confirmation modal */}
       {deleteConfirm.code && (
