@@ -872,10 +872,48 @@ ${clone.outerHTML}
 
       } else if (format === 'email') {
         const { default: juice } = await import('juice');
+
+        // Fix speaker visibility: remove print-only class so juice won't re-apply
+        // display:none !important (which would override the display:block we set above)
+        clone.querySelectorAll(".print-only").forEach(el => {
+          el.style.display = "block";
+          el.classList.remove("print-only");
+        });
+
         const cssText = extractAllCSS(true); // skip @media print for email
-        const inlinedBody = juice.inlineContent(clone.outerHTML, cssText, {
+
+        // Email-specific overrides: larger fonts + remove decorative gray borders
+        const emailOverrides = `
+          body { font-size: 15px; }
+          .report-session {
+            border: none !important;
+            border-left: 3px solid #CF0A2C !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            margin-bottom: 20px !important;
+          }
+          .report-session-header { border-bottom: none !important; }
+          .report-session-meta   { border-bottom: none !important; }
+          .report-contributors-row { border-top: none !important; }
+          .report-session-title  { font-size: 16px !important; }
+          .report-session-code   { font-size: 12px !important; }
+          .report-session-time   { font-size: 13px !important; }
+          .report-contributors   { font-size: 14px !important; }
+          .report-contributors-label { font-size: 13px !important; }
+          .report-contributors-names { font-size: 13px !important; }
+          .report-section-title  { font-size: 14px !important; }
+          .report-field-label    { font-size: 13px !important; }
+        `;
+
+        // juice.inlineContent returns a full document (<html><head><body>…</body></html>).
+        // Extract only the <body> content to avoid double-nesting, which breaks
+        // fragment (#anchor) navigation in the exported file.
+        const juicedDoc = juice.inlineContent(clone.outerHTML, cssText + emailOverrides, {
           preserveMediaQueries: false,
         });
+        const bodyMatch = juicedDoc.match(/<body[^>]*>([\s\S]*?)<\/body>/is);
+        const inlinedBody = bodyMatch ? bodyMatch[1].trim() : juicedDoc;
+
         const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -884,7 +922,7 @@ ${clone.outerHTML}
 <title>GTC2026 日报 ${date}</title>
 </head>
 <body>
-<div style="width:100%;max-width:800px;margin:0 auto;font-family:sans-serif;">
+<div style="width:100%;max-width:800px;margin:0 auto;font-family:sans-serif;font-size:15px;">
 ${inlinedBody}
 </div>
 </body>
@@ -895,12 +933,33 @@ ${inlinedBody}
       } else if (format === 'markdown') {
         const { default: TurndownService } = await import('turndown');
         const { gfm } = await import('turndown-plugin-gfm');
+
+        // Inject <a id="..."> before each session so TOC links have a target.
+        // turndown drops id attributes on divs; raw HTML anchors are preserved
+        // and work in Obsidian, GitHub Markdown, and most Markdown viewers.
+        clone.querySelectorAll("[id^='session-']").forEach(el => {
+          const anchor = document.createElement('a');
+          anchor.id = el.id;
+          el.insertBefore(anchor, el.firstChild);
+        });
+
         const td = new TurndownService({
           headingStyle: 'atx',
           codeBlockStyle: 'fenced',
           bulletListMarker: '-',
         });
         td.use(gfm);
+
+        // Preserve <a id="..."> anchor tags as raw HTML (turndown drops them by default)
+        td.addRule('session-anchor', {
+          filter: (node) =>
+            node.nodeName === 'A' &&
+            !!node.getAttribute('id') &&
+            !node.getAttribute('href'),
+          replacement: (_content, node) =>
+            `<a id="${node.getAttribute('id')}"></a>`,
+        });
+
         const frontmatter = `---\ntitle: GTC 2026 日报 ${date}\ndate: ${date}\n---\n\n`;
         const md = frontmatter + td.turndown(clone.outerHTML);
         blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
