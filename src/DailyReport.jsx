@@ -216,13 +216,23 @@ function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
         {local.map((point, idx) => (
           <li key={idx} className="bullet-editor-item">
             <span className="bullet-dot" aria-hidden="true">•</span>
-            <input
+            <textarea
               className="bullet-input"
-              type="text"
               value={point}
               placeholder={placeholder}
-              onChange={(e) => handleChange(idx, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, idx)}
+              rows={1}
+              onChange={(e) => {
+                handleChange(idx, e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = e.target.scrollHeight + "px";
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  handleKeyDown(e, idx);
+                } else if (e.key === "Backspace") {
+                  handleKeyDown(e, idx);
+                }
+              }}
             />
             <button
               className="bullet-remove-btn no-print"

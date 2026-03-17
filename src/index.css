@@ -914,15 +914,15 @@ input[type="checkbox"].gtc-check:checked::after {
 .bullet-editor-list { list-style: none; margin: 0; padding: 0; }
 
 .bullet-editor-item {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: flex-start; gap: 6px;
   padding: 3px 6px; border-radius: 3px; transition: background 0.1s;
 }
 .bullet-editor-item:hover { background: #FAFAFA; }
 .bullet-editor-item:hover .bullet-remove-btn { opacity: 1; }
 
 .bullet-dot {
-  color: #CF0A2C; font-size: 14px; line-height: 1;
-  flex-shrink: 0; user-select: none;
+  color: #CF0A2C; font-size: 14px; line-height: 1.75;
+  flex-shrink: 0; user-select: none; padding-top: 1px;
 }
 
 .bullet-input {
@@ -930,6 +930,7 @@ input[type="checkbox"].gtc-check:checked::after {
   outline: none; font-size: 13.5px; line-height: 1.75;
   color: #3D3D3D; background: transparent; font-family: inherit;
   padding: 1px 2px; transition: border-color 0.12s;
+  resize: none; overflow: hidden; word-break: break-all;
 }
 .bullet-input:hover { border-bottom-color: #D0D0D0; }
 .bullet-input:focus { border-bottom-color: #CF0A2C; border-bottom-style: solid; }
