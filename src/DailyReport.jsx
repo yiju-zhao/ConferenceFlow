@@ -216,10 +216,19 @@ function SpeakerInput({ value, placeholder, onChange }) {
 function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
   const [local, setLocal] = useState(points || []);
   const focused = useRef(false);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     if (!focused.current) setLocal(points || []);
   }, [points]);
+
+  // Resize all textareas whenever content changes (handles initial load)
+  useEffect(() => {
+    containerRef.current?.querySelectorAll(".bullet-input").forEach(el => {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    });
+  }, [local]);
 
   const commit = (next) => { setLocal(next); onSave(next); };
 
@@ -255,6 +264,7 @@ function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
 
   return (
     <div
+      ref={containerRef}
       className="bullet-editor"
       onFocus={() => { focused.current = true; }}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) focused.current = false; }}
