@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -12,12 +12,6 @@ function parseReportId(reportId) {
     : { date: reportId, version: 1, isLegacy: true };
 }
 
-function nextVersionId(selectedDate, allDocs) {
-  const maxV = allDocs
-    .filter(r => parseReportId(r.id || r.date).date === selectedDate)
-    .reduce((max, r) => Math.max(max, parseReportId(r.id || r.date).version), 0);
-  return `${selectedDate}-v${maxV + 1}`;
-}
 
 const COLORS = [
   { hex: "#3DFFA4", bg: "rgba(61,255,164,0.10)" },
@@ -30,13 +24,10 @@ const COLORS = [
 const DAY_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
 export default function ReportList() {
-  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [reportDocs, setReportDocs] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
   const [memberMap, setMemberMap] = useState({});
-  const [showCreate, setShowCreate] = useState(false);
-  const [newDate, setNewDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -69,6 +60,18 @@ export default function ReportList() {
     });
   }, [user]);
 
+  // Show only the latest version per date
+  const displayReports = (() => {
+    const latestByDate = reportDocs.reduce((acc, doc) => {
+      const { date, version } = parseReportId(doc.id);
+      if (!acc[date] || version > acc[date]._version) {
+        acc[date] = { ...doc, _date: date, _version: version };
+      }
+      return acc;
+    }, {});
+    return Object.values(latestByDate).sort((a, b) => b._date.localeCompare(a._date));
+  })();
+
   return (
     <div className="report-page">
       <div className="report-toolbar no-print">
@@ -83,29 +86,14 @@ export default function ReportList() {
             <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>GTC 2026 · DAILY BRIEFING</div>
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>日报管理</h2>
           </div>
-          <button className="report-list-create-btn" onClick={() => setShowCreate(v => !v)}>
-            + 新建日报
-          </button>
         </div>
 
-        {showCreate && (
-          <div className="report-list-create-row">
-            <span>选择日期：</span>
-            <input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} />
-            <button onClick={() => {
-              const newId = nextVersionId(newDate, reportDocs);
-              navigate(`/report/${newId}`);
-              setShowCreate(false);
-            }}>生成</button>
-          </div>
-        )}
-
         <div className="report-list-cards">
-          {reportDocs.length === 0 ? (
+          {displayReports.length === 0 ? (
             <p style={{ color: "#AAAAAA", textAlign: "center", padding: "48px 0" }}>
-              暂无日报，点击「新建日报」开始
+              暂无日报，在日程页面点击「生成日报」开始
             </p>
-          ) : reportDocs.map(r => {
+          ) : displayReports.map(r => {
             const sessionsForDate = allSessions.filter(s => s.date === r.date);
             const memberIds = [...new Set(sessionsForDate.flatMap(s => s.attendees || []))];
             const members = memberIds.map(id => memberMap[id]).filter(Boolean);

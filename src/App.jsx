@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Upload,
   Download,
@@ -68,6 +68,21 @@ const COLORS = [
   { hex: "#B87FFF", bg: "rgba(184,127,255,0.10)", glow: "rgba(184,127,255,0.30)" },
   { hex: "#22D3EE", bg: "rgba(34,211,238,0.10)",  glow: "rgba(34,211,238,0.30)"  },
 ];
+
+// ── Report version helpers ────────────────────────────────────────────────────
+function parseReportId(reportId) {
+  const m = reportId.match(/^(.+)-v(\d+)$/);
+  return m
+    ? { date: m[1], version: parseInt(m[2]) }
+    : { date: reportId, version: 1 };
+}
+
+function latestOrNewVersionId(date, allDocs) {
+  const matching = allDocs.filter(r => parseReportId(r.id).date === date);
+  if (matching.length === 0) return `${date}-v1`;
+  const maxV = matching.reduce((max, r) => Math.max(max, parseReportId(r.id).version), 0);
+  return `${date}-v${maxV}`;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function parseCSVLine(text) {
@@ -218,14 +233,14 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
               <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>
                 {dateSessions.length} sessions
               </span>
-              <Link
-                to={`/report/${date}`}
+              <button
                 className="btn-ghost"
-                style={{ padding: "4px 10px", fontSize: 11, gap: 4, textDecoration: "none" }}
+                onClick={() => navigate(`/report/${latestOrNewVersionId(date, reportDocs)}`)}
+                style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
               >
                 <FileText size={12} />
                 生成日报
-              </Link>
+              </button>
             </div>
 
             {/* Hourly time slot groups */}
@@ -298,10 +313,12 @@ const NoRecordingBadge = () => (
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [authError, setAuthError] = useState(null);
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState({});
+  const [reportDocs, setReportDocs] = useState([]);
   const [newMemberName, setNewMemberName] = useState("");
   const fileInputRef = useRef(null);
   const [activeUploadMember, setActiveUploadMember] = useState(null);
@@ -352,6 +369,14 @@ export default function App() {
       },
       console.error
     );
+  }, [user]);
+
+  // Report docs (for computing latest version per date)
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(collection(db, "dailyReports"), snap => {
+      setReportDocs(snap.docs.map(d => ({ id: d.id })));
+    });
   }, [user]);
 
   // Auto-enrich existing sessions with catalog data
@@ -929,14 +954,14 @@ export default function App() {
                             <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>
                               {group.sessions.length} sessions
                             </span>
-                            <Link
-                              to={`/report/${group.date}`}
+                            <button
                               className="btn-ghost"
-                              style={{ padding: "4px 10px", fontSize: 11, gap: 4, textDecoration: "none" }}
+                              onClick={() => navigate(`/report/${latestOrNewVersionId(group.date, reportDocs)}`)}
+                              style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
                             >
                               <FileText size={12} />
                               生成日报
-                            </Link>
+                            </button>
                           </div>
                         </td>
                       </tr>
