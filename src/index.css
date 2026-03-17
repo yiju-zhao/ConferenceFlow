@@ -1009,6 +1009,58 @@ input[type="checkbox"].gtc-check:checked::after {
   cursor: grab;
 }
 
+/* TOC top-level section items */
+.report-toc-list > li.report-toc-section-item {
+  border-left: 2px solid transparent;
+  margin-bottom: 8px;
+  padding: 4px 0 4px 10px;
+  transition: border-color 0.12s;
+}
+.report-toc-list > li.report-toc-section-item::before {
+  content: none;
+}
+.report-toc-list > li.report-toc-section-item:hover {
+  border-left-color: #CF0A2C;
+}
+.report-toc-section-link {
+  font-weight: 700;
+  font-size: 13px;
+}
+.report-toc-section-link .report-toc-title {
+  color: #1A1A1A;
+  letter-spacing: 0.03em;
+}
+.report-toc-section-link:hover .report-toc-title {
+  color: #CF0A2C;
+}
+/* TOC sub-list under 相关议题 */
+.report-toc-sublist {
+  list-style: none;
+  margin: 5px 0 0 12px;
+  padding: 0;
+}
+.report-toc-sublist > li {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 3px;
+  padding: 2px 0 2px 8px;
+  border-left: 1px solid #E4E4E4;
+}
+.report-toc-sublist > li::before {
+  content: "–";
+  color: #BBBBBB;
+  margin-right: 5px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.report-toc-sublist .report-toc-link {
+  font-size: 11.5px;
+  color: #666;
+}
+.report-toc-sublist .report-toc-link:hover {
+  color: #CF0A2C;
+}
+
 /* ── Responsive ────────────────────────────────── */
 
 /* DailyReport mobile */
