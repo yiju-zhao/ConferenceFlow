@@ -1231,6 +1231,13 @@ ${clone.outerHTML}
             placeholder="记录现场见闻、展台亮点、互动环节等..."
             minHeight={80}
           />
+          <h2 className="report-section-title" style={{ marginTop: 24 }}>心得感悟</h2>
+          <EditableField
+            value={reportData?.reflections}
+            onSave={html => saveField("reflections", html)}
+            placeholder="记录个人感悟与思考..."
+            minHeight={80}
+          />
           <h2 className="report-section-title" style={{ marginTop: 24 }}>小道消息</h2>
           <EditableField
             value={reportData?.rumors}
