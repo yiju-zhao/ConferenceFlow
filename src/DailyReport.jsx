@@ -1047,9 +1047,6 @@ ${clone.outerHTML}
               suppressContentEditableWarning
               onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
             >{reportData?.title || `【${date}】日报`}</span>
-            {version > 1 && (
-              <span className="report-version-badge">v{version}</span>
-            )}
           </h1>
         </div>
 
