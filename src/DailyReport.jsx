@@ -512,14 +512,41 @@ export default function DailyReport() {
     return getDownloadURL(storageRef);
   }, []);
 
+  // Normalize illustrations: supports old single string + new array format
+  const getIllustrations = useCallback((sd) => {
+    if (Array.isArray(sd.illustrations)) return sd.illustrations;
+    if (sd.illustration) return [{ url: sd.illustration, storagePath: `illustrations/${reportId}/${sd._code}` }];
+    return [];
+  }, [reportId]);
+
   const handleIllustration = useCallback((code, e) => {
     const file = e.target.files[0];
     if (!file) return;
     e.target.value = "";
+    const storagePath = `illustrations/${reportId}/${code}_${Date.now()}`;
     compressImage(file)
-      .then(compressed => uploadToStorage(compressed, `illustrations/${reportId}/${code}`))
-      .then(url => saveSessionField(code, "illustration", url));
+      .then(compressed => uploadToStorage(compressed, storagePath))
+      .then(url => {
+        const current = sessionDataRef.current[code] || {};
+        const existing = Array.isArray(current.illustrations) ? current.illustrations
+          : current.illustration ? [{ url: current.illustration, storagePath: `illustrations/${reportId}/${code}` }]
+          : [];
+        saveSessionField(code, "illustrations", [...existing, { url, storagePath }]);
+      });
   }, [compressImage, uploadToStorage, reportId, saveSessionField]);
+
+  const handleIllustrationDelete = useCallback((code, idx) => {
+    const current = sessionDataRef.current[code] || {};
+    const existing = Array.isArray(current.illustrations) ? current.illustrations
+      : current.illustration ? [{ url: current.illustration, storagePath: `illustrations/${reportId}/${code}` }]
+      : [];
+    const item = existing[idx];
+    if (item?.storagePath) deleteObject(ref(storage, item.storagePath)).catch(() => {});
+    const next = existing.filter((_, i) => i !== idx);
+    saveSessionField(code, "illustrations", next);
+    // Clear legacy field if present
+    if (current.illustration) saveSessionField(code, "illustration", "");
+  }, [reportId, saveSessionField]);
 
   // ── Site Photos handlers ─────────────────────────────────────────────────
   const handleSitePhotoAdd = useCallback((e) => {
@@ -986,37 +1013,36 @@ ${clone.outerHTML}
                   />
                 </div>
                 <div style={{ padding: "6px 20px 0" }}>
-                  {sd.illustration ? (
-                    <div>
-                      <img src={sd.illustration} className="session-illustration" alt="插图" />
+                  {(() => {
+                    const illus = getIllustrations({ ...sd, _code: session.code });
+                    return (<>
+                      {illus.length > 0 && (
+                        <div className="session-illustrations-grid">
+                          {illus.map((item, i) => (
+                            <div key={i} className="session-illustration-item">
+                              <img src={item.url} className="session-illustration" alt={`插图${i + 1}`} />
+                              <button
+                                className="no-print session-illustration-del"
+                                onClick={() => handleIllustrationDelete(session.code, i)}
+                              >删除</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <button
                         className="no-print"
-                        onClick={() => {
-                          deleteObject(ref(storage, `illustrations/${reportId}/${session.code}`)).catch(() => {});
-                          saveSessionField(session.code, "illustration", "");
-                        }}
+                        onClick={() => illustInputRefs.current[session.code]?.click()}
                         style={{
-                          display: "block", marginTop: 4, fontSize: 11,
-                          color: "#CF0A2C", background: "none", border: "none",
-                          cursor: "pointer", padding: 0,
+                          fontSize: 11, color: "#BBBBBB", border: "1px dashed #DDDDDD",
+                          background: "none", cursor: "pointer", padding: "5px 0",
+                          borderRadius: 4, display: "block", textAlign: "center", width: "100%",
+                          marginTop: illus.length > 0 ? 6 : 0,
                         }}
                       >
-                        删除插图
+                        + 添加插图
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      className="no-print"
-                      onClick={() => illustInputRefs.current[session.code]?.click()}
-                      style={{
-                        fontSize: 11, color: "#BBBBBB", border: "1px dashed #DDDDDD",
-                        background: "none", cursor: "pointer", padding: "5px 0",
-                        borderRadius: 4, display: "block", textAlign: "center", width: "100%",
-                      }}
-                    >
-                      + 添加插图
-                    </button>
-                  )}
+                    </>);
+                  })()}
                   <input
                     type="file"
                     accept="image/*"
@@ -1122,37 +1148,36 @@ ${clone.outerHTML}
 
                     {/* Illustration */}
                     <div style={{ padding: "6px 20px 0" }}>
-                      {sd.illustration ? (
-                        <div>
-                          <img src={sd.illustration} className="session-illustration" alt="插图" />
+                      {(() => {
+                        const illus = getIllustrations({ ...sd, _code: session.code });
+                        return (<>
+                          {illus.length > 0 && (
+                            <div className="session-illustrations-grid">
+                              {illus.map((item, i) => (
+                                <div key={i} className="session-illustration-item">
+                                  <img src={item.url} className="session-illustration" alt={`插图${i + 1}`} />
+                                  <button
+                                    className="no-print session-illustration-del"
+                                    onClick={() => handleIllustrationDelete(session.code, i)}
+                                  >删除</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <button
                             className="no-print"
-                            onClick={() => {
-                              deleteObject(ref(storage, `illustrations/${reportId}/${session.code}`)).catch(() => {});
-                              saveSessionField(session.code, "illustration", "");
-                            }}
+                            onClick={() => illustInputRefs.current[session.code]?.click()}
                             style={{
-                              display: "block", marginTop: 4, fontSize: 11,
-                              color: "#CF0A2C", background: "none", border: "none",
-                              cursor: "pointer", padding: 0,
+                              fontSize: 11, color: "#BBBBBB", border: "1px dashed #DDDDDD",
+                              background: "none", cursor: "pointer", padding: "5px 0",
+                              borderRadius: 4, display: "block", textAlign: "center", width: "100%",
+                              marginTop: illus.length > 0 ? 6 : 0,
                             }}
                           >
-                            删除插图
+                            + 添加插图
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          className="no-print"
-                          onClick={() => illustInputRefs.current[session.code]?.click()}
-                          style={{
-                            fontSize: 11, color: "#BBBBBB", border: "1px dashed #DDDDDD",
-                            background: "none", cursor: "pointer", padding: "5px 0",
-                            borderRadius: 4, display: "block", textAlign: "center", width: "100%",
-                          }}
-                        >
-                          + 添加插图
-                        </button>
-                      )}
+                        </>);
+                      })()}
                       <input
                         type="file"
                         accept="image/*"
