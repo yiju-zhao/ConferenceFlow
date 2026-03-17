@@ -412,6 +412,7 @@ export default function DailyReport() {
   const sessionDataRef = useRef({});
   const reportDataRef = useRef(null);
   const createSnapshotRef = useRef(null);
+  const lastSnapshotHashRef = useRef(null);
   const sitePhotoInputRef = useRef(null);
   const reportContainerRef = useRef(null);
   const initDone = useRef(false);
@@ -580,21 +581,26 @@ export default function DailyReport() {
   const createSnapshot = useCallback(async (type) => {
     if (!user || !reportDataRef.current) return;
     const rd = reportDataRef.current;
+    const data = {
+      title: rd.title || "",
+      summaryPoints: rd.summaryPoints || [],
+      sessions: sessionDataRef.current || {},
+      topicOrder: rd.topicOrder || [],
+      deletedSessions: rd.deletedSessions || [],
+      onsiteInfo: rd.onsiteInfo || "",
+      reflections: rd.reflections || "",
+      rumors: rd.rumors || "",
+    };
+    const hash = JSON.stringify(data);
+    // Skip auto snapshots when content hasn't changed since last snapshot
+    if (type === "auto" && hash === lastSnapshotHashRef.current) return;
     await addDoc(collection(db, "dailyReports", reportId, "snapshots"), {
       type,
       label: type === "auto" ? "自动保存" : "手动保存",
       createdAt: serverTimestamp(),
-      data: {
-        title: rd.title || "",
-        summaryPoints: rd.summaryPoints || [],
-        sessions: sessionDataRef.current || {},
-        topicOrder: rd.topicOrder || [],
-        deletedSessions: rd.deletedSessions || [],
-        onsiteInfo: rd.onsiteInfo || "",
-        reflections: rd.reflections || "",
-        rumors: rd.rumors || "",
-      },
+      data,
     });
+    lastSnapshotHashRef.current = hash;
     await pruneSnapshots();
   }, [user, reportId, pruneSnapshots]);
 
