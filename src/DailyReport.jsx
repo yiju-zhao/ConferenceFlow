@@ -336,7 +336,7 @@ function SnapshotViewer({ snapshot, currentData }) {
   const ts = snapshot.createdAt?.toDate
     ? snapshot.createdAt.toDate().toLocaleString("zh-CN")
     : "未知时间";
-  const FIELD_LABELS = { onsiteInfo: "现场花絮", reflections: "心得感悟", rumors: "小道消息" };
+  const FIELD_LABELS = { onsiteInfo: "现场情报", reflections: "圈内声音", rumors: "深度研判" };
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
       <p style={{ margin: "0 0 20px", fontSize: 12, color: "#888" }}>
@@ -1059,50 +1059,16 @@ ${clone.outerHTML}
         {/* Header: TOC + Summary */}
         <div className="report-header">
 
-          {/* TOC – organized by topic, drag-to-reorder */}
+          {/* TOC – flat section links */}
           <div className="report-toc">
             <h2 className="report-section-title">目录</h2>
-            <p className="no-print report-toc-hint">⠿ 拖拽主题调整顺序</p>
-            {noTopicSessions.length > 0 && (
-              <ul className="report-toc-list">
-                {noTopicSessions.map(s => (
-                  <li key={s.code}>
-                    <a href={`#session-${s.code}`} className="report-toc-link">
-                      <span className="report-toc-title">
-                        {SESSION_CATALOG.get(s.code)?.title || s.title}
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {orderedTopics.map(topic => (
-              <div
-                key={topic}
-                className={`toc-topic-group${dragOverTopic === topic && dragTopic !== topic ? " drag-over" : ""}`}
-                draggable
-                onDragStart={e => handleTopicDragStart(e, topic)}
-                onDragOver={e => handleTopicDragOver(e, topic)}
-                onDrop={e => handleTopicDrop(e, topic)}
-                onDragEnd={handleTopicDragEnd}
-              >
-                <div className="toc-topic-label">
-                  <span className="toc-drag-handle">⠿</span>
-                  {topic}
-                </div>
-                <ul className="report-toc-list" style={{ marginLeft: 14 }}>
-                  {(topicsMap[topic] || []).map(s => (
-                    <li key={s.code}>
-                      <a href={`#session-${s.code}`} className="report-toc-link">
-                        <span className="report-toc-title">
-                          {SESSION_CATALOG.get(s.code)?.title || s.title}
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            <ul className="report-toc-list">
+              <li><a href="#section-related"     className="report-toc-link"><span className="report-toc-title">相关议题</span></a></li>
+              <li><a href="#section-onsite-info" className="report-toc-link"><span className="report-toc-title">现场情报</span></a></li>
+              <li><a href="#section-reflections" className="report-toc-link"><span className="report-toc-title">圈内声音</span></a></li>
+              <li><a href="#section-rumors"      className="report-toc-link"><span className="report-toc-title">深度研判</span></a></li>
+              <li><a href="#section-site-photos" className="report-toc-link"><span className="report-toc-title">现场记录</span></a></li>
+            </ul>
           </div>
 
           {/* Summary */}
@@ -1117,8 +1083,8 @@ ${clone.outerHTML}
         </div>
 
         {/* Session Reports – organized by topic */}
-        <div className="report-sessions">
-          <h2 className="report-section-title" style={{ marginTop: 32 }}>会议纪要</h2>
+        <div id="section-related" className="report-sessions">
+          <h2 className="report-section-title" style={{ marginTop: 32 }}>相关议题</h2>
 
           {noTopicSessions.map(session => {
             const sd = sessionData[session.code] || {};
@@ -1382,21 +1348,21 @@ ${clone.outerHTML}
 
         {/* Onsite Section */}
         <div className="report-onsite">
-          <h2 className="report-section-title" style={{ marginTop: 32 }}>现场花絮</h2>
+          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>现场情报</h2>
           <EditableField
             value={reportData?.onsiteInfo}
             onSave={html => saveField("onsiteInfo", html)}
             placeholder="记录现场见闻、展台亮点、互动环节等..."
             minHeight={80}
           />
-          <h2 className="report-section-title" style={{ marginTop: 24 }}>心得感悟</h2>
+          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>圈内声音</h2>
           <EditableField
             value={reportData?.reflections}
             onSave={html => saveField("reflections", html)}
             placeholder="记录个人感悟与思考..."
             minHeight={80}
           />
-          <h2 className="report-section-title" style={{ marginTop: 24 }}>小道消息</h2>
+          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>深度研判</h2>
           <EditableField
             value={reportData?.rumors}
             onSave={html => saveField("rumors", html)}
@@ -1406,7 +1372,7 @@ ${clone.outerHTML}
         </div>
 
         {/* Site Photos Section */}
-        <div className="report-site-photos">
+        <div id="section-site-photos" className="report-site-photos">
           <h2 className="report-section-title" style={{ marginTop: 32 }}>现场记录</h2>
           <div className="site-photos-grid">
             {(reportData?.sitePhotos || []).map((photo, idx) => (
