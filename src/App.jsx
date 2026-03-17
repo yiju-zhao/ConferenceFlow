@@ -10,6 +10,7 @@ import {
   MapPin,
   FileSpreadsheet,
   ChevronDown,
+  ChevronRight,
   Zap,
   FileText,
   LayoutList,
@@ -181,7 +182,7 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
 }
 
 // ── Calendar view ─────────────────────────────────────────────────────────────
-function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
+function CalendarView({ groupedSessions, members, toggleAttendance, user, collapsedDates, toggleDateCollapse }) {
   return (
     <div style={{ padding: "0 0 16px" }}>
       {groupedSessions.map(({ date, sessions: dateSessions }) => {
@@ -193,11 +194,13 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
           buckets[key].push(s);
         });
         const sortedBuckets = Object.entries(buckets).sort(([a], [b]) => Number(a) - Number(b));
+        const isCollapsed = collapsedDates.has(date);
 
         return (
           <div key={date}>
             {/* Date header */}
             <div
+              onClick={() => toggleDateCollapse(date)}
               style={{
                 padding: "10px 24px",
                 borderBottom: "1px solid var(--border-dim)",
@@ -205,9 +208,15 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
+                cursor: "pointer",
+                userSelect: "none",
               }}
             >
-              <div style={{ width: 3, height: 16, background: "var(--accent)", borderRadius: 2 }} />
+              <ChevronRight
+                size={13}
+                color="var(--accent)"
+                style={{ transition: "transform 0.2s", transform: isCollapsed ? "none" : "rotate(90deg)", flexShrink: 0 }}
+              />
               <CalendarDays size={13} color="var(--accent)" />
               <span
                 className="font-display"
@@ -221,6 +230,7 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
               <Link
                 to={`/report/${date}`}
                 className="btn-ghost"
+                onClick={(e) => e.stopPropagation()}
                 style={{ padding: "4px 10px", fontSize: 11, gap: 4, textDecoration: "none" }}
               >
                 <FileText size={12} />
@@ -229,7 +239,7 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user }) {
             </div>
 
             {/* Hourly time slot groups */}
-            {sortedBuckets.map(([bucketKey, slotSessions]) => (
+            {!isCollapsed && sortedBuckets.map(([bucketKey, slotSessions]) => (
               <div key={bucketKey} style={{ padding: "12px 24px 4px" }}>
                 {/* Slot header */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -309,6 +319,13 @@ export default function App() {
   const [exportDates, setExportDates] = useState(new Set());
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [viewMode, setViewMode] = useState("table"); // "table" | "calendar"
+  const [collapsedDates, setCollapsedDates] = useState(new Set());
+  const toggleDateCollapse = (date) =>
+    setCollapsedDates((prev) => {
+      const next = new Set(prev);
+      next.has(date) ? next.delete(date) : next.add(date);
+      return next;
+    });
 
   // Auth
   useEffect(() => {
@@ -892,6 +909,8 @@ export default function App() {
                 members={members}
                 toggleAttendance={toggleAttendance}
                 user={user}
+                collapsedDates={collapsedDates}
+                toggleDateCollapse={toggleDateCollapse}
               />
             )}
             {groupedSessions.length > 0 && viewMode === "table" ? (
@@ -915,10 +934,22 @@ export default function App() {
                   {groupedSessions.map((group) => (
                     <React.Fragment key={group.date}>
                       {/* Date separator */}
-                      <tr className="date-header-row">
+                      <tr
+                        className="date-header-row"
+                        onClick={() => toggleDateCollapse(group.date)}
+                        style={{ cursor: "pointer", userSelect: "none" }}
+                      >
                         <td colSpan={members.length + 3}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ width: 3, height: 16, background: "var(--accent)", borderRadius: 2 }} />
+                            <ChevronRight
+                              size={13}
+                              color="var(--accent)"
+                              style={{
+                                transition: "transform 0.2s",
+                                transform: collapsedDates.has(group.date) ? "none" : "rotate(90deg)",
+                                flexShrink: 0,
+                              }}
+                            />
                             <CalendarDays size={13} color="var(--accent)" />
                             <span
                               className="font-display"
@@ -932,6 +963,7 @@ export default function App() {
                             <Link
                               to={`/report/${group.date}`}
                               className="btn-ghost"
+                              onClick={(e) => e.stopPropagation()}
                               style={{ padding: "4px 10px", fontSize: 11, gap: 4, textDecoration: "none" }}
                             >
                               <FileText size={12} />
@@ -942,7 +974,7 @@ export default function App() {
                       </tr>
 
                       {/* Session rows */}
-                      {group.sessions.map((session) => (
+                      {!collapsedDates.has(group.date) && group.sessions.map((session) => (
                         <tr key={session.code} className="session-row">
                           {/* Time + Room */}
                           <td className="col-time" style={{ width: 160, maxWidth: 160 }}>
