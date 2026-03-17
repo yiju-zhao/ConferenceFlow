@@ -18,6 +18,8 @@ import { auth, db, storage } from "./firebase";
 import { ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import catalogData from "../data/gtc-2026-sessions-detailed.json";
 const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
+const topicSlug = (t) =>
+  t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
 // ── Debounce helper ──────────────────────────────────────────────────────────
 function useDebouncedSave(delay = 600) {
@@ -522,9 +524,10 @@ export default function DailyReport() {
   const topicsMap = useMemo(() => {
     const map = {};
     activeSessions.forEach((s) => {
-      const catalogTopic = SESSION_CATALOG.get(s.code)?.key_themes?.[0];
-      const topic = s.mainTopic?.trim() || catalogTopic;
-      if (!topic) return; // handled separately by noTopicSessions
+      const cat = SESSION_CATALOG.get(s.code);
+      const rawTopic = cat?.topic ? cat.topic.split(" - ").at(-1)?.trim() : null;
+      const topic = s.mainTopic?.trim() || cat?.key_themes?.[0] || rawTopic;
+      if (!topic) return;
       if (!map[topic]) map[topic] = [];
       map[topic].push(s);
     });
@@ -535,13 +538,13 @@ export default function DailyReport() {
       })
     );
     return map;
-  }, [sessions]);
+  }, [activeSessions]);
 
   const noTopicSessions = useMemo(() => {
     return activeSessions
       .filter(s => {
-        const catalogTopic = SESSION_CATALOG.get(s.code)?.key_themes?.[0];
-        return !(s.mainTopic?.trim() || catalogTopic);
+        const cat = SESSION_CATALOG.get(s.code);
+        return !(s.mainTopic?.trim() || cat?.key_themes?.[0] || cat?.topic);
       })
       .sort((a, b) => {
         const tc = a.start.localeCompare(b.start);
@@ -1059,15 +1062,46 @@ ${clone.outerHTML}
         {/* Header: TOC + Summary */}
         <div className="report-header">
 
-          {/* TOC – flat section links */}
+          {/* TOC – hierarchical section links */}
           <div className="report-toc">
             <h2 className="report-section-title">目录</h2>
             <ul className="report-toc-list">
-              <li><a href="#section-related"     className="report-toc-link"><span className="report-toc-title">相关议题</span></a></li>
-              <li><a href="#section-onsite-info" className="report-toc-link"><span className="report-toc-title">现场情报</span></a></li>
-              <li><a href="#section-reflections" className="report-toc-link"><span className="report-toc-title">圈内声音</span></a></li>
-              <li><a href="#section-rumors"      className="report-toc-link"><span className="report-toc-title">深度研判</span></a></li>
-              <li><a href="#section-site-photos" className="report-toc-link"><span className="report-toc-title">现场记录</span></a></li>
+              <li className="report-toc-section-item">
+                <a href="#section-related" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">相关议题</span>
+                </a>
+                {orderedTopics.length > 0 && (
+                  <ul className="report-toc-sublist">
+                    {orderedTopics.map(topic => (
+                      <li key={topic}>
+                        <a href={`#topic-${topicSlug(topic)}`} className="report-toc-link">
+                          <span className="report-toc-title">{topic}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+              <li className="report-toc-section-item">
+                <a href="#section-onsite-info" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">现场情报</span>
+                </a>
+              </li>
+              <li className="report-toc-section-item">
+                <a href="#section-reflections" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">圈内声音</span>
+                </a>
+              </li>
+              <li className="report-toc-section-item">
+                <a href="#section-rumors" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">深度研判</span>
+                </a>
+              </li>
+              <li className="report-toc-section-item">
+                <a href="#section-site-photos" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">现场记录</span>
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -1207,7 +1241,7 @@ ${clone.outerHTML}
           {orderedTopics.map(topic => (
             <div key={topic}>
               {/* Topic section header */}
-              <div className="report-topic-divider">
+              <div className="report-topic-divider" id={`topic-${topicSlug(topic)}`}>
                 <span className="report-topic-bar" />
                 <span className="report-topic-name">{topic}</span>
                 <span className="report-topic-line" />
