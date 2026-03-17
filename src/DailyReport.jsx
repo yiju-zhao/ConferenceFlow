@@ -85,7 +85,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
     <div>
       {speakers.map((spk, idx) => (
         <div key={idx} className="speaker-block">
-          <div className="speaker-fields">
+          <div className="speaker-fields no-print">
             <SpeakerInput
               value={spk.name}
               placeholder="演讲者姓名"
@@ -1229,13 +1229,6 @@ ${clone.outerHTML}
             value={reportData?.onsiteInfo}
             onSave={html => saveField("onsiteInfo", html)}
             placeholder="记录现场见闻、展台亮点、互动环节等..."
-            minHeight={80}
-          />
-          <h2 className="report-section-title" style={{ marginTop: 24 }}>心得感悟</h2>
-          <EditableField
-            value={reportData?.reflections}
-            onSave={html => saveField("reflections", html)}
-            placeholder="记录个人感悟与思考..."
             minHeight={80}
           />
           <h2 className="report-section-title" style={{ marginTop: 24 }}>小道消息</h2>
