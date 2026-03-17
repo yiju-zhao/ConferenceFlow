@@ -230,6 +230,31 @@ body {
   box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
 }
 
+/* ── Export dropdown menu items ─────────────── */
+.export-dropdown-menu {
+  width: 200px;
+  padding: 8px;
+}
+.export-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.export-menu-item + .export-menu-item {
+  margin-top: 2px;
+}
+.export-menu-item:hover {
+  background: var(--surface);
+}
+
 /* ── Code badge ──────────────────────────────── */
 .code-badge {
   font-family: 'DM Mono', monospace;
