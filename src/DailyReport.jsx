@@ -85,7 +85,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
     <div>
       {speakers.map((spk, idx) => (
         <div key={idx} className="speaker-block">
-          <div className="speaker-fields">
+          <div className="speaker-fields no-print">
             <SpeakerInput
               value={spk.name}
               placeholder="演讲者姓名"
