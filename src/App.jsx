@@ -919,7 +919,6 @@ export default function App() {
                   <tr>
                     <th style={{ width: 180, textAlign: "left" }}>时间 / 地点</th>
                     <th style={{ textAlign: "left", maxWidth: 420 }}>Session</th>
-                    <th style={{ width: 110, textAlign: "left" }}>主要主题</th>
                     {members.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
@@ -939,7 +938,7 @@ export default function App() {
                         onClick={() => toggleDateCollapse(group.date)}
                         style={{ cursor: "pointer", userSelect: "none" }}
                       >
-                        <td colSpan={members.length + 3}>
+                        <td colSpan={members.length + 2}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <ChevronRight
                               size={13}
@@ -1041,11 +1040,6 @@ export default function App() {
                                 </div>
                               )}
                             </div>
-                          </td>
-
-                          {/* Main topic */}
-                          <td className="col-topic" style={{ width: 110, maxWidth: 110, verticalAlign: "top", paddingTop: 12 }}>
-                            <TopicCell session={session} user={user} />
                           </td>
 
                           {/* Attendance toggles */}
