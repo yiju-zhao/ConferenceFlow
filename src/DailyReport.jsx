@@ -357,7 +357,9 @@ export default function DailyReport() {
   const topicsMap = useMemo(() => {
     const map = {};
     sessions.forEach((s) => {
-      const topic = s.mainTopic?.trim() || "未分类";
+      const catalogTopic = SESSION_CATALOG.get(s.code)?.key_themes?.[0];
+      const topic = s.mainTopic?.trim() || catalogTopic;
+      if (!topic) return; // handled separately by noTopicSessions
       if (!map[topic]) map[topic] = [];
       map[topic].push(s);
     });
@@ -368,6 +370,18 @@ export default function DailyReport() {
       })
     );
     return map;
+  }, [sessions]);
+
+  const noTopicSessions = useMemo(() => {
+    return sessions
+      .filter(s => {
+        const catalogTopic = SESSION_CATALOG.get(s.code)?.key_themes?.[0];
+        return !(s.mainTopic?.trim() || catalogTopic);
+      })
+      .sort((a, b) => {
+        const tc = a.start.localeCompare(b.start);
+        return tc !== 0 ? tc : a.title.localeCompare(b.title);
+      });
   }, [sessions]);
 
   const orderedTopics = useMemo(() => {
@@ -798,6 +812,19 @@ ${clone.outerHTML}
           <div className="report-toc">
             <h2 className="report-section-title">目录</h2>
             <p className="no-print report-toc-hint">⠿ 拖拽主题调整顺序</p>
+            {noTopicSessions.length > 0 && (
+              <ul className="report-toc-list">
+                {noTopicSessions.map(s => (
+                  <li key={s.code}>
+                    <a href={`#session-${s.code}`} className="report-toc-link">
+                      <span className="report-toc-title">
+                        {SESSION_CATALOG.get(s.code)?.title || s.title}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
             {orderedTopics.map(topic => (
               <div
                 key={topic}
@@ -812,7 +839,7 @@ ${clone.outerHTML}
                   <span className="toc-drag-handle">⠿</span>
                   {topic}
                 </div>
-                <ol className="report-toc-list" style={{ marginLeft: 14 }}>
+                <ul className="report-toc-list" style={{ marginLeft: 14 }}>
                   {(topicsMap[topic] || []).map(s => (
                     <li key={s.code}>
                       <a href={`#session-${s.code}`} className="report-toc-link">
@@ -822,7 +849,7 @@ ${clone.outerHTML}
                       </a>
                     </li>
                   ))}
-                </ol>
+                </ul>
               </div>
             ))}
           </div>
@@ -841,6 +868,125 @@ ${clone.outerHTML}
         {/* Session Reports – organized by topic */}
         <div className="report-sessions">
           <h2 className="report-section-title" style={{ marginTop: 32 }}>会议纪要</h2>
+
+          {noTopicSessions.map(session => {
+            const sd = sessionData[session.code] || {};
+            const speakers = sd.speakers
+              || (sd.speaker
+                ? [{ name: sd.speaker, position: "", company: sd.company || "" }]
+                : [{ name: "", position: "", company: "" }]);
+            const contributors = Array.from(session.attendees)
+              .map(id => memberMap[id]).filter(Boolean).join("、");
+            const isCollapsed = collapsedSessions.has(session.code);
+            return (
+              <div key={session.code} id={`session-${session.code}`} className="report-session">
+                <div className="report-session-header" onClick={() => toggleCollapse(session.code)}
+                  style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: isCollapsed ? 0 : 6 }}>
+                      <span className="report-session-code" style={{ marginBottom: 0, flexShrink: 0 }}>
+                        {session.code}
+                      </span>
+                      <h3 className="report-session-title" style={{ margin: 0 }}>
+                        {SESSION_CATALOG.get(session.code)?.url
+                          ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
+                               style={{ color: "inherit", textDecoration: "none" }}
+                               onClick={e => e.stopPropagation()}
+                               onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                               onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+                              {SESSION_CATALOG.get(session.code)?.title || session.title}
+                            </a>
+                          : SESSION_CATALOG.get(session.code)?.title || session.title
+                        }
+                      </h3>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="report-session-time">
+                        {session.start}–{session.end}{session.room && ` | ${session.room}`}
+                      </div>
+                    )}
+                  </div>
+                  <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
+                </div>
+                {!isCollapsed && <>
+                <div className="report-session-meta">
+                  <span className="report-field-label" style={{ display: "block", marginBottom: 5 }}>演讲者</span>
+                  <SpeakersEditor
+                    code={session.code}
+                    speakers={speakers}
+                    onUpdate={newSpeakers => saveSpeakers(session.code, newSpeakers)}
+                    onAdd={() => addSpeaker(session.code)}
+                    onRemove={idx => removeSpeaker(session.code, idx)}
+                  />
+                </div>
+                <div style={{ padding: "6px 20px 0" }}>
+                  {sd.illustration ? (
+                    <div>
+                      <img src={sd.illustration} className="session-illustration" alt="插图" />
+                      <button
+                        className="no-print"
+                        onClick={() => {
+                          deleteObject(ref(storage, `illustrations/${reportId}/${session.code}`)).catch(() => {});
+                          saveSessionField(session.code, "illustration", "");
+                        }}
+                        style={{
+                          display: "block", marginTop: 4, fontSize: 11,
+                          color: "#CF0A2C", background: "none", border: "none",
+                          cursor: "pointer", padding: 0,
+                        }}
+                      >
+                        删除插图
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="no-print"
+                      onClick={() => illustInputRefs.current[session.code]?.click()}
+                      style={{
+                        fontSize: 11, color: "#BBBBBB", border: "1px dashed #DDDDDD",
+                        background: "none", cursor: "pointer", padding: "5px 0",
+                        borderRadius: 4, display: "block", textAlign: "center", width: "100%",
+                      }}
+                    >
+                      + 添加插图
+                    </button>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    ref={el => { illustInputRefs.current[session.code] = el; }}
+                    onChange={e => handleIllustration(session.code, e)}
+                  />
+                </div>
+                <div className="report-session-body">
+                  <div className="report-field-block">
+                    <h4 className="report-field-heading">关键收获</h4>
+                    <EditableField
+                      value={sd.takeaways}
+                      onSave={html => saveSessionField(session.code, "takeaways", html)}
+                      placeholder="记录本场会议的关键收获..."
+                    />
+                  </div>
+                  <div className="report-field-block">
+                    <h4 className="report-field-heading">启示</h4>
+                    <EditableField
+                      value={sd.insights}
+                      onSave={html => saveSessionField(session.code, "insights", html)}
+                      placeholder="记录启示与分析..."
+                    />
+                  </div>
+                  {contributors && (
+                    <div className="report-contributors-row">
+                      <span className="report-contributors-label">贡献人</span>
+                      <span className="report-contributors-names">{contributors}</span>
+                    </div>
+                  )}
+                </div>
+                </>}
+              </div>
+            );
+          })}
 
           {orderedTopics.map(topic => (
             <div key={topic}>
