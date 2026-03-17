@@ -545,29 +545,6 @@ input[type="checkbox"].gtc-check:checked::after {
   color: #C8C8C8; pointer-events: none;
 }
 
-/* Markdown-rendered content inside report fields */
-.report-editable--md-rendered p { margin: 0 0 6px; }
-.report-editable--md-rendered p:last-child { margin-bottom: 0; }
-.report-editable--md-rendered ul, .report-editable--md-rendered ol {
-  margin: 4px 0 6px; padding-left: 18px;
-}
-.report-editable--md-rendered li { margin-bottom: 2px; }
-.report-editable--md-rendered strong { font-weight: 700; }
-.report-editable--md-rendered em { font-style: italic; }
-.report-editable--md-rendered code {
-  font-family: monospace; font-size: 0.9em;
-  background: #f0f0f0; padding: 1px 4px; border-radius: 3px;
-}
-
-/* Edit mode textarea */
-.report-editable--md-edit {
-  box-sizing: border-box; border: 1px dashed #DDDDDD;
-  border-radius: 4px; padding: 6px 8px; font-family: monospace;
-  font-size: 13px; line-height: 1.6; background: #FAFAFA;
-  outline: none;
-}
-.report-editable--md-edit:focus { border-color: #CF0A2C; background: #fff; }
-
 .report-inline-editable {
   display: inline-block; min-width: 80px;
   padding: 1px 4px;
