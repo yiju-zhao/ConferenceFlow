@@ -931,12 +931,13 @@ ${inlinedBody}
         const { default: TurndownService } = await import('turndown');
         const { gfm } = await import('turndown-plugin-gfm');
 
-        // Inject <a id="..."> before each session so TOC links have a target.
-        // turndown drops id attributes on divs; raw HTML anchors are preserved
-        // and work in Obsidian, GitHub Markdown, and most Markdown viewers.
-        clone.querySelectorAll("[id^='session-']").forEach(el => {
+        // Inject <a id="..."> before every element with an id so all TOC links
+        // (#session-*, #section-*, #topic-*) have targets. turndown drops id
+        // attributes on divs; raw HTML anchors are preserved in most Markdown viewers.
+        clone.querySelectorAll("[id]").forEach(el => {
           const anchor = document.createElement('a');
           anchor.id = el.id;
+          el.removeAttribute('id'); // prevent duplicate ids in output
           el.insertBefore(anchor, el.firstChild);
         });
 
