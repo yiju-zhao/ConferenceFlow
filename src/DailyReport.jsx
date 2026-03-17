@@ -915,7 +915,10 @@ ${clone.outerHTML}
                           <img src={sd.illustration} className="session-illustration" alt="插图" />
                           <button
                             className="no-print"
-                            onClick={() => saveSessionField(session.code, "illustration", "")}
+                            onClick={() => {
+                              deleteObject(ref(storage, `illustrations/${reportId}/${session.code}`)).catch(() => {});
+                              saveSessionField(session.code, "illustration", "");
+                            }}
                             style={{
                               display: "block", marginTop: 4, fontSize: 11,
                               color: "#CF0A2C", background: "none", border: "none",
