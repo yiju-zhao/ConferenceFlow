@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { marked } from "marked";
+marked.use({ breaks: true, gfm: true });
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -75,6 +77,51 @@ function EditableField({ value, onSave, placeholder, minHeight = 60 }) {
       onFocus={() => { focused.current = true; }}
       onBlur={() => { focused.current = false; }}
       onInput={() => { if (ref.current) onSave(ref.current.innerHTML); }}
+    />
+  );
+}
+
+// ── MarkdownField ────────────────────────────────────────────────────────────
+function MarkdownField({ value, onSave, placeholder, minHeight = 60 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value || "");
+
+  useEffect(() => {
+    if (!editing) setDraft(value || "");
+  }, [value, editing]);
+
+  if (editing) {
+    return (
+      <textarea
+        className="report-editable report-editable--md-edit"
+        value={draft}
+        autoFocus
+        placeholder={placeholder}
+        style={{ minHeight, width: "100%", resize: "vertical" }}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { setEditing(false); onSave(draft); }}
+      />
+    );
+  }
+
+  if (!draft) {
+    return (
+      <div
+        className="report-editable"
+        style={{ minHeight, cursor: "text", color: "#AAAAAA" }}
+        onClick={() => setEditing(true)}
+      >
+        {placeholder}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="report-editable report-editable--md-rendered"
+      style={{ minHeight, cursor: "text" }}
+      onClick={() => setEditing(true)}
+      dangerouslySetInnerHTML={{ __html: marked.parse(draft) }}
     />
   );
 }
@@ -582,6 +629,10 @@ ${styleTagsHtml}
 <style>
   body { background: #fff; color: #111; }
   .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  @media print {
+    .report-session { break-before: page; page-break-before: always; }
+    .report-session:first-of-type { break-before: auto; page-break-before: auto; }
+  }
 </style>
 </head>
 <body>
@@ -1014,17 +1065,17 @@ ${clone.outerHTML}
                 <div className="report-session-body">
                   <div className="report-field-block">
                     <h4 className="report-field-heading">关键收获</h4>
-                    <EditableField
+                    <MarkdownField
                       value={sd.takeaways}
-                      onSave={html => saveSessionField(session.code, "takeaways", html)}
+                      onSave={md => saveSessionField(session.code, "takeaways", md)}
                       placeholder="记录本场会议的关键收获..."
                     />
                   </div>
                   <div className="report-field-block">
                     <h4 className="report-field-heading">启示</h4>
-                    <EditableField
+                    <MarkdownField
                       value={sd.insights}
-                      onSave={html => saveSessionField(session.code, "insights", html)}
+                      onSave={md => saveSessionField(session.code, "insights", md)}
                       placeholder="记录启示与分析..."
                     />
                   </div>
@@ -1152,17 +1203,17 @@ ${clone.outerHTML}
                     <div className="report-session-body">
                       <div className="report-field-block">
                         <h4 className="report-field-heading">关键收获</h4>
-                        <EditableField
+                        <MarkdownField
                           value={sd.takeaways}
-                          onSave={html => saveSessionField(session.code, "takeaways", html)}
+                          onSave={md => saveSessionField(session.code, "takeaways", md)}
                           placeholder="记录本场会议的关键收获..."
                         />
                       </div>
                       <div className="report-field-block">
                         <h4 className="report-field-heading">启示</h4>
-                        <EditableField
+                        <MarkdownField
                           value={sd.insights}
-                          onSave={html => saveSessionField(session.code, "insights", html)}
+                          onSave={md => saveSessionField(session.code, "insights", md)}
                           placeholder="记录启示与分析..."
                         />
                       </div>
