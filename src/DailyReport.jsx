@@ -610,14 +610,18 @@ export default function DailyReport() {
     const hash = JSON.stringify(data);
     // Skip auto snapshots when content hasn't changed since last snapshot
     if (type === "auto" && hash === lastSnapshotHashRef.current) return;
-    await addDoc(collection(db, "dailyReports", reportId, "snapshots"), {
-      type,
-      label: type === "auto" ? "自动保存" : "手动保存",
-      createdAt: serverTimestamp(),
-      data,
-    });
-    lastSnapshotHashRef.current = hash;
-    await pruneSnapshots();
+    try {
+      await addDoc(collection(db, "dailyReports", reportId, "snapshots"), {
+        type,
+        label: type === "auto" ? "自动保存" : "手动保存",
+        createdAt: serverTimestamp(),
+        data,
+      });
+      lastSnapshotHashRef.current = hash;
+      await pruneSnapshots();
+    } catch (err) {
+      console.error("[Snapshot] Failed to save snapshot:", err.code, err.message);
+    }
   }, [user, reportId, pruneSnapshots]);
 
   // Keep createSnapshotRef up to date (used by 5-min timer)
