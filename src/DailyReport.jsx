@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
   setDoc,
   onSnapshot,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  deleteDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { auth, db, storage } from "./firebase";
 import { ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
@@ -45,12 +52,6 @@ function parseReportId(reportId) {
     : { date: reportId, version: 1, isLegacy: true };
 }
 
-function nextVersionId(selectedDate, allDocs) {
-  const maxV = allDocs
-    .filter(r => parseReportId(r.id || r.date).date === selectedDate)
-    .reduce((max, r) => Math.max(max, parseReportId(r.id || r.date).version), 0);
-  return `${selectedDate}-v${maxV + 1}`;
-}
 
 // ── Color presets ────────────────────────────────────────────────────────────
 const COLOR_PRESETS = ["#333333", "#CF0A2C", "#E67E22", "#27AE60", "#2980B9", "#8E44AD"];
@@ -263,11 +264,131 @@ function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
   );
 }
 
+// ── Snapshot diff helpers ─────────────────────────────────────────────────────
+function diffArrays(oldArr, newArr) {
+  const m = oldArr.length, n = newArr.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = oldArr[i-1] === newArr[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  const result = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldArr[i-1] === newArr[j-1]) {
+      result.unshift({ text: oldArr[i-1], type: "equal" }); i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+      result.unshift({ text: newArr[j-1], type: "insert" }); j--;
+    } else {
+      result.unshift({ text: oldArr[i-1], type: "delete" }); i--;
+    }
+  }
+  return result;
+}
+
+function stripHtml(html) {
+  return (html || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getTextLines(html) {
+  return stripHtml(html).split(/\n/).map(s => s.trim()).filter(Boolean);
+}
+
+function DiffList({ oldItems, newItems }) {
+  const diff = diffArrays((oldItems || []).map(String), (newItems || []).map(String));
+  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 13 }}>（无内容）</p>;
+  return (
+    <ul style={{ margin: 0, padding: "0 0 0 16px" }}>
+      {diff.map((item, i) => (
+        <li key={i} style={{
+          fontSize: 13, padding: "2px 6px", borderRadius: 3, marginBottom: 3,
+          background: item.type === "insert" ? "rgba(39,174,96,0.1)" : item.type === "delete" ? "rgba(207,10,44,0.1)" : "transparent",
+          textDecoration: item.type === "delete" ? "line-through" : "none",
+          color: item.type === "insert" ? "#27AE60" : item.type === "delete" ? "#CF0A2C" : "inherit",
+        }}>
+          {item.type === "insert" ? "+ " : item.type === "delete" ? "− " : ""}{item.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DiffText({ oldText, newText }) {
+  const diff = diffArrays(getTextLines(oldText), getTextLines(newText));
+  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 13 }}>（无内容）</p>;
+  return (
+    <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+      {diff.map((item, i) => (
+        <div key={i} style={{
+          padding: "2px 8px", marginBottom: 2, borderRadius: 3,
+          background: item.type === "insert" ? "rgba(39,174,96,0.1)" : item.type === "delete" ? "rgba(207,10,44,0.1)" : "transparent",
+          textDecoration: item.type === "delete" ? "line-through" : "none",
+          color: item.type === "insert" ? "#27AE60" : item.type === "delete" ? "#CF0A2C" : "inherit",
+        }}>
+          {item.type !== "equal" && (item.type === "insert" ? "+ " : "− ")}{item.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SnapshotViewer({ snapshot, currentData }) {
+  const { data } = snapshot;
+  const ts = snapshot.createdAt?.toDate
+    ? snapshot.createdAt.toDate().toLocaleString("zh-CN")
+    : "未知时间";
+  const FIELD_LABELS = { onsiteInfo: "现场花絮", reflections: "心得感悟", rumors: "小道消息" };
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+      <p style={{ margin: "0 0 20px", fontSize: 12, color: "#888" }}>
+        快照时间：{ts}　·　绿色 = 快照中新增，红色删除线 = 当前版本中已改动
+      </p>
+      <section style={{ marginBottom: 24 }}>
+        <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#3D3D3D" }}>核心要点</h4>
+        <DiffList oldItems={currentData?.summaryPoints || []} newItems={data?.summaryPoints || []} />
+      </section>
+      {Object.keys(data?.sessions || {}).map(code => {
+        const oldSd = currentData?.sessions?.[code] || {};
+        const newSd = data?.sessions?.[code] || {};
+        const hasTakeawaysDiff = stripHtml(oldSd.takeaways) !== stripHtml(newSd.takeaways);
+        const hasInsightsDiff = stripHtml(oldSd.insights) !== stripHtml(newSd.insights);
+        if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
+        return (
+          <section key={code} style={{ marginBottom: 24, paddingLeft: 12, borderLeft: "3px solid #E8E8E8" }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#888", fontFamily: "monospace" }}>{code}</h4>
+            {hasTakeawaysDiff && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: "#AAAAAA", marginBottom: 4 }}>关键收获</div>
+                <DiffText oldText={oldSd.takeaways} newText={newSd.takeaways} />
+              </div>
+            )}
+            {hasInsightsDiff && (
+              <div>
+                <div style={{ fontSize: 11, color: "#AAAAAA", marginBottom: 4 }}>启示</div>
+                <DiffText oldText={oldSd.insights} newText={newSd.insights} />
+              </div>
+            )}
+          </section>
+        );
+      })}
+      {["onsiteInfo", "reflections", "rumors"].map(field => {
+        const oldVal = currentData?.[field];
+        const newVal = data?.[field];
+        if (stripHtml(oldVal) === stripHtml(newVal)) return null;
+        return (
+          <section key={field} style={{ marginBottom: 24 }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#3D3D3D" }}>{FIELD_LABELS[field]}</h4>
+            <DiffText oldText={oldVal} newText={newVal} />
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const { reportId } = useParams();
   const { date, version } = parseReportId(reportId);
-  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [members, setMembers] = useState([]);
@@ -277,10 +398,11 @@ export default function DailyReport() {
   const [dragTopic, setDragTopic] = useState(null);
   const [dragOverTopic, setDragOverTopic] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [showNewReport, setShowNewReport] = useState(false);
-  const [newReportDate, setNewReportDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [snapshots, setSnapshots] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [viewingSnapshot, setViewingSnapshot] = useState(null);
+  const [restoreConfirm, setRestoreConfirm] = useState(null);
   const [collapsedSessions, setCollapsedSessions] = useState(new Set());
-  const [allReportDocs, setAllReportDocs] = useState([]);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState({ code: null, contributorNames: [], nameInput: "", error: false });
@@ -289,6 +411,7 @@ export default function DailyReport() {
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
   const reportDataRef = useRef(null);
+  const createSnapshotRef = useRef(null);
   const sitePhotoInputRef = useRef(null);
   const reportContainerRef = useRef(null);
   const initDone = useRef(false);
@@ -301,12 +424,23 @@ export default function DailyReport() {
     return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
 
-  // All report docs (for version computation)
+  // Snapshots subscription
+  useEffect(() => {
+    if (!user || !reportId) return;
+    const q = query(
+      collection(db, "dailyReports", reportId, "snapshots"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(q, snap => {
+      setSnapshots(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  }, [user, reportId]);
+
+  // 5-minute auto snapshot
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "dailyReports"), snap => {
-      setAllReportDocs(snap.docs.map(d => ({ id: d.id })));
-    });
+    const timer = setInterval(() => { createSnapshotRef.current?.("auto"); }, 5 * 60 * 1000);
+    return () => clearInterval(timer);
   }, [user]);
 
   // Members
@@ -429,6 +563,61 @@ export default function DailyReport() {
       setDoc(doc(db, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
     });
   }, [user, reportId, debouncedSave]);
+
+  // ── Snapshot helpers ─────────────────────────────────────────────────────────
+  const pruneSnapshots = useCallback(async () => {
+    const q = query(
+      collection(db, "dailyReports", reportId, "snapshots"),
+      orderBy("createdAt", "desc"),
+      limit(51)
+    );
+    const snap = await getDocs(q);
+    if (snap.docs.length > 50) {
+      await deleteDoc(snap.docs[50].ref);
+    }
+  }, [reportId]);
+
+  const createSnapshot = useCallback(async (type) => {
+    if (!user || !reportDataRef.current) return;
+    const rd = reportDataRef.current;
+    await addDoc(collection(db, "dailyReports", reportId, "snapshots"), {
+      type,
+      label: type === "auto" ? "自动保存" : "手动保存",
+      createdAt: serverTimestamp(),
+      data: {
+        title: rd.title || "",
+        summaryPoints: rd.summaryPoints || [],
+        sessions: sessionDataRef.current || {},
+        topicOrder: rd.topicOrder || [],
+        deletedSessions: rd.deletedSessions || [],
+        onsiteInfo: rd.onsiteInfo || "",
+        reflections: rd.reflections || "",
+        rumors: rd.rumors || "",
+      },
+    });
+    await pruneSnapshots();
+  }, [user, reportId, pruneSnapshots]);
+
+  // Keep createSnapshotRef up to date (used by 5-min timer)
+  createSnapshotRef.current = createSnapshot;
+
+  const handleSave = async () => {
+    await createSnapshot("manual");
+  };
+
+  const handleRestore = (snapshot) => {
+    setRestoreConfirm(snapshot);
+  };
+
+  const confirmRestore = async () => {
+    if (!restoreConfirm) return;
+    const snapshot = restoreConfirm;
+    setRestoreConfirm(null);
+    await createSnapshot("manual");
+    await setDoc(doc(db, "dailyReports", reportId), snapshot.data, { merge: true });
+    setShowHistory(false);
+    setViewingSnapshot(null);
+  };
 
   const saveSessionField = useCallback((code, field, value) => {
     if (!user) return;
@@ -695,12 +884,6 @@ ${clone.outerHTML}
     });
   }, []);
 
-  const handleToggleStatus = () => {
-    if (!user) return;
-    const newStatus = reportData?.status === "done" ? "draft" : "done";
-    setDoc(doc(db, "dailyReports", reportId), { status: newStatus }, { merge: true }).catch(console.error);
-  };
-
   const handleSyncFromCatalog = async () => {
     if (!user || syncing) return;
     setSyncing(true);
@@ -742,14 +925,6 @@ ${clone.outerHTML}
   const execBold = () => document.execCommand("bold");
   const execColor = (color) => { document.execCommand("foreColor", false, color); setShowColorPicker(false); };
 
-  // New report navigation
-  const handleCreateReport = () => {
-    if (!newReportDate) return;
-    const newId = nextVersionId(newReportDate, allReportDocs);
-    navigate(`/report/${newId}`);
-    setShowNewReport(false);
-  };
-
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -774,12 +949,6 @@ ${clone.outerHTML}
             <Link to="/reports" className="report-tool-btn" style={{ textDecoration: "none" }}>
               日报列表
             </Link>
-            <button
-              className="report-tool-btn"
-              onClick={() => setShowNewReport(v => !v)}
-            >
-              + 新建日报
-            </button>
           </div>
           <div className="report-toolbar-actions">
             {saveState === "saving" && (
@@ -791,13 +960,17 @@ ${clone.outerHTML}
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
             <button
               className="report-tool-btn"
-              onClick={handleToggleStatus}
-              style={reportData?.status === "done" ? {
-                background: "rgba(39,174,96,0.08)", color: "#27AE60",
-                border: "1px solid rgba(39,174,96,0.3)",
-              } : undefined}
+              onClick={handleSave}
+              title="立即保存并创建快照"
             >
-              {reportData?.status === "done" ? "✓ 已完成" : "标记完成"}
+              保存
+            </button>
+            <button
+              className="report-tool-btn"
+              onClick={() => setShowHistory(true)}
+              title="查看历史版本快照"
+            >
+              历史版本
             </button>
             {/* ── Delete session ── */}
             <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
@@ -859,24 +1032,6 @@ ${clone.outerHTML}
           </div>
         </div>
 
-        {/* New report form */}
-        {showNewReport && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 24px", borderTop: "1px solid #E8E8E8" }}>
-            <span style={{ fontSize: 13, color: "#3D3D3D" }}>选择日期：</span>
-            <input
-              type="date"
-              value={newReportDate}
-              onChange={e => setNewReportDate(e.target.value)}
-              style={{ fontSize: 13, padding: "4px 8px", borderRadius: 6, border: "1px solid #DDDDDD", fontFamily: "inherit" }}
-            />
-            <button
-              onClick={handleCreateReport}
-              style={{ fontSize: 13, padding: "4px 14px", borderRadius: 6, background: "#CF0A2C", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              生成
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ── Report Content ───────────────────────────────────────── */}
@@ -1331,6 +1486,115 @@ ${clone.outerHTML}
             </div>
             <div className="delete-confirm-actions">
               <button className="delete-confirm-cancel" onClick={() => setShowDeleteSelect(false)}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── History Panel ────────────────────────────────────────── */}
+      {showHistory && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
+          <div
+            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
+            onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
+          />
+          <div style={{
+            position: "absolute", right: 0, top: 0, bottom: 0,
+            width: viewingSnapshot ? "min(80%, 960px)" : "360px",
+            background: "#fff", display: "flex", flexDirection: "column",
+            boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
+          }}>
+            {/* Panel header */}
+            <div style={{
+              padding: "14px 20px", borderBottom: "1px solid #E8E8E8",
+              display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
+            }}>
+              {viewingSnapshot && (
+                <button
+                  onClick={() => setViewingSnapshot(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#2980B9", padding: "0 8px 0 0" }}
+                >
+                  ← 返回列表
+                </button>
+              )}
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, flex: 1 }}>
+                {viewingSnapshot ? `快照 · ${viewingSnapshot.label}` : "历史版本"}
+              </h2>
+              <button
+                onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#999", lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {!viewingSnapshot ? (
+              /* Snapshot list */
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                {snapshots.length === 0 ? (
+                  <p style={{ padding: "32px 20px", color: "#999", textAlign: "center", fontSize: 13 }}>
+                    暂无历史快照<br />
+                    <span style={{ fontSize: 12 }}>点击「保存」按钮或等待 5 分钟自动生成</span>
+                  </p>
+                ) : snapshots.map(snap => {
+                  const ts = snap.createdAt?.toDate
+                    ? snap.createdAt.toDate().toLocaleString("zh-CN")
+                    : "时间未知";
+                  return (
+                    <div key={snap.id} style={{ padding: "12px 20px", borderBottom: "1px solid #F5F5F5" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: 15 }}>{snap.type === "manual" ? "📌" : "🕐"}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: snap.type === "manual" ? 600 : 400, color: "#3D3D3D" }}>
+                            {snap.label}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#999", marginTop: 1 }}>{ts}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          onClick={() => setViewingSnapshot(snap)}
+                          style={{
+                            fontSize: 12, padding: "4px 12px", borderRadius: 5,
+                            background: "#F5F5F5", border: "1px solid #E0E0E0", cursor: "pointer", color: "#3D3D3D",
+                          }}
+                        >
+                          查看
+                        </button>
+                        <button
+                          onClick={() => handleRestore(snap)}
+                          style={{
+                            fontSize: 12, padding: "4px 12px", borderRadius: 5,
+                            background: "rgba(207,10,44,0.05)", border: "1px solid rgba(207,10,44,0.2)",
+                            cursor: "pointer", color: "#CF0A2C",
+                          }}
+                        >
+                          恢复此版本
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Snapshot viewer with diff */
+              <SnapshotViewer snapshot={viewingSnapshot} currentData={reportDataRef.current} />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Restore confirm modal */}
+      {restoreConfirm && (
+        <div className="delete-confirm-overlay" onClick={() => setRestoreConfirm(null)}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <h3 className="delete-confirm-title">确认恢复此版本？</h3>
+            <p className="delete-confirm-desc">
+              当前内容将被覆盖。恢复前会自动保存当前内容为快照，可随时在历史版本中找回。
+            </p>
+            <div className="delete-confirm-actions">
+              <button className="delete-confirm-cancel" onClick={() => setRestoreConfirm(null)}>取消</button>
+              <button className="delete-confirm-submit" onClick={confirmRestore}>确认恢复</button>
             </div>
           </div>
         </div>
