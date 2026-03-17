@@ -216,13 +216,23 @@ function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
         {local.map((point, idx) => (
           <li key={idx} className="bullet-editor-item">
             <span className="bullet-dot" aria-hidden="true">•</span>
-            <input
+            <textarea
               className="bullet-input"
-              type="text"
               value={point}
               placeholder={placeholder}
-              onChange={(e) => handleChange(idx, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, idx)}
+              rows={1}
+              onChange={(e) => {
+                handleChange(idx, e.target.value);
+                e.target.style.height = "auto";
+                e.target.style.height = e.target.scrollHeight + "px";
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  handleKeyDown(e, idx);
+                } else if (e.key === "Backspace") {
+                  handleKeyDown(e, idx);
+                }
+              }}
             />
             <button
               className="bullet-remove-btn no-print"
@@ -263,6 +273,7 @@ export default function DailyReport() {
   const [allReportDocs, setAllReportDocs] = useState([]);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState({ code: null, contributorNames: [], nameInput: "", error: false });
 
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
@@ -354,9 +365,17 @@ export default function DailyReport() {
     return map;
   }, [members]);
 
+  const deletedSessionCodes = useMemo(() =>
+    new Set(reportData?.deletedSessions || [])
+  , [reportData]);
+
+  const activeSessions = useMemo(() =>
+    sessions.filter(s => !deletedSessionCodes.has(s.code))
+  , [sessions, deletedSessionCodes]);
+
   const topicsMap = useMemo(() => {
     const map = {};
-    sessions.forEach((s) => {
+    activeSessions.forEach((s) => {
       const catalogTopic = SESSION_CATALOG.get(s.code)?.key_themes?.[0];
       const topic = s.mainTopic?.trim() || catalogTopic;
       if (!topic) return; // handled separately by noTopicSessions
@@ -373,7 +392,7 @@ export default function DailyReport() {
   }, [sessions]);
 
   const noTopicSessions = useMemo(() => {
-    return sessions
+    return activeSessions
       .filter(s => {
         const catalogTopic = SESSION_CATALOG.get(s.code)?.key_themes?.[0];
         return !(s.mainTopic?.trim() || catalogTopic);
@@ -382,7 +401,7 @@ export default function DailyReport() {
         const tc = a.start.localeCompare(b.start);
         return tc !== 0 ? tc : a.title.localeCompare(b.title);
       });
-  }, [sessions]);
+  }, [activeSessions]);
 
   const orderedTopics = useMemo(() => {
     const allTopics = Object.keys(topicsMap);
@@ -436,6 +455,27 @@ export default function DailyReport() {
       sessions: { [code]: { speakers: speakers.length ? speakers : [{ name: "", position: "", company: "" }] } }
     }, { merge: true }).catch(console.error);
   }, [user, reportId]);
+
+  const openDeleteConfirm = useCallback((code, contributorNames) => {
+    setDeleteConfirm({ code, contributorNames, nameInput: "", error: false });
+  }, []);
+
+  const confirmDeleteSession = useCallback(() => {
+    const { code, contributorNames, nameInput } = deleteConfirm;
+    const trimmed = nameInput.trim();
+    const valid = contributorNames.length === 0
+      ? trimmed.length > 0
+      : contributorNames.some(n => n === trimmed);
+    if (!valid) {
+      setDeleteConfirm(prev => ({ ...prev, error: true }));
+      return;
+    }
+    const currentDeleted = reportDataRef.current?.deletedSessions || [];
+    setDoc(doc(db, "dailyReports", reportId), {
+      deletedSessions: [...currentDeleted, code]
+    }, { merge: true }).catch(console.error);
+    setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false });
+  }, [deleteConfirm, reportId]);
 
   const compressImage = useCallback((file, maxPx = 1200, quality = 0.75) => {
     return new Promise((resolve) => {
@@ -875,8 +915,8 @@ ${clone.outerHTML}
               || (sd.speaker
                 ? [{ name: sd.speaker, position: "", company: sd.company || "" }]
                 : [{ name: "", position: "", company: "" }]);
-            const contributors = Array.from(session.attendees)
-              .map(id => memberMap[id]).filter(Boolean).join("、");
+            const contributorNames = Array.from(session.attendees).map(id => memberMap[id]).filter(Boolean);
+            const contributors = contributorNames.join("、");
             const isCollapsed = collapsedSessions.has(session.code);
             return (
               <div key={session.code} id={`session-${session.code}`} className="report-session">
@@ -906,6 +946,11 @@ ${clone.outerHTML}
                       </div>
                     )}
                   </div>
+                  <button
+                    className="session-delete-btn no-print"
+                    title="从日报移除此session"
+                    onClick={e => { e.stopPropagation(); openDeleteConfirm(session.code, contributorNames); }}
+                  >🗑</button>
                   <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                 </div>
                 {!isCollapsed && <>
@@ -1004,8 +1049,8 @@ ${clone.outerHTML}
                   || (sd.speaker
                     ? [{ name: sd.speaker, position: "", company: sd.company || "" }]
                     : [{ name: "", position: "", company: "" }]);
-                const contributors = Array.from(session.attendees)
-                  .map(id => memberMap[id]).filter(Boolean).join("、");
+                const contributorNames = Array.from(session.attendees).map(id => memberMap[id]).filter(Boolean);
+                const contributors = contributorNames.join("、");
 
                 const isCollapsed = collapsedSessions.has(session.code);
                 return (
@@ -1038,6 +1083,11 @@ ${clone.outerHTML}
                           </div>
                         )}
                       </div>
+                      <button
+                        className="session-delete-btn no-print"
+                        title="从日报移除此session"
+                        onClick={e => { e.stopPropagation(); openDeleteConfirm(session.code, contributorNames); }}
+                      >🗑</button>
                       <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                     </div>
 
@@ -1203,6 +1253,37 @@ ${clone.outerHTML}
         </div>
 
       </div>
+
+      {/* Delete session confirmation modal */}
+      {deleteConfirm.code && (
+        <div className="delete-confirm-overlay" onClick={() => setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false })}>
+          <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
+            <h3 className="delete-confirm-title">从日报移除此 Session</h3>
+            <p className="delete-confirm-desc">
+              {deleteConfirm.contributorNames.length > 0
+                ? <>请输入该 session 的贡献人姓名（{deleteConfirm.contributorNames.join("、")}）以确认删除。</>
+                : <>该 session 无贡献人，请输入任意内容确认删除。</>
+              }
+            </p>
+            <input
+              className={`delete-confirm-input${deleteConfirm.error ? " delete-confirm-input--error" : ""}`}
+              type="text"
+              placeholder="输入姓名..."
+              value={deleteConfirm.nameInput}
+              autoFocus
+              onChange={e => setDeleteConfirm(prev => ({ ...prev, nameInput: e.target.value, error: false }))}
+              onKeyDown={e => { if (e.key === "Enter") confirmDeleteSession(); if (e.key === "Escape") setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false }); }}
+            />
+            {deleteConfirm.error && (
+              <p className="delete-confirm-error">姓名不匹配，无法删除</p>
+            )}
+            <div className="delete-confirm-actions">
+              <button className="delete-confirm-cancel" onClick={() => setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false })}>取消</button>
+              <button className="delete-confirm-submit" onClick={confirmDeleteSession}>确认删除</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

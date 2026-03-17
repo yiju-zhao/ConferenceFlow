@@ -307,6 +307,7 @@ export default function App() {
   const [activeUploadMember, setActiveUploadMember] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportDates, setExportDates] = useState(new Set());
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [viewMode, setViewMode] = useState("table"); // "table" | "calendar"
 
   // Auth
@@ -505,6 +506,19 @@ export default function App() {
     const att = new Set(session.attendees);
     if (att.has(memberId)) att.delete(memberId); else att.add(memberId);
     await setDoc(doc(db, "sessions", code), { ...session, attendees: Array.from(att) }, { merge: true });
+  };
+
+  const emptySessions = useMemo(
+    () => Object.values(sessions).filter(s => s.attendees.size === 0),
+    [sessions]
+  );
+
+  const cleanupEmptySessions = async () => {
+    if (!user) return;
+    await Promise.all(
+      emptySessions.map(s => deleteDoc(doc(db, "sessions", s.code)))
+    );
+    setShowCleanupConfirm(false);
   };
 
   const sortedSessions = useMemo(
@@ -800,6 +814,43 @@ export default function App() {
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {emptySessions.length > 0 && !showCleanupConfirm && (
+                <button
+                  onClick={() => setShowCleanupConfirm(true)}
+                  title="删除所有无人参与的 session"
+                  className="font-mono"
+                  style={{
+                    fontSize: 11, height: 28, padding: "0 8px", borderRadius: 6,
+                    border: "1px solid var(--border)", cursor: "pointer",
+                    background: "transparent", color: "var(--text-dim)",
+                  }}
+                >
+                  清理 · {emptySessions.length}
+                </button>
+              )}
+              {showCleanupConfirm && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                    删除 {emptySessions.length} 个无人 session？
+                  </span>
+                  <button
+                    onClick={cleanupEmptySessions}
+                    style={{
+                      fontSize: 11, height: 28, padding: "0 8px", borderRadius: 6,
+                      border: "none", cursor: "pointer",
+                      background: "#dc2626", color: "#fff",
+                    }}
+                  >确认</button>
+                  <button
+                    onClick={() => setShowCleanupConfirm(false)}
+                    style={{
+                      fontSize: 11, height: 28, padding: "0 8px", borderRadius: 6,
+                      border: "1px solid var(--border)", cursor: "pointer",
+                      background: "transparent", color: "var(--text-dim)",
+                    }}
+                  >取消</button>
+                </div>
+              )}
               <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
                 {sortedSessions.length} sessions
               </span>
