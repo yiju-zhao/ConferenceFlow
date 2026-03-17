@@ -902,9 +902,15 @@ ${clone.outerHTML}
           .report-field-label    { font-size: 13px !important; }
         `;
 
-        const inlinedBody = juice.inlineContent(clone.outerHTML, cssText + emailOverrides, {
+        // juice.inlineContent returns a full document (<html><head><body>…</body></html>).
+        // Extract only the <body> content to avoid double-nesting, which breaks
+        // fragment (#anchor) navigation in the exported file.
+        const juicedDoc = juice.inlineContent(clone.outerHTML, cssText + emailOverrides, {
           preserveMediaQueries: false,
         });
+        const bodyMatch = juicedDoc.match(/<body[^>]*>([\s\S]*?)<\/body>/is);
+        const inlinedBody = bodyMatch ? bodyMatch[1].trim() : juicedDoc;
+
         const html = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -924,12 +930,33 @@ ${inlinedBody}
       } else if (format === 'markdown') {
         const { default: TurndownService } = await import('turndown');
         const { gfm } = await import('turndown-plugin-gfm');
+
+        // Inject <a id="..."> before each session so TOC links have a target.
+        // turndown drops id attributes on divs; raw HTML anchors are preserved
+        // and work in Obsidian, GitHub Markdown, and most Markdown viewers.
+        clone.querySelectorAll("[id^='session-']").forEach(el => {
+          const anchor = document.createElement('a');
+          anchor.id = el.id;
+          el.insertBefore(anchor, el.firstChild);
+        });
+
         const td = new TurndownService({
           headingStyle: 'atx',
           codeBlockStyle: 'fenced',
           bulletListMarker: '-',
         });
         td.use(gfm);
+
+        // Preserve <a id="..."> anchor tags as raw HTML (turndown drops them by default)
+        td.addRule('session-anchor', {
+          filter: (node) =>
+            node.nodeName === 'A' &&
+            !!node.getAttribute('id') &&
+            !node.getAttribute('href'),
+          replacement: (_content, node) =>
+            `<a id="${node.getAttribute('id')}"></a>`,
+        });
+
         const frontmatter = `---\ntitle: GTC 2026 日报 ${date}\ndate: ${date}\n---\n\n`;
         const md = frontmatter + td.turndown(clone.outerHTML);
         blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
