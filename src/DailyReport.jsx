@@ -891,6 +891,7 @@ ${clone.outerHTML}
             border-radius: 0 !important;
             box-shadow: none !important;
             margin-bottom: 20px !important;
+            padding-left: 12px !important;
           }
           .report-session-header { border-bottom: none !important; }
           .report-session-meta   { border-bottom: none !important; }
@@ -903,6 +904,10 @@ ${clone.outerHTML}
           .report-contributors-names { font-size: 13px !important; }
           .report-section-title  { font-size: 14px !important; }
           .report-field-label    { font-size: 13px !important; }
+          img { max-width: 100% !important; height: auto !important; }
+          .site-photo-img { width: 100% !important; height: auto !important; }
+          .site-photo-img-wrapper { height: auto !important; overflow: visible !important; }
+          .session-illustration { width: 100% !important; height: auto !important; max-height: none !important; }
         `;
 
         // juice.inlineContent returns a full document (<html><head><body>…</body></html>).
@@ -934,12 +939,13 @@ ${inlinedBody}
         const { default: TurndownService } = await import('turndown');
         const { gfm } = await import('turndown-plugin-gfm');
 
-        // Inject <a id="..."> before each session so TOC links have a target.
-        // turndown drops id attributes on divs; raw HTML anchors are preserved
-        // and work in Obsidian, GitHub Markdown, and most Markdown viewers.
-        clone.querySelectorAll("[id^='session-']").forEach(el => {
+        // Inject <a id="..."> before every element with an id so all TOC links
+        // (#session-*, #section-*, #topic-*) have targets. turndown drops id
+        // attributes on divs; raw HTML anchors are preserved in most Markdown viewers.
+        clone.querySelectorAll("[id]").forEach(el => {
           const anchor = document.createElement('a');
           anchor.id = el.id;
+          el.removeAttribute('id'); // prevent duplicate ids in output
           el.insertBefore(anchor, el.firstChild);
         });
 
