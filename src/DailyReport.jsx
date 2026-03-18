@@ -888,6 +888,15 @@ ${clone.outerHTML}
           el.classList.remove("print-only");
         });
 
+        // Gmail strips id attributes, breaking in-page TOC anchor navigation.
+        // Fix: insert a named <a> anchor before each session element — Gmail
+        // preserves name attributes on <a> tags, so href="#session-X" still works.
+        clone.querySelectorAll('[id^="session-"]').forEach(el => {
+          const anchor = document.createElement('a');
+          anchor.setAttribute('name', el.id);
+          el.parentNode.insertBefore(anchor, el);
+        });
+
         const cssText = extractAllCSS(true); // skip @media print for email
 
         // Email-specific overrides: larger fonts + remove decorative gray borders.
