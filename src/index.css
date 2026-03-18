@@ -509,7 +509,7 @@ input[type="checkbox"].gtc-check:checked::after {
 /* ── Header: TOC + Summary ─────────────────────── */
 .report-header {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1.618fr;   /* golden ratio: TOC narrow, insights wide */
   gap: 28px;
   padding: 22px 40px 18px;
   border-bottom: 1px solid #EBEBEB;
