@@ -15,7 +15,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { auth, db, storage } from "./firebase";
-import { ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
 import catalogData from "../data/gtc-2026-sessions-detailed.json";
 const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
 const topicSlug = (t) =>
@@ -1318,10 +1318,27 @@ ${clone.outerHTML}
 </body>
 </html>`;
 
-      const storageRef = ref(storage, `published-reports/${reportId}.html`);
+      const uuid = crypto.randomUUID();
+      const timestamp = Date.now();
+      const safeTitle = (reportData?.title || '')
+        .replace(/[^a-zA-Z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 30) || 'report';
+      const fileId = `${timestamp}-${safeTitle}-${date}-${uuid}`;
+      const storageRef = ref(storage, `published-reports/${date}/${fileId}.html`);
       await uploadString(storageRef, html, 'raw', { contentType: 'text/html; charset=utf-8' });
 
-      const url = `${window.location.origin}/api/view/${reportId}`;
+      // Prune: keep only the latest 100 published reports for this date
+      const dirRef = ref(storage, `published-reports/${date}`);
+      const { items } = await listAll(dirRef);
+      if (items.length > 100) {
+        const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+        const toDelete = sorted.slice(0, items.length - 100);
+        await Promise.all(toDelete.map(item => deleteObject(item)));
+      }
+
+      const url = `${window.location.origin}/view/${date}/${fileId}`;
       setShareUrl(url);
     } catch (err) {
       console.error("[Publish] Failed:", err.message);
