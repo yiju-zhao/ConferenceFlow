@@ -1642,39 +1642,52 @@ ${inlinedBody}
         <div id="section-site-photos" className="report-site-photos">
           <h2 className="report-section-title" style={{ marginTop: 32 }}>现场记录</h2>
           <div className="site-photos-grid">
-            {(reportData?.sitePhotos || []).map((photo, idx) => (
-              <div key={idx} className="site-photo-card">
-                <div className="site-photo-img-wrapper">
-                  <img src={photo.image} alt={`现场记录 ${idx + 1}`} className="site-photo-img" />
-                  <button
-                    className="site-photo-delete-btn no-print"
-                    onClick={() => handleSitePhotoDelete(idx)}
-                    title="删除图片"
-                  >×</button>
+            {[0, 1].map(col => {
+              const photos = reportData?.sitePhotos || [];
+              const addInThisCol = photos.length % 2 === col;
+              return (
+                <div key={col} className="site-photos-col">
+                  {photos
+                    .map((photo, idx) => ({ photo, idx }))
+                    .filter(({ idx }) => idx % 2 === col)
+                    .map(({ photo, idx }) => (
+                      <div key={idx} className="site-photo-card">
+                        <div className="site-photo-img-wrapper">
+                          <img src={photo.image} alt={`现场记录 ${idx + 1}`} className="site-photo-img" />
+                          <button
+                            className="site-photo-delete-btn no-print"
+                            onClick={() => handleSitePhotoDelete(idx)}
+                            title="删除图片"
+                          >×</button>
+                        </div>
+                        <textarea
+                          className="site-photo-caption"
+                          placeholder="添加图片说明..."
+                          defaultValue={photo.caption}
+                          onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
+                          onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                          ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                        />
+                        <input
+                          className="site-photo-source"
+                          type="text"
+                          placeholder="来源..."
+                          defaultValue={photo.source || ""}
+                          onBlur={e => saveSitePhotoSource(idx, e.target.value)}
+                        />
+                      </div>
+                    ))}
+                  {addInThisCol && (
+                    <div className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
+                      <div className="site-photo-add-inner">
+                        <span className="site-photo-add-icon">+</span>
+                        <span className="site-photo-add-label">添加图片</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <textarea
-                  className="site-photo-caption"
-                  placeholder="添加图片说明..."
-                  defaultValue={photo.caption}
-                  onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
-                  onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
-                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
-                />
-                <input
-                  className="site-photo-source"
-                  type="text"
-                  placeholder="来源..."
-                  defaultValue={photo.source || ""}
-                  onBlur={e => saveSitePhotoSource(idx, e.target.value)}
-                />
-              </div>
-            ))}
-            <div className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
-              <div className="site-photo-add-inner">
-                <span className="site-photo-add-icon">+</span>
-                <span className="site-photo-add-label">添加图片</span>
-              </div>
-            </div>
+              );
+            })}
           </div>
           <input
             type="file"
