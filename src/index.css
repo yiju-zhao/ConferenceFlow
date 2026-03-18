@@ -757,6 +757,23 @@ input[type="checkbox"].gtc-check:checked::after {
   color: #BBBBBB;
 }
 
+.site-photo-source {
+  padding: 0 10px 8px;
+  font-size: 11px;
+  color: #888;
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.site-photo-source::placeholder {
+  color: #BBBBBB;
+}
+
 .site-photo-add-card {
   border: 2px dashed #DDDDDD;
   border-radius: 8px;
@@ -903,6 +920,7 @@ input[type="checkbox"].gtc-check:checked::after {
   a { color: inherit !important; text-decoration: none !important; }
   .site-photos-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .site-photo-caption { border: none !important; }
+  .site-photo-source { border: none !important; }
 }
 
 /* ── Speaker editor ─────────────────────────────── */
