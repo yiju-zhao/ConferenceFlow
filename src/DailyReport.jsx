@@ -401,6 +401,8 @@ export default function DailyReport() {
   const [dragOverTopic, setDragOverTopic] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [shareUrl, setShareUrl] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState(null);
@@ -412,6 +414,9 @@ export default function DailyReport() {
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
   const [tocVisible, setTocVisible] = useState(true);
+  const [showOnsiteSubtitle, setShowOnsiteSubtitle] = useState(false);
+  const [showReflectionsSubtitle, setShowReflectionsSubtitle] = useState(false);
+  const [showRumorsSubtitle, setShowRumorsSubtitle] = useState(false);
 
   useEffect(() => {
     const el = document.getElementById('report-toc');
@@ -440,6 +445,14 @@ export default function DailyReport() {
     signInAnonymously(auth).catch(console.error);
     return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
+
+  // Initialize subtitle visibility from loaded data
+  useEffect(() => {
+    if (!reportData) return;
+    if (reportData.onsiteInfoSubtitle) setShowOnsiteSubtitle(true);
+    if (reportData.reflectionsSubtitle) setShowReflectionsSubtitle(true);
+    if (reportData.rumorsSubtitle) setShowRumorsSubtitle(true);
+  }, [reportData?.onsiteInfoSubtitle, reportData?.reflectionsSubtitle, reportData?.rumorsSubtitle]);
 
   // Close export dropdown on outside click or Escape
   useEffect(() => {
@@ -1203,6 +1216,113 @@ ${inlinedBody}
     }
   };
 
+  // PDF export: fetch from server-side Puppeteer API, download result
+  const handleExportPdf = async () => {
+    setExporting(true);
+    setShowExportMenu(false);
+    try {
+      const filename = `GTC2026_日报_${date}.pdf`;
+      const url = `/api/pdf?url=${encodeURIComponent(window.location.href)}&filename=${encodeURIComponent(filename)}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`服务器返回 ${response.status}`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error("[PDF Export] Failed:", err.message);
+      alert(`PDF 导出失败：${err.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // Publish: generate full HTML, upload to Firebase Storage, return share URL
+  const handlePublish = async () => {
+    setPublishing(true);
+    setShowExportMenu(false);
+
+    const prevCollapsed = new Set(collapsedSessions);
+    setCollapsedSessions(new Set());
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    try {
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
+
+      const clone = container.cloneNode(true);
+      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn").forEach(el => el.remove());
+      clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
+
+      // Convert form fields to static text
+      const origCaptions = container.querySelectorAll('.site-photo-caption');
+      const clonedCaptions = clone.querySelectorAll('.site-photo-caption');
+      origCaptions.forEach((orig, i) => {
+        const cloned = clonedCaptions[i];
+        if (!cloned) return;
+        const p = document.createElement('p');
+        p.className = cloned.className;
+        p.textContent = orig.value;
+        cloned.parentNode.replaceChild(p, cloned);
+      });
+
+      const origSources = container.querySelectorAll('.site-photo-source');
+      const clonedSources = clone.querySelectorAll('.site-photo-source');
+      origSources.forEach((orig, i) => {
+        const cloned = clonedSources[i];
+        if (!cloned) return;
+        const p = document.createElement('p');
+        p.className = cloned.className;
+        p.textContent = orig.value;
+        cloned.parentNode.replaceChild(p, cloned);
+      });
+
+      const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
+        .map(el => {
+          if (el.tagName === "LINK") {
+            const href = new URL(el.getAttribute("href"), window.location.href).href;
+            return `<link rel="stylesheet" href="${href}">`;
+          }
+          return el.outerHTML;
+        })
+        .join("\n");
+
+      const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTC2026 日报 ${date}</title>
+${styleTagsHtml}
+<style>
+  body { background: #fff; color: #111; }
+  .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+</style>
+</head>
+<body>
+${clone.outerHTML}
+</body>
+</html>`;
+
+      const storageRef = ref(storage, `published-reports/${reportId}.html`);
+      await uploadString(storageRef, html, 'raw', { contentType: 'text/html; charset=utf-8' });
+
+      const url = `${window.location.origin}/api/view/${reportId}`;
+      setShareUrl(url);
+    } catch (err) {
+      console.error("[Publish] Failed:", err.message);
+      alert(`发布失败：${err.message}`);
+    } finally {
+      setCollapsedSessions(prevCollapsed);
+      setPublishing(false);
+    }
+  };
+
   // Toolbar — execCommand has no modern replacement for contenteditable rich-text
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   const execCmd = (cmd, val) => /** @type {any} */ (document).execCommand(cmd, false, val ?? undefined);
@@ -1318,18 +1438,18 @@ ${inlinedBody}
                 aria-haspopup="true"
                 aria-expanded={showExportMenu}
               >
-                {exporting ? "生成中..." : "导出文件 ▾"}
+                {exporting ? "生成中..." : "导出日报 ▾"}
               </button>
               {showExportMenu && (
                 <div className="dropdown-panel export-dropdown-menu">
-                  <button className="export-menu-item" onClick={() => handleExport('html')}>
-                    HTML — 离线查看
-                  </button>
-                  <button className="export-menu-item" onClick={() => handleExport('email')}>
-                    HTML Email — 邮件发送
+                  <button className="export-menu-item" onClick={handleExportPdf}>
+                    PDF — 导出文件
                   </button>
                   <button className="export-menu-item" onClick={() => handleExport('markdown')}>
                     Markdown — Notion/文档
+                  </button>
+                  <button className="export-menu-item" onClick={handlePublish}>
+                    {publishing ? "发布中..." : "发布日报 — 获取链接"}
                   </button>
                 </div>
               )}
@@ -1338,6 +1458,15 @@ ${inlinedBody}
         </div>
 
       </div>
+
+      {/* ── Share URL Banner ─────────────────────────────────────── */}
+      {shareUrl && (
+        <div className="share-url-banner no-print">
+          <span>分享链接：{shareUrl}</span>
+          <button onClick={() => navigator.clipboard.writeText(shareUrl)}>复制链接</button>
+          <button onClick={() => setShareUrl(null)}>×</button>
+        </div>
+      )}
 
       {/* ── Report Content ───────────────────────────────────────── */}
       {/* data-pdf-ready is read by the Puppeteer server to know data is loaded */}
@@ -1361,6 +1490,7 @@ ${inlinedBody}
           {/* TOC – organized by topic, drag-to-reorder */}
           <div className="report-toc" id="report-toc">
             <h2 className="report-section-title">目录</h2>
+            <p className="report-toc-hint">点击条目跳转</p>
             <ul className="report-toc-list">
               <li className="report-toc-section-item">
                 <a href="#section-related" className="report-toc-link report-toc-section-link">
@@ -1538,9 +1668,11 @@ ${inlinedBody}
             <div key={topic}>
               {/* Topic section header */}
               <div className="report-topic-divider" id={`topic-${topicSlug(topic)}`}>
-                <span className="report-topic-bar" />
+                <div className="report-topic-divider-line">
+                  <span className="report-topic-bar" />
+                  <span className="report-topic-line" />
+                </div>
                 <span className="report-topic-name">{topic}</span>
-                <span className="report-topic-line" />
               </div>
 
               {(topicsMap[topic] || []).map(session => {
@@ -1678,21 +1810,60 @@ ${inlinedBody}
 
         {/* Onsite Section */}
         <div className="report-onsite">
-          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>现场情报</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 id="section-onsite-info" className="report-section-title" style={{ flex: 1, marginTop: 32 }}>现场情报</h2>
+            <button className="subtitle-toggle-btn" title="添加子标题"
+              onClick={() => setShowOnsiteSubtitle(v => !v)}>+</button>
+          </div>
+          {(showOnsiteSubtitle || reportData?.onsiteInfoSubtitle) && (
+            <EditableField
+              value={reportData?.onsiteInfoSubtitle}
+              onSave={html => saveField("onsiteInfoSubtitle", html)}
+              placeholder="添加子标题..."
+              minHeight={28}
+              className="report-section-subtitle"
+            />
+          )}
           <EditableField
             value={reportData?.onsiteInfo}
             onSave={html => saveField("onsiteInfo", html)}
             placeholder="记录现场见闻、展台亮点、互动环节等..."
             minHeight={80}
           />
-          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>圈内声音</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 id="section-reflections" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>圈内声音</h2>
+            <button className="subtitle-toggle-btn" title="添加子标题"
+              onClick={() => setShowReflectionsSubtitle(v => !v)}>+</button>
+          </div>
+          {(showReflectionsSubtitle || reportData?.reflectionsSubtitle) && (
+            <EditableField
+              value={reportData?.reflectionsSubtitle}
+              onSave={html => saveField("reflectionsSubtitle", html)}
+              placeholder="添加子标题..."
+              minHeight={28}
+              className="report-section-subtitle"
+            />
+          )}
           <EditableField
             value={reportData?.reflections}
             onSave={html => saveField("reflections", html)}
             placeholder="记录个人感悟与思考..."
             minHeight={80}
           />
-          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>深度研判</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 id="section-rumors" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>深度研判</h2>
+            <button className="subtitle-toggle-btn" title="添加子标题"
+              onClick={() => setShowRumorsSubtitle(v => !v)}>+</button>
+          </div>
+          {(showRumorsSubtitle || reportData?.rumorsSubtitle) && (
+            <EditableField
+              value={reportData?.rumorsSubtitle}
+              onSave={html => saveField("rumorsSubtitle", html)}
+              placeholder="添加子标题..."
+              minHeight={28}
+              className="report-section-subtitle"
+            />
+          )}
           <EditableField
             value={reportData?.rumors}
             onSave={html => saveField("rumors", html)}
