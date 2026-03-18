@@ -401,6 +401,7 @@ export default function DailyReport() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
+  const [urlCopied, setUrlCopied] = useState(false);
   const [snapshots, setSnapshots] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [viewingSnapshot, setViewingSnapshot] = useState(null);
@@ -1427,19 +1428,23 @@ ${clone.outerHTML}
 
       {/* ── Share Modal ──────────────────────────────────────────── */}
       {shareUrl && (
-        <div className="share-modal-overlay" onClick={() => setShareUrl(null)}>
+        <div className="share-modal-overlay" onClick={() => { setShareUrl(null); setUrlCopied(false); }}>
           <div className="share-modal-card" onClick={e => e.stopPropagation()}>
             <div className="share-modal-header">
               <span className="share-modal-title">可分享的公开链接</span>
-              <button className="share-modal-close" onClick={() => setShareUrl(null)}>×</button>
+              <button className="share-modal-close" onClick={() => { setShareUrl(null); setUrlCopied(false); }}>×</button>
             </div>
             <div className="share-modal-url-row">
               <span className="share-modal-url">{shareUrl}</span>
               <button
-                className="share-modal-copy-btn"
-                onClick={() => navigator.clipboard.writeText(shareUrl)}
+                className={`share-modal-copy-btn${urlCopied ? " share-modal-copy-btn--copied" : ""}`}
+                onClick={() => {
+                  navigator.clipboard.writeText(shareUrl);
+                  setUrlCopied(true);
+                  setTimeout(() => setUrlCopied(false), 2000);
+                }}
               >
-                复制链接
+                {urlCopied ? "✓ 已复制" : "复制链接"}
               </button>
             </div>
             <p className="share-modal-hint">链接可公开访问，任何人均可查看。</p>
