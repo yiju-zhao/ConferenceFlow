@@ -627,23 +627,19 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* ── Topic Divider ─────────────────────────────── */
 .report-topic-divider {
-  margin: 28px 0 6px;
-}
-.report-topic-divider-line {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 6px;
+  margin: 24px 0 10px;
 }
 .report-topic-bar {
   width: 3px; height: 15px;
   background: #CF0A2C; border-radius: 2px; flex-shrink: 0;
 }
 .report-topic-name {
-  display: block;
-  font-size: 12px; font-weight: 700;
-  color: #CF0A2C; letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11.5px; font-weight: 700;
+  color: #CF0A2C; letter-spacing: 0.06em;
+  white-space: nowrap; text-transform: uppercase;
 }
 .report-topic-line {
   flex: 1; height: 1px; background: #EBEBEB;
