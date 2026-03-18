@@ -411,6 +411,19 @@ export default function DailyReport() {
   const [deleteConfirm, setDeleteConfirm] = useState({ code: null, contributorNames: [], nameInput: "", error: false });
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
+  const [tocVisible, setTocVisible] = React.useState(true);
+
+  React.useEffect(() => {
+    const el = document.getElementById('report-toc');
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setTocVisible(entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   const illustInputRefs = useRef({});
   const sessionDataRef = useRef({});
   const reportDataRef = useRef(null);
@@ -844,6 +857,30 @@ export default function DailyReport() {
       let blob, filename;
 
       if (format === 'html') {
+        // Convert site-photo form fields to static text so PDF renders them correctly.
+        // cloneNode(true) does not preserve .value; we read from the original container.
+        const origCaptions = container.querySelectorAll('.site-photo-caption');
+        const clonedCaptions = clone.querySelectorAll('.site-photo-caption');
+        origCaptions.forEach((orig, i) => {
+          const cloned = clonedCaptions[i];
+          if (!cloned) return;
+          const p = document.createElement('p');
+          p.className = cloned.className;
+          p.textContent = orig.value;
+          cloned.parentNode.replaceChild(p, cloned);
+        });
+
+        const origSources = container.querySelectorAll('.site-photo-source');
+        const clonedSources = clone.querySelectorAll('.site-photo-source');
+        origSources.forEach((orig, i) => {
+          const cloned = clonedSources[i];
+          if (!cloned) return;
+          const p = document.createElement('p');
+          p.className = cloned.className;
+          p.textContent = orig.value;
+          cloned.parentNode.replaceChild(p, cloned);
+        });
+
         // Collect stylesheets from the page (link tags + style tags)
         const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
           .map(el => {
@@ -895,6 +932,23 @@ ${clone.outerHTML}
           const anchor = document.createElement('a');
           anchor.setAttribute('name', el.id);
           el.parentNode.insertBefore(anchor, el);
+        });
+
+        // Named anchor for the TOC section (Gmail strips id= same reason)
+        const tocEl = clone.querySelector('#report-toc');
+        if (tocEl) {
+          const tocAnchor = document.createElement('a');
+          tocAnchor.setAttribute('name', 'report-toc');
+          tocEl.parentNode.insertBefore(tocAnchor, tocEl);
+        }
+
+        // Inject "↑ 返回目录" link at the bottom of each session card for email
+        clone.querySelectorAll('.report-session').forEach(sessionEl => {
+          const link = document.createElement('a');
+          link.setAttribute('href', '#report-toc');
+          link.textContent = '↑ 返回目录';
+          link.style.cssText = 'display:block;text-align:right;font-size:11px;color:#aaa;text-decoration:none;padding:6px 18px 10px;';
+          sessionEl.appendChild(link);
         });
 
         const cssText = extractAllCSS(true); // skip @media print for email
@@ -1304,8 +1358,8 @@ ${inlinedBody}
         {/* Header: TOC + Summary */}
         <div className="report-header">
 
-          {/* TOC – hierarchical section links */}
-          <div className="report-toc">
+          {/* TOC – organized by topic, drag-to-reorder */}
+          <div className="report-toc" id="report-toc">
             <h2 className="report-section-title">目录</h2>
             <ul className="report-toc-list">
               <li className="report-toc-section-item">
@@ -1715,6 +1769,11 @@ ${inlinedBody}
         </div>
 
       </div>
+
+      {/* Floating back-to-TOC button — only when TOC is scrolled out of view */}
+      {!tocVisible && (
+        <a href="#report-toc" className="toc-float-btn no-print">↑ 目录</a>
+      )}
 
       {/* Delete session — select session modal */}
       {showDeleteSelect && (
