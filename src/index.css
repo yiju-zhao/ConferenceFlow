@@ -1007,7 +1007,7 @@ input[type="checkbox"].gtc-check:checked::after {
 /* ── Illustration ───────────────────────────────── */
 .session-illustrations-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 8px;
   align-items: start;
 }
@@ -1016,7 +1016,7 @@ input[type="checkbox"].gtc-check:checked::after {
 
 .session-illustration {
   width: 100%;
-  object-fit: contain;
+  height: auto;
   border-radius: 4px;
   display: block;
 }
