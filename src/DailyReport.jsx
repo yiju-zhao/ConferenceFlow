@@ -887,20 +887,25 @@ ${clone.outerHTML}
 
         const cssText = extractAllCSS(true); // skip @media print for email
 
-        // Email-specific overrides: larger fonts + remove decorative gray borders
+        // Email-specific overrides: larger fonts + remove decorative gray borders.
+        // Outlook uses Word's rendering engine and ignores CSS border shorthand,
+        // so every side must be declared individually to reliably remove borders.
         const emailOverrides = `
           body { font-size: 15px; }
+          * {
+            border-top: none !important;
+            border-right: none !important;
+            border-bottom: none !important;
+            border-left: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+          }
           .report-session {
-            border: none !important;
             border-left: 3px solid #CF0A2C !important;
             border-radius: 0 !important;
-            box-shadow: none !important;
             margin-bottom: 20px !important;
             padding-left: 12px !important;
           }
-          .report-session-header { border-bottom: none !important; }
-          .report-session-meta   { border-bottom: none !important; }
-          .report-contributors-row { border-top: none !important; }
           .report-session-title  { font-size: 16px !important; }
           .report-session-code   { font-size: 12px !important; }
           .report-session-time   { font-size: 13px !important; }
