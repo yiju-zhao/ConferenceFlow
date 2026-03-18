@@ -1441,15 +1441,25 @@ ${clone.outerHTML}
                 {exporting ? "生成中..." : "导出日报 ▾"}
               </button>
               {showExportMenu && (
-                <div className="dropdown-panel export-dropdown-menu">
+                <div className="export-dropdown-menu">
                   <button className="export-menu-item" onClick={handleExportPdf}>
-                    PDF — 导出文件
+                    <span className="export-menu-icon">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="9" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M7 1v3.5A.5.5 0 007.5 5H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M5 9h4M5 11h2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                    </span>
+                    <span className="export-menu-label">导出 PDF</span>
                   </button>
                   <button className="export-menu-item" onClick={() => handleExport('markdown')}>
-                    Markdown — Notion/文档
+                    <span className="export-menu-icon">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4 10V6l2 2 2-2v4M11 10V8.5M11 6.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </span>
+                    <span className="export-menu-label">导出 Markdown</span>
                   </button>
-                  <button className="export-menu-item" onClick={handlePublish}>
-                    {publishing ? "发布中..." : "发布日报 — 获取链接"}
+                  <div className="export-menu-divider" />
+                  <button className="export-menu-item export-menu-item--publish" onClick={handlePublish}>
+                    <span className="export-menu-icon">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M6 7l4-2M6 9l4 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                    </span>
+                    <span className="export-menu-label">{publishing ? "发布中..." : "发布日报"}</span>
                   </button>
                 </div>
               )}
