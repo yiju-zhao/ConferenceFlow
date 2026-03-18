@@ -390,7 +390,7 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
                     {s.title}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                    {s.date}{s.time ? ` · ${s.time}` : ""}
+                    {s.date}{s.time ? ` · ${s.time.replace(/\s*(PDT|PST|EST|EDT)\s*/i, "").trim()}` : ""}
                   </div>
                 </div>
                 {alreadyAdded ? (
@@ -673,13 +673,37 @@ export default function App() {
     if (!user) return;
     const info = SESSION_CATALOG.get(id);
     if (!info) return;
+
+    // Convert "Tuesday, March 17" → "2026-03-17"
+    const parseDate = (str) => {
+      const m = (str || "").match(/(\w+)\s+(\d+)/);
+      if (!m) return str || "";
+      const months = { January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12 };
+      const mo = months[m[1]] || 1;
+      return `2026-${String(mo).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`;
+    };
+
+    // Convert "9:00 a.m." / "1:00 p.m." → "09:00" / "13:00"
+    const parseTime = (str) => {
+      const s = (str || "").replace(/\s*(PDT|PST|EST|EDT|UTC)\s*$/i, "").trim();
+      const m = s.match(/(\d+):(\d+)\s*(a\.m\.|p\.m\.|am|pm)/i);
+      if (!m) return s;
+      let h = parseInt(m[1], 10);
+      const min = m[2];
+      const ampm = m[3].toLowerCase().replace(/\./g, "");
+      if (ampm === "pm" && h !== 12) h += 12;
+      if (ampm === "am" && h === 12) h = 0;
+      return `${String(h).padStart(2,"0")}:${min}`;
+    };
+
     const timeParts = (info.time || "").split(" - ");
-    const start = timeParts[0] || "";
-    const end = timeParts[1] || "";
+    const start = parseTime(timeParts[0]);
+    const end = parseTime(timeParts[1]);
+
     await setDoc(doc(db, "sessions", id), {
       code: id,
       title: info.title || "",
-      date: info.date || "",
+      date: parseDate(info.date),
       start,
       end,
       room: info.location || "",
