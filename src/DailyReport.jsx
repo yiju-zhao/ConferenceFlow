@@ -888,6 +888,7 @@ ${clone.outerHTML}
             border-radius: 0 !important;
             box-shadow: none !important;
             margin-bottom: 20px !important;
+            padding-left: 12px !important;
           }
           .report-session-header { border-bottom: none !important; }
           .report-session-meta   { border-bottom: none !important; }
@@ -900,6 +901,10 @@ ${clone.outerHTML}
           .report-contributors-names { font-size: 13px !important; }
           .report-section-title  { font-size: 14px !important; }
           .report-field-label    { font-size: 13px !important; }
+          img { max-width: 100% !important; height: auto !important; }
+          .site-photo-img { width: 100% !important; height: auto !important; }
+          .site-photo-img-wrapper { height: auto !important; overflow: visible !important; }
+          .session-illustration { width: 100% !important; height: auto !important; max-height: none !important; }
         `;
 
         // juice.inlineContent returns a full document (<html><head><body>…</body></html>).
