@@ -230,30 +230,54 @@ body {
   box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
 }
 
-/* ── Export dropdown menu items ─────────────── */
+/* ── Export dropdown menu ───────────────────── */
 .export-dropdown-menu {
-  width: 200px;
-  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 220px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #E4E4E4;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.11), 0 2px 6px rgba(0,0,0,0.06);
+  z-index: 200;
 }
 .export-menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
   text-align: left;
-  padding: 8px 12px;
+  padding: 8px 10px;
   background: none;
   border: none;
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 13px;
+  border-radius: 7px;
+  color: #2A2A2A;
+  font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.12s;
 }
-.export-menu-item + .export-menu-item {
-  margin-top: 2px;
+.export-menu-item:hover { background: #F5F5F5; }
+.export-menu-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  background: #F2F2F2; border-radius: 7px;
+  color: #555; flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
 }
-.export-menu-item:hover {
-  background: var(--surface);
+.export-menu-item:hover .export-menu-icon {
+  background: #FDEAEA; color: #CF0A2C;
 }
+.export-menu-label {
+  font-size: 13px; font-weight: 600; color: #1A1A1A;
+}
+.export-menu-divider {
+  height: 1px; background: #EFEFEF; margin: 5px 4px;
+}
+.export-menu-item--publish .export-menu-label { color: #CF0A2C; }
+.export-menu-item--publish .export-menu-icon { background: #FDEAEA; color: #CF0A2C; }
+.export-menu-item--publish:hover .export-menu-icon { background: #FBCFCF; }
 
 /* ── Code badge ──────────────────────────────── */
 .code-badge {
