@@ -446,6 +446,21 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .report-export-btn:hover { background: #B00825; }
 
+/* ── Share URL Banner ─────────────────────────── */
+.share-url-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: #f0faf0; border: 1px solid #5cb85c; border-radius: 6px;
+  padding: 10px 16px; margin: 0 auto 12px; max-width: 960px;
+  font-size: 13px; color: #2d6a2d;
+}
+.share-url-banner span { flex: 1; word-break: break-all; }
+.share-url-banner button {
+  padding: 4px 12px; border-radius: 4px; border: 1px solid #5cb85c;
+  background: #fff; color: #2d6a2d; cursor: pointer; font-size: 12px;
+  white-space: nowrap;
+}
+.share-url-banner button:hover { background: #5cb85c; color: #fff; }
+
 /* ── Container ─────────────────────────────────── */
 .report-container {
   max-width: 920px;
@@ -477,7 +492,7 @@ input[type="checkbox"].gtc-check:checked::after {
   pointer-events: none;
 }
 .report-title-eyebrow {
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.5);
@@ -487,7 +502,7 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-title-bar h1 {
   margin: 0;
   color: #fff;
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: 0.01em;
   position: relative; z-index: 1;
@@ -495,7 +510,7 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* ── Section Titles ────────────────────────────── */
 .report-section-title {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #1A1A1A;
   margin: 0 0 14px;
@@ -534,15 +549,32 @@ input[type="checkbox"].gtc-check:checked::after {
   font-size: 11px;
 }
 .report-toc-link {
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
   color: #444;
   font-size: 12.5px;
   line-height: 1.55;
   display: block;
   flex: 1;
-  transition: color 0.12s;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: color 0.12s, text-decoration-color 0.12s, background 0.12s;
 }
-.report-toc-link:hover { color: #CF0A2C; }
+.report-toc-link:hover {
+  color: #CF0A2C;
+  text-decoration-color: rgba(207,10,44,0.35);
+  background: rgba(207,10,44,0.05);
+}
+.report-toc-section-link::after {
+  content: " →";
+  opacity: 0;
+  font-size: 10px;
+  transition: opacity 0.12s;
+}
+.report-toc-section-link:hover::after { opacity: 1; }
 .report-toc-title { word-break: break-word; }
 .report-toc-hint {
   font-size: 10px; color: #C0C0C0;
@@ -561,7 +593,7 @@ input[type="checkbox"].gtc-check:checked::after {
   transition: border-color 0.12s, background 0.12s;
   word-break: break-word;
 }
-.report-editable * { font-size: inherit; }
+.report-editable * { font-size: inherit !important; }
 .report-editable:hover { border-color: #E2E2E2; background: #FAFAFA; }
 .report-editable:focus { border-color: rgba(207,10,44,0.3); background: #fff; }
 .report-editable:empty::before {
@@ -584,19 +616,23 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* ── Topic Divider ─────────────────────────────── */
 .report-topic-divider {
+  margin: 28px 0 6px;
+}
+.report-topic-divider-line {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 24px 0 10px;
+  margin-bottom: 6px;
 }
 .report-topic-bar {
   width: 3px; height: 15px;
   background: #CF0A2C; border-radius: 2px; flex-shrink: 0;
 }
 .report-topic-name {
-  font-size: 11.5px; font-weight: 700;
-  color: #CF0A2C; letter-spacing: 0.06em;
-  white-space: nowrap; text-transform: uppercase;
+  display: block;
+  font-size: 12px; font-weight: 700;
+  color: #CF0A2C; letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .report-topic-line {
   flex: 1; height: 1px; background: #EBEBEB;
@@ -1112,7 +1148,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .report-toc-section-link {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
 }
 .report-toc-section-link .report-toc-title {
   color: #1A1A1A;
