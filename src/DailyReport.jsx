@@ -397,8 +397,6 @@ export default function DailyReport() {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [dragTopic, setDragTopic] = useState(null);
-  const [dragOverTopic, setDragOverTopic] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -1131,32 +1129,6 @@ ${inlinedBody}
     }
   };
 
-  // Topic drag-and-drop
-  const handleTopicDragStart = (e, topic) => {
-    setDragTopic(topic);
-    e.dataTransfer.effectAllowed = "move";
-  };
-  const handleTopicDragOver = (e, topic) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (dragOverTopic !== topic) setDragOverTopic(topic);
-  };
-  const handleTopicDrop = useCallback((e, targetTopic) => {
-    e.preventDefault();
-    if (!dragTopic || dragTopic === targetTopic) {
-      setDragTopic(null); setDragOverTopic(null); return;
-    }
-    const newOrder = [...orderedTopics];
-    const fromIdx = newOrder.indexOf(dragTopic);
-    const toIdx = newOrder.indexOf(targetTopic);
-    newOrder.splice(fromIdx, 1);
-    newOrder.splice(toIdx, 0, dragTopic);
-    setDragTopic(null); setDragOverTopic(null);
-    if (user) {
-      setDoc(doc(db, "dailyReports", reportId), { topicOrder: newOrder }, { merge: true }).catch(console.error);
-    }
-  }, [dragTopic, orderedTopics, user, reportId]);
-  const handleTopicDragEnd = () => { setDragTopic(null); setDragOverTopic(null); };
 
   // Collapse init: sessions with content start collapsed
   useEffect(() => {
@@ -1216,28 +1188,65 @@ ${inlinedBody}
     }
   };
 
-  // PDF export: fetch from server-side Puppeteer API, download result
+  // PDF export: client-side html2pdf.js (no server needed)
   const handleExportPdf = async () => {
     setExporting(true);
     setShowExportMenu(false);
+
+    const prevCollapsed = new Set(collapsedSessions);
+    setCollapsedSessions(new Set());
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     try {
-      const filename = `GTC2026_日报_${date}.pdf`;
-      const url = `/api/pdf?url=${encodeURIComponent(window.location.href)}&filename=${encodeURIComponent(filename)}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`服务器返回 ${response.status}`);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
+
+      const clone = container.cloneNode(true);
+      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn")
+        .forEach(el => el.remove());
+      clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
+
+      // Convert form fields to static text (cloneNode doesn't preserve .value)
+      const origCaptions = container.querySelectorAll('.site-photo-caption');
+      const clonedCaptions = clone.querySelectorAll('.site-photo-caption');
+      origCaptions.forEach((orig, i) => {
+        const cloned = clonedCaptions[i]; if (!cloned) return;
+        const p = document.createElement('p');
+        p.className = cloned.className; p.textContent = orig.value;
+        cloned.parentNode.replaceChild(p, cloned);
+      });
+      const origSources = container.querySelectorAll('.site-photo-source');
+      const clonedSources = clone.querySelectorAll('.site-photo-source');
+      origSources.forEach((orig, i) => {
+        const cloned = clonedSources[i]; if (!cloned) return;
+        const p = document.createElement('p');
+        p.className = cloned.className; p.textContent = orig.value;
+        cloned.parentNode.replaceChild(p, cloned);
+      });
+
+      // Append clone off-screen so html2canvas can render it with styles applied
+      clone.style.cssText = "position:absolute;left:-9999px;top:0;width:900px;";
+      document.body.appendChild(clone);
+
+      const { default: html2pdf } = await import('html2pdf.js');
+      await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: `GTC2026_日报_${date}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css'] },
+        })
+        .from(clone)
+        .save();
     } catch (err) {
       console.error("[PDF Export] Failed:", err.message);
       alert(`PDF 导出失败：${err.message}`);
     } finally {
+      // Clean up off-screen clone if still in DOM
+      document.body.querySelectorAll('[style*="-9999px"]').forEach(el => el.remove());
+      setCollapsedSessions(prevCollapsed);
       setExporting(false);
     }
   };
