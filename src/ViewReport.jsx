@@ -10,7 +10,7 @@ export default function ViewReport() {
 
   useEffect(() => {
     const path = encodeURIComponent(`published-reports/${date}/${fileId}.html`);
-    fetch(`https://storage.googleapis.com/${BUCKET}/${path}`)
+    fetch(`https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${path}?alt=media`)
       .then(r => {
         if (!r.ok) throw new Error(`Report not found (${r.status})`);
         return r.text();
