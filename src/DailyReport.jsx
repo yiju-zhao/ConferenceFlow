@@ -891,7 +891,7 @@ ${clone.outerHTML}
         // Outlook uses Word's rendering engine and ignores CSS border shorthand,
         // so every side must be declared individually to reliably remove borders.
         const emailOverrides = `
-          body { font-size: 15px; }
+          body { font-size: 17px; }
           * {
             border-top: none !important;
             border-right: none !important;
