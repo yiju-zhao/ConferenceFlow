@@ -1098,6 +1098,7 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* TOC top-level section items */
 .report-toc-list > li.report-toc-section-item {
+  display: block;
   border-left: 2px solid transparent;
   margin-bottom: 8px;
   padding: 4px 0 4px 10px;

@@ -411,9 +411,9 @@ export default function DailyReport() {
   const [deleteConfirm, setDeleteConfirm] = useState({ code: null, contributorNames: [], nameInput: "", error: false });
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
-  const [tocVisible, setTocVisible] = React.useState(true);
+  const [tocVisible, setTocVisible] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const el = document.getElementById('report-toc');
     if (!el) return;
     const obs = new IntersectionObserver(
