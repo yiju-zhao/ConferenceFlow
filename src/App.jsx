@@ -442,7 +442,7 @@ export default function App() {
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [showAddSession, setShowAddSession] = useState(false);
   const [viewMode, setViewMode] = useState("table"); // "table" | "calendar"
-  const [collapsedDates, setCollapsedDates] = useState(new Set());
+  const [collapsedDates, setCollapsedDates] = useState(() => new Set());
   const toggleDateCollapse = (date) =>
     setCollapsedDates((prev) => {
       const next = new Set(prev);
@@ -736,6 +736,15 @@ export default function App() {
 
   useEffect(() => {
     setExportDates(new Set(groupedSessions.map((g) => g.date)));
+  }, [groupedSessions.length]);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const pastDates = groupedSessions
+      .map((g) => g.date)
+      .filter((d) => d !== "TBD" && d < today);
+    if (pastDates.length > 0)
+      setCollapsedDates((prev) => new Set([...prev, ...pastDates]));
   }, [groupedSessions.length]);
 
   const toggleExportDate = (date) =>
