@@ -16,6 +16,7 @@ import {
   LayoutList,
   CalendarRange,
   VideoOff,
+  Plus,
 } from "lucide-react";
 
 import catalogData from "../data/gtc-2026-sessions-detailed.json";
@@ -326,6 +327,134 @@ const NoRecordingBadge = () => (
   </span>
 );
 
+// ── AddSessionModal ────────────────────────────────────────────────────────────
+function AddSessionModal({ sessions, onAdd, onClose }) {
+  const [query, setQuery] = useState("");
+
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.trim().toUpperCase();
+    return catalogData
+      .filter(s => s.session_id.toUpperCase().includes(q) || s.title.toLowerCase().includes(query.trim().toLowerCase()))
+      .slice(0, 20);
+  }, [query]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: 600, maxWidth: "90vw", maxHeight: "80vh",
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>添加 Session</span>
+            <button
+              onClick={onClose}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1, padding: 2 }}
+            >×</button>
+          </div>
+          <input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="输入 Session ID 或标题搜索..."
+            style={{
+              width: "100%", boxSizing: "border-box",
+              fontSize: 13, padding: "8px 12px",
+              background: "var(--bg)", border: "1px solid var(--border)",
+              borderRadius: 8, color: "var(--text)", outline: "none",
+              fontFamily: "Outfit, sans-serif",
+            }}
+          />
+        </div>
+
+        {/* Results */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+          {!query.trim() ? (
+            <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+              输入 Session ID 或标题搜索
+            </div>
+          ) : results.length === 0 ? (
+            <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+              未找到匹配的 Session
+            </div>
+          ) : results.map(s => {
+            const alreadyAdded = !!sessions[s.session_id];
+            return (
+              <div
+                key={s.session_id}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "9px 20px",
+                  borderBottom: "1px solid var(--border-dim)",
+                }}
+              >
+                <span
+                  className="font-mono"
+                  style={{
+                    fontSize: 10, padding: "2px 7px", borderRadius: 5,
+                    background: "var(--accent-soft)", color: "var(--accent)",
+                    whiteSpace: "nowrap", flexShrink: 0,
+                  }}
+                >
+                  {s.session_id}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13, color: "var(--text)", fontWeight: 500,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {s.title}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                    {s.date}{s.time ? ` · ${s.time}` : ""}
+                  </div>
+                </div>
+                {alreadyAdded ? (
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: 10, padding: "2px 8px", borderRadius: 5,
+                      border: "1px solid var(--border)", color: "var(--text-dim)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    已加入
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => onAdd(s.session_id)}
+                    style={{
+                      fontSize: 11, padding: "3px 12px", borderRadius: 6,
+                      border: "none", cursor: "pointer",
+                      background: "var(--accent)", color: "#000", fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    添加
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const navigate = useNavigate();
@@ -340,6 +469,8 @@ export default function App() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportDates, setExportDates] = useState(new Set());
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [showAddSession, setShowAddSession] = useState(false);
+  const [addQuery, setAddQuery] = useState("");
   const [viewMode, setViewMode] = useState("table"); // "table" | "calendar"
   const [collapsedDates, setCollapsedDates] = useState(new Set());
   const toggleDateCollapse = (date) =>
@@ -566,6 +697,30 @@ export default function App() {
       emptySessions.map(s => deleteDoc(doc(db, "sessions", s.code)))
     );
     setShowCleanupConfirm(false);
+  };
+
+  const addSessionFromCatalog = async (id) => {
+    if (!user) return;
+    const info = SESSION_CATALOG.get(id);
+    if (!info) return;
+    const timeParts = (info.time || "").split(" - ");
+    const start = timeParts[0] || "";
+    const end = timeParts[1] || "";
+    await setDoc(doc(db, "sessions", id), {
+      code: id,
+      title: info.title || "",
+      date: info.date || "",
+      start,
+      end,
+      room: info.location || "",
+      mainTopic: "",
+      attendees: [],
+      url: info.url || "",
+      speakers: info.speakers || [],
+      format: info.format || "",
+      recording: info.recording || "",
+      session_type: info.session_type || "",
+    });
   };
 
   const sortedSessions = useMemo(
@@ -861,6 +1016,14 @@ export default function App() {
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                className="btn-ghost"
+                onClick={() => setShowAddSession(true)}
+                style={{ display: "flex", alignItems: "center", padding: "4px 10px", fontSize: 11, gap: 4 }}
+              >
+                <Plus size={13} />
+                添加 Session
+              </button>
               {emptySessions.length > 0 && !showCleanupConfirm && (
                 <button
                   onClick={() => setShowCleanupConfirm(true)}
@@ -1144,6 +1307,15 @@ export default function App() {
         </footer>
 
       </div>
+
+      {showAddSession && (
+        <AddSessionModal
+          sessions={sessions}
+          onAdd={async (id) => { await addSessionFromCatalog(id); }}
+          onClose={() => { setShowAddSession(false); setAddQuery(""); }}
+          user={user}
+        />
+      )}
     </div>
   );
 }
