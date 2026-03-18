@@ -684,11 +684,18 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 .site-photos-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
   gap: 16px;
   margin-top: 16px;
-  align-items: start;
+  align-items: flex-start;
+}
+
+.site-photos-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .site-photo-card {
