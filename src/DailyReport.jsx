@@ -1188,69 +1188,6 @@ ${inlinedBody}
     }
   };
 
-  // PDF export: client-side html2pdf.js (no server needed)
-  const handleExportPdf = async () => {
-    setExporting(true);
-    setShowExportMenu(false);
-
-    const prevCollapsed = new Set(collapsedSessions);
-    setCollapsedSessions(new Set());
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    try {
-      const container = reportContainerRef.current;
-      if (!container) throw new Error("Report container not found");
-
-      const clone = container.cloneNode(true);
-      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn")
-        .forEach(el => el.remove());
-      clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
-
-      // Convert form fields to static text (cloneNode doesn't preserve .value)
-      const origCaptions = container.querySelectorAll('.site-photo-caption');
-      const clonedCaptions = clone.querySelectorAll('.site-photo-caption');
-      origCaptions.forEach((orig, i) => {
-        const cloned = clonedCaptions[i]; if (!cloned) return;
-        const p = document.createElement('p');
-        p.className = cloned.className; p.textContent = orig.value;
-        cloned.parentNode.replaceChild(p, cloned);
-      });
-      const origSources = container.querySelectorAll('.site-photo-source');
-      const clonedSources = clone.querySelectorAll('.site-photo-source');
-      origSources.forEach((orig, i) => {
-        const cloned = clonedSources[i]; if (!cloned) return;
-        const p = document.createElement('p');
-        p.className = cloned.className; p.textContent = orig.value;
-        cloned.parentNode.replaceChild(p, cloned);
-      });
-
-      // Append clone off-screen so html2canvas can render it with styles applied
-      clone.style.cssText = "position:absolute;left:-9999px;top:0;width:900px;";
-      document.body.appendChild(clone);
-
-      const { default: html2pdf } = await import('html2pdf.js');
-      await html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: `GTC2026_日报_${date}.pdf`,
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css'] },
-        })
-        .from(clone)
-        .save();
-    } catch (err) {
-      console.error("[PDF Export] Failed:", err.message);
-      alert(`PDF 导出失败：${err.message}`);
-    } finally {
-      // Clean up off-screen clone if still in DOM
-      document.body.querySelectorAll('[style*="-9999px"]').forEach(el => el.remove());
-      setCollapsedSessions(prevCollapsed);
-      setExporting(false);
-    }
-  };
-
   // Publish: generate full HTML, upload to Firebase Storage, return share URL
   const handlePublish = async () => {
     setPublishing(true);
@@ -1266,7 +1203,13 @@ ${inlinedBody}
 
       const clone = container.cloneNode(true);
       clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn").forEach(el => el.remove());
-      clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
+      clone.querySelectorAll(".print-only").forEach(el => {
+        el.style.display = "block";
+        el.classList.remove("print-only");
+      });
+      clone.querySelectorAll("[contenteditable]").forEach(el => {
+        el.removeAttribute("contenteditable");
+      });
 
       // Convert form fields to static text
       const origCaptions = container.querySelectorAll('.site-photo-caption');
@@ -1461,12 +1404,6 @@ ${clone.outerHTML}
               </button>
               {showExportMenu && (
                 <div className="export-dropdown-menu">
-                  <button className="export-menu-item" onClick={handleExportPdf}>
-                    <span className="export-menu-icon">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="9" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M7 1v3.5A.5.5 0 007.5 5H11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/><path d="M5 9h4M5 11h2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                    </span>
-                    <span className="export-menu-label">导出 PDF</span>
-                  </button>
                   <button className="export-menu-item" onClick={() => handleExport('markdown')}>
                     <span className="export-menu-icon">
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4 10V6l2 2 2-2v4M11 10V8.5M11 6.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1478,7 +1415,7 @@ ${clone.outerHTML}
                     <span className="export-menu-icon">
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M6 7l4-2M6 9l4 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
                     </span>
-                    <span className="export-menu-label">{publishing ? "发布中..." : "发布日报"}</span>
+                    <span className="export-menu-label">{publishing ? "分享中..." : "分享日报"}</span>
                   </button>
                 </div>
               )}
@@ -1488,12 +1425,25 @@ ${clone.outerHTML}
 
       </div>
 
-      {/* ── Share URL Banner ─────────────────────────────────────── */}
+      {/* ── Share Modal ──────────────────────────────────────────── */}
       {shareUrl && (
-        <div className="share-url-banner no-print">
-          <span>分享链接：{shareUrl}</span>
-          <button onClick={() => navigator.clipboard.writeText(shareUrl)}>复制链接</button>
-          <button onClick={() => setShareUrl(null)}>×</button>
+        <div className="share-modal-overlay" onClick={() => setShareUrl(null)}>
+          <div className="share-modal-card" onClick={e => e.stopPropagation()}>
+            <div className="share-modal-header">
+              <span className="share-modal-title">可分享的公开链接</span>
+              <button className="share-modal-close" onClick={() => setShareUrl(null)}>×</button>
+            </div>
+            <div className="share-modal-url-row">
+              <span className="share-modal-url">{shareUrl}</span>
+              <button
+                className="share-modal-copy-btn"
+                onClick={() => navigator.clipboard.writeText(shareUrl)}
+              >
+                复制链接
+              </button>
+            </div>
+            <p className="share-modal-hint">链接可公开访问，任何人均可查看。</p>
+          </div>
         </div>
       )}
 

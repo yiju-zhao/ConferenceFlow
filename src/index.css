@@ -1369,3 +1369,32 @@ input[type="checkbox"].gtc-check:checked::after {
   transition: opacity 0.12s;
 }
 .delete-confirm-submit:hover { opacity: 0.88; }
+
+/* ── Share Modal ─────────────────────────────────────────────────── */
+.share-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.share-modal-card {
+  background: #fff; border-radius: 16px; padding: 28px 32px;
+  width: 480px; max-width: 90vw; box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+}
+.share-modal-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+}
+.share-modal-title { font-size: 20px; font-weight: 600; }
+.share-modal-close {
+  background: none; border: none; font-size: 22px; cursor: pointer; color: #666; line-height: 1;
+}
+.share-modal-url-row {
+  display: flex; align-items: center; gap: 10px;
+  background: #F0F4F8; border-radius: 10px; padding: 10px 16px; margin-bottom: 14px;
+}
+.share-modal-url {
+  flex: 1; font-size: 14px; color: #1a73e8; word-break: break-all; text-decoration: underline;
+}
+.share-modal-copy-btn {
+  background: #1a73e8; color: #fff; border: none; border-radius: 8px;
+  padding: 8px 18px; font-size: 14px; cursor: pointer; white-space: nowrap; font-weight: 500;
+}
+.share-modal-hint { font-size: 12px; color: #888; margin: 0; }
