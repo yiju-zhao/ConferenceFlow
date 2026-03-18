@@ -32,35 +32,6 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
-// ── TopicCell: inline editable topic field per session ───────────────────────
-function TopicCell({ session, user }) {
-  const [val, setVal] = useState(session.mainTopic || "");
-  const focused = useRef(false);
-  useEffect(() => {
-    if (!focused.current) setVal(session.mainTopic || "");
-  }, [session.mainTopic]);
-  return (
-    <input
-      value={val}
-      placeholder="分类..."
-      onFocus={() => { focused.current = true; }}
-      onBlur={() => {
-        focused.current = false;
-        if (user) {
-          setDoc(doc(db, "sessions", session.code), { mainTopic: val }, { merge: true }).catch(console.error);
-        }
-      }}
-      onChange={e => setVal(e.target.value)}
-      style={{
-        width: "100%", fontSize: 11, padding: "3px 7px",
-        background: "var(--surface)", border: "1px solid var(--border-dim)",
-        borderRadius: 5, color: "var(--text)", fontFamily: "Outfit, sans-serif",
-        outline: "none",
-      }}
-    />
-  );
-}
-
 // ── Member color palette (dark-theme tuned) ───────────────────────────────────
 const COLORS = [
   { hex: "#3DFFA4", bg: "rgba(61,255,164,0.10)",  glow: "rgba(61,255,164,0.30)"  },
@@ -470,7 +441,6 @@ export default function App() {
   const [exportDates, setExportDates] = useState(new Set());
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [showAddSession, setShowAddSession] = useState(false);
-  const [addQuery, setAddQuery] = useState("");
   const [viewMode, setViewMode] = useState("table"); // "table" | "calendar"
   const [collapsedDates, setCollapsedDates] = useState(new Set());
   const toggleDateCollapse = (date) =>
@@ -1312,7 +1282,7 @@ export default function App() {
         <AddSessionModal
           sessions={sessions}
           onAdd={async (id) => { await addSessionFromCatalog(id); }}
-          onClose={() => { setShowAddSession(false); setAddQuery(""); }}
+          onClose={() => setShowAddSession(false)}
           user={user}
         />
       )}
