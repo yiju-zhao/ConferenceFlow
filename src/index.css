@@ -521,6 +521,17 @@ input[type="checkbox"].gtc-check:checked::after {
   letter-spacing: 0.04em;
 }
 
+.report-section-subtitle {
+  font-size: 13px; color: #666; font-style: italic;
+  margin: -10px 0 6px; padding: 4px 10px;
+}
+.subtitle-toggle-btn {
+  font-size: 16px; color: #BFBFBF; background: none; border: none;
+  cursor: pointer; padding: 2px 6px; border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+}
+.subtitle-toggle-btn:hover { color: #CF0A2C; background: #FFF0F0; }
+
 /* ── Header: TOC + Summary ─────────────────────── */
 .report-header {
   display: grid;

@@ -1810,21 +1810,60 @@ ${clone.outerHTML}
 
         {/* Onsite Section */}
         <div className="report-onsite">
-          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>现场情报</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 id="section-onsite-info" className="report-section-title" style={{ flex: 1, marginTop: 32 }}>现场情报</h2>
+            <button className="subtitle-toggle-btn" title="添加子标题"
+              onClick={() => setShowOnsiteSubtitle(v => !v)}>+</button>
+          </div>
+          {(showOnsiteSubtitle || reportData?.onsiteInfoSubtitle) && (
+            <EditableField
+              value={reportData?.onsiteInfoSubtitle}
+              onSave={html => saveField("onsiteInfoSubtitle", html)}
+              placeholder="添加子标题..."
+              minHeight={28}
+              className="report-section-subtitle"
+            />
+          )}
           <EditableField
             value={reportData?.onsiteInfo}
             onSave={html => saveField("onsiteInfo", html)}
             placeholder="记录现场见闻、展台亮点、互动环节等..."
             minHeight={80}
           />
-          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>圈内声音</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 id="section-reflections" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>圈内声音</h2>
+            <button className="subtitle-toggle-btn" title="添加子标题"
+              onClick={() => setShowReflectionsSubtitle(v => !v)}>+</button>
+          </div>
+          {(showReflectionsSubtitle || reportData?.reflectionsSubtitle) && (
+            <EditableField
+              value={reportData?.reflectionsSubtitle}
+              onSave={html => saveField("reflectionsSubtitle", html)}
+              placeholder="添加子标题..."
+              minHeight={28}
+              className="report-section-subtitle"
+            />
+          )}
           <EditableField
             value={reportData?.reflections}
             onSave={html => saveField("reflections", html)}
             placeholder="记录个人感悟与思考..."
             minHeight={80}
           />
-          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>深度研判</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <h2 id="section-rumors" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>深度研判</h2>
+            <button className="subtitle-toggle-btn" title="添加子标题"
+              onClick={() => setShowRumorsSubtitle(v => !v)}>+</button>
+          </div>
+          {(showRumorsSubtitle || reportData?.rumorsSubtitle) && (
+            <EditableField
+              value={reportData?.rumorsSubtitle}
+              onSave={html => saveField("rumorsSubtitle", html)}
+              placeholder="添加子标题..."
+              minHeight={28}
+              className="report-section-subtitle"
+            />
+          )}
           <EditableField
             value={reportData?.rumors}
             onSave={html => saveField("rumors", html)}
