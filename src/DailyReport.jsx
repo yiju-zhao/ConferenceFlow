@@ -1318,14 +1318,7 @@ ${clone.outerHTML}
 </body>
 </html>`;
 
-      const uuid = crypto.randomUUID();
-      const timestamp = Date.now();
-      const safeTitle = (reportData?.title || '')
-        .replace(/[^a-zA-Z0-9]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '')
-        .slice(0, 30) || 'report';
-      const fileId = `${timestamp}-${safeTitle}-${date}-${uuid}`;
+      const fileId = String(Date.now());
       const storageRef = ref(storage, `published-reports/${date}/${fileId}.html`);
       await uploadString(storageRef, html, 'raw', { contentType: 'text/html; charset=utf-8' });
 
