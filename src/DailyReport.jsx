@@ -957,6 +957,12 @@ ${inlinedBody}
           if (!bodyText) block.remove();
         });
 
+        // 1b. Add ids to topic dividers so TOC #topic-* links have targets
+        clone.querySelectorAll('.report-topic-divider').forEach(el => {
+          const name = el.querySelector('.report-topic-name')?.textContent.trim() || '';
+          if (name) el.id = 'topic-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        });
+
         // 2. Inject <a id="..."> for all TOC anchor targets
         clone.querySelectorAll("[id]").forEach(el => {
           const anchor = document.createElement('a');
