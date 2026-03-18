@@ -688,7 +688,7 @@ input[type="checkbox"].gtc-check:checked::after {
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-top: 16px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .site-photo-card {
@@ -703,17 +703,12 @@ input[type="checkbox"].gtc-check:checked::after {
 .site-photo-img-wrapper {
   position: relative;
   background: #F0F0F0;
-  flex: 1;
-  min-height: 120px;
-  overflow: hidden;
 }
 
 .site-photo-img {
   width: 100%;
-  height: 100%;
+  height: auto;
   display: block;
-  object-fit: cover;
-  object-position: center;
 }
 
 .site-photo-delete-btn {
@@ -1007,7 +1002,7 @@ input[type="checkbox"].gtc-check:checked::after {
 /* ── Illustration ───────────────────────────────── */
 .session-illustrations-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 8px;
   align-items: start;
 }
@@ -1016,7 +1011,7 @@ input[type="checkbox"].gtc-check:checked::after {
 
 .session-illustration {
   width: 100%;
-  object-fit: contain;
+  height: auto;
   border-radius: 4px;
   display: block;
 }
