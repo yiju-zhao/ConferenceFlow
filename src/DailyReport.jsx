@@ -772,7 +772,7 @@ export default function DailyReport() {
     compressImage(file)
       .then(compressed => uploadToStorage(compressed, storagePath))
       .then(url => {
-        const photos = [...(reportDataRef.current?.sitePhotos || []), { image: url, storagePath, caption: "" }];
+        const photos = [...(reportDataRef.current?.sitePhotos || []), { image: url, storagePath, caption: "", source: "" }];
         setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
       });
   }, [compressImage, uploadToStorage, reportId]);
@@ -794,6 +794,14 @@ export default function DailyReport() {
       return setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [reportId, debouncedSave]);
+
+  const saveSitePhotoSource = useCallback((idx, source) => {
+    debouncedSave(`sitePhoto-source-${idx}`, () => {
+      const photos = [...(reportDataRef.current?.sitePhotos || [])];
+      if (photos[idx]) photos[idx] = { ...photos[idx], source };
+      return setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+    });
+  }, [debouncedSave, reportId]);
 
   // Extract all CSS text via CSSOM — skips cross-origin sheets silently
   const extractAllCSS = (skipPrint = false) => {
@@ -936,13 +944,20 @@ ${inlinedBody}
         const { default: TurndownService } = await import('turndown');
         const { gfm } = await import('turndown-plugin-gfm');
 
-        // Inject <a id="..."> before every element with an id so all TOC links
-        // (#session-*, #section-*, #topic-*) have targets. turndown drops id
-        // attributes on divs; raw HTML anchors are preserved in most Markdown viewers.
+        // ── DOM pre-processing ──────────────────────────────────────────
+        // 1. Remove empty 关键收获/启示 blocks (heading + empty content)
+        clone.querySelectorAll('.report-field-block').forEach(block => {
+          const heading = block.querySelector('.report-field-heading');
+          if (!heading) return;
+          const bodyText = block.textContent.replace(heading.textContent, '').trim();
+          if (!bodyText) block.remove();
+        });
+
+        // 2. Inject <a id="..."> for all TOC anchor targets
         clone.querySelectorAll("[id]").forEach(el => {
           const anchor = document.createElement('a');
           anchor.id = el.id;
-          el.removeAttribute('id'); // prevent duplicate ids in output
+          el.removeAttribute('id');
           el.insertBefore(anchor, el.firstChild);
         });
 
@@ -953,14 +968,45 @@ ${inlinedBody}
         });
         td.use(gfm);
 
-        // Preserve <a id="..."> anchor tags as raw HTML (turndown drops them by default)
+        // Preserve <a id="..."> anchor tags as raw HTML
         td.addRule('session-anchor', {
           filter: (node) =>
-            node.nodeName === 'A' &&
-            !!node.getAttribute('id') &&
-            !node.getAttribute('href'),
-          replacement: (_content, node) =>
-            `<a id="${node.getAttribute('id')}"></a>`,
+            node.nodeName === 'A' && !!node.getAttribute('id') && !node.getAttribute('href'),
+          replacement: (_content, node) => `<a id="${node.getAttribute('id')}"></a>`,
+        });
+
+        // Session title: merge code + title into one heading (### S82322 — Title)
+        td.addRule('session-title', {
+          filter: (node) => node.nodeName === 'H3' && node.classList.contains('report-session-title'),
+          replacement: (content, node) => {
+            const codeEl = node.closest('.report-session-header')
+              ?.querySelector('.report-session-code');
+            const code = codeEl ? codeEl.textContent.trim() : '';
+            return `\n\n### ${code ? code + ' — ' : ''}${content.trim()}\n\n`;
+          },
+        });
+
+        // Suppress standalone session code span (merged into heading above)
+        td.addRule('session-code', {
+          filter: (node) => node.nodeName === 'SPAN' && node.classList.contains('report-session-code'),
+          replacement: () => '',
+        });
+
+        // Field headings (关键收获 / 启示): render in red
+        td.addRule('field-heading', {
+          filter: (node) => node.nodeName === 'H4' && node.classList.contains('report-field-heading'),
+          replacement: (content) =>
+            `\n\n<span style="color:#CF0A2C">**${content.trim()}**</span>\n\n`,
+        });
+
+        // Contributors row: "贡献人: Name1、Name2"
+        td.addRule('contributors-row', {
+          filter: (node) => node.classList?.contains('report-contributors-row'),
+          replacement: (_content, node) => {
+            const label = node.querySelector('.report-contributors-label')?.textContent.trim() || '贡献人';
+            const names = node.querySelector('.report-contributors-names')?.textContent.trim() || '';
+            return names ? `\n\n${label}: ${names}\n\n` : '';
+          },
         });
 
         const frontmatter = `---\ntitle: GTC 2026 日报 ${date}\ndate: ${date}\n---\n\n`;
@@ -1589,6 +1635,13 @@ ${inlinedBody}
                   defaultValue={photo.caption}
                   onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
                   rows={2}
+                />
+                <input
+                  className="site-photo-source"
+                  type="text"
+                  placeholder="来源..."
+                  defaultValue={photo.source || ""}
+                  onBlur={e => saveSitePhotoSource(idx, e.target.value)}
                 />
               </div>
             ))}
