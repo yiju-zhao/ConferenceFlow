@@ -999,6 +999,15 @@ ${inlinedBody}
             `\n\n<span style="color:#CF0A2C">**${content.trim()}**</span>\n\n`,
         });
 
+        // Topic divider: render as ## heading for visual hierarchy above ### sessions
+        td.addRule('topic-divider', {
+          filter: (node) => node.classList?.contains('report-topic-divider'),
+          replacement: (_content, node) => {
+            const name = node.querySelector('.report-topic-name')?.textContent.trim() || '';
+            return name ? `\n\n---\n\n## ${name}\n\n` : '';
+          },
+        });
+
         // Contributors row: "贡献人: Name1、Name2"
         td.addRule('contributors-row', {
           filter: (node) => node.classList?.contains('report-contributors-row'),
