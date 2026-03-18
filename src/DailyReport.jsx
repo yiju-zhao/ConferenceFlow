@@ -1657,7 +1657,8 @@ ${inlinedBody}
                   placeholder="添加图片说明..."
                   defaultValue={photo.caption}
                   onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
-                  rows={2}
+                  onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
                 />
                 <input
                   className="site-photo-source"
