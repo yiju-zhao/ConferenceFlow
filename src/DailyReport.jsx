@@ -909,6 +909,7 @@ ${clone.outerHTML}
           .report-contributors-names { font-size: 13px !important; }
           .report-section-title  { font-size: 14px !important; }
           .report-field-label    { font-size: 13px !important; }
+          .report-topic-bar      { display: none !important; }
           img { max-width: 100% !important; height: auto !important; }
           .site-photo-img { width: 100% !important; height: auto !important; }
           .site-photo-img-wrapper { height: auto !important; overflow: visible !important; }
