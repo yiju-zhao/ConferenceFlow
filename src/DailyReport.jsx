@@ -1668,11 +1668,9 @@ ${clone.outerHTML}
             <div key={topic}>
               {/* Topic section header */}
               <div className="report-topic-divider" id={`topic-${topicSlug(topic)}`}>
-                <div className="report-topic-divider-line">
-                  <span className="report-topic-bar" />
-                  <span className="report-topic-line" />
-                </div>
+                <span className="report-topic-bar" />
                 <span className="report-topic-name">{topic}</span>
+                <span className="report-topic-line" />
               </div>
 
               {(topicsMap[topic] || []).map(session => {
