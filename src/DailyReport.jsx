@@ -791,18 +791,18 @@ export default function DailyReport() {
   }, [reportId]);
 
   const saveSitePhotoCaption = useCallback((idx, caption) => {
-    debouncedSave(`sitePhoto-caption-${idx}`, () => {
+    debouncedSave(`sitePhoto-caption-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], caption };
-      return setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [reportId, debouncedSave]);
 
   const saveSitePhotoSource = useCallback((idx, source) => {
-    debouncedSave(`sitePhoto-source-${idx}`, () => {
+    debouncedSave(`sitePhoto-source-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], source };
-      return setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [debouncedSave, reportId]);
 
@@ -812,7 +812,7 @@ export default function DailyReport() {
     for (const sheet of document.styleSheets) {
       try {
         for (const rule of sheet.cssRules) {
-          if (skipPrint && rule.type === CSSRule.MEDIA_RULE &&
+          if (skipPrint && rule instanceof CSSMediaRule &&
               rule.conditionText?.includes('print')) continue;
           parts.push(rule.cssText);
         }
@@ -1140,9 +1140,11 @@ ${inlinedBody}
     }
   };
 
-  // Toolbar
-  const execBold = () => document.execCommand("bold");
-  const execColor = (color) => { document.execCommand("foreColor", false, color); setShowColorPicker(false); };
+  // Toolbar — execCommand has no modern replacement for contenteditable rich-text
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  const execCmd = (cmd, val) => /** @type {any} */ (document).execCommand(cmd, false, val ?? undefined);
+  const execBold = () => execCmd("bold");
+  const execColor = (color) => { execCmd("foreColor", color); setShowColorPicker(false); };
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
@@ -1221,10 +1223,10 @@ ${inlinedBody}
             <button className="report-icon-btn" onClick={execBold} title="加粗">
               <strong>B</strong>
             </button>
-            <button className="report-icon-btn" onClick={() => document.execCommand("italic")} title="斜体">
+            <button className="report-icon-btn" onClick={() => execCmd("italic")} title="斜体">
               <em style={{ fontStyle: "italic" }}>I</em>
             </button>
-            <button className="report-icon-btn" onClick={() => document.execCommand("underline")} title="下划线">
+            <button className="report-icon-btn" onClick={() => execCmd("underline")} title="下划线">
               <span style={{ textDecoration: "underline" }}>U</span>
             </button>
             <div style={{ position: "relative" }}>
@@ -1655,7 +1657,8 @@ ${inlinedBody}
                   placeholder="添加图片说明..."
                   defaultValue={photo.caption}
                   onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
-                  rows={2}
+                  onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                  ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
                 />
                 <input
                   className="site-photo-source"

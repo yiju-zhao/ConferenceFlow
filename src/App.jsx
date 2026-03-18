@@ -32,35 +32,6 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
-// ── TopicCell: inline editable topic field per session ───────────────────────
-function TopicCell({ session, user }) {
-  const [val, setVal] = useState(session.mainTopic || "");
-  const focused = useRef(false);
-  useEffect(() => {
-    if (!focused.current) setVal(session.mainTopic || "");
-  }, [session.mainTopic]);
-  return (
-    <input
-      value={val}
-      placeholder="分类..."
-      onFocus={() => { focused.current = true; }}
-      onBlur={() => {
-        focused.current = false;
-        if (user) {
-          setDoc(doc(db, "sessions", session.code), { mainTopic: val }, { merge: true }).catch(console.error);
-        }
-      }}
-      onChange={e => setVal(e.target.value)}
-      style={{
-        width: "100%", fontSize: 11, padding: "3px 7px",
-        background: "var(--surface)", border: "1px solid var(--border-dim)",
-        borderRadius: 5, color: "var(--text)", fontFamily: "Outfit, sans-serif",
-        outline: "none",
-      }}
-    />
-  );
-}
-
 // ── Member color palette (dark-theme tuned) ───────────────────────────────────
 const COLORS = [
   { hex: "#3DFFA4", bg: "rgba(61,255,164,0.10)",  glow: "rgba(61,255,164,0.30)"  },
@@ -419,7 +390,7 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
                     {s.title}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                    {s.date}{s.time ? ` · ${s.time}` : ""}
+                    {s.date}{s.time ? ` · ${s.time.replace(/\s*(PDT|PST|EST|EDT)\s*/i, "").trim()}` : ""}
                   </div>
                 </div>
                 {alreadyAdded ? (
@@ -470,7 +441,6 @@ export default function App() {
   const [exportDates, setExportDates] = useState(new Set());
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [showAddSession, setShowAddSession] = useState(false);
-  const [addQuery, setAddQuery] = useState("");
   const [viewMode, setViewMode] = useState("table"); // "table" | "calendar"
   const [collapsedDates, setCollapsedDates] = useState(new Set());
   const toggleDateCollapse = (date) =>
@@ -703,13 +673,37 @@ export default function App() {
     if (!user) return;
     const info = SESSION_CATALOG.get(id);
     if (!info) return;
+
+    // Convert "Tuesday, March 17" → "2026-03-17"
+    const parseDate = (str) => {
+      const m = (str || "").match(/(\w+)\s+(\d+)/);
+      if (!m) return str || "";
+      const months = { January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12 };
+      const mo = months[m[1]] || 1;
+      return `2026-${String(mo).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`;
+    };
+
+    // Convert "9:00 a.m." / "1:00 p.m." → "09:00" / "13:00"
+    const parseTime = (str) => {
+      const s = (str || "").replace(/\s*(PDT|PST|EST|EDT|UTC)\s*$/i, "").trim();
+      const m = s.match(/(\d+):(\d+)\s*(a\.m\.|p\.m\.|am|pm)/i);
+      if (!m) return s;
+      let h = parseInt(m[1], 10);
+      const min = m[2];
+      const ampm = m[3].toLowerCase().replace(/\./g, "");
+      if (ampm === "pm" && h !== 12) h += 12;
+      if (ampm === "am" && h === 12) h = 0;
+      return `${String(h).padStart(2,"0")}:${min}`;
+    };
+
     const timeParts = (info.time || "").split(" - ");
-    const start = timeParts[0] || "";
-    const end = timeParts[1] || "";
+    const start = parseTime(timeParts[0]);
+    const end = parseTime(timeParts[1]);
+
     await setDoc(doc(db, "sessions", id), {
       code: id,
       title: info.title || "",
-      date: info.date || "",
+      date: parseDate(info.date),
       start,
       end,
       room: info.location || "",
@@ -1314,7 +1308,7 @@ export default function App() {
         <AddSessionModal
           sessions={sessions}
           onAdd={async (id) => { await addSessionFromCatalog(id); }}
-          onClose={() => { setShowAddSession(false); setAddQuery(""); }}
+          onClose={() => setShowAddSession(false)}
           user={user}
         />
       )}

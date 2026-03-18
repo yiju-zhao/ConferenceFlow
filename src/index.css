@@ -741,6 +741,7 @@ input[type="checkbox"].gtc-check:checked::after {
   border: none;
   outline: none;
   resize: none;
+  overflow: hidden;
   background: transparent;
   width: 100%;
   box-sizing: border-box;
