@@ -561,6 +561,7 @@ input[type="checkbox"].gtc-check:checked::after {
   transition: border-color 0.12s, background 0.12s;
   word-break: break-word;
 }
+.report-editable * { font-size: inherit; }
 .report-editable:hover { border-color: #E2E2E2; background: #FAFAFA; }
 .report-editable:focus { border-color: rgba(207,10,44,0.3); background: #fff; }
 .report-editable:empty::before {
