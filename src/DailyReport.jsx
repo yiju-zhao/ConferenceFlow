@@ -129,7 +129,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
             )}
           </div>
           {/* Print view: plain text */}
-          <div className="print-only" style={{ fontSize: 13, color: "#333", paddingTop: 2 }}>
+          <div className="print-only" style={{ fontSize: 15, color: "#333", paddingTop: 2 }}>
             {[spk.name, spk.position, spk.company].filter(Boolean).join(" · ")}
           </div>
         </div>
@@ -139,7 +139,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
         onClick={onAdd}
         style={{
           background: "none", border: "1px dashed #CF0A2C", color: "#CF0A2C",
-          cursor: "pointer", fontSize: 11, padding: "3px 12px",
+          cursor: "pointer", fontSize: 12.5, padding: "3px 12px",
           borderRadius: 4, marginTop: 4,
         }}
       >
@@ -297,7 +297,7 @@ function getTextLines(html) {
 
 function DiffList({ oldItems, newItems }) {
   const diff = diffArrays((oldItems || []).map(String), (newItems || []).map(String));
-  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 13 }}>（无内容）</p>;
+  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 15 }}>（无内容）</p>;
   return (
     <ul style={{ margin: 0, padding: "0 0 0 16px" }}>
       {diff.map((item, i) => (
@@ -316,7 +316,7 @@ function DiffList({ oldItems, newItems }) {
 
 function DiffText({ oldText, newText }) {
   const diff = diffArrays(getTextLines(oldText), getTextLines(newText));
-  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 13 }}>（无内容）</p>;
+  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 15 }}>（无内容）</p>;
   return (
     <div style={{ fontSize: 13, lineHeight: 1.6 }}>
       {diff.map((item, i) => (
@@ -341,11 +341,11 @@ function SnapshotViewer({ snapshot, currentData }) {
   const FIELD_LABELS = { onsiteInfo: "现场情报", reflections: "圈内声音", rumors: "深度研判" };
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-      <p style={{ margin: "0 0 20px", fontSize: 12, color: "#888" }}>
+      <p style={{ margin: "0 0 20px", fontSize: 13, color: "#888" }}>
         快照时间：{ts}　·　绿色 = 快照中新增，红色删除线 = 当前版本中已改动
       </p>
       <section style={{ marginBottom: 24 }}>
-        <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#3D3D3D" }}>核心要点</h4>
+        <h4 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "#3D3D3D" }}>核心要点</h4>
         <DiffList oldItems={currentData?.summaryPoints || []} newItems={data?.summaryPoints || []} />
       </section>
       {Object.keys(data?.sessions || {}).map(code => {
@@ -356,7 +356,7 @@ function SnapshotViewer({ snapshot, currentData }) {
         if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
         return (
           <section key={code} style={{ marginBottom: 24, paddingLeft: 12, borderLeft: "3px solid #E8E8E8" }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#888", fontFamily: "monospace" }}>{code}</h4>
+            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#888", fontFamily: "monospace" }}>{code}</h4>
             {hasTakeawaysDiff && (
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 11, color: "#AAAAAA", marginBottom: 4 }}>关键收获</div>
@@ -1917,7 +1917,7 @@ ${clone.outerHTML}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                         <span style={{ fontSize: 15 }}>{snap.type === "manual" ? "📌" : "🕐"}</span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: snap.type === "manual" ? 600 : 400, color: "#3D3D3D" }}>
+                          <div style={{ fontSize: 15, fontWeight: snap.type === "manual" ? 600 : 400, color: "#3D3D3D" }}>
                             {snap.label}
                           </div>
                           <div style={{ fontSize: 11, color: "#999", marginTop: 1 }}>{ts}</div>
@@ -1927,7 +1927,7 @@ ${clone.outerHTML}
                         <button
                           onClick={() => setViewingSnapshot(snap)}
                           style={{
-                            fontSize: 12, padding: "4px 12px", borderRadius: 5,
+                            fontSize: 13, padding: "4px 12px", borderRadius: 5,
                             background: "#F5F5F5", border: "1px solid #E0E0E0", cursor: "pointer", color: "#3D3D3D",
                           }}
                         >
@@ -1936,7 +1936,7 @@ ${clone.outerHTML}
                         <button
                           onClick={() => handleRestore(snap)}
                           style={{
-                            fontSize: 12, padding: "4px 12px", borderRadius: 5,
+                            fontSize: 13, padding: "4px 12px", borderRadius: 5,
                             background: "rgba(207,10,44,0.05)", border: "1px solid rgba(207,10,44,0.2)",
                             cursor: "pointer", color: "#CF0A2C",
                           }}
