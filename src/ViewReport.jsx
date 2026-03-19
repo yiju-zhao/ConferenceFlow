@@ -5,7 +5,6 @@ const BUCKET = "gtc-2026-session-daal.firebasestorage.app";
 
 export default function ViewReport() {
   const { date, fileId } = useParams();
-  const [html, setHtml] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -18,10 +17,13 @@ export default function ViewReport() {
       .then(text => {
         // Strip any leftover contenteditable attributes
         let cleaned = text.replace(/\s*contenteditable(=["'][^"']*["'])?/gi, "");
-        // Inject read-only CSS as final safeguard before closing </head>
-        const readOnlyCss = `<style>.report-editable,.report-inline-editable{pointer-events:none!important;border-color:transparent!important;background:transparent!important;cursor:default!important}button,input,textarea,select{display:none!important}</style>`;
+        // Inject read-only CSS safeguard
+        const readOnlyCss = `<style>.report-editable,.report-inline-editable{pointer-events:none!important;border-color:transparent!important;background:transparent!important;cursor:default!important}button,input,textarea,select{display:none!important}.report-toc-link{pointer-events:auto!important;cursor:pointer!important}</style>`;
         cleaned = cleaned.replace("</head>", readOnlyCss + "</head>");
-        setHtml(cleaned);
+        // Replace current document — makes the page fully printable
+        document.open();
+        document.write(cleaned);
+        document.close();
       })
       .catch(e => setError(e.message));
   }, [date, fileId]);
@@ -32,17 +34,9 @@ export default function ViewReport() {
     </div>
   );
 
-  if (!html) return (
+  return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", color: "#888" }}>
       加载中…
     </div>
-  );
-
-  return (
-    <iframe
-      srcDoc={html}
-      style={{ width: "100%", height: "100vh", border: "none", display: "block" }}
-      title="GTC2026 日报"
-    />
   );
 }
