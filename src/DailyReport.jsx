@@ -1019,7 +1019,7 @@ export default function DailyReport() {
   };
 
   // Publish: generate full HTML, upload to Firebase Storage, return share URL
-  const handlePublish = async () => {
+  const handlePublish = async ({ silent = false } = {}) => {
     setPublishing(true);
     setShowExportMenu(false);
 
@@ -1139,6 +1139,7 @@ ${clone.outerHTML}
 
       const url = `${window.location.origin}/view/${date}/${fileId}`;
       setShareUrl(url);
+      if (silent) return url;
     } catch (err) {
       console.error("[Publish] Failed:", err.message);
       alert(`发布失败：${err.message}`);
@@ -1146,6 +1147,87 @@ ${clone.outerHTML}
       setCollapsedSessions(prevCollapsed);
       setPublishing(false);
     }
+  };
+
+  function escapeHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  const handleEmailExport = async () => {
+    setShowExportMenu(false);
+
+    let url = shareUrl;
+    if (!url) {
+      url = await handlePublish({ silent: true });
+      if (!url) return;
+    }
+
+    const title = reportData?.title || `【${date}】日报`;
+    const points = (reportData?.summaryPoints || []).filter(Boolean);
+    const pointsHtml = points.length
+      ? points.map(p => `<li style="margin:0 0 8px; color:#333; font-size:15px; line-height:1.6;">${escapeHtml(p)}</li>`).join('')
+      : '<li style="color:#888; font-size:15px;">暂无核心要点</li>';
+
+    const html = `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+  @media only screen and (max-width:620px){
+    .email-wrapper{width:100%!important;}
+    .email-card{border-radius:0!important;}
+    .email-btn{display:block!important;width:auto!important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f6;font-family:Arial,'Noto Sans SC',sans-serif;">
+<span style="display:none;max-height:0;overflow:hidden;">GTC2026 ${escapeHtml(title)} — 今日核心要点速览</span>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding:24px 16px;">
+  <table class="email-card" width="600" cellpadding="0" cellspacing="0" border="0"
+    style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <!-- Header bar -->
+    <tr><td style="background:#C41E3A;padding:14px 28px;">
+      <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;font-weight:bold;">GTC 2026 · DAILY BRIEFING</p>
+    </td></tr>
+    <!-- Title + date -->
+    <tr><td style="padding:28px 28px 12px;">
+      <h1 style="margin:0 0 6px;font-size:22px;line-height:1.3;color:#1a1a1a;">${escapeHtml(title)}</h1>
+      <p style="margin:0;font-size:13px;color:#999;">${escapeHtml(date)}</p>
+    </td></tr>
+    <!-- Divider -->
+    <tr><td style="padding:0 28px;"><hr style="border:none;border-top:1px solid #eee;margin:0;"></td></tr>
+    <!-- 核心要点 -->
+    <tr><td style="padding:20px 28px 8px;">
+      <p style="margin:0 0 14px;font-size:11px;font-weight:bold;letter-spacing:2px;color:#C41E3A;">核心要点</p>
+      <ul style="margin:0;padding:0 0 0 18px;">${pointsHtml}</ul>
+    </td></tr>
+    <!-- CTA button -->
+    <tr><td align="center" style="padding:28px;">
+      <a class="email-btn" href="${url}"
+        style="display:inline-block;background:#C41E3A;color:#ffffff;font-size:15px;font-weight:bold;
+               text-decoration:none;padding:14px 36px;border-radius:5px;letter-spacing:0.5px;">
+        查看完整日报 →
+      </a>
+    </td></tr>
+    <!-- Footer -->
+    <tr><td style="padding:16px 28px;border-top:1px solid #f0f0f0;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#bbb;">GTC 2026 Daily Report · ${escapeHtml(date)}</p>
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `GTC2026_日报邮件_${date}.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   // Toolbar — execCommand has no modern replacement for contenteditable rich-text
@@ -1279,6 +1361,16 @@ ${clone.outerHTML}
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M6 7l4-2M6 9l4 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
                     </span>
                     <span className="export-menu-label">{publishing ? "分享中..." : "分享日报"}</span>
+                  </button>
+                  <div className="export-menu-divider" />
+                  <button className="export-menu-item" onClick={handleEmailExport}>
+                    <span className="export-menu-icon">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                        <path d="M1.5 5.5l6.5 4 6.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                      </svg>
+                    </span>
+                    <span className="export-menu-label">导出邮件 HTML</span>
                   </button>
                 </div>
               )}
