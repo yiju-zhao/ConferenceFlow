@@ -413,9 +413,6 @@ export default function DailyReport() {
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
   const [tocVisible, setTocVisible] = useState(true);
-  const [showOnsiteSubtitle, setShowOnsiteSubtitle] = useState(false);
-  const [showReflectionsSubtitle, setShowReflectionsSubtitle] = useState(false);
-  const [showRumorsSubtitle, setShowRumorsSubtitle] = useState(false);
 
   useEffect(() => {
     const el = document.getElementById('report-toc');
@@ -445,15 +442,7 @@ export default function DailyReport() {
     return onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
 
-  // Initialize subtitle visibility from loaded data
-  useEffect(() => {
-    if (!reportData) return;
-    if (reportData.onsiteInfoSubtitle) setShowOnsiteSubtitle(true);
-    if (reportData.reflectionsSubtitle) setShowReflectionsSubtitle(true);
-    if (reportData.rumorsSubtitle) setShowRumorsSubtitle(true);
-  }, [reportData?.onsiteInfoSubtitle, reportData?.reflectionsSubtitle, reportData?.rumorsSubtitle]);
-
-  // Close export dropdown on outside click or Escape
+// Close export dropdown on outside click or Escape
   useEffect(() => {
     if (!showExportMenu) return;
     const close = (e) => {
@@ -608,6 +597,18 @@ export default function DailyReport() {
       setDoc(doc(db, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
     });
   }, [user, reportId, debouncedSave]);
+
+  // ── Onsite category helpers ───────────────────────────────────────────────────
+  const addOnsiteCategory = useCallback((field) => {
+    const newCat = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), title: "", content: "" };
+    saveField(field, [...(reportDataRef.current?.[field] || []), newCat]);
+  }, [saveField]);
+  const updateCategory = useCallback((field, id, patch) => {
+    saveField(field, (reportDataRef.current?.[field] || []).map(c => c.id === id ? { ...c, ...patch } : c));
+  }, [saveField]);
+  const removeCategory = useCallback((field, id) => {
+    saveField(field, (reportDataRef.current?.[field] || []).filter(c => c.id !== id));
+  }, [saveField]);
 
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
   const pruneSnapshots = useCallback(async () => {
@@ -1203,7 +1204,7 @@ ${inlinedBody}
       if (!container) throw new Error("Report container not found");
 
       const clone = container.cloneNode(true);
-      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn").forEach(el => el.remove());
+      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn, .subtitle-toggle-btn").forEach(el => el.remove());
       clone.querySelectorAll(".print-only").forEach(el => {
         el.style.display = "block";
         el.classList.remove("print-only");
@@ -1211,8 +1212,7 @@ ${inlinedBody}
       clone.querySelectorAll("[contenteditable]").forEach(el => {
         el.removeAttribute("contenteditable");
       });
-
-      // Convert form fields to static text
+      // Convert form fields to static text (before removing interactive elements)
       const origCaptions = container.querySelectorAll('.site-photo-caption');
       const clonedCaptions = clone.querySelectorAll('.site-photo-caption');
       origCaptions.forEach((orig, i) => {
@@ -1235,6 +1235,9 @@ ${inlinedBody}
         cloned.parentNode.replaceChild(p, cloned);
       });
 
+      // Remove any remaining interactive elements
+      clone.querySelectorAll("button, input, textarea, select").forEach(el => el.remove());
+
       const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
         .map(el => {
           if (el.tagName === "LINK") {
@@ -1255,6 +1258,10 @@ ${styleTagsHtml}
 <style>
   body { background: #fff; color: #111; }
   .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  /* Read-only overrides for published view */
+  .report-editable { pointer-events: none; border-color: transparent !important; background: transparent !important; }
+  .report-editable:hover, .report-editable:focus { border-color: transparent !important; background: transparent !important; }
+  .report-inline-editable { pointer-events: none; border-bottom-color: transparent !important; }
 </style>
 </head>
 <body>
@@ -1496,16 +1503,49 @@ ${clone.outerHTML}
                 <a href="#section-onsite-info" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">现场情报</span>
                 </a>
+                {(reportData?.onsiteInfoCategories || []).filter(c => c.title).length > 0 && (
+                  <ul className="report-toc-sublist">
+                    {(reportData?.onsiteInfoCategories || []).filter(c => c.title).map(cat => (
+                      <li key={cat.id}>
+                        <a href={`#cat-${cat.id}`} className="report-toc-link report-toc-cat-link">
+                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{cat.title}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-reflections" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">圈内声音</span>
                 </a>
+                {(reportData?.reflectionsCategories || []).filter(c => c.title).length > 0 && (
+                  <ul className="report-toc-sublist">
+                    {(reportData?.reflectionsCategories || []).filter(c => c.title).map(cat => (
+                      <li key={cat.id}>
+                        <a href={`#cat-${cat.id}`} className="report-toc-link report-toc-cat-link">
+                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{cat.title}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-rumors" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">深度研判</span>
                 </a>
+                {(reportData?.rumorsCategories || []).filter(c => c.title).length > 0 && (
+                  <ul className="report-toc-sublist">
+                    {(reportData?.rumorsCategories || []).filter(c => c.title).map(cat => (
+                      <li key={cat.id}>
+                        <a href={`#cat-${cat.id}`} className="report-toc-link report-toc-cat-link">
+                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{cat.title}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-site-photos" className="report-toc-link report-toc-section-link">

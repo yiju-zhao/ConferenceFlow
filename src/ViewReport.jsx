@@ -15,7 +15,14 @@ export default function ViewReport() {
         if (!r.ok) throw new Error(`Report not found (${r.status})`);
         return r.text();
       })
-      .then(text => setHtml(text.replace(/\s*contenteditable(=["'][^"']*["'])?/gi, "")))
+      .then(text => {
+        // Strip any leftover contenteditable attributes
+        let cleaned = text.replace(/\s*contenteditable(=["'][^"']*["'])?/gi, "");
+        // Inject read-only CSS as final safeguard before closing </head>
+        const readOnlyCss = `<style>.report-editable,.report-inline-editable{pointer-events:none!important;border-color:transparent!important;background:transparent!important;cursor:default!important}button,input,textarea,select{display:none!important}</style>`;
+        cleaned = cleaned.replace("</head>", readOnlyCss + "</head>");
+        setHtml(cleaned);
+      })
       .catch(e => setError(e.message));
   }, [date, fileId]);
 
