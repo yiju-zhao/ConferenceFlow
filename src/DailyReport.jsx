@@ -1040,6 +1040,13 @@ export default function DailyReport() {
       clone.querySelectorAll("[contenteditable]").forEach(el => {
         el.removeAttribute("contenteditable");
       });
+      // Remove empty field blocks (关键收获 / 启示) from published HTML
+      clone.querySelectorAll('.report-field-block').forEach(block => {
+        const heading = block.querySelector('.report-field-heading');
+        if (!heading) return;
+        const bodyText = block.textContent.replace(heading.textContent, '').trim();
+        if (!bodyText) block.remove();
+      });
       // Convert form fields to static text (before removing interactive elements)
       const origCaptions = container.querySelectorAll('.site-photo-caption');
       const clonedCaptions = clone.querySelectorAll('.site-photo-caption');
@@ -1338,8 +1345,8 @@ ${clone.outerHTML}
                   <ul className="report-toc-sublist">
                     {orderedTopics.map(topic => (
                       <li key={topic}>
-                        <a href={`#topic-${topicSlug(topic)}`} className="report-toc-link">
-                          <span className="report-toc-title">{topic}</span>
+                        <a href={`#topic-${topicSlug(topic)}`} className="report-toc-link report-toc-cat-link">
+                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{topic}</span>
                         </a>
                       </li>
                     ))}
