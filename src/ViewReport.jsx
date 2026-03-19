@@ -17,9 +17,11 @@ export default function ViewReport() {
       .then(text => {
         // Strip any leftover contenteditable attributes
         let cleaned = text.replace(/\s*contenteditable(=["'][^"']*["'])?/gi, "");
+        // Inject Noto Sans SC for proper CJK rendering in PDF print
+        const fontLink = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet"><style>.report-page,.report-container,body{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei","微软雅黑",sans-serif!important}</style>`;
         // Inject read-only CSS safeguard
         const readOnlyCss = `<style>.report-editable,.report-inline-editable{pointer-events:none!important;border-color:transparent!important;background:transparent!important;cursor:default!important}button,input,textarea,select{display:none!important}.report-toc-link{pointer-events:auto!important;cursor:pointer!important}</style>`;
-        cleaned = cleaned.replace("</head>", readOnlyCss + "</head>");
+        cleaned = cleaned.replace("</head>", fontLink + readOnlyCss + "</head>");
         // Replace current document — makes the page fully printable
         document.open();
         document.write(cleaned);

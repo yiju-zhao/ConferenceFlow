@@ -1104,10 +1104,16 @@ export default function DailyReport() {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GTC2026 日报 ${date}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
 ${styleTagsHtml}
 <style>
   body { background: #fff; color: #111; }
   .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .report-page, .report-container, body {
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif !important;
+  }
   /* Read-only overrides for published view */
   .report-editable { pointer-events: none; border-color: transparent !important; background: transparent !important; }
   .report-editable:hover, .report-editable:focus { border-color: transparent !important; background: transparent !important; }
