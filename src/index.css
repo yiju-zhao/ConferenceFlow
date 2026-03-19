@@ -516,7 +516,7 @@ input[type="checkbox"].gtc-check:checked::after {
   pointer-events: none;
 }
 .report-title-eyebrow {
-  font-size: 11px;
+  font-size: 12.5px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: rgba(255,255,255,0.5);
@@ -526,7 +526,7 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-title-bar h1 {
   margin: 0;
   color: #fff;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 700;
   letter-spacing: 0.01em;
   position: relative; z-index: 1;
@@ -534,7 +534,7 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* ── Section Titles ────────────────────────────── */
 .report-section-title {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: #1A1A1A;
   margin: 0 0 14px;
@@ -546,7 +546,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 .report-section-subtitle {
-  font-size: 13px; color: #666; font-style: italic;
+  font-size: 15px; color: #666; font-style: italic;
   margin: -10px 0 6px; padding: 4px 10px;
 }
 .subtitle-toggle-btn {
@@ -581,14 +581,14 @@ input[type="checkbox"].gtc-check:checked::after {
   content: "•";
   color: #CF0A2C;
   margin-right: 6px;
-  font-size: 11px;
+  font-size: 12.5px;
 }
 .report-toc-link {
   text-decoration: underline;
   text-decoration-color: transparent;
   text-underline-offset: 2px;
   color: #444;
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.55;
   display: block;
   flex: 1;
@@ -606,13 +606,13 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-toc-section-link::after {
   content: " →";
   opacity: 0;
-  font-size: 10px;
+  font-size: 11.5px;
   transition: opacity 0.12s;
 }
 .report-toc-section-link:hover::after { opacity: 1; }
 .report-toc-title { word-break: break-word; }
 .report-toc-hint {
-  font-size: 10px; color: #C0C0C0;
+  font-size: 11.5px; color: #C0C0C0;
   margin: 0 0 8px; letter-spacing: 0.04em;
 }
 
@@ -622,7 +622,7 @@ input[type="checkbox"].gtc-check:checked::after {
   border: 1px solid transparent;
   border-radius: 3px;
   outline: none;
-  font-size: 13.5px;
+  font-size: 15.5px;
   line-height: 1.85;
   color: #3D3D3D;
   transition: border-color 0.12s, background 0.12s;
@@ -640,7 +640,7 @@ input[type="checkbox"].gtc-check:checked::after {
   display: inline-block; min-width: 80px;
   padding: 1px 4px;
   border-bottom: 1px dashed transparent;
-  outline: none; font-size: 13px; color: #3D3D3D;
+  outline: none; font-size: 15px; color: #3D3D3D;
   transition: border-color 0.12s;
 }
 .report-inline-editable:hover { border-bottom-color: #D0D0D0; }
@@ -661,7 +661,7 @@ input[type="checkbox"].gtc-check:checked::after {
   background: #CF0A2C; border-radius: 2px; flex-shrink: 0;
 }
 .report-topic-name {
-  font-size: 11.5px; font-weight: 700;
+  font-size: 13px; font-weight: 700;
   color: #CF0A2C; letter-spacing: 0.06em;
   white-space: nowrap; text-transform: uppercase;
 }
@@ -688,7 +688,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .report-session-code {
   display: inline-block;
-  font-size: 9.5px; font-weight: 700;
+  font-size: 11px; font-weight: 700;
   color: #CF0A2C;
   background: rgba(207,10,44,0.07);
   padding: 2px 7px;
@@ -698,7 +698,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .report-session-title {
   margin: 0;
-  font-size: 14px; font-weight: 700;
+  font-size: 16px; font-weight: 700;
   color: #1A1A1A; line-height: 1.45; flex: 1;
 }
 .session-delete-btn {
@@ -1416,6 +1416,14 @@ input[type="checkbox"].gtc-check:checked::after {
   line-height: 1; padding: 0 4px;
 }
 .onsite-category-remove:hover { color: #C41E3A; }
+
+.onsite-block-body { position: relative; }
+.onsite-block-body-remove {
+  position: absolute; top: 4px; right: 4px;
+  background: none; border: none; color: #ccc; cursor: pointer;
+  font-size: 14px; line-height: 1; padding: 0 3px;
+}
+.onsite-block-body-remove:hover { color: #C41E3A; }
 
 /* ── Red field headings ────────────────────────── */
 .report-field-heading--highlight { color: #C41E3A; }

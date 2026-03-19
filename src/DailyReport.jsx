@@ -598,16 +598,16 @@ export default function DailyReport() {
     });
   }, [user, reportId, debouncedSave]);
 
-  // ── Onsite category helpers ───────────────────────────────────────────────────
-  const addOnsiteCategory = useCallback((field) => {
-    const newCat = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), title: "", content: "" };
-    saveField(field, [...(reportDataRef.current?.[field] || []), newCat]);
+  // ── Block helpers ─────────────────────────────────────────────────────────────
+  const addBlock = useCallback((field, type) => {
+    const newBlock = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, content: "" };
+    saveField(field, [...(reportDataRef.current?.[field] || []), newBlock]);
   }, [saveField]);
-  const updateCategory = useCallback((field, id, patch) => {
-    saveField(field, (reportDataRef.current?.[field] || []).map(c => c.id === id ? { ...c, ...patch } : c));
+  const updateBlock = useCallback((field, id, content) => {
+    saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, content } : b));
   }, [saveField]);
-  const removeCategory = useCallback((field, id) => {
-    saveField(field, (reportDataRef.current?.[field] || []).filter(c => c.id !== id));
+  const removeBlock = useCallback((field, id) => {
+    saveField(field, (reportDataRef.current?.[field] || []).filter(b => b.id !== id));
   }, [saveField]);
 
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
@@ -1075,16 +1075,6 @@ export default function DailyReport() {
         cloned.parentNode.replaceChild(span, cloned);
       });
 
-      // Convert onsite category title spans (contenteditable) to static text
-      const origCatTitles = container.querySelectorAll('.onsite-category-title');
-      const clonedCatTitles = clone.querySelectorAll('.onsite-category-title');
-      origCatTitles.forEach((orig, i) => {
-        const cloned = clonedCatTitles[i];
-        if (!cloned) return;
-        cloned.removeAttribute('contenteditable');
-        cloned.textContent = orig.textContent;
-      });
-
       // Remove any remaining interactive elements
       clone.querySelectorAll("button, input, textarea, select").forEach(el => el.remove());
 
@@ -1360,12 +1350,12 @@ ${clone.outerHTML}
                 <a href="#section-onsite-info" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">现场情报</span>
                 </a>
-                {(reportData?.onsiteInfoCategories || []).filter(c => c.title).length > 0 && (
+                {(reportData?.onsiteInfoBlocks || []).filter(b => b.type === 'heading' && b.content).length > 0 && (
                   <ul className="report-toc-sublist">
-                    {(reportData?.onsiteInfoCategories || []).filter(c => c.title).map(cat => (
-                      <li key={cat.id}>
-                        <a href={`#cat-${cat.id}`} className="report-toc-link report-toc-cat-link">
-                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{cat.title}</span>
+                    {(reportData?.onsiteInfoBlocks || []).filter(b => b.type === 'heading' && b.content).map(block => (
+                      <li key={block.id}>
+                        <a href={`#block-${block.id}`} className="report-toc-link report-toc-cat-link">
+                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{block.content}</span>
                         </a>
                       </li>
                     ))}
@@ -1376,12 +1366,12 @@ ${clone.outerHTML}
                 <a href="#section-reflections" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">圈内声音</span>
                 </a>
-                {(reportData?.reflectionsCategories || []).filter(c => c.title).length > 0 && (
+                {(reportData?.reflectionsBlocks || []).filter(b => b.type === 'heading' && b.content).length > 0 && (
                   <ul className="report-toc-sublist">
-                    {(reportData?.reflectionsCategories || []).filter(c => c.title).map(cat => (
-                      <li key={cat.id}>
-                        <a href={`#cat-${cat.id}`} className="report-toc-link report-toc-cat-link">
-                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{cat.title}</span>
+                    {(reportData?.reflectionsBlocks || []).filter(b => b.type === 'heading' && b.content).map(block => (
+                      <li key={block.id}>
+                        <a href={`#block-${block.id}`} className="report-toc-link report-toc-cat-link">
+                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{block.content}</span>
                         </a>
                       </li>
                     ))}
@@ -1392,12 +1382,12 @@ ${clone.outerHTML}
                 <a href="#section-rumors" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">深度研判</span>
                 </a>
-                {(reportData?.rumorsCategories || []).filter(c => c.title).length > 0 && (
+                {(reportData?.rumorsBlocks || []).filter(b => b.type === 'heading' && b.content).length > 0 && (
                   <ul className="report-toc-sublist">
-                    {(reportData?.rumorsCategories || []).filter(c => c.title).map(cat => (
-                      <li key={cat.id}>
-                        <a href={`#cat-${cat.id}`} className="report-toc-link report-toc-cat-link">
-                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{cat.title}</span>
+                    {(reportData?.rumorsBlocks || []).filter(b => b.type === 'heading' && b.content).map(block => (
+                      <li key={block.id}>
+                        <a href={`#block-${block.id}`} className="report-toc-link report-toc-cat-link">
+                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{block.content}</span>
                         </a>
                       </li>
                     ))}
@@ -1689,78 +1679,72 @@ ${clone.outerHTML}
         <div className="report-onsite">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h2 id="section-onsite-info" className="report-section-title" style={{ flex: 1, marginTop: 32 }}>现场情报</h2>
-            <button className="subtitle-toggle-btn no-print" title="添加分类标题"
-              onClick={() => addOnsiteCategory("onsiteInfoCategories")}>+ 分类</button>
+            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("onsiteInfoBlocks", "heading")}>+ 小标题</button>
+            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("onsiteInfoBlocks", "body")}>+ 正文</button>
           </div>
-          <EditableField
-            value={reportData?.onsiteInfo}
-            onSave={html => saveField("onsiteInfo", html)}
-            placeholder="记录现场见闻、展台亮点、互动环节等..."
-            minHeight={80}
-          />
-          {(reportData?.onsiteInfoCategories || []).map(cat => (
-            <div key={cat.id} id={`cat-${cat.id}`} className="onsite-category-block">
-              <div className="onsite-category-header no-print-actions">
+          {(reportData?.onsiteInfoBlocks || []).map(block => (
+            block.type === 'heading' ? (
+              <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 16 }}>
                 <span
                   contentEditable suppressContentEditableWarning
                   className="onsite-category-title"
-                  onBlur={e => updateCategory("onsiteInfoCategories", cat.id, { title: e.currentTarget.textContent.trim() })}
-                >{cat.title || ""}</span>
-                <button className="onsite-category-remove no-print" onClick={() => removeCategory("onsiteInfoCategories", cat.id)}>×</button>
+                  onBlur={e => updateBlock("onsiteInfoBlocks", block.id, e.currentTarget.textContent.trim())}
+                >{block.content}</span>
+                <button className="onsite-category-remove no-print" onClick={() => removeBlock("onsiteInfoBlocks", block.id)}>×</button>
               </div>
-              <EditableField value={cat.content} onSave={html => updateCategory("onsiteInfoCategories", cat.id, { content: html })}
-                placeholder="添加分类内容..." minHeight={60} />
-            </div>
+            ) : (
+              <div key={block.id} className="onsite-block-body">
+                <EditableField value={block.content} onSave={html => updateBlock("onsiteInfoBlocks", block.id, html)}
+                  placeholder="添加正文内容..." minHeight={60} />
+                <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("onsiteInfoBlocks", block.id)}>×</button>
+              </div>
+            )
           ))}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h2 id="section-reflections" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>圈内声音</h2>
-            <button className="subtitle-toggle-btn no-print" title="添加分类标题"
-              onClick={() => addOnsiteCategory("reflectionsCategories")}>+ 分类</button>
+            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("reflectionsBlocks", "heading")}>+ 小标题</button>
+            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("reflectionsBlocks", "body")}>+ 正文</button>
           </div>
-          <EditableField
-            value={reportData?.reflections}
-            onSave={html => saveField("reflections", html)}
-            placeholder="记录个人感悟与思考..."
-            minHeight={80}
-          />
-          {(reportData?.reflectionsCategories || []).map(cat => (
-            <div key={cat.id} id={`cat-${cat.id}`} className="onsite-category-block">
-              <div className="onsite-category-header no-print-actions">
+          {(reportData?.reflectionsBlocks || []).map(block => (
+            block.type === 'heading' ? (
+              <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 16 }}>
                 <span
                   contentEditable suppressContentEditableWarning
                   className="onsite-category-title"
-                  onBlur={e => updateCategory("reflectionsCategories", cat.id, { title: e.currentTarget.textContent.trim() })}
-                >{cat.title || ""}</span>
-                <button className="onsite-category-remove no-print" onClick={() => removeCategory("reflectionsCategories", cat.id)}>×</button>
+                  onBlur={e => updateBlock("reflectionsBlocks", block.id, e.currentTarget.textContent.trim())}
+                >{block.content}</span>
+                <button className="onsite-category-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
               </div>
-              <EditableField value={cat.content} onSave={html => updateCategory("reflectionsCategories", cat.id, { content: html })}
-                placeholder="添加分类内容..." minHeight={60} />
-            </div>
+            ) : (
+              <div key={block.id} className="onsite-block-body">
+                <EditableField value={block.content} onSave={html => updateBlock("reflectionsBlocks", block.id, html)}
+                  placeholder="添加正文内容..." minHeight={60} />
+                <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
+              </div>
+            )
           ))}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h2 id="section-rumors" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>深度研判</h2>
-            <button className="subtitle-toggle-btn no-print" title="添加分类标题"
-              onClick={() => addOnsiteCategory("rumorsCategories")}>+ 分类</button>
+            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("rumorsBlocks", "heading")}>+ 小标题</button>
+            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("rumorsBlocks", "body")}>+ 正文</button>
           </div>
-          <EditableField
-            value={reportData?.rumors}
-            onSave={html => saveField("rumors", html)}
-            placeholder="记录业界传闻与非公开信息..."
-            minHeight={80}
-          />
-          {(reportData?.rumorsCategories || []).map(cat => (
-            <div key={cat.id} id={`cat-${cat.id}`} className="onsite-category-block">
-              <div className="onsite-category-header no-print-actions">
+          {(reportData?.rumorsBlocks || []).map(block => (
+            block.type === 'heading' ? (
+              <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 16 }}>
                 <span
                   contentEditable suppressContentEditableWarning
                   className="onsite-category-title"
-                  onBlur={e => updateCategory("rumorsCategories", cat.id, { title: e.currentTarget.textContent.trim() })}
-                >{cat.title || ""}</span>
-                <button className="onsite-category-remove no-print" onClick={() => removeCategory("rumorsCategories", cat.id)}>×</button>
+                  onBlur={e => updateBlock("rumorsBlocks", block.id, e.currentTarget.textContent.trim())}
+                >{block.content}</span>
+                <button className="onsite-category-remove no-print" onClick={() => removeBlock("rumorsBlocks", block.id)}>×</button>
               </div>
-              <EditableField value={cat.content} onSave={html => updateCategory("rumorsCategories", cat.id, { content: html })}
-                placeholder="添加分类内容..." minHeight={60} />
-            </div>
+            ) : (
+              <div key={block.id} className="onsite-block-body">
+                <EditableField value={block.content} onSave={html => updateBlock("rumorsBlocks", block.id, html)}
+                  placeholder="添加正文内容..." minHeight={60} />
+                <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("rumorsBlocks", block.id)}>×</button>
+              </div>
+            )
           ))}
         </div>
 
