@@ -15,7 +15,7 @@ export default function ViewReport() {
         if (!r.ok) throw new Error(`Report not found (${r.status})`);
         return r.text();
       })
-      .then(setHtml)
+      .then(text => setHtml(text.replace(/\s*contenteditable(=["'][^"']*["'])?/gi, "")))
       .catch(e => setError(e.message));
   }, [date, fileId]);
 
