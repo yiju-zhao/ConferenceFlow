@@ -1611,7 +1611,6 @@ ${clone.outerHTML}
                 </div>
                 {!isCollapsed && <>
                 <div className="report-session-meta">
-                  <span className="report-field-label" style={{ display: "block", marginBottom: 5 }}>演讲者</span>
                   <SpeakersEditor
                     code={session.code}
                     speakers={speakers}
@@ -1661,7 +1660,7 @@ ${clone.outerHTML}
                 </div>
                 <div className="report-session-body">
                   <div className="report-field-block">
-                    <h4 className="report-field-heading">关键收获</h4>
+                    <h4 className="report-field-heading report-field-heading--highlight">关键收获</h4>
                     <EditableField
                       value={sd.takeaways}
                       onSave={html => saveSessionField(session.code, "takeaways", html)}
@@ -1669,7 +1668,7 @@ ${clone.outerHTML}
                     />
                   </div>
                   <div className="report-field-block">
-                    <h4 className="report-field-heading">启示</h4>
+                    <h4 className="report-field-heading report-field-heading--highlight">启示</h4>
                     <EditableField
                       value={sd.insights}
                       onSave={html => saveSessionField(session.code, "insights", html)}
@@ -1744,7 +1743,6 @@ ${clone.outerHTML}
                     {!isCollapsed && <>
                     {/* Speakers */}
                     <div className="report-session-meta">
-                      <span className="report-field-label" style={{ display: "block", marginBottom: 5 }}>演讲者</span>
                       <SpeakersEditor
                         code={session.code}
                         speakers={speakers}
@@ -1798,7 +1796,7 @@ ${clone.outerHTML}
                     {/* Body: takeaways & insights */}
                     <div className="report-session-body">
                       <div className="report-field-block">
-                        <h4 className="report-field-heading">关键收获</h4>
+                        <h4 className="report-field-heading report-field-heading--highlight">关键收获</h4>
                         <EditableField
                           value={sd.takeaways}
                           onSave={html => saveSessionField(session.code, "takeaways", html)}
@@ -1806,7 +1804,7 @@ ${clone.outerHTML}
                         />
                       </div>
                       <div className="report-field-block">
-                        <h4 className="report-field-heading">启示</h4>
+                        <h4 className="report-field-heading report-field-heading--highlight">启示</h4>
                         <EditableField
                           value={sd.insights}
                           onSave={html => saveSessionField(session.code, "insights", html)}
@@ -1834,64 +1832,79 @@ ${clone.outerHTML}
         <div className="report-onsite">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h2 id="section-onsite-info" className="report-section-title" style={{ flex: 1, marginTop: 32 }}>现场情报</h2>
-            <button className="subtitle-toggle-btn" title="添加子标题"
-              onClick={() => setShowOnsiteSubtitle(v => !v)}>+</button>
+            <button className="subtitle-toggle-btn no-print" title="添加分类标题"
+              onClick={() => addOnsiteCategory("onsiteInfoCategories")}>+ 分类</button>
           </div>
-          {(showOnsiteSubtitle || reportData?.onsiteInfoSubtitle) && (
-            <EditableField
-              value={reportData?.onsiteInfoSubtitle}
-              onSave={html => saveField("onsiteInfoSubtitle", html)}
-              placeholder="添加子标题..."
-              minHeight={28}
-              className="report-section-subtitle"
-            />
-          )}
           <EditableField
             value={reportData?.onsiteInfo}
             onSave={html => saveField("onsiteInfo", html)}
             placeholder="记录现场见闻、展台亮点、互动环节等..."
             minHeight={80}
           />
+          {(reportData?.onsiteInfoCategories || []).map(cat => (
+            <div key={cat.id} id={`cat-${cat.id}`} className="onsite-category-block">
+              <div className="onsite-category-header no-print-actions">
+                <span
+                  contentEditable suppressContentEditableWarning
+                  className="onsite-category-title"
+                  onBlur={e => updateCategory("onsiteInfoCategories", cat.id, { title: e.currentTarget.textContent.trim() })}
+                >{cat.title || ""}</span>
+                <button className="onsite-category-remove no-print" onClick={() => removeCategory("onsiteInfoCategories", cat.id)}>×</button>
+              </div>
+              <EditableField value={cat.content} onSave={html => updateCategory("onsiteInfoCategories", cat.id, { content: html })}
+                placeholder="添加分类内容..." minHeight={60} />
+            </div>
+          ))}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h2 id="section-reflections" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>圈内声音</h2>
-            <button className="subtitle-toggle-btn" title="添加子标题"
-              onClick={() => setShowReflectionsSubtitle(v => !v)}>+</button>
+            <button className="subtitle-toggle-btn no-print" title="添加分类标题"
+              onClick={() => addOnsiteCategory("reflectionsCategories")}>+ 分类</button>
           </div>
-          {(showReflectionsSubtitle || reportData?.reflectionsSubtitle) && (
-            <EditableField
-              value={reportData?.reflectionsSubtitle}
-              onSave={html => saveField("reflectionsSubtitle", html)}
-              placeholder="添加子标题..."
-              minHeight={28}
-              className="report-section-subtitle"
-            />
-          )}
           <EditableField
             value={reportData?.reflections}
             onSave={html => saveField("reflections", html)}
             placeholder="记录个人感悟与思考..."
             minHeight={80}
           />
+          {(reportData?.reflectionsCategories || []).map(cat => (
+            <div key={cat.id} id={`cat-${cat.id}`} className="onsite-category-block">
+              <div className="onsite-category-header no-print-actions">
+                <span
+                  contentEditable suppressContentEditableWarning
+                  className="onsite-category-title"
+                  onBlur={e => updateCategory("reflectionsCategories", cat.id, { title: e.currentTarget.textContent.trim() })}
+                >{cat.title || ""}</span>
+                <button className="onsite-category-remove no-print" onClick={() => removeCategory("reflectionsCategories", cat.id)}>×</button>
+              </div>
+              <EditableField value={cat.content} onSave={html => updateCategory("reflectionsCategories", cat.id, { content: html })}
+                placeholder="添加分类内容..." minHeight={60} />
+            </div>
+          ))}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h2 id="section-rumors" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>深度研判</h2>
-            <button className="subtitle-toggle-btn" title="添加子标题"
-              onClick={() => setShowRumorsSubtitle(v => !v)}>+</button>
+            <button className="subtitle-toggle-btn no-print" title="添加分类标题"
+              onClick={() => addOnsiteCategory("rumorsCategories")}>+ 分类</button>
           </div>
-          {(showRumorsSubtitle || reportData?.rumorsSubtitle) && (
-            <EditableField
-              value={reportData?.rumorsSubtitle}
-              onSave={html => saveField("rumorsSubtitle", html)}
-              placeholder="添加子标题..."
-              minHeight={28}
-              className="report-section-subtitle"
-            />
-          )}
           <EditableField
             value={reportData?.rumors}
             onSave={html => saveField("rumors", html)}
             placeholder="记录业界传闻与非公开信息..."
             minHeight={80}
           />
+          {(reportData?.rumorsCategories || []).map(cat => (
+            <div key={cat.id} id={`cat-${cat.id}`} className="onsite-category-block">
+              <div className="onsite-category-header no-print-actions">
+                <span
+                  contentEditable suppressContentEditableWarning
+                  className="onsite-category-title"
+                  onBlur={e => updateCategory("rumorsCategories", cat.id, { title: e.currentTarget.textContent.trim() })}
+                >{cat.title || ""}</span>
+                <button className="onsite-category-remove no-print" onClick={() => removeCategory("rumorsCategories", cat.id)}>×</button>
+              </div>
+              <EditableField value={cat.content} onSave={html => updateCategory("rumorsCategories", cat.id, { content: html })}
+                placeholder="添加分类内容..." minHeight={60} />
+            </div>
+          ))}
         </div>
 
         {/* Site Photos Section */}
