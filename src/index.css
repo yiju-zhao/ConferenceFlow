@@ -706,7 +706,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .report-session-title {
   margin: 0;
-  font-size: var(--report-fs-heading); font-weight: 700;
+  font-size: var(--report-fs-body); font-weight: 700;
   color: #1A1A1A; line-height: 1.45; flex: 1;
 }
 .session-delete-btn {
