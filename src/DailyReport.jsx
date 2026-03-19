@@ -833,23 +833,7 @@ export default function DailyReport() {
   }, [debouncedSave, reportId]);
 
   // Extract all CSS text via CSSOM — skips cross-origin sheets silently
-  const extractAllCSS = (skipPrint = false) => {
-    const parts = [];
-    for (const sheet of document.styleSheets) {
-      try {
-        for (const rule of sheet.cssRules) {
-          if (skipPrint && rule instanceof CSSMediaRule &&
-              rule.conditionText?.includes('print')) continue;
-          parts.push(rule.cssText);
-        }
-      } catch (_e) {
-        // Cross-origin stylesheet — skip silently
-      }
-    }
-    return parts.join('\n');
-  };
-
-  // Unified export handler for all three formats
+  // Export handler for markdown format
   const handleExport = async (format) => {
     setExporting(true);
     setShowExportMenu(false);
@@ -869,163 +853,7 @@ export default function DailyReport() {
 
       let blob, filename;
 
-      if (format === 'html') {
-        // Convert site-photo form fields to static text so PDF renders them correctly.
-        // cloneNode(true) does not preserve .value; we read from the original container.
-        const origCaptions = container.querySelectorAll('.site-photo-caption');
-        const clonedCaptions = clone.querySelectorAll('.site-photo-caption');
-        origCaptions.forEach((orig, i) => {
-          const cloned = clonedCaptions[i];
-          if (!cloned) return;
-          const p = document.createElement('p');
-          p.className = cloned.className;
-          p.textContent = orig.value;
-          cloned.parentNode.replaceChild(p, cloned);
-        });
-
-        const origSources = container.querySelectorAll('.site-photo-source');
-        const clonedSources = clone.querySelectorAll('.site-photo-source');
-        origSources.forEach((orig, i) => {
-          const cloned = clonedSources[i];
-          if (!cloned) return;
-          const p = document.createElement('p');
-          p.className = cloned.className;
-          p.textContent = orig.value;
-          cloned.parentNode.replaceChild(p, cloned);
-        });
-
-        // Collect stylesheets from the page (link tags + style tags)
-        const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
-          .map(el => {
-            if (el.tagName === "LINK") {
-              const href = new URL(el.getAttribute("href"), window.location.href).href;
-              return `<link rel="stylesheet" href="${href}">`;
-            }
-            return el.outerHTML;
-          })
-          .join("\n");
-
-        const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GTC2026 日报 ${date}</title>
-${styleTagsHtml}
-<style>
-  body { background: #fff; color: #111; }
-  .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
-  @media print {
-    .report-session { break-before: page; page-break-before: always; }
-    .report-session:first-of-type { break-before: auto; page-break-before: auto; }
-  }
-</style>
-</head>
-<body>
-${clone.outerHTML}
-</body>
-</html>`;
-        blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        filename = `GTC2026_日报_${date}.html`;
-
-      } else if (format === 'email') {
-        const { default: juice } = await import('juice');
-
-        // Fix speaker visibility: remove print-only class so juice won't re-apply
-        // display:none !important (which would override the display:block we set above)
-        clone.querySelectorAll(".print-only").forEach(el => {
-          el.style.display = "block";
-          el.classList.remove("print-only");
-        });
-
-        // Gmail strips id attributes, breaking in-page TOC anchor navigation.
-        // Fix: insert a named <a> anchor before each session element — Gmail
-        // preserves name attributes on <a> tags, so href="#session-X" still works.
-        clone.querySelectorAll('[id^="session-"]').forEach(el => {
-          const anchor = document.createElement('a');
-          anchor.setAttribute('name', el.id);
-          el.parentNode.insertBefore(anchor, el);
-        });
-
-        // Named anchor for the TOC section (Gmail strips id= same reason)
-        const tocEl = clone.querySelector('#report-toc');
-        if (tocEl) {
-          const tocAnchor = document.createElement('a');
-          tocAnchor.setAttribute('name', 'report-toc');
-          tocEl.parentNode.insertBefore(tocAnchor, tocEl);
-        }
-
-        // Inject "↑ 返回目录" link at the bottom of each session card for email
-        clone.querySelectorAll('.report-session').forEach(sessionEl => {
-          const link = document.createElement('a');
-          link.setAttribute('href', '#report-toc');
-          link.textContent = '↑ 返回目录';
-          link.style.cssText = 'display:block;text-align:right;font-size:11px;color:#aaa;text-decoration:none;padding:6px 18px 10px;';
-          sessionEl.appendChild(link);
-        });
-
-        const cssText = extractAllCSS(true); // skip @media print for email
-
-        // Email-specific overrides: larger fonts + remove decorative gray borders.
-        // Outlook uses Word's rendering engine and ignores CSS border shorthand,
-        // so every side must be declared individually to reliably remove borders.
-        const emailOverrides = `
-          body { font-size: 17px; }
-          * {
-            border-top: none !important;
-            border-right: none !important;
-            border-bottom: none !important;
-            border-left: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-          }
-          .report-session {
-            border-left: 3px solid #CF0A2C !important;
-            border-radius: 0 !important;
-            margin-bottom: 20px !important;
-            padding-left: 12px !important;
-          }
-          .report-session-title  { font-size: 16px !important; }
-          .report-session-code   { font-size: 12px !important; }
-          .report-session-time   { font-size: 13px !important; }
-          .report-contributors   { font-size: 14px !important; }
-          .report-contributors-label { font-size: 13px !important; }
-          .report-contributors-names { font-size: 13px !important; }
-          .report-section-title  { font-size: 14px !important; }
-          .report-field-label    { font-size: 13px !important; }
-          .report-topic-bar      { display: none !important; }
-          img { max-width: 100% !important; height: auto !important; }
-          .site-photo-img { width: 100% !important; height: auto !important; }
-          .site-photo-img-wrapper { height: auto !important; overflow: visible !important; }
-          .session-illustration { width: 100% !important; height: auto !important; max-height: none !important; }
-        `;
-
-        // juice.inlineContent returns a full document (<html><head><body>…</body></html>).
-        // Extract only the <body> content to avoid double-nesting, which breaks
-        // fragment (#anchor) navigation in the exported file.
-        const juicedDoc = juice.inlineContent(clone.outerHTML, cssText + emailOverrides, {
-          preserveMediaQueries: false,
-        });
-        const bodyMatch = juicedDoc.match(/<body[^>]*>([\s\S]*?)<\/body>/is);
-        const inlinedBody = bodyMatch ? bodyMatch[1].trim() : juicedDoc;
-
-        const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GTC2026 日报 ${date}</title>
-</head>
-<body>
-<div style="width:100%;max-width:800px;margin:0 auto;font-family:sans-serif;font-size:15px;">
-${inlinedBody}
-</div>
-</body>
-</html>`;
-        blob = new Blob([html], { type: "text/html;charset=utf-8" });
-        filename = `GTC2026_日报_${date}_email.html`;
-
-      } else if (format === 'markdown') {
+      if (format === 'markdown') {
         const { default: TurndownService } = await import('turndown');
         const { gfm } = await import('turndown-plugin-gfm');
 
@@ -1235,6 +1063,28 @@ ${inlinedBody}
         cloned.parentNode.replaceChild(p, cloned);
       });
 
+      // Convert bullet-editor textareas to static text
+      const origBullets = container.querySelectorAll('.bullet-input');
+      const clonedBullets = clone.querySelectorAll('.bullet-input');
+      origBullets.forEach((orig, i) => {
+        const cloned = clonedBullets[i];
+        if (!cloned) return;
+        const span = document.createElement('span');
+        span.className = cloned.className;
+        span.textContent = orig.value;
+        cloned.parentNode.replaceChild(span, cloned);
+      });
+
+      // Convert onsite category title spans (contenteditable) to static text
+      const origCatTitles = container.querySelectorAll('.onsite-category-title');
+      const clonedCatTitles = clone.querySelectorAll('.onsite-category-title');
+      origCatTitles.forEach((orig, i) => {
+        const cloned = clonedCatTitles[i];
+        if (!cloned) return;
+        cloned.removeAttribute('contenteditable');
+        cloned.textContent = orig.textContent;
+      });
+
       // Remove any remaining interactive elements
       clone.querySelectorAll("button, input, textarea, select").forEach(el => el.remove());
 
@@ -1262,6 +1112,8 @@ ${styleTagsHtml}
   .report-editable { pointer-events: none; border-color: transparent !important; background: transparent !important; }
   .report-editable:hover, .report-editable:focus { border-color: transparent !important; background: transparent !important; }
   .report-inline-editable { pointer-events: none; border-bottom-color: transparent !important; }
+  /* Keep TOC links clickable */
+  .report-toc-link { pointer-events: auto !important; cursor: pointer !important; }
 </style>
 </head>
 <body>
@@ -1481,7 +1333,6 @@ ${clone.outerHTML}
           {/* TOC – organized by topic, drag-to-reorder */}
           <div className="report-toc" id="report-toc">
             <h2 className="report-section-title">目录</h2>
-            <p className="report-toc-hint">点击条目跳转</p>
             <ul className="report-toc-list">
               <li className="report-toc-section-item">
                 <a href="#section-related" className="report-toc-link report-toc-section-link">
