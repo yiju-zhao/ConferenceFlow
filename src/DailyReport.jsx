@@ -524,6 +524,21 @@ function SnapshotViewer({ snapshot, currentData }) {
   );
 }
 
+// ── Site Photos Layout Helpers ────────────────────────────────────────────────
+function computeColumnAssignments(photos) {
+  const assignments = [];
+  let leftH = 0, rightH = 0;
+  for (let i = 0; i < photos.length; i++) {
+    const { w = 4, h = 3 } = photos[i];
+    const ratio = h / w;
+    if (i === 0) { assignments.push(0); leftH += ratio; }
+    else if (i === 1) { assignments.push(1); rightH += ratio; }
+    else if (leftH <= rightH) { assignments.push(0); leftH += ratio; }
+    else { assignments.push(1); rightH += ratio; }
+  }
+  return { assignments, leftH, rightH };
+}
+
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport() {
   const { reportId } = useParams();
@@ -961,13 +976,22 @@ export default function DailyReport() {
     const file = e.target.files[0];
     if (!file) return;
     e.target.value = "";
-    const storagePath = `sitePhotos/${reportId}/${Date.now()}`;
-    compressImage(file)
-      .then(compressed => uploadToStorage(compressed, storagePath))
-      .then(url => {
-        const photos = [...(reportDataRef.current?.sitePhotos || []), { image: url, storagePath, caption: "", source: "" }];
-        setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
-      });
+    const objUrl = URL.createObjectURL(file);
+    const imgEl = new window.Image();
+    imgEl.onload = () => {
+      const w = imgEl.naturalWidth;
+      const h = imgEl.naturalHeight;
+      URL.revokeObjectURL(objUrl);
+      const storagePath = `sitePhotos/${reportId}/${Date.now()}`;
+      compressImage(file)
+        .then(compressed => uploadToStorage(compressed, storagePath))
+        .then(url => {
+          const photos = [...(reportDataRef.current?.sitePhotos || []),
+            { image: url, storagePath, caption: "", source: "", w, h }];
+          setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+        });
+    };
+    imgEl.src = objUrl;
   }, [compressImage, uploadToStorage, reportId]);
 
   const handleSitePhotoDelete = useCallback((idx) => {
@@ -2012,21 +2036,25 @@ ${clone.outerHTML}
         <div id="section-site-photos" className="report-site-photos">
           <h2 className="report-section-title" style={{ marginTop: 32 }}>现场记录</h2>
           <div className="site-photos-grid">
-            {[0, 1].map(col => {
-              const photos = reportData?.sitePhotos || [];
-              const addInThisCol = photos.length % 2 === col;
-              return (
+            {(() => {
+              const rawPhotos = reportData?.sitePhotos || [];
+              const sortedPhotos = [...rawPhotos]
+                .map((photo, originalIdx) => ({ ...photo, originalIdx }))
+                .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
+              const { assignments, leftH, rightH } = computeColumnAssignments(sortedPhotos);
+              const addCol = sortedPhotos.length === 0 ? 0 : (leftH <= rightH ? 0 : 1);
+              return [0, 1].map(col => (
                 <div key={col} className="site-photos-col">
-                  {photos
-                    .map((photo, idx) => ({ photo, idx }))
-                    .filter(({ idx }) => idx % 2 === col)
-                    .map(({ photo, idx }) => (
-                      <div key={idx} className="site-photo-card">
+                  {sortedPhotos
+                    .map((photo, si) => ({ photo, si }))
+                    .filter(({ si }) => assignments[si] === col)
+                    .map(({ photo, si }) => (
+                      <div key={photo.originalIdx} className="site-photo-card">
                         <div className="site-photo-img-wrapper">
-                          <img src={photo.image} alt={`现场记录 ${idx + 1}`} className="site-photo-img" />
+                          <img src={photo.image} alt={`现场记录 ${si + 1}`} className="site-photo-img" />
                           <button
                             className="site-photo-delete-btn no-print"
-                            onClick={() => handleSitePhotoDelete(idx)}
+                            onClick={() => handleSitePhotoDelete(photo.originalIdx)}
                             title="删除图片"
                           >×</button>
                         </div>
@@ -2034,7 +2062,7 @@ ${clone.outerHTML}
                           className="site-photo-caption"
                           placeholder="添加图片说明..."
                           defaultValue={photo.caption}
-                          onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
+                          onBlur={e => saveSitePhotoCaption(photo.originalIdx, e.target.value)}
                           onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
                           ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
                         />
@@ -2043,11 +2071,11 @@ ${clone.outerHTML}
                           type="text"
                           placeholder="来源..."
                           defaultValue={photo.source || ""}
-                          onBlur={e => saveSitePhotoSource(idx, e.target.value)}
+                          onBlur={e => saveSitePhotoSource(photo.originalIdx, e.target.value)}
                         />
                       </div>
                     ))}
-                  {addInThisCol && (
+                  {addCol === col && (
                     <div className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
                       <div className="site-photo-add-inner">
                         <span className="site-photo-add-icon">+</span>
@@ -2056,8 +2084,8 @@ ${clone.outerHTML}
                     </div>
                   )}
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
           <input
             type="file"
