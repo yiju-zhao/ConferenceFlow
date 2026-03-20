@@ -760,14 +760,14 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 .site-photos-grid {
-  column-count: 2;
-  column-gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
   margin-top: 16px;
+  align-items: start;
 }
 
 .site-photo-card {
-  break-inside: avoid;
-  margin-bottom: 16px;
   background: #FAFAFA;
   border: 1px solid #EBEBEB;
   border-radius: 8px;
@@ -847,8 +847,6 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 .site-photo-add-card {
-  break-inside: avoid;
-  margin-bottom: 16px;
   border: 2px dashed #DDDDDD;
   border-radius: 8px;
   cursor: pointer;
@@ -1014,7 +1012,7 @@ input[type="checkbox"].gtc-check:checked::after {
   .speaker-block { border: none !important; background: transparent !important; padding: 0 !important; }
   .report-footer-inner { border: none !important; background: transparent !important; }
   a { color: inherit !important; text-decoration: none !important; }
-  .site-photos-grid { column-count: 2; column-gap: 12px; }
+  .site-photos-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .site-photo-caption {
     border: none !important;
     resize: none;
