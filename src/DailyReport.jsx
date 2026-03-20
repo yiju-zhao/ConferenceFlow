@@ -525,18 +525,33 @@ function SnapshotViewer({ snapshot, currentData }) {
 }
 
 // ── Site Photos Layout Helpers ────────────────────────────────────────────────
+// Estimate total card visual height in px (image + caption + source input)
+// CJK chars ≈ 2 units wide; ~55 units fit per line at 13px in ~460px column
+function estimateCardHeight(photo) {
+  const { w = 4, h = 3, caption = '' } = photo;
+  const imageH = (h / w) * 460;
+  const paragraphs = (caption || '').split('\n');
+  const totalLines = paragraphs.reduce((sum, para) => {
+    const units = [...para].reduce((s, c) => s + (c.charCodeAt(0) > 0x2E7F ? 2 : 1), 0);
+    return sum + Math.max(1, Math.ceil(units / 55));
+  }, 0);
+  const captionH = Math.max(2, totalLines) * 19.5 + 16;
+  return imageH + captionH + 32; // +32 for source input row
+}
+
 function computeColumnAssignments(photos) {
   const assignments = [];
   let leftH = 0, rightH = 0;
+  let leftCount = 0, rightCount = 0;
   for (let i = 0; i < photos.length; i++) {
-    const { w = 4, h = 3 } = photos[i];
-    const ratio = h / w;
-    if (i === 0) { assignments.push(0); leftH += ratio; }
-    else if (i === 1) { assignments.push(1); rightH += ratio; }
-    else if (leftH < rightH) { assignments.push(0); leftH += ratio; }
-    else { assignments.push(1); rightH += ratio; }
+    const weight = estimateCardHeight(photos[i]);
+    // Shorter column wins; on height tie, fewer-photos column wins; on count tie, prefer right
+    const col = leftH < rightH ? 0 : rightH < leftH ? 1 : leftCount < rightCount ? 0 : 1;
+    assignments.push(col);
+    if (col === 0) { leftH += weight; leftCount++; }
+    else { rightH += weight; rightCount++; }
   }
-  return { assignments, leftH, rightH };
+  return { assignments, leftH, rightH, leftCount, rightCount };
 }
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
@@ -2041,8 +2056,9 @@ ${clone.outerHTML}
               const sortedPhotos = [...rawPhotos]
                 .map((photo, originalIdx) => ({ ...photo, originalIdx }))
                 .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
-              const { assignments, leftH, rightH } = computeColumnAssignments(sortedPhotos);
-              const addCol = sortedPhotos.length === 0 ? 0 : (leftH < rightH ? 0 : 1);
+              const { assignments, leftH, rightH, leftCount, rightCount } = computeColumnAssignments(sortedPhotos);
+              const addCol = sortedPhotos.length === 0 ? 0 :
+                leftH < rightH ? 0 : rightH < leftH ? 1 : leftCount < rightCount ? 0 : 1;
               return [0, 1].map(col => (
                 <div key={col} className="site-photos-col">
                   {sortedPhotos
