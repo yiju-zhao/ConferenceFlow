@@ -533,7 +533,7 @@ function computeColumnAssignments(photos) {
     const ratio = h / w;
     if (i === 0) { assignments.push(0); leftH += ratio; }
     else if (i === 1) { assignments.push(1); rightH += ratio; }
-    else if (leftH <= rightH) { assignments.push(0); leftH += ratio; }
+    else if (leftH < rightH) { assignments.push(0); leftH += ratio; }
     else { assignments.push(1); rightH += ratio; }
   }
   return { assignments, leftH, rightH };
@@ -2042,7 +2042,7 @@ ${clone.outerHTML}
                 .map((photo, originalIdx) => ({ ...photo, originalIdx }))
                 .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
               const { assignments, leftH, rightH } = computeColumnAssignments(sortedPhotos);
-              const addCol = sortedPhotos.length === 0 ? 0 : (leftH <= rightH ? 0 : 1);
+              const addCol = sortedPhotos.length === 0 ? 0 : (leftH < rightH ? 0 : 1);
               return [0, 1].map(col => (
                 <div key={col} className="site-photos-col">
                   {sortedPhotos
