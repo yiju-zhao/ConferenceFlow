@@ -181,7 +181,7 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove }) {
+function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." }) {
   const contribRef = useRef(null);
   useEffect(() => {
     if (contribRef.current && document.activeElement !== contribRef.current) {
@@ -195,7 +195,7 @@ function IntelCard({ block, onUpdate, onRemove }) {
         <EditableField
           value={block.content}
           onSave={html => onUpdate({ content: html })}
-          placeholder="记录情报内容..."
+          placeholder={placeholder}
           minHeight={60}
         />
       </div>
@@ -547,8 +547,11 @@ function computeColumnAssignments(photos) {
   let leftCount = 0, rightCount = 0;
   for (let i = 0; i < photos.length; i++) {
     const weight = estimateCardHeight(photos[i]);
-    // Shorter column wins; on height tie, fewer-photos column wins; on count tie, prefer right
-    const col = leftH < rightH ? 0 : rightH < leftH ? 1 : leftCount < rightCount ? 0 : 1;
+    // Hard count guard: if one column has 2+ more photos, force the other
+    // Primary: shorter estimated height wins; tie-break by count then prefer right
+    const col = leftCount - rightCount >= 2 ? 1
+              : rightCount - leftCount >= 2 ? 0
+              : leftH < rightH ? 0 : rightH < leftH ? 1 : leftCount < rightCount ? 0 : 1;
     assignments.push(col);
     if (col === 0) { leftH += weight; leftCount++; }
     else { rightH += weight; rightCount++; }
@@ -2024,11 +2027,11 @@ ${clone.outerHTML}
                 );
               } else {
                 els.push(
-                  <div key={block.id} className="onsite-block-body">
-                    <EditableField value={block.content} onSave={html => updateBlock("reflectionsBlocks", block.id, html)}
-                      placeholder="添加正文内容..." minHeight={60} />
-                    <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
-                  </div>
+                  <IntelCard key={block.id} block={block}
+                    placeholder="记录圈内声音..."
+                    onUpdate={fields => updateBlockFields("reflectionsBlocks", block.id, fields)}
+                    onRemove={() => removeBlock("reflectionsBlocks", block.id)}
+                  />
                 );
               }
               els.push(
