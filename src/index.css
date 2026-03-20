@@ -1530,6 +1530,14 @@ input[type="checkbox"].gtc-check:checked::after {
   padding: 0;
 }
 .intel-card-contributor::placeholder { color: #ccc; }
+.intel-card-static-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: #444;
+  line-height: 1.5;
+  word-break: break-word;
+}
 
 /* ── Session Picker ────────────────────────────── */
 .session-picker {

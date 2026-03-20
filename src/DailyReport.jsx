@@ -21,6 +21,13 @@ const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
 const topicSlug = (t) =>
   t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
+function formatIntelSource(sourceSession) {
+  if (sourceSession?.manual) return sourceSession.manual.trim();
+  if (!sourceSession?.id) return "";
+  const title = SESSION_CATALOG.get(sourceSession.id)?.title?.trim();
+  return title ? `${sourceSession.id} · ${title}` : sourceSession.id;
+}
+
 // ── Debounce helper ──────────────────────────────────────────────────────────
 function useDebouncedSave(delay = 600) {
   const timers = useRef({});
@@ -183,6 +190,8 @@ function SessionPicker({ value, onChange }) {
 // ── IntelCard ─────────────────────────────────────────────────────────────────
 function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." }) {
   const contribRef = useRef(null);
+  const sourceText = formatIntelSource(block.sourceSession);
+  const contributorText = (block.contributor || "").trim();
   useEffect(() => {
     if (contribRef.current && document.activeElement !== contribRef.current) {
       contribRef.current.value = block.contributor || '';
@@ -206,6 +215,12 @@ function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." 
           onChange={v => onUpdate({ sourceSession: v })}
         />
       </div>
+      {sourceText && (
+        <div className="intel-card-section intel-card-meta print-only">
+          <span className="intel-card-label">来源</span>
+          <span className="intel-card-static-value">{sourceText}</span>
+        </div>
+      )}
       <div className="intel-card-section intel-card-meta no-print">
         <span className="intel-card-label">贡献人</span>
         <input
@@ -217,6 +232,12 @@ function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." 
           onBlur={e => onUpdate({ contributor: e.target.value })}
         />
       </div>
+      {contributorText && (
+        <div className="intel-card-section intel-card-meta print-only">
+          <span className="intel-card-label">贡献人</span>
+          <span className="intel-card-static-value">{contributorText}</span>
+        </div>
+      )}
     </div>
   );
 }
