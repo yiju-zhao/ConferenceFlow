@@ -21,11 +21,17 @@ const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
 const topicSlug = (t) =>
   t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
-function formatIntelSource(sourceSession) {
-  if (sourceSession?.manual) return sourceSession.manual.trim();
-  if (!sourceSession?.id) return "";
-  const title = SESSION_CATALOG.get(sourceSession.id)?.title?.trim();
-  return title ? `${sourceSession.id} · ${title}` : sourceSession.id;
+function formatOneSource(s) {
+  if (s?.manual) return s.manual.trim();
+  if (!s?.id) return "";
+  const title = SESSION_CATALOG.get(s.id)?.title?.trim();
+  return title ? `${s.id} · ${title}` : s.id;
+}
+
+function normaliseSources(block) {
+  if (Array.isArray(block.sourceSessions) && block.sourceSessions.length) return block.sourceSessions;
+  if (block.sourceSession?.id || block.sourceSession?.manual) return [block.sourceSession];
+  return [];
 }
 
 // ── Debounce helper ──────────────────────────────────────────────────────────
@@ -190,13 +196,28 @@ function SessionPicker({ value, onChange }) {
 // ── IntelCard ─────────────────────────────────────────────────────────────────
 function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." }) {
   const contribRef = useRef(null);
-  const sourceText = formatIntelSource(block.sourceSession);
+  const sources = normaliseSources(block);
   const contributorText = (block.contributor || "").trim();
   useEffect(() => {
     if (contribRef.current && document.activeElement !== contribRef.current) {
       contribRef.current.value = block.contributor || '';
     }
   }, [block.contributor]);
+
+  const updateSource = (idx, v) => {
+    const next = [...sources];
+    next[idx] = v;
+    onUpdate({ sourceSessions: next, sourceSession: next[0] || null });
+  };
+  const removeSource = (idx) => {
+    const next = sources.filter((_, i) => i !== idx);
+    onUpdate({ sourceSessions: next, sourceSession: next[0] || null });
+  };
+  const addSource = () => {
+    const next = [...sources, { id: null, manual: '' }];
+    onUpdate({ sourceSessions: next, sourceSession: next[0] || null });
+  };
+
   return (
     <div className="intel-card">
       <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>
@@ -208,17 +229,28 @@ function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." 
           minHeight={60}
         />
       </div>
+      {sources.map((src, i) => (
+        <div key={i} className="intel-card-section intel-card-meta no-print">
+          <span className="intel-card-label">来源{sources.length > 1 ? ` ${i + 1}` : ''}</span>
+          <SessionPicker value={src} onChange={v => updateSource(i, v)} />
+          {sources.length > 1 && (
+            <button className="intel-card-source-remove" onClick={() => removeSource(i)} title="移除此来源">×</button>
+          )}
+        </div>
+      ))}
+      {sources.length === 0 && (
+        <div className="intel-card-section intel-card-meta no-print">
+          <span className="intel-card-label">来源</span>
+          <SessionPicker value={{ id: null, manual: '' }} onChange={v => onUpdate({ sourceSessions: [v], sourceSession: v })} />
+        </div>
+      )}
       <div className="intel-card-section intel-card-meta no-print">
-        <span className="intel-card-label">来源</span>
-        <SessionPicker
-          value={block.sourceSession || { id: null, manual: '' }}
-          onChange={v => onUpdate({ sourceSession: v })}
-        />
+        <button className="intel-card-add-source" onClick={addSource}>+ 添加来源</button>
       </div>
-      {sourceText && (
+      {sources.filter(s => formatOneSource(s)).length > 0 && (
         <div className="intel-card-section intel-card-meta print-only">
           <span className="intel-card-label">来源</span>
-          <span className="intel-card-static-value">{sourceText}</span>
+          <span className="intel-card-static-value">{sources.map(formatOneSource).filter(Boolean).join(' ｜ ')}</span>
         </div>
       )}
       <div className="intel-card-section intel-card-meta no-print">
@@ -545,39 +577,6 @@ function SnapshotViewer({ snapshot, currentData }) {
       })}
     </div>
   );
-}
-
-// ── Site Photos Layout Helpers ────────────────────────────────────────────────
-// Estimate total card visual height in px (image + caption + source input)
-// CJK chars ≈ 2 units wide; ~55 units fit per line at 13px in ~460px column
-function estimateCardHeight(photo) {
-  const { w = 4, h = 3, caption = '' } = photo;
-  const imageH = (h / w) * 460;
-  const paragraphs = (caption || '').split('\n');
-  const totalLines = paragraphs.reduce((sum, para) => {
-    const units = [...para].reduce((s, c) => s + (c.charCodeAt(0) > 0x2E7F ? 2 : 1), 0);
-    return sum + Math.max(1, Math.ceil(units / 55));
-  }, 0);
-  const captionH = Math.max(2, totalLines) * 19.5 + 16;
-  return imageH + captionH + 32; // +32 for source input row
-}
-
-function computeColumnAssignments(photos) {
-  const assignments = [];
-  let leftH = 0, rightH = 0;
-  let leftCount = 0, rightCount = 0;
-  for (let i = 0; i < photos.length; i++) {
-    const weight = estimateCardHeight(photos[i]);
-    // Hard count guard: if one column has 2+ more photos, force the other
-    // Primary: shorter estimated height wins; tie-break by count then prefer right
-    const col = leftCount - rightCount >= 2 ? 1
-              : rightCount - leftCount >= 2 ? 0
-              : leftH < rightH ? 0 : rightH < leftH ? 1 : leftCount < rightCount ? 0 : 1;
-    assignments.push(col);
-    if (col === 0) { leftH += weight; leftCount++; }
-    else { rightH += weight; rightCount++; }
-  }
-  return { assignments, leftH, rightH, leftCount, rightCount };
 }
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
@@ -2082,52 +2081,40 @@ ${clone.outerHTML}
               const sortedPhotos = [...rawPhotos]
                 .map((photo, originalIdx) => ({ ...photo, originalIdx }))
                 .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
-              const { assignments, leftH, rightH, leftCount, rightCount } = computeColumnAssignments(sortedPhotos);
-              const addCol = sortedPhotos.length === 0 ? 0 :
-                leftH < rightH ? 0 : rightH < leftH ? 1 : leftCount < rightCount ? 0 : 1;
-              return [0, 1].map(col => (
-                <div key={col} className="site-photos-col">
-                  {sortedPhotos
-                    .map((photo, si) => ({ photo, si }))
-                    .filter(({ si }) => assignments[si] === col)
-                    .map(({ photo, si }) => (
-                      <div key={photo.originalIdx} className="site-photo-card">
-                        <div className="site-photo-img-wrapper">
-                          <img src={photo.image} alt={`现场记录 ${si + 1}`} className="site-photo-img" />
-                          <button
-                            className="site-photo-delete-btn no-print"
-                            onClick={() => handleSitePhotoDelete(photo.originalIdx)}
-                            title="删除图片"
-                          >×</button>
-                        </div>
-                        <textarea
-                          className="site-photo-caption"
-                          placeholder="添加图片说明..."
-                          defaultValue={photo.caption}
-                          onBlur={e => saveSitePhotoCaption(photo.originalIdx, e.target.value)}
-                          onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
-                          ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
-                        />
-                        <input
-                          className="site-photo-source"
-                          type="text"
-                          placeholder="来源..."
-                          defaultValue={photo.source || ""}
-                          onBlur={e => saveSitePhotoSource(photo.originalIdx, e.target.value)}
-                        />
-                      </div>
-                    ))}
-                  {addCol === col && (
-                    <div className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
-                      <div className="site-photo-add-inner">
-                        <span className="site-photo-add-icon">+</span>
-                        <span className="site-photo-add-label">添加图片</span>
-                      </div>
-                    </div>
-                  )}
+              return sortedPhotos.map((photo, si) => (
+                <div key={photo.originalIdx} className="site-photo-card">
+                  <div className="site-photo-img-wrapper">
+                    <img src={photo.image} alt={`现场记录 ${si + 1}`} className="site-photo-img" />
+                    <button
+                      className="site-photo-delete-btn no-print"
+                      onClick={() => handleSitePhotoDelete(photo.originalIdx)}
+                      title="删除图片"
+                    >×</button>
+                  </div>
+                  <textarea
+                    className="site-photo-caption"
+                    placeholder="添加图片说明..."
+                    defaultValue={photo.caption}
+                    onBlur={e => saveSitePhotoCaption(photo.originalIdx, e.target.value)}
+                    onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                    ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                  />
+                  <input
+                    className="site-photo-source"
+                    type="text"
+                    placeholder="来源..."
+                    defaultValue={photo.source || ""}
+                    onBlur={e => saveSitePhotoSource(photo.originalIdx, e.target.value)}
+                  />
                 </div>
               ));
             })()}
+            <div className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
+              <div className="site-photo-add-inner">
+                <span className="site-photo-add-icon">+</span>
+                <span className="site-photo-add-label">添加图片</span>
+              </div>
+            </div>
           </div>
           <input
             type="file"
