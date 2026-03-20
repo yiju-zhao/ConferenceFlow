@@ -16,8 +16,7 @@ import {
 } from "firebase/firestore";
 import { auth, db, storage } from "./firebase";
 import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
-import catalogData from "../data/gtc-2026-sessions-detailed.json";
-const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
+import { SESSION_CATALOG, COLOR_PRESETS, parseReportId } from "./shared";
 const topicSlug = (t) =>
   t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
@@ -2081,7 +2080,10 @@ ${clone.outerHTML}
               const sortedPhotos = [...rawPhotos]
                 .map((photo, originalIdx) => ({ ...photo, originalIdx }))
                 .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
-              return sortedPhotos.map((photo, si) => (
+              const leftPhotos = sortedPhotos.filter((_, i) => i % 2 === 0);
+              const rightPhotos = sortedPhotos.filter((_, i) => i % 2 === 1);
+              const addCol = leftPhotos.length > rightPhotos.length ? 1 : 0;
+              const renderCard = (photo, si) => (
                 <div key={photo.originalIdx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
                     <img src={photo.image} alt={`现场记录 ${si + 1}`} className="site-photo-img" />
@@ -2107,14 +2109,22 @@ ${clone.outerHTML}
                     onBlur={e => saveSitePhotoSource(photo.originalIdx, e.target.value)}
                   />
                 </div>
+              );
+              const addButton = (
+                <div key="add" className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
+                  <div className="site-photo-add-inner">
+                    <span className="site-photo-add-icon">+</span>
+                    <span className="site-photo-add-label">添加图片</span>
+                  </div>
+                </div>
+              );
+              return [0, 1].map(col => (
+                <div key={col} className="site-photos-col">
+                  {(col === 0 ? leftPhotos : rightPhotos).map((photo) => renderCard(photo, sortedPhotos.indexOf(photo)))}
+                  {addCol === col && addButton}
+                </div>
               ));
             })()}
-            <div className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
-              <div className="site-photo-add-inner">
-                <span className="site-photo-add-icon">+</span>
-                <span className="site-photo-add-label">添加图片</span>
-              </div>
-            </div>
           </div>
           <input
             type="file"
