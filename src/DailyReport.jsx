@@ -143,7 +143,10 @@ function SessionPicker({ value, onChange }) {
   if (selectedTitle) {
     return (
       <div className="session-picker">
-        <span className="session-picker-selected">{selectedTitle}</span>
+        <span className="session-picker-selected">
+          {value.id && <span className="session-picker-id-badge">{value.id}</span>}
+          {selectedTitle}
+        </span>
         <button className="session-picker-clear" onClick={handleClear} title="清除">×</button>
       </div>
     );
@@ -189,7 +192,6 @@ function IntelCard({ block, onUpdate, onRemove }) {
     <div className="intel-card">
       <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>
       <div className="intel-card-section intel-card-content">
-        <span className="intel-card-label">情报内容</span>
         <EditableField
           value={block.content}
           onSave={html => onUpdate({ content: html })}
@@ -198,7 +200,7 @@ function IntelCard({ block, onUpdate, onRemove }) {
         />
       </div>
       <div className="intel-card-section intel-card-meta no-print">
-        <span className="intel-card-label">来源 Session</span>
+        <span className="intel-card-label">来源</span>
         <SessionPicker
           value={block.sourceSession || { id: null, manual: '' }}
           onChange={v => onUpdate({ sourceSession: v })}
