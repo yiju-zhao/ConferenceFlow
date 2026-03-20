@@ -787,11 +787,18 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 .site-photos-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
   gap: 16px;
   margin-top: 16px;
-  align-items: start;
+  align-items: flex-start;
+}
+
+.site-photos-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
 .site-photo-card {
@@ -1039,7 +1046,7 @@ input[type="checkbox"].gtc-check:checked::after {
   .speaker-block { border: none !important; background: transparent !important; padding: 0 !important; }
   .report-footer-inner { border: none !important; background: transparent !important; }
   a { color: inherit !important; text-decoration: none !important; }
-  .site-photos-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .site-photos-grid { gap: 12px; }
   .site-photo-caption {
     border: none !important;
     resize: none;
