@@ -760,21 +760,14 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 .site-photos-grid {
-  display: flex;
-  gap: 16px;
+  column-count: 2;
+  column-gap: 16px;
   margin-top: 16px;
-  align-items: flex-start;
-}
-
-.site-photos-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
 }
 
 .site-photo-card {
+  break-inside: avoid;
+  margin-bottom: 16px;
   background: #FAFAFA;
   border: 1px solid #EBEBEB;
   border-radius: 8px;
@@ -854,6 +847,8 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 .site-photo-add-card {
+  break-inside: avoid;
+  margin-bottom: 16px;
   border: 2px dashed #DDDDDD;
   border-radius: 8px;
   cursor: pointer;
@@ -1019,7 +1014,7 @@ input[type="checkbox"].gtc-check:checked::after {
   .speaker-block { border: none !important; background: transparent !important; padding: 0 !important; }
   .report-footer-inner { border: none !important; background: transparent !important; }
   a { color: inherit !important; text-decoration: none !important; }
-  .site-photos-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .site-photos-grid { column-count: 2; column-gap: 12px; }
   .site-photo-caption {
     border: none !important;
     resize: none;
@@ -1530,6 +1525,27 @@ input[type="checkbox"].gtc-check:checked::after {
   padding: 0;
 }
 .intel-card-contributor::placeholder { color: #ccc; }
+.intel-card-source-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+.intel-card-source-remove:hover { color: #e74c3c; }
+.intel-card-add-source {
+  background: none;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+  color: #aaa;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 3px 10px;
+}
+.intel-card-add-source:hover { color: #666; border-color: #bbb; }
 .intel-card-static-value {
   flex: 1;
   min-width: 0;
