@@ -82,6 +82,143 @@ function EditableField({ value, onSave, placeholder, minHeight = 60 }) {
   );
 }
 
+// ── InlineAddButton ───────────────────────────────────────────────────────────
+function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
+  const isOpen = openKey === `${field}::${afterId}`;
+  return (
+    <div className="inline-add-zone no-print">
+      <button
+        className="inline-add-btn"
+        onClick={() => isOpen ? onOpen(null) : onOpen(`${field}::${afterId}`)}
+        title="插入 block"
+      >+</button>
+      {isOpen && (
+        <div className="inline-add-popover">
+          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'heading', afterId); onOpen(null); }}>小标题</button>
+          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'body', afterId); onOpen(null); }}>正文</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SessionPicker ─────────────────────────────────────────────────────────────
+function SessionPicker({ value, onChange }) {
+  const [query, setQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const selectedTitle = value?.id ? (SESSION_CATALOG.get(value.id)?.title || value.id) : null;
+
+  const results = useMemo(() => {
+    const q = query.trim();
+    if (!q) return [];
+    const ql = q.toLowerCase();
+    return catalogData
+      .filter(s =>
+        s.session_id.toLowerCase().includes(ql) ||
+        s.title.toLowerCase().includes(ql)
+      )
+      .slice(0, 20);
+  }, [query]);
+
+  const handleSelect = (s) => {
+    onChange({ id: s.session_id, manual: '' });
+    setQuery('');
+    setShowDropdown(false);
+  };
+
+  const handleClear = () => {
+    onChange({ id: null, manual: '' });
+    setQuery('');
+    setShowDropdown(false);
+  };
+
+  const handleBlur = (e) => {
+    // Delay so click on results fires first
+    setTimeout(() => setShowDropdown(false), 150);
+    if (query.trim() && !value?.id) {
+      onChange({ id: null, manual: query.trim() });
+    }
+  };
+
+  if (selectedTitle) {
+    return (
+      <div className="session-picker">
+        <span className="session-picker-selected">{selectedTitle}</span>
+        <button className="session-picker-clear" onClick={handleClear} title="清除">×</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="session-picker">
+      <input
+        className="session-picker-input"
+        type="text"
+        placeholder={value?.manual || "搜索 session 或输入自定义文字..."}
+        value={query}
+        onChange={e => { setQuery(e.target.value); setShowDropdown(true); }}
+        onFocus={() => setShowDropdown(true)}
+        onBlur={handleBlur}
+      />
+      {value?.manual && !query && (
+        <button className="session-picker-clear" onClick={handleClear} title="清除">×</button>
+      )}
+      {showDropdown && results.length > 0 && (
+        <div className="session-picker-dropdown">
+          {results.map(s => (
+            <div key={s.session_id} className="session-picker-result" onMouseDown={() => handleSelect(s)}>
+              <span className="session-picker-result-id">{s.session_id}</span>
+              <span className="session-picker-result-title">{s.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── IntelCard ─────────────────────────────────────────────────────────────────
+function IntelCard({ block, onUpdate, onRemove }) {
+  const contribRef = useRef(null);
+  useEffect(() => {
+    if (contribRef.current && document.activeElement !== contribRef.current) {
+      contribRef.current.value = block.contributor || '';
+    }
+  }, [block.contributor]);
+  return (
+    <div className="intel-card">
+      <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>
+      <div className="intel-card-section intel-card-content">
+        <span className="intel-card-label">情报内容</span>
+        <EditableField
+          value={block.content}
+          onSave={html => onUpdate({ content: html })}
+          placeholder="记录情报内容..."
+          minHeight={60}
+        />
+      </div>
+      <div className="intel-card-section intel-card-meta no-print">
+        <span className="intel-card-label">来源 Session</span>
+        <SessionPicker
+          value={block.sourceSession || { id: null, manual: '' }}
+          onChange={v => onUpdate({ sourceSession: v })}
+        />
+      </div>
+      <div className="intel-card-section intel-card-meta no-print">
+        <span className="intel-card-label">贡献人</span>
+        <input
+          ref={contribRef}
+          className="intel-card-contributor"
+          type="text"
+          placeholder="贡献人姓名..."
+          defaultValue={block.contributor || ''}
+          onBlur={e => onUpdate({ contributor: e.target.value })}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ── SpeakersEditor ───────────────────────────────────────────────────────────
 function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
   return (
@@ -413,6 +550,7 @@ export default function DailyReport() {
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
   const [tocVisible, setTocVisible] = useState(true);
+  const [openInlineMenu, setOpenInlineMenu] = useState(null); // { field, afterId } | null
 
   useEffect(() => {
     const el = document.getElementById('report-toc');
@@ -456,6 +594,21 @@ export default function DailyReport() {
       document.removeEventListener('keydown', onEsc);
     };
   }, [showExportMenu]);
+
+  // Close inline add menu on outside click or Escape
+  useEffect(() => {
+    if (!openInlineMenu) return;
+    const close = (e) => {
+      if (!e.target.closest('.inline-add-zone')) setOpenInlineMenu(null);
+    };
+    const onEsc = (e) => { if (e.key === 'Escape') setOpenInlineMenu(null); };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [openInlineMenu]);
 
   // Snapshots subscription
   useEffect(() => {
@@ -608,6 +761,17 @@ export default function DailyReport() {
   }, [saveField]);
   const removeBlock = useCallback((field, id) => {
     saveField(field, (reportDataRef.current?.[field] || []).filter(b => b.id !== id));
+  }, [saveField]);
+  const insertBlock = useCallback((field, type, afterId) => {
+    const newBlock = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, content: "" };
+    const blocks = reportDataRef.current?.[field] || [];
+    const idx = afterId ? blocks.findIndex(b => b.id === afterId) : -1;
+    const next = [...blocks];
+    next.splice(idx + 1, 0, newBlock);
+    saveField(field, next);
+  }, [saveField]);
+  const updateBlockFields = useCallback((field, id, fields) => {
+    saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, ...fields } : b));
   }, [saveField]);
 
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
@@ -1481,17 +1645,6 @@ ${clone.outerHTML}
                 <a href="#section-rumors" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">深度研判</span>
                 </a>
-                {(reportData?.rumorsBlocks || []).filter(b => b.type === 'heading' && b.content).length > 0 && (
-                  <ul className="report-toc-sublist">
-                    {(reportData?.rumorsBlocks || []).filter(b => b.type === 'heading' && b.content).map(block => (
-                      <li key={block.id}>
-                        <a href={`#block-${block.id}`} className="report-toc-link report-toc-cat-link">
-                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{block.content}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-site-photos" className="report-toc-link report-toc-section-link">
@@ -1776,75 +1929,83 @@ ${clone.outerHTML}
 
         {/* Onsite Section */}
         <div className="report-onsite">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h2 id="section-onsite-info" className="report-section-title" style={{ flex: 1, marginTop: 32 }}>现场情报</h2>
-            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("onsiteInfoBlocks", "heading")}>+ 小标题</button>
-            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("onsiteInfoBlocks", "body")}>+ 正文</button>
-          </div>
-          {(reportData?.onsiteInfoBlocks || []).map(block => (
-            block.type === 'heading' ? (
-              <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 16 }}>
-                <span
-                  contentEditable suppressContentEditableWarning
-                  className="onsite-category-title"
-                  onBlur={e => updateBlock("onsiteInfoBlocks", block.id, e.currentTarget.textContent.trim())}
-                >{block.content}</span>
-                <button className="onsite-category-remove no-print" onClick={() => removeBlock("onsiteInfoBlocks", block.id)}>×</button>
-              </div>
-            ) : (
-              <div key={block.id} className="onsite-block-body">
-                <EditableField value={block.content} onSave={html => updateBlock("onsiteInfoBlocks", block.id, html)}
-                  placeholder="添加正文内容..." minHeight={60} />
-                <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("onsiteInfoBlocks", block.id)}>×</button>
-              </div>
-            )
-          ))}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h2 id="section-reflections" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>圈内声音</h2>
-            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("reflectionsBlocks", "heading")}>+ 小标题</button>
-            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("reflectionsBlocks", "body")}>+ 正文</button>
-          </div>
-          {(reportData?.reflectionsBlocks || []).map(block => (
-            block.type === 'heading' ? (
-              <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 16 }}>
-                <span
-                  contentEditable suppressContentEditableWarning
-                  className="onsite-category-title"
-                  onBlur={e => updateBlock("reflectionsBlocks", block.id, e.currentTarget.textContent.trim())}
-                >{block.content}</span>
-                <button className="onsite-category-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
-              </div>
-            ) : (
-              <div key={block.id} className="onsite-block-body">
-                <EditableField value={block.content} onSave={html => updateBlock("reflectionsBlocks", block.id, html)}
-                  placeholder="添加正文内容..." minHeight={60} />
-                <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
-              </div>
-            )
-          ))}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h2 id="section-rumors" className="report-section-title" style={{ flex: 1, marginTop: 24 }}>深度研判</h2>
-            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("rumorsBlocks", "heading")}>+ 小标题</button>
-            <button className="subtitle-toggle-btn no-print" onClick={() => addBlock("rumorsBlocks", "body")}>+ 正文</button>
-          </div>
-          {(reportData?.rumorsBlocks || []).map(block => (
-            block.type === 'heading' ? (
-              <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 16 }}>
-                <span
-                  contentEditable suppressContentEditableWarning
-                  className="onsite-category-title"
-                  onBlur={e => updateBlock("rumorsBlocks", block.id, e.currentTarget.textContent.trim())}
-                >{block.content}</span>
-                <button className="onsite-category-remove no-print" onClick={() => removeBlock("rumorsBlocks", block.id)}>×</button>
-              </div>
-            ) : (
-              <div key={block.id} className="onsite-block-body">
-                <EditableField value={block.content} onSave={html => updateBlock("rumorsBlocks", block.id, html)}
-                  placeholder="添加正文内容..." minHeight={60} />
-                <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("rumorsBlocks", block.id)}>×</button>
-              </div>
-            )
-          ))}
+          {/* 现场情报 */}
+          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>现场情报</h2>
+          {(() => {
+            const blocks = reportData?.onsiteInfoBlocks || [];
+            const els = [
+              <InlineAddButton key="add-start" field="onsiteInfoBlocks" afterId={null}
+                openKey={openInlineMenu} onOpen={setOpenInlineMenu} onInsert={insertBlock} />,
+            ];
+            blocks.forEach(block => {
+              if (block.type === 'heading') {
+                els.push(
+                  <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 8 }}>
+                    <span contentEditable suppressContentEditableWarning className="onsite-category-title"
+                      onBlur={e => updateBlock("onsiteInfoBlocks", block.id, e.currentTarget.textContent.trim())}
+                    >{block.content}</span>
+                    <button className="onsite-category-remove no-print" onClick={() => removeBlock("onsiteInfoBlocks", block.id)}>×</button>
+                  </div>
+                );
+              } else {
+                els.push(
+                  <IntelCard key={block.id} block={block}
+                    onUpdate={fields => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
+                    onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
+                  />
+                );
+              }
+              els.push(
+                <InlineAddButton key={`add-${block.id}`} field="onsiteInfoBlocks" afterId={block.id}
+                  openKey={openInlineMenu} onOpen={setOpenInlineMenu} onInsert={insertBlock} />
+              );
+            });
+            return els;
+          })()}
+
+          {/* 圈内声音 */}
+          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>圈内声音</h2>
+          {(() => {
+            const blocks = reportData?.reflectionsBlocks || [];
+            const els = [
+              <InlineAddButton key="add-start" field="reflectionsBlocks" afterId={null}
+                openKey={openInlineMenu} onOpen={setOpenInlineMenu} onInsert={insertBlock} />,
+            ];
+            blocks.forEach(block => {
+              if (block.type === 'heading') {
+                els.push(
+                  <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 8 }}>
+                    <span contentEditable suppressContentEditableWarning className="onsite-category-title"
+                      onBlur={e => updateBlock("reflectionsBlocks", block.id, e.currentTarget.textContent.trim())}
+                    >{block.content}</span>
+                    <button className="onsite-category-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
+                  </div>
+                );
+              } else {
+                els.push(
+                  <div key={block.id} className="onsite-block-body">
+                    <EditableField value={block.content} onSave={html => updateBlock("reflectionsBlocks", block.id, html)}
+                      placeholder="添加正文内容..." minHeight={60} />
+                    <button className="onsite-block-body-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
+                  </div>
+                );
+              }
+              els.push(
+                <InlineAddButton key={`add-${block.id}`} field="reflectionsBlocks" afterId={block.id}
+                  openKey={openInlineMenu} onOpen={setOpenInlineMenu} onInsert={insertBlock} />
+              );
+            });
+            return els;
+          })()}
+
+          {/* 深度研判 */}
+          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>深度研判</h2>
+          <EditableField
+            value={reportData?.rumors || ""}
+            onSave={html => saveField("rumors", html)}
+            placeholder="深度研判..."
+            minHeight={120}
+          />
         </div>
 
         {/* Site Photos Section */}
