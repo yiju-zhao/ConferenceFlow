@@ -19,9 +19,6 @@ import {
   Plus,
 } from "lucide-react";
 
-import catalogData from "../data/gtc-2026-sessions-detailed.json";
-const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
-
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
@@ -31,37 +28,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
-
-// ── Member color palette (dark-theme tuned) ───────────────────────────────────
-const COLORS = [
-  { hex: "#3DFFA4", bg: "rgba(61,255,164,0.10)",  glow: "rgba(61,255,164,0.30)"  },
-  { hex: "#4C8EFF", bg: "rgba(76,142,255,0.10)",  glow: "rgba(76,142,255,0.30)"  },
-  { hex: "#FFBB38", bg: "rgba(255,187,56,0.10)",  glow: "rgba(255,187,56,0.30)"  },
-  { hex: "#FF6B9A", bg: "rgba(255,107,154,0.10)", glow: "rgba(255,107,154,0.30)" },
-  { hex: "#B87FFF", bg: "rgba(184,127,255,0.10)", glow: "rgba(184,127,255,0.30)" },
-  { hex: "#22D3EE", bg: "rgba(34,211,238,0.10)",  glow: "rgba(34,211,238,0.30)"  },
-];
-
-// ── Report version helpers ────────────────────────────────────────────────────
-function parseReportId(reportId) {
-  const m = reportId.match(/^(.+)-v(\d+)$/);
-  return m
-    ? { date: m[1], version: parseInt(m[2]) }
-    : { date: reportId, version: 1 };
-}
-
-function latestOrNewVersionId(date, allDocs) {
-  // If a plain-date doc already exists, navigate to it
-  if (allDocs.some(r => r.id === date)) return date;
-  // If only legacy v-docs exist, navigate to the latest one (backward compat)
-  const vDocs = allDocs.filter(r => parseReportId(r.id).date === date);
-  if (vDocs.length > 0) {
-    const maxV = vDocs.reduce((max, r) => Math.max(max, parseReportId(r.id).version), 0);
-    return `${date}-v${maxV}`;
-  }
-  // New report — use plain date
-  return date;
-}
+import { SESSION_CATALOG, COLORS, parseReportId, latestOrNewVersionId } from "./shared";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function parseCSVLine(text) {
