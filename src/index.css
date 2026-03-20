@@ -1433,5 +1433,163 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .onsite-block-body-remove:hover { color: #C41E3A; }
 
+/* ── Inline Add Button ─────────────────────────── */
+.inline-add-zone {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 20px;
+  margin: 2px 0;
+}
+.inline-add-btn {
+  opacity: 0;
+  background: none;
+  border: 1px dashed #ddd;
+  border-radius: 50%;
+  color: #bbb;
+  cursor: pointer;
+  width: 22px; height: 22px;
+  font-size: 16px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+}
+.inline-add-zone:hover .inline-add-btn,
+.inline-add-btn:focus { opacity: 1; color: #C41E3A; border-color: #C41E3A; }
+.inline-add-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%; transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  z-index: 200;
+  white-space: nowrap;
+}
+.inline-add-popover-item {
+  background: none;
+  border: 1px solid #eee;
+  border-radius: 5px;
+  color: #333;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 5px 12px;
+  transition: background 0.1s;
+}
+.inline-add-popover-item:hover { background: #fff5f5; color: #C41E3A; border-color: #C41E3A; }
+
+/* ── Intel Card ────────────────────────────────── */
+.intel-card {
+  position: relative;
+  border: 1px solid #eee;
+  border-radius: 7px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.intel-card .onsite-block-body-remove { top: 8px; right: 8px; }
+.intel-card-section {
+  padding: 10px 14px;
+}
+.intel-card-section + .intel-card-section {
+  border-top: 1px solid #f5f5f5;
+}
+.intel-card-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #bbb;
+  margin-bottom: 5px;
+}
+.intel-card-contributor {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #444;
+  background: transparent;
+  padding: 0;
+}
+.intel-card-contributor::placeholder { color: #ccc; }
+
+/* ── Session Picker ────────────────────────────── */
+.session-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.session-picker-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #444;
+  background: transparent;
+  padding: 0;
+}
+.session-picker-input::placeholder { color: #ccc; }
+.session-picker-selected {
+  font-size: 13px;
+  color: #333;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.session-picker-clear {
+  background: none;
+  border: none;
+  color: #bbb;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.session-picker-clear:hover { color: #C41E3A; }
+.session-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.10);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 200;
+}
+.session-picker-result {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid #f5f5f5;
+}
+.session-picker-result:last-child { border-bottom: none; }
+.session-picker-result:hover { background: #fff5f5; }
+.session-picker-result-id {
+  font-size: 10px;
+  color: #C41E3A;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.session-picker-result-title {
+  font-size: 12px;
+  color: #444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── Red field headings ────────────────────────── */
 .report-field-heading--highlight { color: #C41E3A; }
