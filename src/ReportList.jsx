@@ -3,25 +3,7 @@ import { Link } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
-
-// ── Version helpers ──────────────────────────────────────────────────────────
-function parseReportId(reportId) {
-  const m = reportId.match(/^(.+)-v(\d+)$/);
-  return m
-    ? { date: m[1], version: parseInt(m[2]), isLegacy: false }
-    : { date: reportId, version: 1, isLegacy: true };
-}
-
-
-const COLORS = [
-  { hex: "#3DFFA4", bg: "rgba(61,255,164,0.10)" },
-  { hex: "#4C8EFF", bg: "rgba(76,142,255,0.10)" },
-  { hex: "#FFBB38", bg: "rgba(255,187,56,0.10)" },
-  { hex: "#FF6B9A", bg: "rgba(255,107,154,0.10)" },
-  { hex: "#B87FFF", bg: "rgba(184,127,255,0.10)" },
-  { hex: "#22D3EE", bg: "rgba(34,211,238,0.10)" },
-];
-const DAY_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+import { COLORS, DAY_CN, parseReportId } from "./shared";
 
 export default function ReportList() {
   const [user, setUser] = useState(null);

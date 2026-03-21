@@ -19,9 +19,6 @@ import {
   Plus,
 } from "lucide-react";
 
-import catalogData from "../data/gtc-2026-sessions-detailed.json";
-const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
-
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
@@ -31,37 +28,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
-
-// ── Member color palette (dark-theme tuned) ───────────────────────────────────
-const COLORS = [
-  { hex: "#3DFFA4", bg: "rgba(61,255,164,0.10)",  glow: "rgba(61,255,164,0.30)"  },
-  { hex: "#4C8EFF", bg: "rgba(76,142,255,0.10)",  glow: "rgba(76,142,255,0.30)"  },
-  { hex: "#FFBB38", bg: "rgba(255,187,56,0.10)",  glow: "rgba(255,187,56,0.30)"  },
-  { hex: "#FF6B9A", bg: "rgba(255,107,154,0.10)", glow: "rgba(255,107,154,0.30)" },
-  { hex: "#B87FFF", bg: "rgba(184,127,255,0.10)", glow: "rgba(184,127,255,0.30)" },
-  { hex: "#22D3EE", bg: "rgba(34,211,238,0.10)",  glow: "rgba(34,211,238,0.30)"  },
-];
-
-// ── Report version helpers ────────────────────────────────────────────────────
-function parseReportId(reportId) {
-  const m = reportId.match(/^(.+)-v(\d+)$/);
-  return m
-    ? { date: m[1], version: parseInt(m[2]) }
-    : { date: reportId, version: 1 };
-}
-
-function latestOrNewVersionId(date, allDocs) {
-  // If a plain-date doc already exists, navigate to it
-  if (allDocs.some(r => r.id === date)) return date;
-  // If only legacy v-docs exist, navigate to the latest one (backward compat)
-  const vDocs = allDocs.filter(r => parseReportId(r.id).date === date);
-  if (vDocs.length > 0) {
-    const maxV = vDocs.reduce((max, r) => Math.max(max, parseReportId(r.id).version), 0);
-    return `${date}-v${maxV}`;
-  }
-  // New report — use plain date
-  return date;
-}
+import { SESSION_CATALOG, COLORS, parseReportId, latestOrNewVersionId } from "./shared";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function parseCSVLine(text) {
@@ -107,45 +74,29 @@ function formatHourBucket(startMinutes) {
 // ── Calendar session card ─────────────────────────────────────────────────────
 function CalendarSessionCard({ session, members, toggleAttendance, user }) {
   return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderLeft: "3px solid var(--accent)",
-        borderRadius: 8,
-        padding: "10px 14px",
-        width: 280,
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+    <div className="calendar-session-card">
+      <div className="calendar-card-top">
         <span className="code-badge">{session.code}</span>
-        <span className="font-mono" style={{ fontSize: 10, color: "var(--text-dim)" }}>
+        <span className="font-mono calendar-card-time">
           {session.start}–{session.end}
         </span>
       </div>
-      <p style={{ margin: 0, fontSize: 12, color: "var(--text)", lineHeight: 1.45, fontWeight: 500 }}>
+      <p className="calendar-card-title">
         {SESSION_CATALOG.get(session.code)?.url
-          ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
-               style={{ color: "inherit", textDecoration: "none" }}
-               onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
-               onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+          ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer">
               {SESSION_CATALOG.get(session.code)?.title || session.title}
             </a>
           : SESSION_CATALOG.get(session.code)?.title || session.title
         }
       </p>
       {session.room && (
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div className="calendar-card-room">
           <MapPin size={10} color="var(--text-dim)" />
-          <span style={{ fontSize: 10, color: "var(--text-dim)" }}>{session.room}</span>
+          <span className="calendar-card-room-text">{session.room}</span>
         </div>
       )}
       {members.length > 0 && (
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
+        <div className="calendar-card-pills">
           {members.map((m) => {
             const c = COLORS[m.colorIndex];
             const isOn = session.attendees.has(m.id);
@@ -153,15 +104,12 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
               <button
                 key={m.id}
                 onClick={() => user && toggleAttendance(session.code, m.id)}
+                className={`calendar-member-pill${isOn ? " active" : ""}`}
                 style={{
-                  fontSize: 10, padding: "2px 8px", borderRadius: 99,
                   cursor: user ? "pointer" : "default",
-                  background: isOn ? c.bg : "transparent",
-                  color: isOn ? c.hex : "var(--text-dim)",
-                  border: `1px solid ${isOn ? c.hex + "50" : "var(--border-dim)"}`,
-                  fontFamily: "'Outfit', sans-serif",
-                  fontWeight: isOn ? 700 : 400,
-                  transition: "all 0.15s",
+                  background: isOn ? c.bg : undefined,
+                  color: isOn ? c.hex : undefined,
+                  borderColor: isOn ? c.hex + "50" : undefined,
                 }}
               >
                 {m.name}
@@ -177,7 +125,7 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
 // ── Calendar view ─────────────────────────────────────────────────────────────
 function CalendarView({ groupedSessions, members, toggleAttendance, user, collapsedDates, toggleDateCollapse, navigate, reportDocs }) {
   return (
-    <div style={{ padding: "0 0 16px" }}>
+    <div className="calendar-view">
       {groupedSessions.map(({ date, sessions: dateSessions }) => {
         // Group sessions into hourly buckets by start time
         const buckets = {};
@@ -194,36 +142,21 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
             {/* Date header */}
             <div
               onClick={() => toggleDateCollapse(date)}
-              style={{
-                padding: "10px 24px",
-                borderBottom: "1px solid var(--border-dim)",
-                background: "rgba(255,255,255,0.02)",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                cursor: "pointer",
-                userSelect: "none",
-              }}
+              className="calendar-date-header"
             >
               <ChevronRight
                 size={13}
-                color="var(--accent)"
+                color="var(--brand)"
                 style={{ transition: "transform 0.2s", transform: isCollapsed ? "none" : "rotate(90deg)", flexShrink: 0 }}
               />
-              <CalendarDays size={13} color="var(--accent)" />
-              <span
-                className="font-display"
-                style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.04em" }}
-              >
-                {date}
-              </span>
-              <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>
+              <CalendarDays size={13} color="var(--brand)" />
+              <span className="calendar-date-text">{date}</span>
+              <span className="font-mono calendar-date-count">
                 {dateSessions.length} sessions
               </span>
               <button
-                className="btn-accent"
+                className="btn-accent calendar-date-report-btn"
                 onClick={(e) => { e.stopPropagation(); navigate(`/report/${latestOrNewVersionId(date, reportDocs)}`); }}
-                style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
               >
                 <FileText size={12} />
                 生成日报
@@ -232,28 +165,20 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
 
             {/* Hourly time slot groups */}
             {!isCollapsed && sortedBuckets.map(([bucketKey, slotSessions]) => (
-              <div key={bucketKey} style={{ padding: "12px 24px 4px" }}>
+              <div key={bucketKey} className="calendar-time-slot">
                 {/* Slot header */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <Clock size={11} color="var(--accent)" />
-                  <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.06em" }}>
+                <div className="calendar-time-label">
+                  <Clock size={11} color="var(--brand)" />
+                  <span className="font-mono calendar-time-text">
                     {formatHourBucket(Number(bucketKey))}
                   </span>
-                  <span
-                    className="font-mono"
-                    style={{
-                      fontSize: 10, color: "var(--text-dim)",
-                      background: "var(--surface)",
-                      border: "1px solid var(--border-dim)",
-                      borderRadius: 99, padding: "1px 7px",
-                    }}
-                  >
+                  <span className="font-mono calendar-time-count">
                     {slotSessions.length}
                   </span>
-                  <div style={{ flex: 1, height: 1, background: "var(--border-dim)" }} />
+                  <div className="calendar-time-divider" />
                 </div>
                 {/* Session cards */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, paddingBottom: 12 }}>
+                <div className="calendar-session-list">
                   {slotSessions.map((s) => (
                     <CalendarSessionCard
                       key={s.code}
@@ -275,25 +200,15 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
 
 // ── Catalog badges ────────────────────────────────────────────────────────────
 const SessionTypeBadge = ({ type }) => (
-  <span style={{
-    fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 99,
-    border: "1px solid var(--border)", color: "var(--text-muted)", whiteSpace: "nowrap",
-  }}>{type}</span>
+  <span className="schedule-badge">{type}</span>
 );
 
 const FormatBadge = ({ format }) => (
-  <span style={{
-    fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 99,
-    border: "1px solid var(--border)", color: "var(--text-muted)", whiteSpace: "nowrap",
-  }}>{format}</span>
+  <span className="schedule-badge">{format}</span>
 );
 
 const NoRecordingBadge = () => (
-  <span style={{
-    fontSize: 10, fontWeight: 500, padding: "1px 6px", borderRadius: 99,
-    border: "1px solid #f59e0b", color: "#f59e0b",
-    display: "inline-flex", alignItems: "center", gap: 3, whiteSpace: "nowrap",
-  }}>
+  <span className="schedule-badge schedule-badge--warning">
     <VideoOff size={9} />No Rec
   </span>
 );
@@ -313,52 +228,35 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
   return (
     <div
       onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
+      className="add-session-overlay"
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{
-          width: 600, maxWidth: "90vw", maxHeight: "80vh",
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: 14, display: "flex", flexDirection: "column", overflow: "hidden",
-        }}
+        className="add-session-modal"
       >
         {/* Header */}
-        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>添加 Session</span>
-            <button
-              onClick={onClose}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 18, lineHeight: 1, padding: 2 }}
-            >×</button>
+        <div className="add-session-header">
+          <div className="add-session-header-bar">
+            <span className="add-session-header-title">添加 Session</span>
+            <button onClick={onClose} className="add-session-close">×</button>
           </div>
           <input
             autoFocus
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="输入 Session ID 或标题搜索..."
-            style={{
-              width: "100%", boxSizing: "border-box",
-              fontSize: 13, padding: "8px 12px",
-              background: "var(--bg)", border: "1px solid var(--border)",
-              borderRadius: 8, color: "var(--text)", outline: "none",
-              fontFamily: "Outfit, sans-serif",
-            }}
+            className="add-session-input"
           />
         </div>
 
         {/* Results */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+        <div className="add-session-results">
           {!query.trim() ? (
-            <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+            <div className="add-session-empty">
               输入 Session ID 或标题搜索
             </div>
           ) : results.length === 0 ? (
-            <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+            <div className="add-session-empty">
               未找到匹配的 Session
             </div>
           ) : results.map(s => {
@@ -366,53 +264,28 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
             return (
               <div
                 key={s.session_id}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "9px 20px",
-                  borderBottom: "1px solid var(--border-dim)",
-                }}
+                className="add-session-result"
               >
-                <span
-                  className="font-mono"
-                  style={{
-                    fontSize: 10, padding: "2px 7px", borderRadius: 5,
-                    background: "var(--accent-soft)", color: "var(--accent)",
-                    whiteSpace: "nowrap", flexShrink: 0,
-                  }}
-                >
+                <span className="font-mono add-session-result-id">
                   {s.session_id}
                 </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 13, color: "var(--text)", fontWeight: 500,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
+                <div className="add-session-result-info">
+                  <div className="add-session-result-title">
                     {s.title}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                  <div className="add-session-result-meta">
                     {s.date}{s.time ? ` · ${s.time.replace(/\s*(PDT|PST|EST|EDT)\s*/i, "").trim()}` : ""}
                   </div>
                 </div>
                 {alreadyAdded ? (
-                  <span
-                    className="font-mono"
-                    style={{
-                      fontSize: 10, padding: "2px 8px", borderRadius: 5,
-                      border: "1px solid var(--border)", color: "var(--text-dim)",
-                      flexShrink: 0,
-                    }}
-                  >
+                  <span className="font-mono schedule-badge" style={{ flexShrink: 0 }}>
                     已加入
                   </span>
                 ) : (
                   <button
                     onClick={() => onAdd(s.session_id)}
-                    style={{
-                      fontSize: 11, padding: "3px 12px", borderRadius: 6,
-                      border: "none", cursor: "pointer",
-                      background: "var(--accent)", color: "#000", fontWeight: 600,
-                      flexShrink: 0,
-                    }}
+                    className="btn-accent"
+                    style={{ fontSize: 11, padding: "3px 12px", flexShrink: 0 }}
                   >
                     添加
                   </button>
@@ -777,61 +650,45 @@ export default function App() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="gtc-page-outer" style={{ minHeight: "100vh", background: "var(--bg)", padding: "28px 24px" }}>
-      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="schedule-page gtc-page-outer">
+      <div className="schedule-container">
 
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
-        <header
-          className="card animate-fade-up"
-          style={{ padding: "24px 28px", overflow: "visible", zIndex: 1 }}
-        >
+        <header className="card animate-fade-up schedule-header-card">
           {/* decorative GTC watermark – clipped in its own layer so the dropdown can overflow the header */}
-          <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: "inherit", pointerEvents: "none" }}>
-            <div
-              className="font-display"
-              style={{
-                position: "absolute", right: -10, top: -18,
-                fontSize: 130, fontWeight: 800, letterSpacing: "-0.04em",
-                color: "var(--accent)", opacity: 0.04,
-                userSelect: "none", lineHeight: 1,
-              }}
-            >
-              GTC
-            </div>
+          <div className="schedule-header-watermark-clip">
+            <div className="schedule-watermark">GTC</div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, position: "relative", zIndex: 1 }}>
+          <div className="schedule-header">
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                <div className="status-live" style={{ background: authError ? "var(--red)" : user ? "var(--accent)" : "var(--amber)" }} />
+              <div className="schedule-header-status">
+                <div className="status-live" style={{ background: authError ? "var(--error)" : user ? "var(--brand)" : "var(--warning)" }} />
                 <span
-                  className="font-mono"
-                  style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: authError ? "var(--red)" : user ? "var(--accent)" : "var(--amber)" }}
+                  className="font-mono schedule-status-dot"
+                  style={{ color: authError ? "var(--error)" : user ? "var(--brand)" : "var(--warning)" }}
                 >
                   {authError ? "Auth Failed" : user ? "Live Sync" : "Connecting..."}
                 </span>
               </div>
-              <h1
-                className="font-display gtc-header-title"
-                style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", color: "#E8F4FF", display: "flex", alignItems: "center", gap: 10 }}
-              >
-                <Zap size={22} color="var(--accent)" strokeWidth={2.5} />
+              <h1 className="schedule-header-title gtc-header-title">
+                <Zap size={22} color="var(--brand)" strokeWidth={2.5} />
                 GTC 2026 团队日程协作
               </h1>
-              <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+              <p className="schedule-header-subtitle">
                 合并个人日程 · 统筹团队分工 · 实时多人协作
               </p>
             </div>
 
             {/* Header right actions */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative" }}>
-            <Link to="/reports" className="btn-accent" style={{ padding: "6px 14px", fontSize: 13, textDecoration: "none", gap: 5 }}>
+            <div className="schedule-header-actions">
+            <Link to="/reports" className="btn-accent schedule-header-report-link">
               <FileText size={14} />
               日报列表
             </Link>
 
             {/* Export button + dropdown */}
-            <div style={{ position: "relative" }}>
+            <div style={{ position: "relative" /* needed for dropdown positioning */ }}>
               <button
                 className="btn-ghost"
                 onClick={() => setShowExportMenu(!showExportMenu)}
@@ -846,43 +703,32 @@ export default function App() {
 
               {showExportMenu && (
                 <div className="dropdown-panel">
-                  <p
-                    className="font-mono"
-                    style={{ margin: "0 0 12px", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)" }}
-                  >
+                  <p className="font-mono export-dropdown-label">
                     选择导出日期
                   </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+                  <div className="export-dropdown-dates">
                     {groupedSessions.length === 0 ? (
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>暂无日期</span>
+                      <span className="export-no-dates">暂无日期</span>
                     ) : (
                       groupedSessions.map((g) => (
-                        <label
-                          key={g.date}
-                          style={{
-                            display: "flex", alignItems: "center", gap: 9,
-                            fontSize: 13, cursor: "pointer",
-                            padding: "5px 6px", borderRadius: 6,
-                            color: "var(--text)",
-                          }}
-                        >
+                        <label key={g.date} className="export-date-label">
                           <input
                             type="checkbox"
                             className="gtc-check"
                             checked={exportDates.has(g.date)}
                             onChange={() => toggleExportDate(g.date)}
                           />
-                          <span style={{ flex: 1 }}>{g.date}</span>
-                          <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                          <span className="export-date-name">{g.date}</span>
+                          <span className="font-mono export-date-count">
                             ×{g.sessions.length}
                           </span>
                         </label>
                       ))
                     )}
                   </div>
-                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                  <div className="export-dropdown-footer">
                     <button className="btn-ghost" onClick={() => setShowExportMenu(false)}>取消</button>
-                    <button className="btn-accent" onClick={exportToCSV} style={{ padding: "7px 16px", fontSize: 12 }}>
+                    <button className="btn-accent export-confirm-btn" onClick={exportToCSV}>
                       确认导出
                     </button>
                   </div>
@@ -894,21 +740,18 @@ export default function App() {
         </header>
 
         {/* ── MEMBERS SECTION ────────────────────────────────────────────── */}
-        <section className="card animate-fade-up delay-1" style={{ padding: "20px 24px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <section className="card animate-fade-up delay-1 schedule-members-card">
+          <div className="schedule-members-header">
             <UserPlus size={15} color="var(--text-muted)" />
-            <span
-              className="font-mono"
-              style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}
-            >
+            <span className="font-mono schedule-section-label">
               团队成员
             </span>
-            <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 2 }}>
+            <span className="font-mono schedule-members-count">
               / {members.length} members
             </span>
           </div>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+          <div className="schedule-member-grid">
             {members.map((member) => {
               const c = COLORS[member.colorIndex];
               return (
@@ -921,22 +764,16 @@ export default function App() {
                     "--glow-color": c.glow,
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.hex, flexShrink: 0, boxShadow: `0 0 6px ${c.hex}` }} />
-                      <span className="font-display" style={{ fontSize: 13, fontWeight: 700, color: c.hex }}>
+                  <div className="member-card-header">
+                    <div className="member-card-identity">
+                      <div className="member-card-dot" style={{ background: c.hex, boxShadow: `0 0 6px ${c.hex}` }} />
+                      <span className="member-card-name" style={{ color: c.hex }}>
                         {member.name}
                       </span>
                     </div>
                     <button
                       onClick={() => removeMember(member.id)}
-                      style={{
-                        background: "none", border: "none", cursor: "pointer",
-                        color: "var(--text-dim)", padding: 2, display: "flex",
-                        borderRadius: 4, transition: "color 0.15s",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--red)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
+                      className="member-card-remove"
                       title="移除成员"
                     >
                       <Trash2 size={13} />
@@ -944,16 +781,8 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => triggerUpload(member.id)}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                      background: "rgba(255,255,255,0.04)", border: `1px solid ${c.hex}30`,
-                      borderRadius: 6, padding: "5px 10px", cursor: "pointer",
-                      color: c.hex, fontSize: 11, fontFamily: "'Outfit', sans-serif",
-                      fontWeight: 500, letterSpacing: "0.02em", transition: "all 0.15s",
-                      width: "100%",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = c.bg; e.currentTarget.style.borderColor = c.hex + "60"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = c.hex + "30"; }}
+                    className="member-card-upload"
+                    style={{ color: c.hex, borderColor: c.hex + "30" }}
                   >
                     <Upload size={11} />
                     导入 CSV
@@ -963,26 +792,19 @@ export default function App() {
             })}
 
             {/* Add member input */}
-            <div
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                padding: "10px 14px", borderRadius: 10,
-                border: "1px dashed var(--border)", background: "transparent",
-                minWidth: 150,
-              }}
-            >
+            <div className="schedule-member-add">
               <input
                 className="gtc-input"
                 placeholder="添加成员..."
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addMember()}
-                style={{ padding: "6px 10px", fontSize: 12, flex: 1, minWidth: 0 }}
+                style={{ padding: "6px 10px", fontSize: 12, flex: 1, minWidth: 0 /* dynamic sizing */ }}
               />
               <button
                 onClick={addMember}
                 className="btn-accent"
-                style={{ padding: "6px 10px", fontSize: 12, flexShrink: 0 }}
+                style={{ padding: "6px 10px", fontSize: 12, flexShrink: 0 /* compact button */ }}
                 title="添加"
               >
                 <UserPlus size={13} />
@@ -996,33 +818,24 @@ export default function App() {
             className="hidden"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            style={{ display: "none" }}
           />
         </section>
 
         {/* ── SCHEDULE TABLE ─────────────────────────────────────────────── */}
-        <section className="card animate-fade-up delay-2" style={{ overflow: "hidden", padding: 0 }}>
+        <section className="card animate-fade-up delay-2 schedule-table-card">
           {/* Table header bar */}
-          <div style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--surface)",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="schedule-table-bar">
+            <div className="schedule-table-bar-left">
               <FileSpreadsheet size={15} color="var(--text-muted)" />
-              <span
-                className="font-mono"
-                style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}
-              >
+              <span className="font-mono schedule-section-label">
                 {viewMode === "table" ? "日程矩阵" : "日程日历"}
               </span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div className="schedule-table-bar-right">
               <button
                 className="btn-ghost"
                 onClick={() => setShowAddSession(true)}
-                style={{ display: "flex", alignItems: "center", padding: "4px 10px", fontSize: 11, gap: 4 }}
+                style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
               >
                 <Plus size={13} />
                 添加 Session
@@ -1031,66 +844,35 @@ export default function App() {
                 <button
                   onClick={() => setShowCleanupConfirm(true)}
                   title="删除所有无人参与的 session"
-                  className="font-mono"
-                  style={{
-                    fontSize: 11, height: 28, padding: "0 8px", borderRadius: 6,
-                    border: "1px solid var(--border)", cursor: "pointer",
-                    background: "transparent", color: "var(--text-dim)",
-                  }}
+                  className="font-mono schedule-cleanup-btn"
                 >
                   清理 · {emptySessions.length}
                 </button>
               )}
               {showCleanupConfirm && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                <div className="schedule-cleanup-confirm">
+                  <span className="font-mono schedule-cleanup-confirm-text">
                     删除 {emptySessions.length} 个无人 session？
                   </span>
-                  <button
-                    onClick={cleanupEmptySessions}
-                    style={{
-                      fontSize: 11, height: 28, padding: "0 8px", borderRadius: 6,
-                      border: "none", cursor: "pointer",
-                      background: "#dc2626", color: "#fff",
-                    }}
-                  >确认</button>
-                  <button
-                    onClick={() => setShowCleanupConfirm(false)}
-                    style={{
-                      fontSize: 11, height: 28, padding: "0 8px", borderRadius: 6,
-                      border: "1px solid var(--border)", cursor: "pointer",
-                      background: "transparent", color: "var(--text-dim)",
-                    }}
-                  >取消</button>
+                  <button onClick={cleanupEmptySessions} className="schedule-confirm-yes">确认</button>
+                  <button onClick={() => setShowCleanupConfirm(false)} className="schedule-confirm-no">取消</button>
                 </div>
               )}
-              <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)" }}>
+              <span className="font-mono schedule-session-count">
                 {sortedSessions.length} sessions
               </span>
-              <div style={{ display: "flex", gap: 2, background: "var(--bg)", borderRadius: 7, padding: 2 }}>
+              <div className="schedule-view-toggle">
                 <button
                   onClick={() => setViewMode("table")}
                   title="表格视图"
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    width: 28, height: 26, borderRadius: 5, border: "none", cursor: "pointer",
-                    background: viewMode === "table" ? "var(--surface)" : "transparent",
-                    color: viewMode === "table" ? "var(--accent)" : "var(--text-dim)",
-                    transition: "all 0.15s",
-                  }}
+                  className={`schedule-view-btn${viewMode === "table" ? " active" : ""}`}
                 >
                   <LayoutList size={13} />
                 </button>
                 <button
                   onClick={() => setViewMode("calendar")}
                   title="日历视图"
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    width: 28, height: 26, borderRadius: 5, border: "none", cursor: "pointer",
-                    background: viewMode === "calendar" ? "var(--surface)" : "transparent",
-                    color: viewMode === "calendar" ? "var(--accent)" : "var(--text-dim)",
-                    transition: "all 0.15s",
-                  }}
+                  className={`schedule-view-btn${viewMode === "calendar" ? " active" : ""}`}
                 >
                   <CalendarRange size={13} />
                 </button>
@@ -1098,7 +880,7 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto" /* needed for wide tables */ }}>
             {groupedSessions.length > 0 && viewMode === "calendar" && (
               <CalendarView
                 groupedSessions={groupedSessions}
@@ -1137,30 +919,20 @@ export default function App() {
                         style={{ cursor: "pointer", userSelect: "none" }}
                       >
                         <td colSpan={members.length + 2}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div className="table-date-row-inner">
                             <ChevronRight
                               size={13}
-                              color="var(--accent)"
-                              style={{
-                                transition: "transform 0.2s",
-                                transform: collapsedDates.has(group.date) ? "none" : "rotate(90deg)",
-                                flexShrink: 0,
-                              }}
+                              color="var(--brand)"
+                              style={{ transition: "transform 0.2s", transform: collapsedDates.has(group.date) ? "none" : "rotate(90deg)", flexShrink: 0 }}
                             />
-                            <CalendarDays size={13} color="var(--accent)" />
-                            <span
-                              className="font-display"
-                              style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", letterSpacing: "0.04em" }}
-                            >
-                              {group.date}
-                            </span>
-                            <span className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>
+                            <CalendarDays size={13} color="var(--brand)" />
+                            <span className="table-date-text">{group.date}</span>
+                            <span className="font-mono table-date-count">
                               {group.sessions.length} sessions
                             </span>
                             <button
-                              className="btn-accent"
+                              className="btn-accent table-date-report-btn"
                               onClick={(e) => { e.stopPropagation(); navigate(`/report/${latestOrNewVersionId(group.date, reportDocs)}`); }}
-                              style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
                             >
                               <FileText size={12} />
                               生成日报
@@ -1174,17 +946,17 @@ export default function App() {
                         <tr key={session.code} className="session-row">
                           {/* Time + Room */}
                           <td className="col-time" style={{ width: 160, maxWidth: 160 }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 5, color: "var(--text)" }}>
-                                <Clock size={11} color="var(--accent)" />
-                                <span className="font-mono" style={{ fontSize: 11, letterSpacing: "0.03em" }}>
+                            <div className="table-col-time-inner">
+                              <div className="table-time-row">
+                                <Clock size={11} color="var(--brand)" />
+                                <span className="font-mono table-time-text">
                                   {session.start}–{session.end}
                                 </span>
                               </div>
                               {session.room && (
-                                <div style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
+                                <div className="table-room-row">
                                   <MapPin size={11} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 1 }} />
-                                  <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4, letterSpacing: "0.01em" }}>
+                                  <span className="table-room-text">
                                     {session.room}
                                   </span>
                                 </div>
@@ -1194,7 +966,7 @@ export default function App() {
 
                           {/* Session code + title */}
                           <td className="col-session" style={{ width: 380, maxWidth: 420 }}>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                            <div className="table-session-inner">
                               {/* Clickable code badge */}
                               {session.url
                                 ? <a href={session.url} target="_blank" rel="noopener noreferrer"
@@ -1206,7 +978,7 @@ export default function App() {
 
                               {/* Type / Format / Recording pills */}
                               {(session.session_type || session.format || session.recording === "No") && (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                <div className="table-session-pills">
                                   {session.session_type && <SessionTypeBadge type={session.session_type} />}
                                   {session.format && <FormatBadge format={session.format} />}
                                   {session.recording && session.recording !== "Yes" && <NoRecordingBadge />}
@@ -1214,12 +986,9 @@ export default function App() {
                               )}
 
                               {/* Title */}
-                              <p style={{ margin: 0, fontSize: 13, color: "var(--text)", lineHeight: 1.45, fontWeight: 500, wordBreak: "break-word" }}>
+                              <p className="table-session-title">
                                 {SESSION_CATALOG.get(session.code)?.url
-                                  ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer"
-                                       style={{ color: "inherit", textDecoration: "none" }}
-                                       onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
-                                       onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
+                                  ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer">
                                       {SESSION_CATALOG.get(session.code)?.title || session.title}
                                     </a>
                                   : SESSION_CATALOG.get(session.code)?.title || session.title
@@ -1228,9 +997,9 @@ export default function App() {
 
                               {/* Speakers */}
                               {session.speakers?.length > 0 && (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <div className="table-session-speakers">
                                   {session.speakers.map((sp, i) => (
-                                    <span key={i} style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                                    <span key={i} className="table-session-speaker">
                                       {sp.name}{sp.title ? ` · ${sp.title}` : ""}{sp.company ? `, ${sp.company}` : ""}
                                     </span>
                                   ))}
@@ -1244,7 +1013,7 @@ export default function App() {
                             const c = COLORS[member.colorIndex];
                             const isOn = session.attendees.has(member.id);
                             return (
-                              <td key={member.id} className="col-attend" style={{ textAlign: "center", background: "transparent" }}>
+                              <td key={member.id} className="col-attend" style={{ textAlign: "center" }}>
                                 <button
                                   onClick={() => toggleAttendance(session.code, member.id)}
                                   className={`attend-btn${isOn ? " active" : ""}`}
@@ -1268,34 +1037,24 @@ export default function App() {
               </table>
             ) : groupedSessions.length === 0 ? (
               /* Empty state */
-              <div style={{
-                padding: "72px 32px",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
-              }}>
+              <div className="schedule-empty">
                 {/* Decorative grid */}
-                <div style={{ width: 240, position: "relative" }}>
+                <div className="schedule-empty-grid-wrap">
                   <div className="empty-grid">
                     {Array.from({ length: 24 }).map((_, i) => (
                       <div key={i} className="empty-cell" style={{ opacity: Math.random() * 0.5 + 0.05 }} />
                     ))}
                   </div>
                 </div>
-                <div style={{ textAlign: "center" }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: "var(--text)" }}>
+                <div className="schedule-empty-text">
+                  <p className="schedule-empty-title">
                     暂无日程数据
                   </p>
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+                  <p className="schedule-empty-desc">
                     为团队成员导入 NVIDIA GTC 导出的 CSV 文件以开始协作
                   </p>
                 </div>
-                <div
-                  style={{
-                    display: "flex", alignItems: "center", gap: 7,
-                    padding: "8px 16px", borderRadius: 8,
-                    background: "var(--accent-soft)", border: "1px solid rgba(61,255,164,0.2)",
-                    fontSize: 12, color: "var(--accent)",
-                  }}
-                >
+                <div className="schedule-empty-hint">
                   <Upload size={13} />
                   <span>点击成员卡片上的「导入 CSV」开始</span>
                 </div>
@@ -1305,8 +1064,8 @@ export default function App() {
         </section>
 
         {/* ── FOOTER ─────────────────────────────────────────────────────── */}
-        <footer style={{ textAlign: "center", padding: "8px 0" }}>
-          <span className="font-mono" style={{ fontSize: 11, color: "var(--text-dim)", letterSpacing: "0.06em" }}>
+        <footer className="schedule-footer">
+          <span className="font-mono schedule-footer-text">
             GTC 2026 · TEAM SCHEDULE SYNC · REALTIME
           </span>
         </footer>
