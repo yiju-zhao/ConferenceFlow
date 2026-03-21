@@ -1249,8 +1249,9 @@ export default function DailyReport() {
       const clone = container.cloneNode(true);
       clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn, .subtitle-toggle-btn").forEach(el => el.remove());
       clone.querySelectorAll(".print-only").forEach(el => {
-        el.style.display = "block";
         el.classList.remove("print-only");
+        // Use flex for meta rows (label + value inline), block for everything else
+        el.style.display = el.classList.contains("intel-card-meta") ? "flex" : "block";
       });
       clone.querySelectorAll("[contenteditable]").forEach(el => {
         el.removeAttribute("contenteditable");
