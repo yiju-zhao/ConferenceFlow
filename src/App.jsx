@@ -28,7 +28,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { SESSION_CATALOG, COLORS, parseReportId, latestOrNewVersionId } from "./shared";
+import { SESSION_CATALOG, COLORS } from "./shared";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const getInitials = (name) => {
@@ -132,7 +132,7 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
 }
 
 // ── Calendar view ─────────────────────────────────────────────────────────────
-function CalendarView({ groupedSessions, members, toggleAttendance, user, collapsedDates, toggleDateCollapse, navigate, reportDocs }) {
+function CalendarView({ groupedSessions, members, toggleAttendance, user, collapsedDates, toggleDateCollapse }) {
   return (
     <div className="calendar-view">
       {groupedSessions.map(({ date, sessions: dateSessions }) => {
@@ -163,13 +163,6 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
               <span className="font-mono calendar-date-count">
                 {dateSessions.length} sessions
               </span>
-              <button
-                className="btn-accent calendar-date-report-btn"
-                onClick={(e) => { e.stopPropagation(); navigate(`/report/${latestOrNewVersionId(date, reportDocs)}`); }}
-              >
-                <FileText size={12} />
-                生成日报
-              </button>
             </div>
 
             {/* Hourly time slot groups */}
@@ -315,10 +308,10 @@ export default function App() {
   const [authError, setAuthError] = useState(null);
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState({});
-  const [reportDocs, setReportDocs] = useState([]);
   const [newMemberName, setNewMemberName] = useState("");
   const fileInputRef = useRef(null);
   const [activeUploadMember, setActiveUploadMember] = useState(null);
+  const [showImportMenu, setShowImportMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportDates, setExportDates] = useState(new Set());
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
@@ -374,14 +367,6 @@ export default function App() {
       },
       console.error
     );
-  }, [user]);
-
-  // Report docs (for computing latest version per date)
-  useEffect(() => {
-    if (!user) return;
-    return onSnapshot(collection(db, "dailyReports"), snap => {
-      setReportDocs(snap.docs.map(d => ({ id: d.id })));
-    });
   }, [user]);
 
   // Auto-enrich existing sessions with catalog data
@@ -693,14 +678,14 @@ export default function App() {
             <div className="schedule-header-actions">
             <Link to="/reports" className="btn-accent schedule-header-report-link">
               <FileText size={14} />
-              日报列表
+              日报管理
             </Link>
 
             {/* Export button + dropdown */}
             <div style={{ position: "relative" /* needed for dropdown positioning */ }}>
               <button
                 className="btn-ghost"
-                onClick={() => setShowExportMenu(!showExportMenu)}
+                onClick={() => { setShowExportMenu(!showExportMenu); setShowImportMenu(false); }}
               >
                 <Download size={15} />
                 导出统筹表
@@ -773,28 +758,18 @@ export default function App() {
                     "--glow-color": c.glow,
                   }}
                 >
-                  <div className="member-card-header">
-                    <div className="member-card-identity">
-                      <div className="member-card-dot" style={{ background: c.hex, boxShadow: `0 0 6px ${c.hex}` }} />
-                      <span className="member-card-name" style={{ color: c.hex }}>
-                        {member.name}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => removeMember(member.id)}
-                      className="member-card-remove"
-                      title="移除成员"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                  <div className="member-card-identity">
+                    <div className="member-card-dot" style={{ background: c.hex, boxShadow: `0 0 6px ${c.hex}` }} />
+                    <span className="member-card-name" style={{ color: c.hex }}>
+                      {member.name}
+                    </span>
                   </div>
                   <button
-                    onClick={() => triggerUpload(member.id)}
-                    className="member-card-upload"
-                    style={{ color: c.hex, borderColor: c.hex + "30" }}
+                    onClick={() => removeMember(member.id)}
+                    className="member-card-remove"
+                    title="移除成员"
                   >
-                    <Upload size={11} />
-                    导入 CSV
+                    <Trash2 size={13} />
                   </button>
                 </div>
               );
@@ -841,8 +816,37 @@ export default function App() {
               </span>
             </div>
             <div className="schedule-table-bar-right">
+              <div style={{ position: "relative" }}>
+                <button
+                  className="btn-accent"
+                  onClick={() => { setShowImportMenu(!showImportMenu); setShowExportMenu(false); }}
+                  style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
+                  disabled={members.length === 0}
+                >
+                  <Upload size={12} />
+                  导入日程
+                </button>
+                {showImportMenu && members.length > 0 && (
+                  <div className="import-member-dropdown">
+                    <div className="import-member-dropdown-label">选择成员</div>
+                    {members.map((m) => {
+                      const c = COLORS[m.colorIndex];
+                      return (
+                        <button
+                          key={m.id}
+                          className="import-member-dropdown-item"
+                          onClick={() => { setShowImportMenu(false); triggerUpload(m.id); }}
+                        >
+                          <span className="member-card-dot" style={{ background: c.hex, width: 8, height: 8, borderRadius: "50%", flexShrink: 0 }} />
+                          <span style={{ color: c.hex, fontWeight: 600 }}>{m.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <button
-                className="btn-ghost"
+                className="btn-accent"
                 onClick={() => setShowAddSession(true)}
                 style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
               >
@@ -898,8 +902,6 @@ export default function App() {
                 user={user}
                 collapsedDates={collapsedDates}
                 toggleDateCollapse={toggleDateCollapse}
-                navigate={navigate}
-                reportDocs={reportDocs}
               />
             )}
             {groupedSessions.length > 0 && viewMode === "table" ? (
@@ -939,13 +941,6 @@ export default function App() {
                             <span className="font-mono table-date-count">
                               {group.sessions.length} sessions
                             </span>
-                            <button
-                              className="btn-accent table-date-report-btn"
-                              onClick={(e) => { e.stopPropagation(); navigate(`/report/${latestOrNewVersionId(group.date, reportDocs)}`); }}
-                            >
-                              <FileText size={12} />
-                              生成日报
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1065,7 +1060,7 @@ export default function App() {
                 </div>
                 <div className="schedule-empty-hint">
                   <Upload size={13} />
-                  <span>点击成员卡片上的「导入 CSV」开始</span>
+                  <span>点击上方「导入日程」按钮开始</span>
                 </div>
               </div>
             ) : null}

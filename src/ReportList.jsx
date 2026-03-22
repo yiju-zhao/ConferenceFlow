@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, onSnapshot } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { COLORS, DAY_CN, parseReportId } from "./shared";
 
 export default function ReportList() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [reportDocs, setReportDocs] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
   const [memberMap, setMemberMap] = useState({});
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -56,11 +58,29 @@ export default function ReportList() {
     return Object.values(latestByDate).sort((a, b) => b._date.localeCompare(a._date));
   })();
 
+  // Dates that already have reports
+  const reportedDates = useMemo(() => {
+    const dates = new Set();
+    reportDocs.forEach(r => dates.add(parseReportId(r.id).date));
+    return dates;
+  }, [reportDocs]);
+
+  // Available dates from sessions that don't have reports yet
+  const availableDates = useMemo(() => {
+    const sessionDates = new Set(allSessions.map(s => s.date).filter(Boolean));
+    return [...sessionDates].filter(d => !reportedDates.has(d)).sort();
+  }, [allSessions, reportedDates]);
+
+  const handleCreateReport = (date) => {
+    setShowDatePicker(false);
+    navigate(`/report/${date}`);
+  };
+
   return (
     <div className="report-page">
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to="/" className="report-back-btn">← 返回日程</Link>
+          <Link to="/" className="report-back-btn">&larr; 返回日程</Link>
         </div>
       </div>
 
@@ -70,12 +90,42 @@ export default function ReportList() {
             <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>GTC 2026 · DAILY BRIEFING</div>
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>日报管理</h2>
           </div>
+          <div style={{ position: "relative" }}>
+            <button
+              className="btn-accent"
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              disabled={availableDates.length === 0}
+              style={{ fontSize: 13, padding: "8px 16px", gap: 6, display: "flex", alignItems: "center" }}
+            >
+              + 创建日报
+            </button>
+            {showDatePicker && availableDates.length > 0 && (
+              <div className="create-report-dropdown">
+                <div className="create-report-dropdown-label">选择日期</div>
+                {availableDates.map(date => {
+                  const weekday = DAY_CN[new Date(date + "T00:00").getDay()];
+                  const count = allSessions.filter(s => s.date === date).length;
+                  return (
+                    <button
+                      key={date}
+                      className="create-report-dropdown-item"
+                      onClick={() => handleCreateReport(date)}
+                    >
+                      <span className="font-mono" style={{ fontWeight: 600 }}>{date}</span>
+                      <span style={{ color: "#888" }}>{weekday}</span>
+                      <span style={{ color: "#aaa", fontSize: 11, marginLeft: "auto" }}>{count} sessions</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="report-list-cards">
           {displayReports.length === 0 ? (
             <p style={{ color: "#AAAAAA", textAlign: "center", padding: "48px 0" }}>
-              暂无日报，在日程页面点击「生成日报」开始
+              暂无日报，点击「创建日报」开始
             </p>
           ) : displayReports.map(r => {
             const sessionsForDate = allSessions.filter(s => s.date === r.date);
