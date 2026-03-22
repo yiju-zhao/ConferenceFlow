@@ -213,8 +213,8 @@ body {
 
 /* ── Attendance toggle ───────────────────────── */
 .attend-btn {
-  width: 32px;
-  height: 32px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   border: 1.5px solid var(--border);
   background: transparent;
@@ -236,8 +236,8 @@ body {
   background: var(--surface);
 }
 .attend-dot {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--member-color);
   box-shadow: 0 0 6px var(--member-color);
@@ -1363,15 +1363,21 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-card-date { font-size: var(--report-fs-heading); font-weight: 700; color: var(--text-primary); }
 .report-card-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .report-card-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.report-status-badge {
-  font-size: var(--report-fs-label); padding: 3px 9px; border-radius: 99px; font-weight: 600;
-  letter-spacing: 0.03em;
+.report-archive-btn {
+  font-size: 12px; padding: 3px 10px; border-radius: 6px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; border: 1px solid var(--border);
+  background: var(--surface-dim); color: var(--text-muted);
 }
-.report-status-badge.draft {
-  color: var(--text-muted); background: var(--surface-dim); border: 1px solid var(--border);
+.report-archive-btn:hover {
+  background: var(--surface-alt); color: var(--text-primary);
 }
-.report-status-badge.done {
-  color: var(--success); background: rgba(39,174,96,0.08); border: 1px solid rgba(39,174,96,0.3);
+.report-archived-toggle {
+  font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-dim); color: var(--text-muted);
+  font-weight: 500; transition: all 0.15s;
+}
+.report-archived-toggle.active {
+  background: var(--brand); color: #fff; border-color: var(--brand);
 }
 .report-card-view-btn {
   font-size: var(--report-fs-caption); padding: 5px 12px; border-radius: 6px;
@@ -1682,7 +1688,7 @@ input[type="checkbox"].gtc-check:checked::after {
   }
 
   /* Larger touch targets for attendance toggles */
-  .attend-btn { width: 36px; height: 36px; }
+  .attend-btn { width: 28px; height: 28px; }
 
   /* ── Schedule table → card layout ── */
   .schedule-table,
