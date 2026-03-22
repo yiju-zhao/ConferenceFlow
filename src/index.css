@@ -158,11 +158,12 @@ body {
 .member-card {
   border-radius: 10px;
   border: 1px solid;
-  padding: 10px 14px;
+  padding: 8px 12px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  min-width: 150px;
+  min-width: 120px;
   transition: box-shadow 0.2s ease;
   position: relative;
 }
@@ -190,10 +191,10 @@ body {
 .schedule-table thead th:first-child { border-radius: 0; }
 
 .date-header-row td {
-  padding: 8px 16px;
+  padding: 0;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
 }
 
 .session-row {
@@ -492,9 +493,6 @@ input[type="checkbox"].gtc-check:checked::after {
 .schedule-member-add { display: flex; gap: 6px; align-items: center; min-width: 150px; }
 
 /* ── Member card internals ────────────────────── */
-.member-card-header {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-}
 .member-card-identity { display: flex; align-items: center; gap: 7px; }
 .member-card-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
@@ -506,15 +504,25 @@ input[type="checkbox"].gtc-check:checked::after {
   border-radius: 4px; transition: color 0.15s;
 }
 .member-card-remove:hover { color: var(--error); }
-.member-card-upload {
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  background: var(--surface-dim); border: 1px solid var(--border-dim);
-  border-radius: 6px; padding: 5px 10px; cursor: pointer;
-  font-size: 11px; font-family: inherit;
-  font-weight: 500; letter-spacing: 0.02em; transition: all 0.15s;
-  width: 100%;
+
+/* ── Import member dropdown ──────────────────── */
+.import-member-dropdown {
+  position: absolute; top: 100%; left: 0; margin-top: 6px;
+  min-width: 180px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 50;
+  padding: 6px 0; animation: calendarSlotIn 0.15s ease;
 }
-.member-card-upload:hover { background: var(--surface); border-color: var(--border); }
+.import-member-dropdown-label {
+  font-size: 11px; color: var(--text-muted); padding: 6px 14px 4px;
+  font-weight: 600; letter-spacing: 0.04em;
+}
+.import-member-dropdown-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 14px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; color: var(--text);
+  transition: background 0.1s;
+}
+.import-member-dropdown-item:hover { background: var(--surface-alt); }
 
 /* ── Members section card ─────────────────────── */
 .schedule-members-card { padding: 20px 24px; }
@@ -597,7 +605,6 @@ input[type="checkbox"].gtc-check:checked::after {
   font-size: 11px; color: var(--text-muted); margin-left: auto;
   background: var(--surface-alt); padding: 2px 8px; border-radius: var(--radius-pill); margin-right: var(--space-2);
 }
-.calendar-date-report-btn { padding: 4px 10px; font-size: 11px; gap: 4px; flex-shrink: 0; }
 
 .calendar-time-slot { padding: 16px 24px 4px; animation: calendarSlotIn 0.2s ease; }
 .calendar-time-label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -714,10 +721,20 @@ input[type="checkbox"].gtc-check:checked::after {
 .add-session-result-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
 /* ── Table view helpers ───────────────────────── */
-.table-date-row-inner { display: flex; align-items: center; gap: 10px; }
-.table-date-text { font-size: 12px; font-weight: 700; color: var(--brand); letter-spacing: 0.04em; }
-.table-date-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
-.table-date-report-btn { padding: 4px 10px; font-size: 11px; gap: 4px; }
+.table-date-row-inner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 24px;
+  border-bottom: 2px solid var(--brand-soft);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease;
+}
+.date-header-row:hover .table-date-row-inner { background: var(--surface-alt); }
+.table-date-text { font-size: 13px; font-weight: 700; color: var(--brand); letter-spacing: 0.04em; }
+.table-date-count {
+  font-size: 11px; color: var(--text-muted); margin-left: auto;
+  background: var(--surface-alt); padding: 2px 8px; border-radius: var(--radius-pill); margin-right: var(--space-2);
+}
 .table-col-time-inner { display: flex; flex-direction: column; gap: 5px; }
 .table-time-row { display: flex; align-items: center; gap: 5px; color: var(--text); }
 .table-time-text { font-size: 11px; letter-spacing: 0.03em; }
@@ -1311,28 +1328,23 @@ input[type="checkbox"].gtc-check:checked::after {
   padding: 24px 40px 16px;
   border-bottom: 1px solid var(--border-soft);
 }
-.report-list-create-btn {
-  font-size: 13px; padding: 7px 16px; border-radius: 6px;
-  background: var(--brand); color: #fff; border: none; cursor: pointer;
-  font-family: inherit; font-weight: 600;
-  transition: opacity 0.15s;
+.create-report-dropdown {
+  position: absolute; top: 100%; right: 0; margin-top: 6px;
+  min-width: 260px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 50;
+  padding: 6px 0; animation: calendarSlotIn 0.15s ease;
 }
-.report-list-create-btn:hover { opacity: 0.88; }
-.report-list-create-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 40px 12px;
-  border-bottom: 1px solid var(--border-dim);
-  background: var(--surface-dim);
-  font-size: 13px;
+.create-report-dropdown-label {
+  font-size: 11px; color: var(--text-muted); padding: 6px 14px 4px;
+  font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
 }
-.report-list-create-row input[type="date"] {
-  font-size: 13px; padding: 4px 8px; border-radius: 6px;
-  border: 1px solid var(--border); font-family: inherit;
+.create-report-dropdown-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 14px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; color: var(--text);
+  transition: background 0.1s;
 }
-.report-list-create-row button {
-  font-size: 13px; padding: 4px 14px; border-radius: 6px;
-  background: var(--brand); color: #fff; border: none; cursor: pointer; font-family: inherit;
-}
+.create-report-dropdown-item:hover { background: var(--surface-alt); }
 .report-list-cards {
   padding: 16px 40px 40px;
   display: flex; flex-direction: column; gap: 10px;
@@ -1654,7 +1666,6 @@ input[type="checkbox"].gtc-check:checked::after {
   .calendar-date-header { padding: 12px 16px; }
   .calendar-time-slot { padding: 12px 16px 4px; }
   .calendar-session-list { gap: 8px; }
-  .calendar-date-report-btn { padding: 4px 8px; font-size: 10px; }
 
   /* Page outer padding */
   .gtc-page-outer { padding: 14px 10px !important; }
@@ -1733,7 +1744,7 @@ input[type="checkbox"].gtc-check:checked::after {
   }
 
   /* Member section: smaller cards */
-  .member-card { min-width: 130px; }
+  .member-card { min-width: 100px; }
 }
 
 /* ── Delete Session Confirmation Modal ─────────── */
