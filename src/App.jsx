@@ -31,6 +31,11 @@ import { auth, db } from "./firebase";
 import { SESSION_CATALOG, COLORS, parseReportId, latestOrNewVersionId } from "./shared";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+const getInitials = (name) => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return parts.map(p => p[0]).join("").toUpperCase().substring(0, 3);
+};
 function parseCSVLine(text) {
   let ret = [], inQuote = false, value = "";
   for (let i = 0; i < text.length; i++) {
@@ -77,6 +82,9 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
     <div className={`calendar-session-card${session.attendees.size === 0 ? " calendar-card--unassigned" : ""}${session.attendees.size >= 3 ? " calendar-card--popular" : ""}`}>
       <div className="calendar-card-top">
         <span className="code-badge">{session.code}</span>
+        {session.session_type && <SessionTypeBadge type={session.session_type} />}
+        {session.format && <FormatBadge format={session.format} />}
+        {session.recording && session.recording !== "Yes" && <NoRecordingBadge />}
         <span className="font-mono calendar-card-time">
           {session.start}–{session.end}
         </span>
@@ -111,8 +119,9 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
                   color: isOn ? c.hex : undefined,
                   borderColor: isOn ? c.hex + "50" : undefined,
                 }}
+                title={m.name}
               >
-                {m.name}
+                {getInitials(m.name)}
               </button>
             );
           })}
@@ -663,10 +672,10 @@ export default function App() {
           <div className="schedule-header">
             <div>
               <div className="schedule-header-status">
-                <div className="status-live" style={{ background: authError ? "var(--error)" : user ? "var(--brand)" : "var(--warning)" }} />
+                <div className="status-live" style={{ background: authError ? "var(--error)" : user ? "var(--success)" : "var(--warning)" }} />
                 <span
                   className="font-mono schedule-status-dot"
-                  style={{ color: authError ? "var(--error)" : user ? "var(--brand)" : "var(--warning)" }}
+                  style={{ color: authError ? "var(--error)" : user ? "var(--success)" : "var(--warning)" }}
                 >
                   {authError ? "Auth Failed" : user ? "Live Sync" : "Connecting..."}
                 </span>
@@ -902,8 +911,8 @@ export default function App() {
                     {members.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
-                        <th key={m.id} style={{ width: 80, textAlign: "center", color: c.hex, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
-                          {m.name}
+                        <th key={m.id} title={m.name} style={{ width: 48, textAlign: "center", color: c.hex, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
+                          {getInitials(m.name)}
                         </th>
                       );
                     })}
@@ -967,23 +976,23 @@ export default function App() {
                           {/* Session code + title */}
                           <td className="col-session" style={{ width: 380, maxWidth: 420 }}>
                             <div className="table-session-inner">
-                              {/* Clickable code badge */}
-                              {session.url
-                                ? <a href={session.url} target="_blank" rel="noopener noreferrer"
-                                     style={{ textDecoration: "none", alignSelf: "flex-start" }}>
-                                    <span className="code-badge">{session.code}</span>
-                                  </a>
-                                : <span className="code-badge" style={{ alignSelf: "flex-start" }}>{session.code}</span>
-                              }
-
-                              {/* Type / Format / Recording pills */}
-                              {(session.session_type || session.format || session.recording === "No") && (
-                                <div className="table-session-pills">
-                                  {session.session_type && <SessionTypeBadge type={session.session_type} />}
-                                  {session.format && <FormatBadge format={session.format} />}
-                                  {session.recording && session.recording !== "Yes" && <NoRecordingBadge />}
-                                </div>
-                              )}
+                              {/* Code badge + attribute pills on same row */}
+                              <div className="table-session-meta-row">
+                                {session.url
+                                  ? <a href={session.url} target="_blank" rel="noopener noreferrer"
+                                       style={{ textDecoration: "none" }}>
+                                      <span className="code-badge">{session.code}</span>
+                                    </a>
+                                  : <span className="code-badge">{session.code}</span>
+                                }
+                                {(session.session_type || session.format || session.recording === "No") && (
+                                  <div className="table-session-pills">
+                                    {session.session_type && <SessionTypeBadge type={session.session_type} />}
+                                    {session.format && <FormatBadge format={session.format} />}
+                                    {session.recording && session.recording !== "Yes" && <NoRecordingBadge />}
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Title */}
                               <p className="table-session-title">
