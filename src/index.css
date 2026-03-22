@@ -580,28 +580,38 @@ input[type="checkbox"].gtc-check:checked::after {
 /* ── Calendar view ────────────────────────────── */
 .calendar-view { padding-bottom: 16px; }
 .calendar-date-header {
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--border-dim);
-  background: var(--surface-dim);
+  padding: 14px 24px;
+  border-bottom: 2px solid var(--brand-soft);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
   gap: 10px;
   cursor: pointer;
   user-select: none;
+  transition: background 0.15s ease;
 }
-.calendar-date-text { font-size: 12px; font-weight: 700; color: var(--brand); letter-spacing: 0.04em; }
-.calendar-date-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
-.calendar-date-report-btn { padding: 4px 10px; font-size: 11px; gap: 4px; }
+.calendar-date-header:hover { background: var(--surface-alt); }
+.calendar-date-text { font-size: 13px; font-weight: 700; color: var(--brand); letter-spacing: 0.04em; }
+.calendar-date-count {
+  font-size: 11px; color: var(--text-muted); margin-left: auto;
+  background: var(--surface-alt); padding: 2px 8px; border-radius: var(--radius-pill); margin-right: var(--space-2);
+}
+.calendar-date-report-btn { padding: 4px 10px; font-size: 11px; gap: 4px; flex-shrink: 0; }
 
-.calendar-time-slot { padding: 12px 24px 4px; }
+.calendar-time-slot { padding: 16px 24px 4px; animation: calendarSlotIn 0.2s ease; }
 .calendar-time-label { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-.calendar-time-text { font-size: 11px; color: var(--text-muted); letter-spacing: 0.06em; }
+.calendar-time-text { font-size: 12px; color: var(--text-secondary); letter-spacing: 0.06em; font-weight: 600; }
 .calendar-time-count {
-  font-size: 10px; color: var(--text-dim);
-  background: var(--surface); border: 1px solid var(--border-dim);
-  border-radius: var(--radius-pill); padding: 1px 7px;
+  font-size: 10px; color: var(--text-muted);
+  background: var(--brand-bg); border: 1px solid var(--brand-soft);
+  border-radius: var(--radius-pill); padding: 1px 7px; font-weight: 600;
 }
-.calendar-time-divider { flex: 1; height: 1px; background: var(--border-dim); }
+.calendar-time-divider { flex: 1; height: 1px; background: var(--border-soft); }
+@keyframes calendarSlotIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .calendar-session-list { display: flex; flex-wrap: wrap; gap: 12px; padding-bottom: 12px; }
 
 .calendar-session-card {
@@ -609,37 +619,46 @@ input[type="checkbox"].gtc-check:checked::after {
   border: 1px solid var(--border);
   border-left: 3px solid var(--brand);
   border-radius: var(--radius-md);
-  padding: 10px 14px;
-  width: 280px;
-  flex-shrink: 0;
+  padding: 12px 16px;
+  width: 280px; min-width: 240px; max-width: 400px; flex: 1 1 280px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
+.calendar-session-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.calendar-session-card:active { transform: translateY(0); }
 .calendar-card-top { display: flex; align-items: baseline; gap: 6px; }
 .calendar-card-time { font-size: 10px; color: var(--text-dim); }
 .calendar-card-title {
   margin: 0; font-size: 12px; color: var(--text); line-height: 1.45; font-weight: 500;
 }
 .calendar-card-title a { color: inherit; text-decoration: none; }
-.calendar-card-title a:hover { text-decoration: underline; }
+.calendar-card-title a:hover { text-decoration: underline; text-decoration-color: var(--brand); text-underline-offset: 2px; }
 .calendar-card-room { display: flex; align-items: center; gap: 4px; }
 .calendar-card-room-text { font-size: 10px; color: var(--text-dim); }
 .calendar-card-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
 
 .calendar-member-pill {
   font-size: 10px;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--text-dim);
-  border: 1px solid var(--border-dim);
+  background: var(--surface-dim);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
   font-family: inherit;
   font-weight: 400;
   transition: all 0.15s;
   cursor: pointer;
 }
-.calendar-member-pill.active { font-weight: 700; }
+.calendar-member-pill:hover { background: var(--surface-alt); border-color: var(--border-soft); color: var(--text-secondary); }
+.calendar-member-pill.active { font-weight: 700; box-shadow: 0 0 0 1px currentColor; border-color: transparent; }
+
+/* Session status hints */
+.calendar-card--unassigned { border-left-color: var(--border); opacity: 0.7; }
+.calendar-card--unassigned:hover { opacity: 1; }
+.calendar-card--popular { border-left-color: var(--success); }
 
 /* ── AddSession modal ─────────────────────────── */
 .add-session-overlay {
@@ -1629,6 +1648,13 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* App main page + schedule table mobile */
 @media (max-width: 640px) {
+  /* Calendar view mobile */
+  .calendar-session-card { width: 100%; max-width: 100%; flex: 1 1 100%; }
+  .calendar-date-header { padding: 12px 16px; }
+  .calendar-time-slot { padding: 12px 16px 4px; }
+  .calendar-session-list { gap: 8px; }
+  .calendar-date-report-btn { padding: 4px 8px; font-size: 10px; }
+
   /* Page outer padding */
   .gtc-page-outer { padding: 14px 10px !important; }
 

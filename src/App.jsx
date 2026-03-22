@@ -74,7 +74,7 @@ function formatHourBucket(startMinutes) {
 // ── Calendar session card ─────────────────────────────────────────────────────
 function CalendarSessionCard({ session, members, toggleAttendance, user }) {
   return (
-    <div className="calendar-session-card">
+    <div className={`calendar-session-card${session.attendees.size === 0 ? " calendar-card--unassigned" : ""}${session.attendees.size >= 3 ? " calendar-card--popular" : ""}`}>
       <div className="calendar-card-top">
         <span className="code-badge">{session.code}</span>
         <span className="font-mono calendar-card-time">
