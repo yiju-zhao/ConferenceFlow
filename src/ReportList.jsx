@@ -1,17 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { COLORS, DAY_CN, parseReportId } from "./shared";
+import { DAY_CN, parseReportId } from "./shared";
 
 export default function ReportList() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [reportDocs, setReportDocs] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
-  const [memberMap, setMemberMap] = useState({});
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -35,15 +35,6 @@ export default function ReportList() {
     });
   }, [user]);
 
-  useEffect(() => {
-    if (!user) return;
-    return onSnapshot(collection(db, "members"), snap => {
-      const map = {};
-      snap.forEach(d => { map[d.data().id] = d.data(); });
-      setMemberMap(map);
-    });
-  }, [user]);
-
   // Show only the latest version per date
   const displayReports = (() => {
     const latestByDate = reportDocs.reduce((acc, doc) => {
@@ -55,7 +46,8 @@ export default function ReportList() {
       }
       return acc;
     }, {});
-    return Object.values(latestByDate).sort((a, b) => b._date.localeCompare(a._date));
+    const all = Object.values(latestByDate).sort((a, b) => b._date.localeCompare(a._date));
+    return showArchived ? all : all.filter(r => r.status !== "archived");
   })();
 
   // Dates that already have reports
@@ -65,16 +57,21 @@ export default function ReportList() {
     return dates;
   }, [reportDocs]);
 
-  // Available dates from sessions that don't have reports yet
-  const availableDates = useMemo(() => {
+  // All session dates for the create dropdown
+  const allSessionDates = useMemo(() => {
     const sessionDates = new Set(allSessions.map(s => s.date).filter(Boolean));
-    return [...sessionDates].filter(d => !reportedDates.has(d)).sort();
-  }, [allSessions, reportedDates]);
+    return [...sessionDates].sort();
+  }, [allSessions]);
 
   const handleCreateReport = (date) => {
     setShowDatePicker(false);
-    navigate(`/report/${date}`);
+    // If report already exists, navigate to the existing one
+    const existing = reportDocs.find(r => parseReportId(r.id).date === date);
+    navigate(`/report/${existing ? existing.id : date}`);
   };
+
+  const archiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "archived" });
+  const unarchiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "draft" });
 
   return (
     <div className="report-page">
@@ -90,35 +87,46 @@ export default function ReportList() {
             <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>GTC 2026 · DAILY BRIEFING</div>
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>日报管理</h2>
           </div>
-          <div style={{ position: "relative" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
-              className="btn-accent"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              disabled={availableDates.length === 0}
-              style={{ fontSize: 13, padding: "8px 16px", gap: 6, display: "flex", alignItems: "center" }}
+              className={`report-archived-toggle${showArchived ? " active" : ""}`}
+              onClick={() => setShowArchived(!showArchived)}
             >
-              + 创建日报
+              {showArchived ? "隐藏已归档" : "显示已归档"}
             </button>
-            {showDatePicker && availableDates.length > 0 && (
-              <div className="create-report-dropdown">
-                <div className="create-report-dropdown-label">选择日期</div>
-                {availableDates.map(date => {
-                  const weekday = DAY_CN[new Date(date + "T00:00").getDay()];
-                  const count = allSessions.filter(s => s.date === date).length;
-                  return (
-                    <button
-                      key={date}
-                      className="create-report-dropdown-item"
-                      onClick={() => handleCreateReport(date)}
-                    >
-                      <span className="font-mono" style={{ fontWeight: 600 }}>{date}</span>
-                      <span style={{ color: "#888" }}>{weekday}</span>
-                      <span style={{ color: "#aaa", fontSize: 11, marginLeft: "auto" }}>{count} sessions</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div style={{ position: "relative" }}>
+              <button
+                className="btn-accent"
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                disabled={allSessionDates.length === 0}
+                style={{ fontSize: 13, padding: "8px 16px", gap: 6, display: "flex", alignItems: "center" }}
+              >
+                + 创建日报
+              </button>
+              {showDatePicker && allSessionDates.length > 0 && (
+                <div className="create-report-dropdown">
+                  <div className="create-report-dropdown-label">选择日期</div>
+                  {allSessionDates.map(date => {
+                    const weekday = DAY_CN[new Date(date + "T00:00").getDay()];
+                    const count = allSessions.filter(s => s.date === date).length;
+                    const hasReport = reportedDates.has(date);
+                    return (
+                      <button
+                        key={date}
+                        className="create-report-dropdown-item"
+                        onClick={() => handleCreateReport(date)}
+                      >
+                        <span className="font-mono" style={{ fontWeight: 600 }}>{date}</span>
+                        <span style={{ color: "#888" }}>{weekday}</span>
+                        <span style={{ color: "#aaa", fontSize: 11, marginLeft: "auto" }}>
+                          {hasReport ? "已创建" : `${count} sessions`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -128,13 +136,10 @@ export default function ReportList() {
               暂无日报，点击「创建日报」开始
             </p>
           ) : displayReports.map(r => {
-            const sessionsForDate = allSessions.filter(s => s.date === r.date);
-            const memberIds = [...new Set(sessionsForDate.flatMap(s => s.attendees || []))];
-            const members = memberIds.map(id => memberMap[id]).filter(Boolean);
-            const isDone = r.status === "done";
+            const isArchived = r.status === "archived";
             const weekday = DAY_CN[new Date(r.date + "T00:00").getDay()];
             return (
-              <div key={r.id} className="report-card">
+              <div key={r.id} className="report-card" style={isArchived ? { opacity: 0.6 } : undefined}>
                 <div className="report-card-main">
                   <div className="report-card-date">
                     {r.date} <span style={{ fontWeight: 400, color: "#888" }}>{weekday}</span>
@@ -143,27 +148,15 @@ export default function ReportList() {
                     <span style={{ fontSize: 12, color: "#888" }}>
                       {Object.keys(r.sessions || {}).length} sessions
                     </span>
-                    {members.length > 0 && (
-                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                        {members.map(m => {
-                          const c = COLORS[m.colorIndex] || COLORS[0];
-                          return (
-                            <span key={m.id} style={{
-                              fontSize: 11, padding: "2px 7px", borderRadius: 99,
-                              background: c.bg, color: c.hex, border: `1px solid ${c.hex}40`,
-                            }}>
-                              {m.name}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div className="report-card-right">
-                  <span className={`report-status-badge ${isDone ? "done" : "draft"}`}>
-                    {isDone ? "✓ 已完成" : "● 草稿"}
-                  </span>
+                  <button
+                    className="report-archive-btn"
+                    onClick={() => isArchived ? unarchiveReport(r.id) : archiveReport(r.id)}
+                  >
+                    {isArchived ? "取消归档" : "归档"}
+                  </button>
                   <Link to={`/report/${r.id}`} className="report-card-view-btn">
                     查看日报 →
                   </Link>
