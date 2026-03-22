@@ -181,15 +181,11 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." }) {
-  const contribRef = useRef(null);
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容..." }) {
   const sources = normaliseSources(block);
-  const contributorText = (block.contributor || "").trim();
-  useEffect(() => {
-    if (contribRef.current && document.activeElement !== contribRef.current) {
-      contribRef.current.value = block.contributor || '';
-    }
-  }, [block.contributor]);
+  const contributorText = block.contributorId
+    ? (members.find(m => m.id === block.contributorId)?.name || block.contributor || "").trim()
+    : (block.contributor || "").trim();
 
   const updateSource = (idx, v) => {
     const next = [...sources];
@@ -242,14 +238,18 @@ function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." 
       )}
       <div className="intel-card-section intel-card-meta no-print">
         <span className="intel-card-label">贡献人</span>
-        <input
-          ref={contribRef}
-          className="intel-card-contributor"
-          type="text"
-          placeholder="贡献人姓名..."
-          defaultValue={block.contributor || ''}
-          onBlur={e => onUpdate({ contributor: e.target.value })}
-        />
+        <select
+          className="intel-card-contributor-select"
+          value={block.contributorId || ""}
+          onChange={e => {
+            const id = e.target.value;
+            const name = members.find(m => m.id === id)?.name || "";
+            onUpdate({ contributorId: id, contributor: name });
+          }}
+        >
+          <option value="">选择贡献人...</option>
+          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
       </div>
       {contributorText && (
         <div className="intel-card-section intel-card-meta print-only">
@@ -2002,6 +2002,7 @@ ${clone.outerHTML}
               } else {
                 els.push(
                   <IntelCard key={block.id} block={block}
+                    members={members}
                     onUpdate={fields => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
                     onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
                   />
@@ -2036,6 +2037,7 @@ ${clone.outerHTML}
               } else {
                 els.push(
                   <IntelCard key={block.id} block={block}
+                    members={members}
                     placeholder="记录圈内声音..."
                     onUpdate={fields => updateBlockFields("reflectionsBlocks", block.id, fields)}
                     onRemove={() => removeBlock("reflectionsBlocks", block.id)}
