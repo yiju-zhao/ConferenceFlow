@@ -485,6 +485,7 @@ export default function App() {
       await setDoc(doc(db, "members", id), {
         id,
         name: newMemberName.trim(),
+        mode: "onsite",
         colorIndex: (() => {
           const used = new Set(members.map((m) => m.colorIndex));
           const free = COLORS.findIndex((_, i) => !used.has(i));
@@ -584,6 +585,11 @@ export default function App() {
     });
   };
 
+  const onlineMembers = useMemo(
+    () => members.filter(m => (m.mode || "onsite") === "online"),
+    [members]
+  );
+
   const sortedSessions = useMemo(
     () => Object.values(sessions).sort((a, b) =>
       a.date !== b.date ? a.date.localeCompare(b.date) : a.start.localeCompare(b.start)
@@ -624,13 +630,13 @@ export default function App() {
   const exportToCSV = () => {
     const toExport = sortedSessions.filter((s) => exportDates.has(s.date || "TBD"));
     if (!toExport.length) { alert("请至少选择一个日期！"); return; }
-    let csv = "Date,Start,End,Code,Title,Room,主要主题," + members.map((m) => m.name).join(",") + "\n";
+    let csv = "Date,Start,End,Code,Title,Room,主要主题," + onlineMembers.map((m) => m.name).join(",") + "\n";
     toExport.forEach((s) => {
       const safeTitle = s.title.includes(",") ? `"${s.title}"` : s.title;
       const safeRoom  = s.room.includes(",")  ? `"${s.room}"`  : s.room;
       const safeTopic = (s.mainTopic || "").includes(",") ? `"${s.mainTopic}"` : (s.mainTopic || "");
       csv += `${s.date},${s.start},${s.end},${s.code},${safeTitle},${safeRoom},${safeTopic},`;
-      csv += members.map((m) => (s.attendees.has(m.id) ? "是" : "")).join(",") + "\n";
+      csv += onlineMembers.map((m) => (s.attendees.has(m.id) ? "是" : "")).join(",") + "\n";
     });
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
@@ -765,6 +771,13 @@ export default function App() {
                     </span>
                   </div>
                   <button
+                    className="member-card-mode"
+                    onClick={() => setDoc(doc(db, "members", member.id), { ...member, mode: (member.mode || "onsite") === "online" ? "onsite" : "online" })}
+                    title="切换线上/线下"
+                  >
+                    {(member.mode || "onsite") === "online" ? "线上" : "线下"}
+                  </button>
+                  <button
                     onClick={() => removeMember(member.id)}
                     className="member-card-remove"
                     title="移除成员"
@@ -897,7 +910,7 @@ export default function App() {
             {groupedSessions.length > 0 && viewMode === "calendar" && (
               <CalendarView
                 groupedSessions={groupedSessions}
-                members={members}
+                members={onlineMembers}
                 toggleAttendance={toggleAttendance}
                 user={user}
                 collapsedDates={collapsedDates}
@@ -910,7 +923,7 @@ export default function App() {
                   <tr>
                     <th style={{ width: 180, textAlign: "left" }}>时间 / 地点</th>
                     <th style={{ textAlign: "left", maxWidth: 420 }}>Session</th>
-                    {members.map((m) => {
+                    {onlineMembers.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
                         <th key={m.id} title={m.name} style={{ width: 48, textAlign: "center", color: c.hex, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
@@ -929,7 +942,7 @@ export default function App() {
                         onClick={() => toggleDateCollapse(group.date)}
                         style={{ cursor: "pointer", userSelect: "none" }}
                       >
-                        <td colSpan={members.length + 2}>
+                        <td colSpan={onlineMembers.length + 2}>
                           <div className="table-date-row-inner">
                             <ChevronRight
                               size={13}
@@ -1013,7 +1026,7 @@ export default function App() {
                           </td>
 
                           {/* Attendance toggles */}
-                          {members.map((member) => {
+                          {onlineMembers.map((member) => {
                             const c = COLORS[member.colorIndex];
                             const isOn = session.attendees.has(member.id);
                             return (
