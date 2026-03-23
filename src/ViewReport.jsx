@@ -14,9 +14,22 @@ export default function ViewReport() {
         if (!r.ok) throw new Error(`Report not found (${r.status})`);
         return r.text();
       })
-      .then(text => {
+      .then(async text => {
         // Strip any leftover contenteditable attributes
         let cleaned = text.replace(/\s*contenteditable(=["'][^"']*["'])?/gi, "");
+
+        // Strip old asset stylesheet links that may 404 after rebuilds
+        cleaned = cleaned.replace(/<link[^>]*rel=["']stylesheet["'][^>]*href=["'][^"']*\/assets\/[^"']*["'][^>]*>/gi, "");
+
+        // Inject current app CSS from SPA's document.head (survives rebuilds)
+        const currentCss = await Promise.all(
+          Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+            .filter(el => !el.href.includes("fonts.googleapis.com"))
+            .map(el => fetch(el.href).then(r => r.text()).catch(() => ""))
+        );
+        const inlineCss = currentCss.filter(Boolean).map(css => `<style>${css}</style>`).join("\n");
+        cleaned = cleaned.replace("</head>", inlineCss + "</head>");
+
         // Inject Noto Sans SC for proper CJK rendering in PDF print
         const fontLink = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet"><style>.report-page,.report-container,body{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei","微软雅黑",sans-serif!important}</style>`;
         // Inject read-only CSS safeguard
