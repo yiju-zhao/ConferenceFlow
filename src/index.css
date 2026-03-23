@@ -755,8 +755,8 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .table-session-title a { color: inherit; text-decoration: none; }
 .table-session-title a:hover { text-decoration: underline; }
-.table-session-speakers { display: flex; flex-direction: column; gap: 2px; }
-.table-session-speaker { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+.table-session-speakers { display: flex; flex-direction: column; gap: 1px; }
+.table-session-speaker { font-size: 10px; color: var(--text-muted); line-height: 1.2; }
 
 /* ── Badges ───────────────────────────────────── */
 .schedule-badge {
