@@ -1373,6 +1373,10 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-card:hover { box-shadow: var(--shadow-md); }
 .report-card-main { display: flex; flex-direction: column; gap: 6px; }
 .report-card-date { font-size: var(--report-fs-heading); font-weight: 700; color: var(--text-primary); }
+.summary-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 13px; font-weight: 700;
+  background: linear-gradient(135deg, #CF0A2C 0%, #E67E22 100%); color: #fff; letter-spacing: 0.5px;
+}
 .report-card-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .report-card-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .report-archive-btn {

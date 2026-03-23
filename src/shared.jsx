@@ -22,6 +22,19 @@ export function latestOrNewVersionId(date, allDocs) {
   return date;
 }
 
+// ── Summary ID generator ─────────────────────────────────────────────────────
+export function generateSummaryId(existingDocs) {
+  const summaryDocs = existingDocs
+    .filter(d => d.id.startsWith("summary-GTC2026"))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (summaryDocs.length === 0) return "summary-GTC2026";
+  const versions = summaryDocs.map(d => {
+    const m = d.id.match(/-v(\d+)$/);
+    return m ? parseInt(m[1]) : 1;
+  });
+  return `summary-GTC2026-v${Math.max(...versions) + 1}`;
+}
+
 // ── Member color palette (light-theme tuned) ────────────────────────────────
 export const COLORS = [
   { hex: "#CF0A2C", bg: "rgba(207,10,44,0.08)",  glow: "rgba(207,10,44,0.20)" },
