@@ -15,7 +15,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { auth, db, storage } from "./firebase";
-import { ref, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
 import {
   SESSION_CATALOG,
   COLOR_PRESETS,
@@ -45,9 +45,26 @@ export default function ConferenceReport() {
   const [urlCopied, setUrlCopied] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
 
+  // Citation picker state
+  const [citationPicker, setCitationPicker] = useState(null); // { sectionName, blockId } | null
+  const [citationTab, setCitationTab] = useState("session"); // "session" | "link" | "text"
+  const [citationQuery, setCitationQuery] = useState("");
+  const [citationLinkUrl, setCitationLinkUrl] = useState("");
+  const [citationLinkLabel, setCitationLinkLabel] = useState("");
+  const [citationText, setCitationText] = useState("");
+
+  // Snapshot state
+  const [snapshots, setSnapshots] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [viewingSnapshot, setViewingSnapshot] = useState(null);
+  const [restoreConfirm, setRestoreConfirm] = useState(null);
+
   // Refs
   const reportDataRef = useRef(null);
   const reportContainerRef = useRef(null);
+  const createSnapshotRef = useRef(null);
+  const lastSnapshotHashRef = useRef(null);
+  const snapshotsColRef = collection(db, "dailyReports", reportId, "snapshots");
   const { debouncedSave, saveState } = useDebouncedSave(600);
 
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -99,6 +116,20 @@ export default function ConferenceReport() {
       arr.sort((a, b) => Number(a.id) - Number(b.id));
       setMembers(arr);
     });
+  }, [user]);
+
+  // ── Snapshot subscription ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || !reportId) return;
+    const q = query(collection(db, "dailyReports", reportId, "snapshots"), orderBy("createdAt", "desc"));
+    return onSnapshot(q, snap => setSnapshots(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+  }, [user, reportId]);
+
+  // ── 5-minute auto-snapshot timer ────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    const timer = setInterval(() => { createSnapshotRef.current?.("auto"); }, 5 * 60 * 1000);
+    return () => clearInterval(timer);
   }, [user]);
 
   // ── Report data listener ────────────────────────────────────────────────────
@@ -191,6 +222,229 @@ export default function ConferenceReport() {
     [saveSectionBlocks]
   );
 
+  // ── Snapshot helpers ─────────────────────────────────────────────────────────
+  const pruneSnapshots = useCallback(async () => {
+    const q = query(
+      collection(db, "dailyReports", reportId, "snapshots"),
+      orderBy("createdAt", "desc"),
+      limit(51)
+    );
+    const snap = await getDocs(q);
+    if (snap.docs.length > 50) {
+      await deleteDoc(snap.docs[50].ref);
+    }
+  }, [reportId]);
+
+  const createSnapshot = useCallback(async (type) => {
+    if (!user || !reportDataRef.current) return;
+    const rd = reportDataRef.current;
+    const data = {
+      title: rd.title || "",
+      sections: rd.sections || {},
+      citations: rd.citations || [],
+      sitePhotos: rd.sitePhotos || [],
+    };
+    const hash = JSON.stringify(data);
+    if (type === "auto" && hash === lastSnapshotHashRef.current) return;
+    try {
+      await addDoc(collection(db, "dailyReports", reportId, "snapshots"), {
+        type,
+        label: type === "auto" ? "自动保存" : "手动保存",
+        createdAt: serverTimestamp(),
+        data,
+      });
+      lastSnapshotHashRef.current = hash;
+      await pruneSnapshots();
+    } catch (err) {
+      console.error("[Snapshot] Failed to save snapshot:", err.code, err.message);
+    }
+  }, [user, reportId, pruneSnapshots]);
+
+  createSnapshotRef.current = createSnapshot;
+
+  const handleSave = async () => {
+    await createSnapshot("manual");
+  };
+
+  const handleRestore = (snapshot) => {
+    setRestoreConfirm(snapshot);
+  };
+
+  const confirmRestore = async () => {
+    if (!restoreConfirm) return;
+    const snapshot = restoreConfirm;
+    setRestoreConfirm(null);
+    await createSnapshot("manual");
+    await setDoc(doc(db, "dailyReports", reportId), snapshot.data, { merge: true });
+    setShowHistory(false);
+    setViewingSnapshot(null);
+  };
+
+  // ── Export / Publish handlers ────────────────────────────────────────────────
+  const handleExport = async () => {
+    setExporting(true);
+    setShowExportMenu(false);
+    try {
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
+      const clone = container.cloneNode(true);
+      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar").forEach(el => el.remove());
+      clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
+      const { default: TurndownService } = await import('turndown');
+      const { gfm } = await import('turndown-plugin-gfm');
+      const td = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
+      td.use(gfm);
+      const frontmatter = `---\ntitle: GTC 2026 总结稿\ndate: ${new Date().toISOString().slice(0,10)}\n---\n\n`;
+      const md = frontmatter + td.turndown(clone.outerHTML);
+      const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `GTC2026_总结稿.md`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (err) { alert(`导出失败：${err.message}`); }
+    finally { setExporting(false); }
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    setShowExportMenu(false);
+    try {
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
+      const clone = container.cloneNode(true);
+      clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar").forEach(el => el.remove());
+      clone.querySelectorAll(".print-only").forEach(el => { el.style.display = "block"; });
+      clone.querySelectorAll("[contenteditable]").forEach(el => el.removeAttribute("contenteditable"));
+      clone.querySelectorAll("button, input, textarea, select").forEach(el => el.remove());
+
+      const styleTagsHtml = (await Promise.all(
+        Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
+          .map(async el => {
+            if (el.tagName === "LINK") {
+              try {
+                const href = new URL(el.getAttribute("href"), window.location.href).href;
+                const css = await fetch(href).then(r => r.text());
+                return `<style>${css}</style>`;
+              } catch { return ""; }
+            }
+            return el.outerHTML;
+          })
+      )).join("\n");
+
+      const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTC 2026 总结稿</title>
+${styleTagsHtml}
+<style>
+  body { background: #fff; color: #111; }
+  .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+</style>
+</head>
+<body>
+${clone.outerHTML}
+</body>
+</html>`;
+
+      const storageRef = ref(storage, `public/summary-${reportId}.html`);
+      await uploadString(storageRef, html, 'raw', { contentType: 'text/html; charset=utf-8' });
+      const url = await getDownloadURL(storageRef);
+      setShareUrl(url);
+    } catch (err) {
+      console.error("[Publish] Failed:", err.message);
+      alert(`发布失败：${err.message}`);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  // ── Citation helpers ───────────────────────────────────────────────────────
+  const citations = reportData?.citations || [];
+
+  const getNextCitationId = useCallback(() => {
+    if (citations.length === 0) return 1;
+    return Math.max(...citations.map((c) => c.id)) + 1;
+  }, [citations]);
+
+  const getCitationPreview = useCallback(
+    (id) => {
+      const cite = citations.find((c) => c.id === id);
+      if (!cite) return `[${id}]`;
+      if (cite.type === "session") return `${cite.sessionCode} — ${cite.title}`;
+      if (cite.type === "link") return cite.label || cite.url;
+      return cite.content?.slice(0, 50) + "...";
+    },
+    [citations]
+  );
+
+  const openCitationPicker = useCallback((sectionName, blockId) => {
+    setCitationPicker({ sectionName, blockId });
+    setCitationTab("session");
+    setCitationQuery("");
+    setCitationLinkUrl("");
+    setCitationLinkLabel("");
+    setCitationText("");
+  }, []);
+
+  const addCitation = useCallback(
+    (newCite) => {
+      const id = getNextCitationId();
+      const cite = { ...newCite, id };
+      // Save citation to top-level citations array
+      setDoc(
+        doc(db, "dailyReports", reportId),
+        { citations: [...citations, cite] },
+        { merge: true }
+      ).catch(console.error);
+      // Add citation id to the block's citations array
+      if (citationPicker) {
+        const { sectionName, blockId } = citationPicker;
+        const section = reportDataRef.current?.sections?.[sectionName] || { blocks: [] };
+        const updatedBlocks = section.blocks.map((b) =>
+          b.id === blockId ? { ...b, citations: [...(b.citations || []), id] } : b
+        );
+        saveSectionBlocks(sectionName, updatedBlocks);
+      }
+      setCitationPicker(null);
+    },
+    [citations, citationPicker, reportId, saveSectionBlocks, getNextCitationId]
+  );
+
+  const addExistingCitation = useCallback(
+    (citeId) => {
+      if (!citationPicker) return;
+      const { sectionName, blockId } = citationPicker;
+      const section = reportDataRef.current?.sections?.[sectionName] || { blocks: [] };
+      const updatedBlocks = section.blocks.map((b) =>
+        b.id === blockId
+          ? { ...b, citations: [...new Set([...(b.citations || []), citeId])] }
+          : b
+      );
+      saveSectionBlocks(sectionName, updatedBlocks);
+      setCitationPicker(null);
+    },
+    [citationPicker, saveSectionBlocks]
+  );
+
+  const sessionSearchResults = useMemo(() => {
+    if (!citationQuery.trim()) return [];
+    const q = citationQuery.trim().toLowerCase();
+    const results = [];
+    for (const [, s] of SESSION_CATALOG) {
+      if (results.length >= 15) break;
+      if (
+        s.session_id.toLowerCase().includes(q) ||
+        s.title.toLowerCase().includes(q)
+      ) {
+        results.push(s);
+      }
+    }
+    return results;
+  }, [citationQuery]);
+
   // ── Formatting ──────────────────────────────────────────────────────────────
   const execCmd = (cmd, val) =>
     /** @type {any} */ (document).execCommand(cmd, false, val ?? undefined);
@@ -201,8 +455,6 @@ export default function ConferenceReport() {
   };
 
   // ── Computed ────────────────────────────────────────────────────────────────
-  const citations = reportData?.citations || [];
-
   const sitePhotos = reportData?.sitePhotos || [];
 
   // Group photos by date (using the source field or fallback to index)
@@ -254,6 +506,21 @@ export default function ConferenceReport() {
                 ✓ 已保存
               </span>
             )}
+            <button
+              className="report-tool-btn"
+              onClick={handleSave}
+              title="手动保存快照"
+            >
+              保存
+            </button>
+            <button
+              className="report-tool-btn"
+              onClick={() => setShowHistory(v => !v)}
+              title="历史记录"
+              style={{ color: showHistory ? "var(--brand)" : undefined }}
+            >
+              历史记录
+            </button>
             <div className="report-toolbar-divider" />
             {/* Formatting buttons */}
             <button className="report-icon-btn" onClick={execBold} title="加粗">
@@ -294,25 +561,25 @@ export default function ConferenceReport() {
             <div
               style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }}
             />
-            {/* Export dropdown — placeholder for Task 6 */}
             <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
               <button
                 className="report-export-btn"
-                onClick={() => !exporting && setShowExportMenu((v) => !v)}
-                disabled={exporting}
+                onClick={() => !(exporting || publishing) && setShowExportMenu((v) => !v)}
+                disabled={exporting || publishing}
                 aria-haspopup="true"
                 aria-expanded={showExportMenu}
               >
-                {exporting ? "生成中..." : "导出 ▾"}
+                {exporting ? "导出中..." : publishing ? "发布中..." : "导出 ▾"}
               </button>
               {showExportMenu && (
                 <div className="export-dropdown-menu">
-                  <button
-                    className="export-menu-item"
-                    onClick={() => setShowExportMenu(false)}
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    <span className="export-menu-label">导出功能即将上线</span>
+                  <button className="export-menu-item" onClick={handleExport}>
+                    <span className="export-menu-icon">↓</span>
+                    <span className="export-menu-label">导出 Markdown</span>
+                  </button>
+                  <button className="export-menu-item" onClick={handlePublish}>
+                    <span className="export-menu-icon">🔗</span>
+                    <span className="export-menu-label">分享总结稿</span>
                   </button>
                 </div>
               )}
@@ -357,6 +624,352 @@ export default function ConferenceReport() {
               </button>
             </div>
             <p className="share-modal-hint">链接可公开访问，任何人均可查看。</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── History Panel ───────────────────────────────────────── */}
+      {showHistory && (
+        <div
+          style={{
+            position: "fixed", top: 0, right: 0, width: 420, height: "100vh",
+            background: "var(--surface)", borderLeft: "1px solid var(--border)",
+            zIndex: 200, display: "flex", flexDirection: "column", boxShadow: "-4px 0 16px rgba(0,0,0,0.12)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ fontWeight: 600, fontSize: 14 }}>历史记录</span>
+            <button className="share-modal-close" onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}>×</button>
+          </div>
+          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+            {/* Snapshot list */}
+            <div style={{ width: 160, borderRight: "1px solid var(--border)", overflowY: "auto", flexShrink: 0 }}>
+              {snapshots.length === 0 && (
+                <p style={{ padding: 12, fontSize: 12, color: "var(--text-muted)" }}>暂无记录</p>
+              )}
+              {snapshots.map(snap => {
+                const ts = snap.createdAt?.toDate?.();
+                const label = ts ? ts.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
+                return (
+                  <div
+                    key={snap.id}
+                    onClick={() => setViewingSnapshot(snap)}
+                    style={{
+                      padding: "10px 12px", fontSize: 12, cursor: "pointer",
+                      background: viewingSnapshot?.id === snap.id ? "var(--bg-secondary)" : "transparent",
+                      borderBottom: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: snap.type === "manual" ? "var(--brand)" : "var(--text-secondary)" }}>{snap.label}</div>
+                    <div style={{ color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Snapshot preview */}
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+              {!viewingSnapshot ? (
+                <p style={{ fontSize: 13, color: "var(--text-muted)" }}>选择左侧记录预览</p>
+              ) : (
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>{viewingSnapshot.data?.title || "(无标题)"}</div>
+                  {Object.entries(viewingSnapshot.data?.sections || {}).map(([name, sec]) => (
+                    <div key={name} style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--brand)", marginBottom: 4 }}>{name}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                        {(sec.blocks || []).length} 个内容块
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+                    引用 {(viewingSnapshot.data?.citations || []).length} 条 · 照片 {(viewingSnapshot.data?.sitePhotos || []).length} 张
+                  </div>
+                  <button
+                    className="report-export-btn"
+                    onClick={() => handleRestore(viewingSnapshot)}
+                    style={{ width: "100%" }}
+                  >
+                    恢复此版本
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Restore Confirm Modal ────────────────────────────────── */}
+      {restoreConfirm && (
+        <div className="share-modal-overlay" onClick={() => setRestoreConfirm(null)}>
+          <div className="share-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="share-modal-header">
+              <span className="share-modal-title">确认恢复</span>
+              <button className="share-modal-close" onClick={() => setRestoreConfirm(null)}>×</button>
+            </div>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "12px 0 16px" }}>
+              当前内容将先保存快照，然后恢复到所选版本。此操作不可撤销。
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="report-tool-btn" onClick={() => setRestoreConfirm(null)}>取消</button>
+              <button className="report-export-btn" onClick={confirmRestore}>确认恢复</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Citation Picker Modal ───────────────────────────────── */}
+      {citationPicker && (
+        <div className="share-modal-overlay" onClick={() => setCitationPicker(null)}>
+          <div
+            className="share-modal-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 520, width: "90vw" }}
+          >
+            <div className="share-modal-header">
+              <span className="share-modal-title">添加引用</span>
+              <button className="share-modal-close" onClick={() => setCitationPicker(null)}>
+                ×
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border)", marginBottom: 12 }}>
+              {[
+                { key: "session", label: "Session" },
+                { key: "link", label: "链接" },
+                { key: "text", label: "文字" },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setCitationTab(tab.key)}
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: 13,
+                    fontWeight: citationTab === tab.key ? 600 : 400,
+                    color: citationTab === tab.key ? "var(--brand)" : "var(--text-secondary)",
+                    background: "none",
+                    border: "none",
+                    borderBottom: citationTab === tab.key ? "2px solid var(--brand)" : "2px solid transparent",
+                    cursor: "pointer",
+                    marginBottom: -1,
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Session tab */}
+            {citationTab === "session" && (
+              <div>
+                <input
+                  type="text"
+                  value={citationQuery}
+                  onChange={(e) => setCitationQuery(e.target.value)}
+                  placeholder="搜索 Session ID 或标题..."
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
+                    marginBottom: 8,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <div style={{ maxHeight: 240, overflowY: "auto" }}>
+                  {sessionSearchResults.length === 0 && citationQuery.trim() && (
+                    <p style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
+                      未找到匹配的 Session
+                    </p>
+                  )}
+                  {sessionSearchResults.map((s) => (
+                    <div
+                      key={s.session_id}
+                      onClick={() =>
+                        addCitation({
+                          type: "session",
+                          sessionCode: s.session_id,
+                          title: s.title,
+                          url: s.url || "",
+                        })
+                      }
+                      style={{
+                        padding: "8px 10px",
+                        cursor: "pointer",
+                        borderRadius: 6,
+                        fontSize: 13,
+                        display: "flex",
+                        gap: 8,
+                        alignItems: "flex-start",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-secondary)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "monospace",
+                          fontWeight: 700,
+                          fontSize: 12,
+                          color: "var(--brand)",
+                          whiteSpace: "nowrap",
+                          marginTop: 1,
+                        }}
+                      >
+                        {s.session_id}
+                      </span>
+                      <span style={{ color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                        {s.title}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Link tab */}
+            {citationTab === "link" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input
+                  type="url"
+                  value={citationLinkUrl}
+                  onChange={(e) => setCitationLinkUrl(e.target.value)}
+                  placeholder="URL"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <input
+                  type="text"
+                  value={citationLinkLabel}
+                  onChange={(e) => setCitationLinkLabel(e.target.value)}
+                  placeholder="标签（可选）"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  className="report-tool-btn"
+                  disabled={!citationLinkUrl.trim()}
+                  onClick={() =>
+                    addCitation({
+                      type: "link",
+                      url: citationLinkUrl.trim(),
+                      label: citationLinkLabel.trim(),
+                    })
+                  }
+                  style={{ alignSelf: "flex-end", fontSize: 13, marginTop: 4 }}
+                >
+                  添加
+                </button>
+              </div>
+            )}
+
+            {/* Text tab */}
+            {citationTab === "text" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <textarea
+                  value={citationText}
+                  onChange={(e) => setCitationText(e.target.value)}
+                  placeholder="输入来源描述..."
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    fontSize: 13,
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    background: "var(--bg-secondary)",
+                    color: "var(--text-primary)",
+                    resize: "vertical",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                  }}
+                />
+                <button
+                  className="report-tool-btn"
+                  disabled={!citationText.trim()}
+                  onClick={() =>
+                    addCitation({ type: "text", content: citationText.trim() })
+                  }
+                  style={{ alignSelf: "flex-end", fontSize: 13, marginTop: 4 }}
+                >
+                  添加
+                </button>
+              </div>
+            )}
+
+            {/* Existing citations */}
+            {citations.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div
+                  style={{
+                    borderTop: "1px solid var(--border)",
+                    paddingTop: 12,
+                    marginBottom: 8,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    已有引用：
+                  </span>
+                </div>
+                <div style={{ maxHeight: 160, overflowY: "auto" }}>
+                  {citations.map((c) => (
+                    <div
+                      key={c.id}
+                      onClick={() => addExistingCitation(c.id)}
+                      style={{
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                        borderRadius: 6,
+                        fontSize: 13,
+                        display: "flex",
+                        gap: 6,
+                        alignItems: "center",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-secondary)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          color: "var(--brand)",
+                          fontSize: 12,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        [{c.id}]
+                      </span>
+                      <span style={{ color: "var(--text-secondary)" }}>
+                        {getCitationPreview(c.id)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -502,19 +1115,32 @@ export default function ConferenceReport() {
                             marginTop: 8,
                           }}
                         >
-                          {(block.citations || []).map((citIdx, i) => (
-                            <span key={i} className="citation-badge">
-                              [{citIdx}]
+                          {(block.citations || []).map((cId) => (
+                            <span key={cId} className="citation-badge" title={getCitationPreview(cId)}>
+                              [{cId}]
+                              <button
+                                className="citation-badge-remove no-print"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const sec = reportDataRef.current?.sections?.[sectionName] || { blocks: [] };
+                                  const updatedBlocks = sec.blocks.map((b) =>
+                                    b.id === block.id
+                                      ? { ...b, citations: (b.citations || []).filter((id) => id !== cId) }
+                                      : b
+                                  );
+                                  saveSectionBlocks(sectionName, updatedBlocks);
+                                }}
+                              >
+                                ×
+                              </button>
                             </span>
                           ))}
                         </div>
                       )}
-                      {/* Citation add — placeholder for Task 5 */}
+                      {/* Citation add button */}
                       <button
                         className="citation-add-btn no-print"
-                        onClick={() => {
-                          /* Task 5: open citation picker */
-                        }}
+                        onClick={() => openCitationPicker(sectionName, block.id)}
                         style={{
                           marginTop: 6,
                           fontSize: 12,
@@ -622,42 +1248,69 @@ export default function ConferenceReport() {
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {citations.map((cite, idx) => {
-                const sessionInfo = cite.sessionId
-                  ? SESSION_CATALOG.get(cite.sessionId)
-                  : null;
-                return (
-                  <div key={idx} className="citation-ref-item">
-                    <span className="citation-ref-number">[{idx + 1}]</span>
-                    <div style={{ flex: 1 }}>
-                      {/* Session info */}
-                      {sessionInfo && (
-                        <div style={{ marginBottom: 4 }}>
-                          <span
-                            style={{
-                              fontFamily: "monospace",
-                              fontSize: 12,
-                              color: "var(--text-muted)",
-                              marginRight: 6,
-                            }}
-                          >
-                            {cite.sessionId}
-                          </span>
+              {citations.map((cite) => (
+                <div key={cite.id} className="citation-ref-item">
+                  <span className="citation-ref-number">[{cite.id}]</span>
+                  <div style={{ flex: 1 }}>
+                    {/* Session citation */}
+                    {cite.type === "session" && (
+                      <div style={{ marginBottom: 4 }}>
+                        <span
+                          style={{
+                            fontFamily: "monospace",
+                            fontSize: 12,
+                            color: "var(--text-muted)",
+                            marginRight: 6,
+                          }}
+                        >
+                          {cite.sessionCode}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "var(--text-secondary)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {cite.title}
+                        </span>
+                        {cite.url && (
+                          <div>
+                            <a
+                              href={cite.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="citation-ref-link"
+                              style={{
+                                fontSize: 12,
+                                color: "var(--info)",
+                                textDecoration: "underline",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {cite.url}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Link citation */}
+                    {cite.type === "link" && (
+                      <div>
+                        {cite.label && (
                           <span
                             style={{
                               fontSize: 13,
                               color: "var(--text-secondary)",
                               fontWeight: 500,
+                              marginRight: 6,
                             }}
                           >
-                            {sessionInfo.title}
+                            {cite.label}
                           </span>
-                        </div>
-                      )}
-                      {/* Link */}
-                      {cite.link && (
+                        )}
                         <a
-                          href={cite.link}
+                          href={cite.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="citation-ref-link"
@@ -668,27 +1321,27 @@ export default function ConferenceReport() {
                             wordBreak: "break-all",
                           }}
                         >
-                          {cite.link}
+                          {cite.url}
                         </a>
-                      )}
-                      {/* Text content */}
-                      {cite.text && (
-                        <p
-                          className="citation-ref-text"
-                          style={{
-                            margin: "4px 0 0",
-                            fontSize: 13,
-                            color: "var(--text-secondary)",
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {cite.text}
-                        </p>
-                      )}
-                    </div>
+                      </div>
+                    )}
+                    {/* Text citation */}
+                    {cite.type === "text" && (
+                      <p
+                        className="citation-ref-text"
+                        style={{
+                          margin: 0,
+                          fontSize: 13,
+                          color: "var(--text-secondary)",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {cite.content}
+                      </p>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </div>
