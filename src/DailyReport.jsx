@@ -58,18 +58,6 @@ function useDebouncedSave(delay = 600) {
   return { debouncedSave, saveState };
 }
 
-// ── Version helpers ──────────────────────────────────────────────────────────
-function parseReportId(reportId) {
-  const m = reportId.match(/^(.+)-v(\d+)$/);
-  return m
-    ? { date: m[1], version: parseInt(m[2]), isLegacy: false }
-    : { date: reportId, version: 1, isLegacy: true };
-}
-
-
-// ── Color presets ────────────────────────────────────────────────────────────
-const COLOR_PRESETS = ["#333333", "#CF0A2C", "#E67E22", "#27AE60", "#2980B9", "#8E44AD"];
-
 // ── EditableField ────────────────────────────────────────────────────────────
 function EditableField({ value, onSave, placeholder, minHeight = 60 }) {
   const ref = useRef(null);
