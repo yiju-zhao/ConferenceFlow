@@ -112,7 +112,7 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容..." }) {
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false }) {
   const sources = normaliseSources(block);
   // Normalise legacy single contributorId → contributorIds array
   const contributorIds = block.contributorIds?.length
@@ -144,6 +144,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
           onSave={html => onUpdate({ content: html })}
           placeholder={placeholder}
           minHeight={60}
+          readOnly={readOnly}
         />
       </div>
       {sources.map((src, i) => (
@@ -211,7 +212,21 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
 }
 
 // ── SpeakersEditor ───────────────────────────────────────────────────────────
-function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
+function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove, readOnly = false }) {
+  if (readOnly) {
+    return (
+      <div>
+        {speakers.map((spk, idx) => (
+          <div key={idx} className="speaker-block">
+            <div className="speaker-print-text" style={{ display: "block" }}>
+              {[spk.name, spk.position, spk.company].filter(Boolean).join(" · ")}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div>
       {speakers.map((spk, idx) => (
@@ -418,7 +433,7 @@ function SnapshotViewer({ snapshot, currentData }) {
 }
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
-export default function DailyReport() {
+export default function DailyReport({ viewMode = false }) {
   const { reportId } = useParams();
   const { date } = parseReportId(reportId);
   const [user, setUser] = useState(null);
@@ -517,10 +532,10 @@ export default function DailyReport() {
 
   // 5-minute auto snapshot
   useEffect(() => {
-    if (!user) return;
+    if (!user || viewMode) return;
     const timer = setInterval(() => { createSnapshotRef.current?.("auto"); }, 5 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [user]);
+  }, [user, viewMode]);
 
   // Members
   useEffect(() => {
@@ -638,11 +653,11 @@ export default function DailyReport() {
 
   // ── Save helpers ────────────────────────────────────────────────────────────
   const saveField = useCallback((field, html) => {
-    if (!user) return;
+    if (!user || viewMode) return;
     debouncedSave(field, () => {
       setDoc(doc(db, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
     });
-  }, [user, reportId, debouncedSave]);
+  }, [user, reportId, debouncedSave, viewMode]);
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
   const addBlock = useCallback((field, type) => {
@@ -1320,10 +1335,10 @@ ${clone.outerHTML}
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="report-page">
+    <div className={`report-page${viewMode ? " report-view-mode" : ""}`}>
 
       {/* ── Toolbar ──────────────────────────────────────────────── */}
-      <div className="report-toolbar no-print">
+      {!viewMode && <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Link to="/" className="report-back-btn">← 返回日程</Link>
@@ -1449,10 +1464,10 @@ ${clone.outerHTML}
           </div>
         </div>
 
-      </div>
+      </div>}
 
       {/* ── Share Modal ──────────────────────────────────────────── */}
-      {shareUrl && (
+      {!viewMode && shareUrl && (
         <div className="share-modal-overlay" onClick={() => { setShareUrl(null); setUrlCopied(false); }}>
           <div className="share-modal-card" onClick={e => e.stopPropagation()}>
             <div className="share-modal-header">
@@ -1484,11 +1499,15 @@ ${clone.outerHTML}
         <div className="report-title-bar">
           <div className="report-title-eyebrow">GTC 2026 · DAILY BRIEFING</div>
           <h1>
-            <span
-              contentEditable
-              suppressContentEditableWarning
-              onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
-            >{reportData?.title || `【${date}】日报`}</span>
+            {viewMode ? (
+              <span>{reportData?.title || `【${date}】日报`}</span>
+            ) : (
+              <span
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
+              >{reportData?.title || `【${date}】日报`}</span>
+            )}
           </h1>
         </div>
 
@@ -1567,6 +1586,7 @@ ${clone.outerHTML}
               points={reportData?.summaryPoints}
               onSave={pts => saveField("summaryPoints", pts)}
               placeholder="请输入今日核心要点..."
+              readOnly={viewMode}
             />
           </div>
         </div>
@@ -1622,6 +1642,7 @@ ${clone.outerHTML}
                     onUpdate={newSpeakers => saveSpeakers(session.code, newSpeakers)}
                     onAdd={() => addSpeaker(session.code)}
                     onRemove={idx => removeSpeaker(session.code, idx)}
+                    readOnly={viewMode}
                   />
                 </div>
                 <div style={{ padding: "6px 20px 0" }}>
@@ -1670,6 +1691,7 @@ ${clone.outerHTML}
                       value={sd.takeaways}
                       onSave={html => saveSessionField(session.code, "takeaways", html)}
                       placeholder="记录本场会议的关键收获..."
+                      readOnly={viewMode}
                     />
                   </div>
                   <div className="report-field-block">
@@ -1678,6 +1700,7 @@ ${clone.outerHTML}
                       value={sd.insights}
                       onSave={html => saveSessionField(session.code, "insights", html)}
                       placeholder="记录启示与分析..."
+                      readOnly={viewMode}
                     />
                   </div>
                   {contributors && (
@@ -1806,6 +1829,7 @@ ${clone.outerHTML}
                           value={sd.takeaways}
                           onSave={html => saveSessionField(session.code, "takeaways", html)}
                           placeholder="记录本场会议的关键收获..."
+                          readOnly={viewMode}
                         />
                       </div>
                       <div className="report-field-block">
@@ -1814,6 +1838,7 @@ ${clone.outerHTML}
                           value={sd.insights}
                           onSave={html => saveSessionField(session.code, "insights", html)}
                           placeholder="记录启示与分析..."
+                          readOnly={viewMode}
                         />
                       </div>
 
@@ -1847,9 +1872,13 @@ ${clone.outerHTML}
               if (block.type === 'heading') {
                 els.push(
                   <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 8 }}>
-                    <span contentEditable suppressContentEditableWarning className="onsite-category-title"
-                      onBlur={e => updateBlock("onsiteInfoBlocks", block.id, e.currentTarget.textContent.trim())}
-                    >{block.content}</span>
+                    {viewMode ? (
+                      <span className="onsite-category-title">{block.content}</span>
+                    ) : (
+                      <span contentEditable suppressContentEditableWarning className="onsite-category-title"
+                        onBlur={e => updateBlock("onsiteInfoBlocks", block.id, e.currentTarget.textContent.trim())}
+                      >{block.content}</span>
+                    )}
                     <button className="onsite-category-remove no-print" onClick={() => removeBlock("onsiteInfoBlocks", block.id)}>×</button>
                   </div>
                 );
@@ -1859,6 +1888,7 @@ ${clone.outerHTML}
                     members={members}
                     onUpdate={fields => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
                     onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
+                    readOnly={viewMode}
                   />
                 );
               }
@@ -1882,9 +1912,13 @@ ${clone.outerHTML}
               if (block.type === 'heading') {
                 els.push(
                   <div key={block.id} id={`block-${block.id}`} className="onsite-category-header" style={{ marginTop: 8 }}>
-                    <span contentEditable suppressContentEditableWarning className="onsite-category-title"
-                      onBlur={e => updateBlock("reflectionsBlocks", block.id, e.currentTarget.textContent.trim())}
-                    >{block.content}</span>
+                    {viewMode ? (
+                      <span className="onsite-category-title">{block.content}</span>
+                    ) : (
+                      <span contentEditable suppressContentEditableWarning className="onsite-category-title"
+                        onBlur={e => updateBlock("reflectionsBlocks", block.id, e.currentTarget.textContent.trim())}
+                      >{block.content}</span>
+                    )}
                     <button className="onsite-category-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>
                   </div>
                 );
@@ -1895,6 +1929,7 @@ ${clone.outerHTML}
                     placeholder="记录圈内声音..."
                     onUpdate={fields => updateBlockFields("reflectionsBlocks", block.id, fields)}
                     onRemove={() => removeBlock("reflectionsBlocks", block.id)}
+                    readOnly={viewMode}
                   />
                 );
               }
@@ -1913,6 +1948,7 @@ ${clone.outerHTML}
             onSave={html => saveField("rumors", html)}
             placeholder="深度研判..."
             minHeight={120}
+            readOnly={viewMode}
           />
         </div>
 
@@ -1940,27 +1976,36 @@ ${clone.outerHTML}
                 <div key={photo.originalIdx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
                     <img src={photo.image} alt={`现场记录 ${photo.originalIdx + 1}`} className="site-photo-img" />
-                    <button
+                    {!viewMode && <button
                       className="site-photo-delete-btn no-print"
                       onClick={() => handleSitePhotoDelete(photo.originalIdx)}
                       title="删除图片"
-                    >×</button>
+                    >×</button>}
                   </div>
-                  <textarea
-                    className="site-photo-caption"
-                    placeholder="添加图片说明..."
-                    defaultValue={photo.caption}
-                    onBlur={e => saveSitePhotoCaption(photo.originalIdx, e.target.value)}
-                    onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
-                    ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
-                  />
-                  <input
-                    className="site-photo-source"
-                    type="text"
-                    placeholder="来源..."
-                    defaultValue={photo.source || ""}
-                    onBlur={e => saveSitePhotoSource(photo.originalIdx, e.target.value)}
-                  />
+                  {viewMode ? (
+                    <>
+                      {photo.caption && <p className="site-photo-caption" style={{ whiteSpace: "pre-wrap" }}>{photo.caption}</p>}
+                      {photo.source && <p className="site-photo-source" style={{ color: "var(--text-muted)", fontSize: "var(--report-fs-caption)" }}>{photo.source}</p>}
+                    </>
+                  ) : (
+                    <>
+                      <textarea
+                        className="site-photo-caption"
+                        placeholder="添加图片说明..."
+                        defaultValue={photo.caption}
+                        onBlur={e => saveSitePhotoCaption(photo.originalIdx, e.target.value)}
+                        onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                        ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                      />
+                      <input
+                        className="site-photo-source"
+                        type="text"
+                        placeholder="来源..."
+                        defaultValue={photo.source || ""}
+                        onBlur={e => saveSitePhotoSource(photo.originalIdx, e.target.value)}
+                      />
+                    </>
+                  )}
                 </div>
               );
               const addButton = (
@@ -1974,7 +2019,7 @@ ${clone.outerHTML}
               return [0, 1].map(col => (
                 <div key={col} className="site-photos-col">
                   {cols[col].map(renderCard)}
-                  {addCol === col && addButton}
+                  {!viewMode && addCol === col && addButton}
                 </div>
               ));
             })()}
@@ -2003,7 +2048,7 @@ ${clone.outerHTML}
       )}
 
       {/* Delete session — select session modal */}
-      {showDeleteSelect && (
+      {!viewMode && showDeleteSelect && (
         <div className="delete-confirm-overlay" onClick={() => setShowDeleteSelect(false)}>
           <div className="delete-confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: "90%" }}>
             <h3 className="delete-confirm-title">选择要删除的 Session</h3>
@@ -2044,7 +2089,7 @@ ${clone.outerHTML}
       )}
 
       {/* ── History Panel ────────────────────────────────────────── */}
-      {showHistory && (
+      {!viewMode && showHistory && (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
           <div
             style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
@@ -2154,7 +2199,7 @@ ${clone.outerHTML}
       )}
 
       {/* Delete session confirmation modal */}
-      {deleteConfirm.code && (
+      {!viewMode && deleteConfirm.code && (
         <div className="delete-confirm-overlay" onClick={() => setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false })}>
           <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
             <h3 className="delete-confirm-title">从日报移除此 Session</h3>

@@ -77,7 +77,7 @@ export function useDebouncedSave(delay = 600) {
 }
 
 // ── EditableField ────────────────────────────────────────────────────────────
-export function EditableField({ value, onSave, placeholder, minHeight = 60 }) {
+export function EditableField({ value, onSave, placeholder, minHeight = 60, readOnly = false }) {
   const ref = useRef(null);
   const focused = useRef(false);
   useEffect(() => {
@@ -85,6 +85,17 @@ export function EditableField({ value, onSave, placeholder, minHeight = 60 }) {
       if (ref.current.innerHTML !== (value || "")) ref.current.innerHTML = value || "";
     }
   }, [value]);
+
+  if (readOnly) {
+    return (
+      <div
+        className="report-editable report-editable--readonly"
+        style={{ minHeight }}
+        dangerouslySetInnerHTML={{ __html: value || "" }}
+      />
+    );
+  }
+
   return (
     <div
       ref={ref}
@@ -121,7 +132,7 @@ export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
 }
 
 // ── BulletEditor ──────────────────────────────────────────────────────────────
-export function BulletEditor({ points, onSave, placeholder = "请输入要点..." }) {
+export function BulletEditor({ points, onSave, placeholder = "请输入要点...", readOnly = false }) {
   const [local, setLocal] = useState(points || []);
   const focused = useRef(false);
   const containerRef = useRef(null);
@@ -132,11 +143,30 @@ export function BulletEditor({ points, onSave, placeholder = "请输入要点...
 
   // Resize all textareas whenever content changes (handles initial load)
   useEffect(() => {
-    containerRef.current?.querySelectorAll(".bullet-input").forEach(el => {
-      el.style.height = "auto";
-      el.style.height = el.scrollHeight + "px";
-    });
-  }, [local]);
+    if (!readOnly) {
+      containerRef.current?.querySelectorAll(".bullet-input").forEach(el => {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      });
+    }
+  }, [local, readOnly]);
+
+  if (readOnly) {
+    const items = (points || []).filter(Boolean);
+    if (items.length === 0) return null;
+    return (
+      <div className="bullet-editor">
+        <ul className="bullet-editor-list">
+          {items.map((point, idx) => (
+            <li key={idx} className="bullet-editor-item">
+              <span className="bullet-dot" aria-hidden="true">•</span>
+              <span className="bullet-readonly-text">{point}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   const commit = (next) => { setLocal(next); onSave(next); };
 
