@@ -168,7 +168,19 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
       {sources.filter(s => formatOneSource(s)).length > 0 && (
         <div className="intel-card-section intel-card-meta print-only">
           <span className="intel-card-label">来源</span>
-          <span className="intel-card-static-value">{sources.map(formatOneSource).filter(Boolean).join(' ｜ ')}</span>
+          <span className="intel-card-static-value">
+            {sources.map((s, i) => {
+              const text = formatOneSource(s);
+              if (!text) return null;
+              return (
+                <span key={i}>
+                  {i > 0 && ' ｜ '}
+                  {s?.id && <span className="session-picker-id-badge">{s.id}</span>}
+                  {s?.id ? ` ${SESSION_CATALOG.get(s.id)?.title?.trim() || ''}` : text}
+                </span>
+              );
+            })}
+          </span>
         </div>
       )}
       <div className="intel-card-section intel-card-meta no-print">
@@ -1368,6 +1380,13 @@ ${clone.outerHTML}
               title="查看历史版本快照"
             >
               历史版本
+            </button>
+            <button
+              className="report-tool-btn"
+              onClick={() => window.open(`/view/report/${reportId}`, '_blank')}
+              title="在新标签页预览只读视图"
+            >
+              预览
             </button>
             {/* ── Delete session ── */}
             <div className="report-toolbar-divider" />
