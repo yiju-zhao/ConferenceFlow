@@ -1,12 +1,15 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
+import { inject } from "@vercel/analytics";
 import "./index.css";
 import App from "./App";
 import DailyReport from "./DailyReport";
 import ConferenceReport from "./ConferenceReport";
 import ReportList from "./ReportList";
 import ViewReport from "./ViewReport";
+
+inject();
 
 function ReportRouter({ viewMode = false }) {
   const { reportId } = useParams();
