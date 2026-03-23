@@ -183,9 +183,12 @@ function SessionPicker({ value, onChange }) {
 // ── IntelCard ─────────────────────────────────────────────────────────────────
 function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容..." }) {
   const sources = normaliseSources(block);
-  const contributorText = block.contributorId
-    ? (members.find(m => m.id === block.contributorId)?.name || block.contributor || "").trim()
-    : (block.contributor || "").trim();
+  // Normalise legacy single contributorId → contributorIds array
+  const contributorIds = block.contributorIds?.length
+    ? block.contributorIds
+    : block.contributorId ? [block.contributorId] : [];
+  const contributorNames = contributorIds.map(id => members.find(m => m.id === id)?.name).filter(Boolean);
+  const contributorText = contributorNames.join("、") || (block.contributor || "").trim();
 
   const updateSource = (idx, v) => {
     const next = [...sources];
@@ -238,18 +241,33 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
       )}
       <div className="intel-card-section intel-card-meta no-print">
         <span className="intel-card-label">贡献人</span>
-        <select
-          className="intel-card-contributor-select"
-          value={block.contributorId || ""}
-          onChange={e => {
-            const id = e.target.value;
-            const name = members.find(m => m.id === id)?.name || "";
-            onUpdate({ contributorId: id, contributor: name });
-          }}
-        >
-          <option value="">选择贡献人...</option>
-          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+        <div className="intel-card-contributors-wrap">
+          {contributorIds.map(id => {
+            const name = members.find(m => m.id === id)?.name || id;
+            return (
+              <span key={id} className="intel-card-contributor-pill">
+                {name}
+                <button className="intel-card-contributor-pill-remove" onClick={() => {
+                  const next = contributorIds.filter(x => x !== id);
+                  onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
+                }}>×</button>
+              </span>
+            );
+          })}
+          <select
+            className="intel-card-contributor-select"
+            value=""
+            onChange={e => {
+              const id = e.target.value;
+              if (!id || contributorIds.includes(id)) return;
+              const next = [...contributorIds, id];
+              onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
+            }}
+          >
+            <option value="">{contributorIds.length ? "添加..." : "选择贡献人..."}</option>
+            {members.filter(m => !contributorIds.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
       </div>
       {contributorText && (
         <div className="intel-card-section intel-card-meta print-only">

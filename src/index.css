@@ -1964,13 +1964,42 @@ input[type="checkbox"].gtc-check:checked::after {
   padding: 0;
 }
 .intel-card-contributor::placeholder { color: var(--text-placeholder); }
-.intel-card-contributor-select {
+.intel-card-contributors-wrap {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.intel-card-contributor-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-hover, #f0f0f0);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.intel-card-contributor-pill-remove {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 1px;
+  line-height: 1;
+}
+.intel-card-contributor-pill-remove:hover { color: #e74c3c; }
+.intel-card-contributor-select {
+  flex: 1;
+  min-width: 60px;
   border: none;
   outline: none;
-  font-size: 13px;
-  color: var(--text-secondary);
+  font-size: 12px;
+  color: var(--text-tertiary, #aaa);
   background: transparent;
   padding: 0;
   cursor: pointer;
