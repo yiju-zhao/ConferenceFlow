@@ -1109,6 +1109,35 @@ input[type="checkbox"].gtc-check:checked::after {
   content: attr(data-placeholder); color: var(--text-placeholder); pointer-events: none;
 }
 
+/* ── View Mode (read-only) ─────────────────────── */
+.report-view-mode .no-print { display: none !important; }
+.report-view-mode .print-only { display: block !important; }
+.report-view-mode .report-editable,
+.report-view-mode .report-inline-editable {
+  pointer-events: none;
+  border-color: transparent !important;
+  background: transparent !important;
+  cursor: default;
+}
+.report-view-mode .report-editable:hover,
+.report-view-mode .report-inline-editable:hover {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+.report-view-mode .report-editable:empty::before,
+.report-view-mode .report-inline-editable:empty::before { content: none !important; }
+.report-editable--readonly {
+  pointer-events: none;
+  border-color: transparent !important;
+  background: transparent !important;
+  cursor: default;
+}
+.bullet-readonly-text {
+  font-size: var(--report-fs-body);
+  line-height: 1.85;
+  color: var(--text-secondary);
+}
+
 /* ── Topic Divider ─────────────────────────────── */
 .report-topic-divider {
   display: flex;

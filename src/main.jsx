@@ -8,12 +8,12 @@ import ConferenceReport from "./ConferenceReport";
 import ReportList from "./ReportList";
 import ViewReport from "./ViewReport";
 
-function ReportRouter() {
+function ReportRouter({ viewMode = false }) {
   const { reportId } = useParams();
   if (reportId.startsWith("summary-")) {
     return <ConferenceReport />;
   }
-  return <DailyReport />;
+  return <DailyReport viewMode={viewMode} />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -23,6 +23,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/" element={<App />} />
         <Route path="/reports" element={<ReportList />} />
         <Route path="/report/:reportId" element={<ReportRouter />} />
+        <Route path="/view/report/:reportId" element={<ReportRouter viewMode />} />
         <Route path="/view/:date/:fileId" element={<ViewReport />} />
       </Routes>
     </BrowserRouter>
