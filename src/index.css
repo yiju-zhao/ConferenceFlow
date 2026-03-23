@@ -73,6 +73,12 @@
   --report-fs-display: 30px;
 }
 
+/* ── Typography utility classes (use tokens, replace inline styles) ──────── */
+.text-label   { font-size: var(--report-fs-label);   }
+.text-caption { font-size: var(--report-fs-caption); }
+.text-body    { font-size: var(--report-fs-body);    }
+.text-heading { font-size: var(--report-fs-heading); }
+
 * { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
@@ -1490,6 +1496,24 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .speaker-field-input:focus { border-bottom-color: var(--brand); }
 .speaker-field-input::placeholder { color: var(--text-placeholder); }
+.speaker-print-text {
+  font-size: var(--report-fs-caption);
+  color: var(--text-secondary);
+  line-height: 1.3;
+  padding-top: 1px;
+}
+
+/* ── Report toolbar status messages ─────────────── */
+.report-status-msg {
+  font-size: var(--report-fs-label);
+  margin-right: 4px;
+}
+.report-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+}
 
 /* ── Bullet Editor ──────────────────────────────── */
 .bullet-editor { padding: 4px 0; }

@@ -326,7 +326,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
             )}
           </div>
           {/* Print view: plain text */}
-          <div className="print-only" style={{ fontSize: 15, color: "var(--text-secondary)", paddingTop: 2 }}>
+          <div className="speaker-print-text print-only">
             {[spk.name, spk.position, spk.company].filter(Boolean).join(" · ")}
           </div>
         </div>
@@ -494,12 +494,12 @@ function getTextLines(html) {
 
 function DiffList({ oldItems, newItems }) {
   const diff = diffArrays((oldItems || []).map(String), (newItems || []).map(String));
-  if (diff.length === 0) return <p style={{ color: "var(--text-muted)", fontSize: 15 }}>（无内容）</p>;
+  if (diff.length === 0) return <p className="text-body" style={{ color: "var(--text-muted)" }}>（无内容）</p>;
   return (
     <ul style={{ margin: 0, padding: "0 0 0 16px" }}>
       {diff.map((item, i) => (
         <li key={i} style={{
-          fontSize: 13, padding: "2px 6px", borderRadius: 3, marginBottom: 3,
+          fontSize: "var(--report-fs-caption)", padding: "2px 6px", borderRadius: 3, marginBottom: 3,
           background: item.type === "insert" ? "rgba(39,174,96,0.1)" : item.type === "delete" ? "rgba(207,10,44,0.1)" : "transparent",
           textDecoration: item.type === "delete" ? "line-through" : "none",
           color: item.type === "insert" ? "var(--success)" : item.type === "delete" ? "var(--brand)" : "inherit",
@@ -513,9 +513,9 @@ function DiffList({ oldItems, newItems }) {
 
 function DiffText({ oldText, newText }) {
   const diff = diffArrays(getTextLines(oldText), getTextLines(newText));
-  if (diff.length === 0) return <p style={{ color: "var(--text-muted)", fontSize: 15 }}>（无内容）</p>;
+  if (diff.length === 0) return <p className="text-body" style={{ color: "var(--text-muted)" }}>（无内容）</p>;
   return (
-    <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+    <div className="text-caption" style={{ lineHeight: 1.6 }}>
       {diff.map((item, i) => (
         <div key={i} style={{
           padding: "2px 8px", marginBottom: 2, borderRadius: 3,
@@ -538,11 +538,11 @@ function SnapshotViewer({ snapshot, currentData }) {
   const FIELD_LABELS = { onsiteInfo: "现场情报", reflections: "圈内声音", rumors: "深度研判" };
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-      <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--text-muted)" }}>
+      <p className="text-caption" style={{ margin: "0 0 20px", color: "var(--text-muted)" }}>
         快照时间：{ts}　·　绿色 = 快照中新增，红色删除线 = 当前版本中已改动
       </p>
       <section style={{ marginBottom: 24 }}>
-        <h4 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "var(--text-secondary)" }}>核心要点</h4>
+        <h4 className="text-body" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-secondary)" }}>核心要点</h4>
         <DiffList oldItems={currentData?.summaryPoints || []} newItems={data?.summaryPoints || []} />
       </section>
       {Object.keys(data?.sessions || {}).map(code => {
@@ -553,16 +553,16 @@ function SnapshotViewer({ snapshot, currentData }) {
         if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
         return (
           <section key={code} style={{ marginBottom: 24, paddingLeft: 12, borderLeft: "3px solid var(--border)" }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--text-muted)", fontFamily: "monospace" }}>{code}</h4>
+            <h4 className="text-caption" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-muted)", fontFamily: "monospace" }}>{code}</h4>
             {hasTakeawaysDiff && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 4 }}>关键收获</div>
+                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>关键收获</div>
                 <DiffText oldText={oldSd.takeaways} newText={newSd.takeaways} />
               </div>
             )}
             {hasInsightsDiff && (
               <div>
-                <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 4 }}>启示</div>
+                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>启示</div>
                 <DiffText oldText={oldSd.insights} newText={newSd.insights} />
               </div>
             )}
@@ -575,7 +575,7 @@ function SnapshotViewer({ snapshot, currentData }) {
         if (stripHtml(oldVal) === stripHtml(newVal)) return null;
         return (
           <section key={field} style={{ marginBottom: 24 }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)" }}>{FIELD_LABELS[field]}</h4>
+            <h4 className="text-caption" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-secondary)" }}>{FIELD_LABELS[field]}</h4>
             <DiffText oldText={oldVal} newText={newVal} />
           </section>
         );
@@ -1319,15 +1319,19 @@ export default function DailyReport() {
       // Remove any remaining interactive elements
       clone.querySelectorAll("button, input, textarea, select").forEach(el => el.remove());
 
-      const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
-        .map(el => {
-          if (el.tagName === "LINK") {
-            const href = new URL(el.getAttribute("href"), window.location.href).href;
-            return `<link rel="stylesheet" href="${href}">`;
-          }
-          return el.outerHTML;
-        })
-        .join("\n");
+      const styleTagsHtml = (await Promise.all(
+        Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
+          .map(async el => {
+            if (el.tagName === "LINK") {
+              try {
+                const href = new URL(el.getAttribute("href"), window.location.href).href;
+                const css = await fetch(href).then(r => r.text());
+                return `<style>${css}</style>`;
+              } catch { return ""; }
+            }
+            return el.outerHTML;
+          })
+      )).join("\n");
 
       const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -1497,12 +1501,12 @@ ${clone.outerHTML}
           </div>
           <div className="report-toolbar-actions">
             {saveState === "saving" && (
-              <span style={{ fontSize: 11, color: "var(--text-dim)", marginRight: 4 }}>● 保存中...</span>
+              <span className="report-status-msg" style={{ color: "var(--text-dim)" }}>● 保存中...</span>
             )}
             {saveState === "saved" && (
-              <span style={{ fontSize: 11, color: "var(--success)", marginRight: 4 }}>✓ 已保存</span>
+              <span className="report-status-msg" style={{ color: "var(--success)" }}>✓ 已保存</span>
             )}
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
+            <div className="report-toolbar-divider" />
             <button
               className="report-tool-btn"
               onClick={handleSave}
@@ -1518,7 +1522,7 @@ ${clone.outerHTML}
               历史版本
             </button>
             {/* ── Delete session ── */}
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
+            <div className="report-toolbar-divider" />
             <button
               className="report-tool-btn"
               onClick={() => setShowDeleteSelect(true)}
@@ -1528,9 +1532,9 @@ ${clone.outerHTML}
               删除 Session
             </button>
             {/* ── Sync from catalog ── */}
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
+            <div className="report-toolbar-divider" />
             {syncMsg && (
-              <span style={{ fontSize: 11, color: "var(--info)", marginRight: 4 }}>
+              <span className="report-status-msg" style={{ color: "var(--info)" }}>
                 {syncMsg}
               </span>
             )}
@@ -2186,14 +2190,14 @@ ${clone.outerHTML}
                     onMouseEnter={e => e.currentTarget.style.background = "#FFF5F5"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", fontFamily: "monospace" }}>
+                    <span className="text-caption" style={{ fontWeight: 600, color: "var(--text-secondary)", fontFamily: "monospace" }}>
                       {s.code}
                     </span>
-                    <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                    <span className="text-caption" style={{ color: "var(--text-secondary)", lineHeight: 1.4 }}>
                       {SESSION_CATALOG.get(s.code)?.title || s.title}
                     </span>
                     {names.length > 0 && (
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>贡献人：{names.join("、")}</span>
+                      <span className="text-label" style={{ color: "var(--text-muted)" }}>贡献人：{names.join("、")}</span>
                     )}
                   </button>
                 );
@@ -2227,12 +2231,13 @@ ${clone.outerHTML}
               {viewingSnapshot && (
                 <button
                   onClick={() => setViewingSnapshot(null)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--info)", padding: "0 8px 0 0" }}
+                  className="text-caption"
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--info)", padding: "0 8px 0 0" }}
                 >
                   ← 返回列表
                 </button>
               )}
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, flex: 1 }}>
+              <h2 className="text-body" style={{ margin: 0, fontWeight: 700, flex: 1 }}>
                 {viewingSnapshot ? `快照 · ${viewingSnapshot.label}` : "历史版本"}
               </h2>
               <button
@@ -2247,9 +2252,9 @@ ${clone.outerHTML}
               /* Snapshot list */
               <div style={{ flex: 1, overflowY: "auto" }}>
                 {snapshots.length === 0 ? (
-                  <p style={{ padding: "32px 20px", color: "var(--text-muted)", textAlign: "center", fontSize: 13 }}>
+                  <p className="text-caption" style={{ padding: "32px 20px", color: "var(--text-muted)", textAlign: "center" }}>
                     暂无历史快照<br />
-                    <span style={{ fontSize: 12 }}>点击「保存」按钮或等待 5 分钟自动生成</span>
+                    <span className="text-label">点击「保存」按钮或等待 5 分钟自动生成</span>
                   </p>
                 ) : snapshots.map(snap => {
                   const ts = snap.createdAt?.toDate
@@ -2258,12 +2263,12 @@ ${clone.outerHTML}
                   return (
                     <div key={snap.id} style={{ padding: "12px 20px", borderBottom: "1px solid var(--border-dim)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontSize: 15 }}>{snap.type === "manual" ? "📌" : "🕐"}</span>
+                        <span className="text-body">{snap.type === "manual" ? "📌" : "🕐"}</span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 15, fontWeight: snap.type === "manual" ? 600 : 400, color: "var(--text-secondary)" }}>
+                          <div className="text-body" style={{ fontWeight: snap.type === "manual" ? 600 : 400, color: "var(--text-secondary)" }}>
                             {snap.label}
                           </div>
-                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{ts}</div>
+                          <div className="text-label" style={{ color: "var(--text-muted)", marginTop: 1 }}>{ts}</div>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
