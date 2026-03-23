@@ -326,7 +326,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
             )}
           </div>
           {/* Print view: plain text */}
-          <div className="print-only" style={{ fontSize: 15, color: "var(--text-secondary)", paddingTop: 2 }}>
+          <div className="print-only" style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.3, paddingTop: 1 }}>
             {[spk.name, spk.position, spk.company].filter(Boolean).join(" · ")}
           </div>
         </div>
