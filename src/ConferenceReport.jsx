@@ -296,6 +296,9 @@ export default function ConferenceReport() {
       clone.querySelectorAll("[contenteditable]").forEach(el => el.removeAttribute("contenteditable"));
       clone.querySelectorAll("button, input, textarea, select").forEach(el => el.remove());
 
+      // Add margin-top to account for fixed header
+      clone.style.marginTop = "80px";
+
       const styleTagsHtml = (await Promise.all(
         Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
           .map(async el => {
@@ -309,6 +312,20 @@ export default function ConferenceReport() {
             return el.outerHTML;
           })
       )).join("\n");
+
+      const navLinkStyle = "font-family:'Work Sans',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:-0.05em;font-size:13px;text-decoration:none;";
+      const headerHtml = `
+<header style="position:fixed;top:0;left:0;width:100%;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:0 32px;height:80px;background:#991b1b;color:#fff;border:none;">
+  <div style="display:flex;align-items:center;gap:32px;">
+    <div style="font-family:'Work Sans',sans-serif;font-size:1.5rem;font-weight:900;text-transform:uppercase;letter-spacing:-0.05em;">Architectural Dispatch</div>
+    <nav style="display:flex;gap:24px;">
+      <a href="#section-现场声音" style="${navLinkStyle}color:#fecaca;transition:color 0.05s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#fecaca'">Voices</a>
+      <a href="#section-趋势总结" style="${navLinkStyle}color:#fecaca;transition:color 0.05s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#fecaca'">Trends</a>
+      <a href="#section-推演分析" style="${navLinkStyle}color:#fecaca;transition:color 0.05s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#fecaca'">Analysis</a>
+      <a href="#section-关键启示" style="${navLinkStyle}color:#fecaca;transition:color 0.05s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#fecaca'">Insights</a>
+    </nav>
+  </div>
+</header>`;
 
       const html = `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -324,9 +341,11 @@ ${styleTagsHtml}
   .dispatch-toolbar { display: none !important; }
   .no-print { display: none !important; }
   [contenteditable] { pointer-events: none; }
+  @media print { header { display: none !important; } main { margin-top: 0 !important; } }
 </style>
 </head>
 <body>
+${headerHtml}
 ${clone.outerHTML}
 </body>
 </html>`;
