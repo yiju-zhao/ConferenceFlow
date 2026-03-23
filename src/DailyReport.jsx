@@ -2076,7 +2076,10 @@ ${clone.outerHTML}
               for (const photo of sortedPhotos) {
                 const col = colH[0] <= colH[1] ? 0 : 1;
                 cols[col].push(photo);
-                colH[col] += (photo.h || 3) / (photo.w || 4);
+                // Height proxy: image aspect ratio + caption length (CJK ≈ 2 units)
+                const imgRatio = (photo.h && photo.w) ? photo.h / photo.w : 0.75;
+                const captionLen = [...(photo.caption || '')].reduce((s, c) => s + (c.charCodeAt(0) > 0x2E7F ? 2 : 1), 0);
+                colH[col] += imgRatio + captionLen / 50;
               }
               const addCol = colH[0] <= colH[1] ? 0 : 1;
               const renderCard = (photo) => (
