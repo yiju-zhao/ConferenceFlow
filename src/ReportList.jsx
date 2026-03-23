@@ -13,6 +13,9 @@ export default function ReportList() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [creatingSummary, setCreatingSummary] = useState(false);
+  const [showSummaryDatePicker, setShowSummaryDatePicker] = useState(false);
+  const [summaryDateStart, setSummaryDateStart] = useState("");
+  const [summaryDateEnd, setSummaryDateEnd] = useState("");
 
   useEffect(() => {
     signInAnonymously(auth).catch(console.error);
@@ -93,7 +96,16 @@ export default function ReportList() {
   const archiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "archived" });
   const unarchiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "draft" });
 
-  const handleCreateSummary = async () => {
+  const openSummaryDatePicker = () => {
+    // Pre-fill with earliest and latest daily report dates
+    const dates = dailyReportDates;
+    setSummaryDateStart(dates.length > 0 ? dates[0] : "");
+    setSummaryDateEnd(dates.length > 0 ? dates[dates.length - 1] : "");
+    setShowSummaryDatePicker(true);
+  };
+
+  const handleCreateSummary = async (dateStart, dateEnd) => {
+    setShowSummaryDatePicker(false);
     setCreatingSummary(true);
     try {
       const snap = await getDocs(collection(db, "dailyReports"));
@@ -104,6 +116,8 @@ export default function ReportList() {
         type: "summary",
         title: "GTC 2026 总结稿",
         status: "draft",
+        dateStart,
+        dateEnd,
         sections: {
           "现场声音": { order: 0, blocks: [] },
           "趋势总结": { order: 1, blocks: [] },
@@ -112,6 +126,7 @@ export default function ReportList() {
         },
         citations: [],
         sitePhotos: [],
+        onsiteEvents: [],
       });
 
       navigate(`/report/${summaryId}`);
@@ -146,7 +161,7 @@ export default function ReportList() {
             </button>
             <button
               className="btn-accent"
-              onClick={handleCreateSummary}
+              onClick={openSummaryDatePicker}
               disabled={creatingSummary}
               style={{ fontSize: 13, padding: "8px 16px" }}
             >
@@ -255,6 +270,31 @@ export default function ReportList() {
         </div>
       </div>
 
+      {/* ── Summary Date Picker Modal ─────────────────────────── */}
+      {showSummaryDatePicker && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowSummaryDatePicker(false)}>
+          <div style={{ background: "#fff", padding: 32, maxWidth: 400, width: "90vw", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <span style={{ fontWeight: 700, fontSize: 16 }}>创建总结稿 — 确认日期范围</span>
+              <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }} onClick={() => setShowSummaryDatePicker(false)}>×</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>
+                起始日期
+                <input type="date" value={summaryDateStart} onChange={(e) => setSummaryDateStart(e.target.value)} style={{ display: "block", width: "100%", marginTop: 4, padding: "8px 10px", border: "1px solid #ddd", fontSize: 14 }} />
+              </label>
+              <label style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>
+                结束日期
+                <input type="date" value={summaryDateEnd} onChange={(e) => setSummaryDateEnd(e.target.value)} style={{ display: "block", width: "100%", marginTop: 4, padding: "8px 10px", border: "1px solid #ddd", fontSize: 14 }} />
+              </label>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
+              <button style={{ padding: "8px 16px", fontSize: 13, background: "none", border: "1px solid #ddd", cursor: "pointer" }} onClick={() => setShowSummaryDatePicker(false)}>取消</button>
+              <button className="btn-accent" style={{ padding: "8px 20px", fontSize: 13 }} disabled={!summaryDateStart || !summaryDateEnd} onClick={() => handleCreateSummary(summaryDateStart, summaryDateEnd)}>确认创建</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
