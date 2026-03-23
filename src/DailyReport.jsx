@@ -112,7 +112,7 @@ function SessionPicker({ value, onChange }) {
     const q = query.trim();
     if (!q) return [];
     const ql = q.toLowerCase();
-    return catalogData
+    return [...SESSION_CATALOG.values()]
       .filter(s =>
         s.session_id.toLowerCase().includes(ql) ||
         s.title.toLowerCase().includes(ql)
