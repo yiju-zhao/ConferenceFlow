@@ -1623,8 +1623,7 @@ ${clone.outerHTML}
       )}
 
       {/* ── Report Content ───────────────────────────────────────── */}
-      {/* data-pdf-ready is read by the Puppeteer server to know data is loaded */}
-      <div className="report-container" ref={reportContainerRef} data-pdf-ready={!loading || undefined}>
+      <div className="report-container" ref={reportContainerRef}>
 
         {/* Title bar */}
         <div className="report-title-bar">
