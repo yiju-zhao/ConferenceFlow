@@ -2080,9 +2080,14 @@ ${clone.outerHTML}
               const sortedPhotos = [...rawPhotos]
                 .map((photo, originalIdx) => ({ ...photo, originalIdx }))
                 .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
-              const leftPhotos = sortedPhotos.filter((_, i) => i % 2 === 0);
-              const rightPhotos = sortedPhotos.filter((_, i) => i % 2 === 1);
-              const addCol = leftPhotos.length > rightPhotos.length ? 1 : 0;
+              const cols = [[], []];
+              const colH = [0, 0];
+              for (const photo of sortedPhotos) {
+                const col = colH[0] <= colH[1] ? 0 : 1;
+                cols[col].push(photo);
+                colH[col] += (photo.h || 3) / (photo.w || 4);
+              }
+              const addCol = colH[0] <= colH[1] ? 0 : 1;
               const renderCard = (photo, si) => (
                 <div key={photo.originalIdx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
@@ -2120,7 +2125,7 @@ ${clone.outerHTML}
               );
               return [0, 1].map(col => (
                 <div key={col} className="site-photos-col">
-                  {(col === 0 ? leftPhotos : rightPhotos).map((photo) => renderCard(photo, sortedPhotos.indexOf(photo)))}
+                  {cols[col].map((photo) => renderCard(photo, sortedPhotos.indexOf(photo)))}
                   {addCol === col && addButton}
                 </div>
               ));
