@@ -1319,15 +1319,19 @@ export default function DailyReport() {
       // Remove any remaining interactive elements
       clone.querySelectorAll("button, input, textarea, select").forEach(el => el.remove());
 
-      const styleTagsHtml = Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
-        .map(el => {
-          if (el.tagName === "LINK") {
-            const href = new URL(el.getAttribute("href"), window.location.href).href;
-            return `<link rel="stylesheet" href="${href}">`;
-          }
-          return el.outerHTML;
-        })
-        .join("\n");
+      const styleTagsHtml = (await Promise.all(
+        Array.from(document.head.querySelectorAll('link[rel="stylesheet"], style'))
+          .map(async el => {
+            if (el.tagName === "LINK") {
+              try {
+                const href = new URL(el.getAttribute("href"), window.location.href).href;
+                const css = await fetch(href).then(r => r.text());
+                return `<style>${css}</style>`;
+              } catch { return ""; }
+            }
+            return el.outerHTML;
+          })
+      )).join("\n");
 
       const html = `<!DOCTYPE html>
 <html lang="zh-CN">
