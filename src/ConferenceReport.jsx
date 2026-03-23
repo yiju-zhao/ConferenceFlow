@@ -421,7 +421,23 @@ ${clone.outerHTML}
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [sitePhotos]);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const dateRangeStr = useMemo(() => {
+    const ds = reportData?.dateStart;
+    const de = reportData?.dateEnd;
+    if (!ds || !de) return "";
+    const fmt = (d) => {
+      const dt = new Date(d + "T00:00");
+      return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase();
+    };
+    const startDt = new Date(ds + "T00:00");
+    const endDt = new Date(de + "T00:00");
+    // Same month: "MARCH 17–20, 2026"
+    if (startDt.getMonth() === endDt.getMonth() && startDt.getFullYear() === endDt.getFullYear()) {
+      const month = startDt.toLocaleDateString("en-US", { month: "long" }).toUpperCase();
+      return `${month} ${startDt.getDate()}\u2013${endDt.getDate()}, ${startDt.getFullYear()}`;
+    }
+    return `${fmt(ds)} \u2013 ${fmt(de)}`;
+  }, [reportData?.dateStart, reportData?.dateEnd]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
@@ -565,53 +581,76 @@ ${clone.outerHTML}
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-surface font-body text-on-background">
-      {/* ── Top Navigation Bar (Toolbar) ──────────────────────────────── */}
-      <header className="dispatch-toolbar fixed top-0 left-0 w-full z-50 flex justify-between items-center px-8 h-20 bg-red-800 text-white no-print">
-        <div className="flex items-center gap-8">
-          <Link to="/reports" className="text-2xl font-black text-white font-headline uppercase tracking-tighter hover:opacity-80 transition-opacity" style={{ textDecoration: "none" }}>
-            GTC 2026 DISPATCH
-          </Link>
-          <nav className="hidden md:flex gap-6">
-            {SECTION_ORDER.map((name) => (
-              <a key={name} className="font-headline font-bold uppercase tracking-tighter text-red-200 hover:text-white transition-colors duration-50 text-sm" href={`#section-${name}`} style={{ textDecoration: "none" }}>
-                {SECTION_NAV[name]}
-              </a>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          {saveState === "saving" && <span className="text-red-200 text-xs">● 保存中...</span>}
-          {saveState === "saved" && <span className="text-green-300 text-xs">✓ 已保存</span>}
-          <button className="text-red-200 hover:text-white text-xs font-bold uppercase tracking-wider" onClick={handleSave}>保存</button>
-          <button className={`text-xs font-bold uppercase tracking-wider ${showHistory ? "text-white" : "text-red-200 hover:text-white"}`} onClick={() => setShowHistory(v => !v)}>历史</button>
-          <div className="w-px h-5 bg-white/30" />
-          <button className="font-bold text-sm text-white hover:text-red-200" onClick={execBold} title="加粗">B</button>
-          <button className="italic text-sm text-white hover:text-red-200" onClick={() => execCmd("italic")} title="斜体">I</button>
-          <button className="underline text-sm text-white hover:text-red-200" onClick={() => execCmd("underline")} title="下划线">U</button>
-          <div className="relative">
-            <button className="text-sm text-white hover:text-red-200" onClick={() => setShowColorPicker(!showColorPicker)} title="字体颜色" style={{ borderBottom: "3px solid #a20513", paddingBottom: 1 }}>A</button>
-            {showColorPicker && (
-              <div className="absolute right-0 top-full mt-2 bg-white p-2 flex gap-1 z-50" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-                {COLOR_PRESETS.map((c) => (
-                  <button key={c} className="w-6 h-6 cursor-pointer border-none" style={{ background: c }} onClick={() => execColor(c)} title={c} />
-                ))}
-              </div>
-            )}
+      {/* ── Toolbar (DailyReport style) ──────────────────────────────── */}
+      <div className="report-toolbar no-print">
+        <div className="report-toolbar-inner">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link to="/" className="report-back-btn">← 返回日程</Link>
+            <div style={{ width: 1, height: 20, background: "var(--border)" }} />
+            <Link to="/reports" className="report-tool-btn" style={{ textDecoration: "none" }}>
+              日报列表
+            </Link>
           </div>
-          <div className="w-px h-5 bg-white/30" />
-          <div className="export-dropdown-wrapper relative">
-            <button className="px-4 py-2 bg-white text-primary font-bold uppercase text-xs hover:bg-red-50 active:scale-95 duration-50 transition-all" onClick={() => !(exporting || publishing) && setShowExportMenu((v) => !v)} disabled={exporting || publishing}>
-              {exporting ? "导出中..." : publishing ? "发布中..." : "导出 ▾"}
+          <div className="report-toolbar-actions">
+            {saveState === "saving" && (
+              <span className="report-status-msg" style={{ color: "var(--text-dim)" }}>● 保存中...</span>
+            )}
+            {saveState === "saved" && (
+              <span className="report-status-msg" style={{ color: "var(--success)" }}>✓ 已保存</span>
+            )}
+            <div className="report-toolbar-divider" />
+            <button className="report-tool-btn" onClick={handleSave} title="立即保存并创建快照">
+              保存
             </button>
-            {showExportMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white min-w-[180px] z-50" style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-                <button className="block w-full text-left px-4 py-3 text-sm text-on-background hover:bg-surface-container-low transition-colors" onClick={handleExport}>↓ 导出 Markdown</button>
-                <button className="block w-full text-left px-4 py-3 text-sm text-on-background hover:bg-surface-container-low transition-colors" onClick={handlePublish}>🔗 分享总结稿</button>
-              </div>
-            )}
+            <button className="report-tool-btn" onClick={() => setShowHistory(v => !v)} title="查看历史版本快照">
+              历史版本
+            </button>
+            <div className="report-toolbar-divider" />
+            <button className="report-icon-btn" onClick={execBold} title="加粗">
+              <strong>B</strong>
+            </button>
+            <button className="report-icon-btn" onClick={() => execCmd("italic")} title="斜体">
+              <em style={{ fontStyle: "italic" }}>I</em>
+            </button>
+            <button className="report-icon-btn" onClick={() => execCmd("underline")} title="下划线">
+              <span style={{ textDecoration: "underline" }}>U</span>
+            </button>
+            <div style={{ position: "relative" }}>
+              <button className="report-icon-btn" onClick={() => setShowColorPicker(!showColorPicker)} title="字体颜色">
+                <span style={{ borderBottom: "3px solid var(--brand)", paddingBottom: 1 }}>A</span>
+              </button>
+              {showColorPicker && (
+                <div className="report-color-picker">
+                  {COLOR_PRESETS.map((c) => (
+                    <button key={c} className="report-color-swatch" style={{ background: c }} onClick={() => execColor(c)} title={c} />
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
+            <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
+              <button
+                className="report-export-btn"
+                onClick={() => !(exporting || publishing) && setShowExportMenu((v) => !v)}
+                disabled={exporting || publishing}
+              >
+                {exporting ? "导出中..." : publishing ? "发布中..." : "导出总结稿 ▾"}
+              </button>
+              {showExportMenu && (
+                <div className="export-dropdown-menu">
+                  <button className="export-menu-item" onClick={handleExport}>
+                    <span className="export-menu-label">↓ 导出 Markdown</span>
+                  </button>
+                  <div className="export-menu-divider" />
+                  <button className="export-menu-item export-menu-item--publish" onClick={handlePublish}>
+                    <span className="export-menu-label">{publishing ? "分享中..." : "🔗 分享总结稿"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* ── Share Modal ──────────────────────────────────────────── */}
       {shareUrl && (
@@ -755,14 +794,14 @@ ${clone.outerHTML}
       )}
 
       {/* ── Main Content ───────────────────────────────────────── */}
-      <main className="mt-20 min-h-screen" ref={reportContainerRef}>
+      <main className="min-h-screen p-6 md:p-12 max-w-7xl mx-auto" ref={reportContainerRef}>
         {/* ── Briefing Header ──────────────────────────────────── */}
-        <section className="relative bg-primary text-on-primary p-8 md:p-12 mb-16 overflow-hidden max-w-7xl mx-auto dispatch-header">
+        <section className="relative bg-primary text-on-primary p-8 md:p-12 mb-16 overflow-hidden">
           <div className="absolute inset-0 hatching-overlay opacity-20 pointer-events-none" />
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <span className="text-sm font-bold tracking-[0.2em] uppercase bg-white/10 px-3 py-1 font-headline">INTERNAL INTELLIGENCE REPORT</span>
-              <span className="text-sm font-medium">{todayStr}</span>
+              {dateRangeStr && <span className="text-sm font-medium">{dateRangeStr}</span>}
             </div>
             <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none mb-4 font-headline">
               <EditableField value={reportData?.title || ""} onSave={(html) => saveField("title", html)} placeholder="输入总结稿标题..." minHeight={48} />
@@ -774,7 +813,7 @@ ${clone.outerHTML}
         </section>
 
         {/* ── Two-column layout ──────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 max-w-7xl mx-auto px-6 md:px-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           {/* ── Left Column: Primary Content ──────────────────────── */}
           <div className="lg:col-span-8 space-y-16">
             {SECTION_ORDER.map((sectionName) => {
@@ -889,25 +928,54 @@ ${clone.outerHTML}
           {/* ── Right Column: Sidebar ──────────────────────────────── */}
           <div className="lg:col-span-4">
             <div className="lg:sticky lg:top-32 space-y-12">
-              {/* Event List */}
+              {/* Event List (editable) */}
               <div className="border-t-4 border-primary pt-6">
                 <h4 className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em] mb-4 font-label">线下活动列表</h4>
                 <ul className="space-y-6 font-headline">
-                  <li className="border-b border-outline-variant pb-4">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-bold uppercase tracking-tight text-primary">专家座谈会</span>
-                      <span className="text-[10px] font-bold text-secondary">14:00 - 15:30</span>
-                    </div>
-                    <p className="text-[11px] leading-snug text-on-surface uppercase font-medium">探讨前沿技术在产业采购中的实际应用与挑战。</p>
-                  </li>
-                  <li className="border-b border-outline-variant pb-4">
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-bold uppercase tracking-tight text-primary">技术工作坊</span>
-                      <span className="text-[10px] font-bold text-secondary">16:00 - 17:30</span>
-                    </div>
-                    <p className="text-[11px] leading-snug text-on-surface uppercase font-medium">实操演练：核心技术基础设施的搭建与集成。</p>
-                  </li>
+                  {(reportData?.onsiteEvents || []).map((evt, idx) => (
+                    <li key={evt.id} className="border-b border-outline-variant pb-4 relative group">
+                      <button className="absolute top-0 right-0 text-secondary hover:text-primary text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => {
+                        const events = [...(reportData?.onsiteEvents || [])];
+                        events.splice(idx, 1);
+                        saveField("onsiteEvents", events);
+                      }}>×</button>
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-xs font-bold uppercase tracking-tight text-primary" style={{ flex: 1 }}>
+                          <EditableField value={evt.title} onSave={(html) => {
+                            const events = [...(reportData?.onsiteEvents || [])];
+                            events[idx] = { ...events[idx], title: html };
+                            saveField("onsiteEvents", events);
+                          }} placeholder="活动名称..." minHeight={16} />
+                        </span>
+                        <span className="text-[10px] font-bold text-secondary ml-2" style={{ minWidth: 100 }}>
+                          <EditableField value={evt.dateLocation} onSave={(html) => {
+                            const events = [...(reportData?.onsiteEvents || [])];
+                            events[idx] = { ...events[idx], dateLocation: html };
+                            saveField("onsiteEvents", events);
+                          }} placeholder="日期 / 地点" minHeight={14} />
+                        </span>
+                      </div>
+                      <div className="text-[11px] leading-snug text-on-surface font-medium">
+                        <EditableField value={evt.description} onSave={(html) => {
+                          const events = [...(reportData?.onsiteEvents || [])];
+                          events[idx] = { ...events[idx], description: html };
+                          saveField("onsiteEvents", events);
+                        }} placeholder="活动描述..." minHeight={16} />
+                      </div>
+                    </li>
+                  ))}
                 </ul>
+                {(reportData?.onsiteEvents || []).length === 0 && (
+                  <p className="text-xs text-secondary py-2 no-print">暂无活动</p>
+                )}
+                <button className="mt-3 text-xs font-bold text-secondary hover:text-primary no-print" onClick={() => {
+                  const events = [...(reportData?.onsiteEvents || [])];
+                  events.push({
+                    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+                    title: "", dateLocation: "", description: "",
+                  });
+                  saveField("onsiteEvents", events);
+                }}>+ 添加活动</button>
               </div>
 
               {/* Daily Dispatches */}
@@ -919,7 +987,7 @@ ${clone.outerHTML}
                     const date = parseReportId(report.id).date;
                     const weekday = DAY_CN[new Date(date + "T00:00").getDay()];
                     return (
-                      <Link key={report.id} to={`/report/${report.id}`} className="flex justify-between items-end group cursor-pointer" style={{ textDecoration: "none" }}>
+                      <Link key={report.id} to={`/view/report/${report.id}`} className="flex justify-between items-end group cursor-pointer" style={{ textDecoration: "none" }}>
                         <div>
                           <label className="block text-[10px] text-secondary-fixed-dim uppercase mb-1">{date}</label>
                           <span className="text-sm font-bold block text-on-background">Day {String(i + 1).padStart(2, "0")}: {report.title || `${weekday}日报`}</span>
@@ -954,7 +1022,7 @@ ${clone.outerHTML}
         </div>
 
         {/* ── Footer ──────────────────────────────────────────────── */}
-        <footer className="mt-24 w-full py-12 border-t border-gray-200 bg-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 px-8 max-w-7xl mx-auto">
+        <footer className="mt-24 w-full py-12 border-t border-gray-200 bg-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 px-8">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-black text-gray-900 uppercase font-headline">GTC 2026 Dispatch</div>
             <div className="font-body text-[10px] tracking-widest uppercase text-gray-500">© 2026 GTC Intelligence Briefing. Internal Use Only.</div>
