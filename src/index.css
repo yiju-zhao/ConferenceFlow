@@ -4,6 +4,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Architectural Dispatch: Custom styles ── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+}
+.hatching-overlay {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(198, 40, 40, 0.1) 10px,
+    rgba(198, 40, 40, 0.1) 11px
+  );
+}
+.font-work-sans { font-family: 'Work Sans', sans-serif; }
+.font-inter { font-family: 'Inter', sans-serif; }
+.dispatch-header h1, .dispatch-header h2, .dispatch-header h3 {
+  font-family: 'Work Sans', sans-serif;
+}
+
 :root {
   /* ── Primitives ── */
   --red-600:     #CF0A2C;
