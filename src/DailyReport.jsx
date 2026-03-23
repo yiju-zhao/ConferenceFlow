@@ -2065,7 +2065,7 @@ ${clone.outerHTML}
           <div className="site-photos-grid">
             {(() => {
               const rawPhotos = reportData?.sitePhotos || [];
-              const sortedPhotos = [...rawPhotos]
+              const sortedPhotos = rawPhotos
                 .map((photo, originalIdx) => ({ ...photo, originalIdx }))
                 .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
               const cols = [[], []];
@@ -2076,10 +2076,10 @@ ${clone.outerHTML}
                 colH[col] += (photo.h || 3) / (photo.w || 4);
               }
               const addCol = colH[0] <= colH[1] ? 0 : 1;
-              const renderCard = (photo, si) => (
+              const renderCard = (photo) => (
                 <div key={photo.originalIdx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
-                    <img src={photo.image} alt={`现场记录 ${si + 1}`} className="site-photo-img" />
+                    <img src={photo.image} alt={`现场记录 ${photo.originalIdx + 1}`} className="site-photo-img" />
                     <button
                       className="site-photo-delete-btn no-print"
                       onClick={() => handleSitePhotoDelete(photo.originalIdx)}
@@ -2113,7 +2113,7 @@ ${clone.outerHTML}
               );
               return [0, 1].map(col => (
                 <div key={col} className="site-photos-col">
-                  {cols[col].map((photo) => renderCard(photo, sortedPhotos.indexOf(photo)))}
+                  {cols[col].map(renderCard)}
                   {addCol === col && addButton}
                 </div>
               ));
