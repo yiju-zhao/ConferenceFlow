@@ -112,7 +112,7 @@ function SessionPicker({ value, onChange }) {
     const q = query.trim();
     if (!q) return [];
     const ql = q.toLowerCase();
-    return catalogData
+    return [...SESSION_CATALOG.values()]
       .filter(s =>
         s.session_id.toLowerCase().includes(ql) ||
         s.title.toLowerCase().includes(ql)
@@ -181,15 +181,11 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." }) {
-  const contribRef = useRef(null);
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容..." }) {
   const sources = normaliseSources(block);
-  const contributorText = (block.contributor || "").trim();
-  useEffect(() => {
-    if (contribRef.current && document.activeElement !== contribRef.current) {
-      contribRef.current.value = block.contributor || '';
-    }
-  }, [block.contributor]);
+  const contributorText = block.contributorId
+    ? (members.find(m => m.id === block.contributorId)?.name || block.contributor || "").trim()
+    : (block.contributor || "").trim();
 
   const updateSource = (idx, v) => {
     const next = [...sources];
@@ -242,14 +238,18 @@ function IntelCard({ block, onUpdate, onRemove, placeholder = "记录内容..." 
       )}
       <div className="intel-card-section intel-card-meta no-print">
         <span className="intel-card-label">贡献人</span>
-        <input
-          ref={contribRef}
-          className="intel-card-contributor"
-          type="text"
-          placeholder="贡献人姓名..."
-          defaultValue={block.contributor || ''}
-          onBlur={e => onUpdate({ contributor: e.target.value })}
-        />
+        <select
+          className="intel-card-contributor-select"
+          value={block.contributorId || ""}
+          onChange={e => {
+            const id = e.target.value;
+            const name = members.find(m => m.id === id)?.name || "";
+            onUpdate({ contributorId: id, contributor: name });
+          }}
+        >
+          <option value="">选择贡献人...</option>
+          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
       </div>
       {contributorText && (
         <div className="intel-card-section intel-card-meta print-only">
@@ -298,7 +298,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
                 onClick={() => onRemove(idx)}
                 title="删除此演讲者"
                 style={{
-                  background: "none", border: "none", color: "#CF0A2C",
+                  background: "none", border: "none", color: "var(--brand)",
                   cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px",
                   flexShrink: 0,
                 }}
@@ -308,7 +308,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
             )}
           </div>
           {/* Print view: plain text */}
-          <div className="print-only" style={{ fontSize: 15, color: "#333", paddingTop: 2 }}>
+          <div className="print-only" style={{ fontSize: 15, color: "var(--text-secondary)", paddingTop: 2 }}>
             {[spk.name, spk.position, spk.company].filter(Boolean).join(" · ")}
           </div>
         </div>
@@ -317,7 +317,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove }) {
         className="no-print"
         onClick={onAdd}
         style={{
-          background: "none", border: "1px dashed #CF0A2C", color: "#CF0A2C",
+          background: "none", border: "1px dashed var(--brand)", color: "var(--brand)",
           cursor: "pointer", fontSize: 12.5, padding: "3px 12px",
           borderRadius: 4, marginTop: 4,
         }}
@@ -476,7 +476,7 @@ function getTextLines(html) {
 
 function DiffList({ oldItems, newItems }) {
   const diff = diffArrays((oldItems || []).map(String), (newItems || []).map(String));
-  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 15 }}>（无内容）</p>;
+  if (diff.length === 0) return <p style={{ color: "var(--text-muted)", fontSize: 15 }}>（无内容）</p>;
   return (
     <ul style={{ margin: 0, padding: "0 0 0 16px" }}>
       {diff.map((item, i) => (
@@ -484,7 +484,7 @@ function DiffList({ oldItems, newItems }) {
           fontSize: 13, padding: "2px 6px", borderRadius: 3, marginBottom: 3,
           background: item.type === "insert" ? "rgba(39,174,96,0.1)" : item.type === "delete" ? "rgba(207,10,44,0.1)" : "transparent",
           textDecoration: item.type === "delete" ? "line-through" : "none",
-          color: item.type === "insert" ? "#27AE60" : item.type === "delete" ? "#CF0A2C" : "inherit",
+          color: item.type === "insert" ? "var(--success)" : item.type === "delete" ? "var(--brand)" : "inherit",
         }}>
           {item.type === "insert" ? "+ " : item.type === "delete" ? "− " : ""}{item.text}
         </li>
@@ -495,7 +495,7 @@ function DiffList({ oldItems, newItems }) {
 
 function DiffText({ oldText, newText }) {
   const diff = diffArrays(getTextLines(oldText), getTextLines(newText));
-  if (diff.length === 0) return <p style={{ color: "#999", fontSize: 15 }}>（无内容）</p>;
+  if (diff.length === 0) return <p style={{ color: "var(--text-muted)", fontSize: 15 }}>（无内容）</p>;
   return (
     <div style={{ fontSize: 13, lineHeight: 1.6 }}>
       {diff.map((item, i) => (
@@ -503,7 +503,7 @@ function DiffText({ oldText, newText }) {
           padding: "2px 8px", marginBottom: 2, borderRadius: 3,
           background: item.type === "insert" ? "rgba(39,174,96,0.1)" : item.type === "delete" ? "rgba(207,10,44,0.1)" : "transparent",
           textDecoration: item.type === "delete" ? "line-through" : "none",
-          color: item.type === "insert" ? "#27AE60" : item.type === "delete" ? "#CF0A2C" : "inherit",
+          color: item.type === "insert" ? "var(--success)" : item.type === "delete" ? "var(--brand)" : "inherit",
         }}>
           {item.type !== "equal" && (item.type === "insert" ? "+ " : "− ")}{item.text}
         </div>
@@ -520,11 +520,11 @@ function SnapshotViewer({ snapshot, currentData }) {
   const FIELD_LABELS = { onsiteInfo: "现场情报", reflections: "圈内声音", rumors: "深度研判" };
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-      <p style={{ margin: "0 0 20px", fontSize: 13, color: "#888" }}>
+      <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--text-muted)" }}>
         快照时间：{ts}　·　绿色 = 快照中新增，红色删除线 = 当前版本中已改动
       </p>
       <section style={{ marginBottom: 24 }}>
-        <h4 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "#3D3D3D" }}>核心要点</h4>
+        <h4 style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "var(--text-secondary)" }}>核心要点</h4>
         <DiffList oldItems={currentData?.summaryPoints || []} newItems={data?.summaryPoints || []} />
       </section>
       {Object.keys(data?.sessions || {}).map(code => {
@@ -534,17 +534,17 @@ function SnapshotViewer({ snapshot, currentData }) {
         const hasInsightsDiff = stripHtml(oldSd.insights) !== stripHtml(newSd.insights);
         if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
         return (
-          <section key={code} style={{ marginBottom: 24, paddingLeft: 12, borderLeft: "3px solid #E8E8E8" }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#888", fontFamily: "monospace" }}>{code}</h4>
+          <section key={code} style={{ marginBottom: 24, paddingLeft: 12, borderLeft: "3px solid var(--border)" }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--text-muted)", fontFamily: "monospace" }}>{code}</h4>
             {hasTakeawaysDiff && (
               <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 11, color: "#AAAAAA", marginBottom: 4 }}>关键收获</div>
+                <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 4 }}>关键收获</div>
                 <DiffText oldText={oldSd.takeaways} newText={newSd.takeaways} />
               </div>
             )}
             {hasInsightsDiff && (
               <div>
-                <div style={{ fontSize: 11, color: "#AAAAAA", marginBottom: 4 }}>启示</div>
+                <div style={{ fontSize: 11, color: "var(--text-dim)", marginBottom: 4 }}>启示</div>
                 <DiffText oldText={oldSd.insights} newText={newSd.insights} />
               </div>
             )}
@@ -557,7 +557,7 @@ function SnapshotViewer({ snapshot, currentData }) {
         if (stripHtml(oldVal) === stripHtml(newVal)) return null;
         return (
           <section key={field} style={{ marginBottom: 24 }}>
-            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "#3D3D3D" }}>{FIELD_LABELS[field]}</h4>
+            <h4 style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)" }}>{FIELD_LABELS[field]}</h4>
             <DiffText oldText={oldVal} newText={newVal} />
           </section>
         );
@@ -1249,8 +1249,9 @@ export default function DailyReport() {
       const clone = container.cloneNode(true);
       clone.querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn, .subtitle-toggle-btn").forEach(el => el.remove());
       clone.querySelectorAll(".print-only").forEach(el => {
-        el.style.display = "block";
         el.classList.remove("print-only");
+        // Use flex for meta rows (label + value inline), block for everything else
+        el.style.display = el.classList.contains("intel-card-meta") ? "flex" : "block";
       });
       clone.querySelectorAll("[contenteditable]").forEach(el => {
         el.removeAttribute("contenteditable");
@@ -1456,7 +1457,7 @@ ${clone.outerHTML}
     return (
       <div className="report-page">
         <div className="report-container" style={{ textAlign: "center", padding: "80px 20px" }}>
-          <p style={{ color: "#999" }}>加载中...</p>
+          <p style={{ color: "var(--text-muted)" }}>加载中...</p>
         </div>
       </div>
     );
@@ -1471,19 +1472,19 @@ ${clone.outerHTML}
         <div className="report-toolbar-inner">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Link to="/" className="report-back-btn">← 返回日程</Link>
-            <div style={{ width: 1, height: 20, background: "#E8E8E8" }} />
+            <div style={{ width: 1, height: 20, background: "var(--border)" }} />
             <Link to="/reports" className="report-tool-btn" style={{ textDecoration: "none" }}>
               日报列表
             </Link>
           </div>
           <div className="report-toolbar-actions">
             {saveState === "saving" && (
-              <span style={{ fontSize: 11, color: "#AAAAAA", marginRight: 4 }}>● 保存中...</span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)", marginRight: 4 }}>● 保存中...</span>
             )}
             {saveState === "saved" && (
-              <span style={{ fontSize: 11, color: "#27AE60", marginRight: 4 }}>✓ 已保存</span>
+              <span style={{ fontSize: 11, color: "var(--success)", marginRight: 4 }}>✓ 已保存</span>
             )}
-            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
+            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
             <button
               className="report-tool-btn"
               onClick={handleSave}
@@ -1499,19 +1500,19 @@ ${clone.outerHTML}
               历史版本
             </button>
             {/* ── Delete session ── */}
-            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
+            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
             <button
               className="report-tool-btn"
               onClick={() => setShowDeleteSelect(true)}
               title="从日报移除一个 session"
-              style={{ color: "#CF0A2C" }}
+              style={{ color: "var(--brand)" }}
             >
               删除 Session
             </button>
             {/* ── Sync from catalog ── */}
-            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 4px" }} />
+            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
             {syncMsg && (
-              <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>
+              <span style={{ fontSize: 11, color: "var(--info)", marginRight: 4 }}>
                 {syncMsg}
               </span>
             )}
@@ -1524,7 +1525,7 @@ ${clone.outerHTML}
             >
               {syncing ? "同步中..." : "同步外源信息"}
             </button>
-            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
+            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
             <button className="report-icon-btn" onClick={execBold} title="加粗">
               <strong>B</strong>
             </button>
@@ -1540,7 +1541,7 @@ ${clone.outerHTML}
                 onClick={() => setShowColorPicker(!showColorPicker)}
                 title="字体颜色"
               >
-                <span style={{ borderBottom: "3px solid #CF0A2C", paddingBottom: 1 }}>A</span>
+                <span style={{ borderBottom: "3px solid var(--brand)", paddingBottom: 1 }}>A</span>
               </button>
               {showColorPicker && (
                 <div className="report-color-picker">
@@ -1551,7 +1552,7 @@ ${clone.outerHTML}
                 </div>
               )}
             </div>
-            <div style={{ width: 1, height: 20, background: "#E8E8E8", margin: "0 8px" }} />
+            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
             <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
               <button
                 className="report-export-btn"
@@ -1653,7 +1654,7 @@ ${clone.outerHTML}
                     {orderedTopics.map(topic => (
                       <li key={topic}>
                         <a href={`#topic-${topicSlug(topic)}`} className="report-toc-link report-toc-cat-link">
-                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{topic}</span>
+                          <span className="report-toc-title" style={{ color: "var(--brand)" }}>{topic}</span>
                         </a>
                       </li>
                     ))}
@@ -1669,7 +1670,7 @@ ${clone.outerHTML}
                     {(reportData?.onsiteInfoBlocks || []).filter(b => b.type === 'heading' && b.content).map(block => (
                       <li key={block.id}>
                         <a href={`#block-${block.id}`} className="report-toc-link report-toc-cat-link">
-                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{block.content}</span>
+                          <span className="report-toc-title" style={{ color: "var(--brand)" }}>{block.content}</span>
                         </a>
                       </li>
                     ))}
@@ -1685,7 +1686,7 @@ ${clone.outerHTML}
                     {(reportData?.reflectionsBlocks || []).filter(b => b.type === 'heading' && b.content).map(block => (
                       <li key={block.id}>
                         <a href={`#block-${block.id}`} className="report-toc-link report-toc-cat-link">
-                          <span className="report-toc-title" style={{ color: "#C41E3A" }}>{block.content}</span>
+                          <span className="report-toc-title" style={{ color: "var(--brand)" }}>{block.content}</span>
                         </a>
                       </li>
                     ))}
@@ -1790,7 +1791,7 @@ ${clone.outerHTML}
                         className="no-print"
                         onClick={() => illustInputRefs.current[session.code]?.click()}
                         style={{
-                          fontSize: 11, color: "#BBBBBB", border: "1px dashed #DDDDDD",
+                          fontSize: 11, color: "var(--text-placeholder)", border: "1px dashed #DDDDDD",
                           background: "none", cursor: "pointer", padding: "5px 0",
                           borderRadius: 4, display: "block", textAlign: "center", width: "100%",
                           marginTop: illus.length > 0 ? 6 : 0,
@@ -1924,7 +1925,7 @@ ${clone.outerHTML}
                             className="no-print"
                             onClick={() => illustInputRefs.current[session.code]?.click()}
                             style={{
-                              fontSize: 11, color: "#BBBBBB", border: "1px dashed #DDDDDD",
+                              fontSize: 11, color: "var(--text-placeholder)", border: "1px dashed #DDDDDD",
                               background: "none", cursor: "pointer", padding: "5px 0",
                               borderRadius: 4, display: "block", textAlign: "center", width: "100%",
                               marginTop: illus.length > 0 ? 6 : 0,
@@ -2001,6 +2002,7 @@ ${clone.outerHTML}
               } else {
                 els.push(
                   <IntelCard key={block.id} block={block}
+                    members={members}
                     onUpdate={fields => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
                     onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
                   />
@@ -2035,6 +2037,7 @@ ${clone.outerHTML}
               } else {
                 els.push(
                   <IntelCard key={block.id} block={block}
+                    members={members}
                     placeholder="记录圈内声音..."
                     onUpdate={fields => updateBlockFields("reflectionsBlocks", block.id, fields)}
                     onRemove={() => removeBlock("reflectionsBlocks", block.id)}
@@ -2163,14 +2166,14 @@ ${clone.outerHTML}
                     onMouseEnter={e => e.currentTarget.style.background = "#FFF5F5"}
                     onMouseLeave={e => e.currentTarget.style.background = "none"}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#3D3D3D", fontFamily: "monospace" }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", fontFamily: "monospace" }}>
                       {s.code}
                     </span>
-                    <span style={{ fontSize: 12, color: "#3D3D3D", lineHeight: 1.4 }}>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
                       {SESSION_CATALOG.get(s.code)?.title || s.title}
                     </span>
                     {names.length > 0 && (
-                      <span style={{ fontSize: 11, color: "#888" }}>贡献人：{names.join("、")}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>贡献人：{names.join("、")}</span>
                     )}
                   </button>
                 );
@@ -2198,13 +2201,13 @@ ${clone.outerHTML}
           }}>
             {/* Panel header */}
             <div style={{
-              padding: "14px 20px", borderBottom: "1px solid #E8E8E8",
+              padding: "14px 20px", borderBottom: "1px solid var(--border)",
               display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
             }}>
               {viewingSnapshot && (
                 <button
                   onClick={() => setViewingSnapshot(null)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#2980B9", padding: "0 8px 0 0" }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--info)", padding: "0 8px 0 0" }}
                 >
                   ← 返回列表
                 </button>
@@ -2214,7 +2217,7 @@ ${clone.outerHTML}
               </h2>
               <button
                 onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#999", lineHeight: 1 }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-muted)", lineHeight: 1 }}
               >
                 ✕
               </button>
@@ -2224,7 +2227,7 @@ ${clone.outerHTML}
               /* Snapshot list */
               <div style={{ flex: 1, overflowY: "auto" }}>
                 {snapshots.length === 0 ? (
-                  <p style={{ padding: "32px 20px", color: "#999", textAlign: "center", fontSize: 13 }}>
+                  <p style={{ padding: "32px 20px", color: "var(--text-muted)", textAlign: "center", fontSize: 13 }}>
                     暂无历史快照<br />
                     <span style={{ fontSize: 12 }}>点击「保存」按钮或等待 5 分钟自动生成</span>
                   </p>
@@ -2233,14 +2236,14 @@ ${clone.outerHTML}
                     ? snap.createdAt.toDate().toLocaleString("zh-CN")
                     : "时间未知";
                   return (
-                    <div key={snap.id} style={{ padding: "12px 20px", borderBottom: "1px solid #F5F5F5" }}>
+                    <div key={snap.id} style={{ padding: "12px 20px", borderBottom: "1px solid var(--border-dim)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                         <span style={{ fontSize: 15 }}>{snap.type === "manual" ? "📌" : "🕐"}</span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 15, fontWeight: snap.type === "manual" ? 600 : 400, color: "#3D3D3D" }}>
+                          <div style={{ fontSize: 15, fontWeight: snap.type === "manual" ? 600 : 400, color: "var(--text-secondary)" }}>
                             {snap.label}
                           </div>
-                          <div style={{ fontSize: 11, color: "#999", marginTop: 1 }}>{ts}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{ts}</div>
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
@@ -2248,7 +2251,7 @@ ${clone.outerHTML}
                           onClick={() => setViewingSnapshot(snap)}
                           style={{
                             fontSize: 13, padding: "4px 12px", borderRadius: 5,
-                            background: "#F5F5F5", border: "1px solid #E0E0E0", cursor: "pointer", color: "#3D3D3D",
+                            background: "var(--border-dim)", border: "1px solid #E0E0E0", cursor: "pointer", color: "var(--text-secondary)",
                           }}
                         >
                           查看
@@ -2258,7 +2261,7 @@ ${clone.outerHTML}
                           style={{
                             fontSize: 13, padding: "4px 12px", borderRadius: 5,
                             background: "rgba(207,10,44,0.05)", border: "1px solid rgba(207,10,44,0.2)",
-                            cursor: "pointer", color: "#CF0A2C",
+                            cursor: "pointer", color: "var(--brand)",
                           }}
                         >
                           恢复此版本
