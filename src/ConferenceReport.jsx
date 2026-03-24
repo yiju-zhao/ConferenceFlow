@@ -38,6 +38,29 @@ const SECTION_COMPONENTS = {
   "关键启示": InsightsSection,
 };
 
+const SECTION_EMPTY_BLOCK_TYPES = {
+  "现场声音": [
+    { type: "category-header", label: "分类标题", extraFields: { icon: "memory", label: "", count: "" } },
+    { type: "session-card", label: "Session 卡片", extraFields: { sessionCode: "", title: "", speakers: "", quote: "" } },
+  ],
+  "趋势总结": [
+    { type: "trend-title", label: "趋势标题" },
+    { type: "trend-summary", label: "趋势概要" },
+    { type: "evidence-bullet", label: "证据要点" },
+  ],
+  "推演分析": [
+    { type: "stat-card", label: "数据卡片", extraFields: { label: "", value: "", description: "" } },
+    { type: "tree-root", label: "推演根节点", extraFields: { title: "", content: "" } },
+    { type: "tree-branch", label: "推演分支", extraFields: { title: "", content: "" } },
+    { type: "tree-evidence", label: "证据节点", extraFields: { content: "", source: "" } },
+    { type: "tree-conclusion", label: "结论" },
+  ],
+  "关键启示": [
+    { type: "heading", label: "小标题" },
+    { type: "body", label: "正文" },
+  ],
+};
+
 export default function ConferenceReport() {
   const { reportId } = useParams();
 
@@ -730,8 +753,9 @@ ${clone.outerHTML}
                   {/* Empty state */}
                   {blocks.length === 0 && (
                     <div className="py-6 flex gap-2 flex-wrap no-print">
-                      <button className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, "heading")}>+ 小标题</button>
-                      <button className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, "body")}>+ 正文</button>
+                      {(SECTION_EMPTY_BLOCK_TYPES[sectionName] || [{ type: "heading", label: "小标题" }, { type: "body", label: "正文" }]).map(({ type, label, extraFields }) => (
+                        <button key={type} className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, type, null, extraFields)}>+ {label}</button>
+                      ))}
                     </div>
                   )}
 
