@@ -2059,6 +2059,7 @@ input[type="checkbox"].gtc-check:checked::after {
   flex-shrink: 0;
 }
 .intel-card-meta .intel-card-label {
+  display: inline;
   margin-bottom: 0;
 }
 .intel-card-contributor {
