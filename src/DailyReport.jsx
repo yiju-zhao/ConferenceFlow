@@ -1134,8 +1134,8 @@ export default function DailyReport({ viewMode = false }) {
       clone.querySelectorAll("[contenteditable]").forEach(el => {
         el.removeAttribute("contenteditable");
       });
-      // Strip inline styles from category title spans (can accumulate from rich-text paste)
-      clone.querySelectorAll(".onsite-category-title").forEach(el => {
+      // Strip inline styles from all editable text spans (can accumulate from rich-text paste)
+      clone.querySelectorAll(".onsite-category-title, .report-title-bar h1 span, [contenteditable] span").forEach(el => {
         el.textContent = el.textContent;
       });
       // Remove empty field blocks (关键收获 / 启示) from published HTML
@@ -1529,6 +1529,7 @@ ${clone.outerHTML}
                 contentEditable
                 suppressContentEditableWarning
                 onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
+                onPaste={e => { e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); }}
               >{reportData?.title || `【${date}】日报`}</span>
             )}
           </h1>
