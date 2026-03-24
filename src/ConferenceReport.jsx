@@ -186,11 +186,12 @@ export default function ConferenceReport() {
   );
 
   const addSectionBlock = useCallback(
-    (sectionName, type, afterId) => {
+    (sectionName, type, afterId, extraFields = {}) => {
       const section = reportDataRef.current?.sections?.[sectionName] || { blocks: [] };
       const newBlock = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2),
         type, content: "", citations: [],
+        ...extraFields,
       };
       const blocks = [...(section.blocks || [])];
       if (afterId) {

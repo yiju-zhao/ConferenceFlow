@@ -131,6 +131,30 @@ export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
   );
 }
 
+// ── SectionInlineAdd ─────────────────────────────────────────────────────────
+export function SectionInlineAdd({ sectionName, afterId, openKey, onOpen, onInsert, blockTypes }) {
+  const isOpen = openKey === `${sectionName}::${afterId}`;
+  return (
+    <div className="inline-add-zone no-print">
+      <button
+        className="inline-add-btn"
+        onClick={() => isOpen ? onOpen(null) : onOpen(`${sectionName}::${afterId}`)}
+        title="插入 block"
+      >+</button>
+      {isOpen && (
+        <div className="inline-add-popover">
+          {blockTypes.map(({ type, label, extraFields }) => (
+            <button key={type} className="inline-add-popover-item" onClick={() => {
+              onInsert(sectionName, type, afterId, extraFields);
+              onOpen(null);
+            }}>{label}</button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── BulletEditor ──────────────────────────────────────────────────────────────
 export function BulletEditor({ points, onSave, placeholder = "请输入要点...", readOnly = false }) {
   const [local, setLocal] = useState(points || []);
