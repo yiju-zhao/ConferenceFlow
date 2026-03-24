@@ -38,6 +38,29 @@ const SECTION_COMPONENTS = {
   "关键启示": InsightsSection,
 };
 
+const SECTION_EMPTY_BLOCK_TYPES = {
+  "现场声音": [
+    { type: "category-header", label: "分类标题", extraFields: { icon: "memory", label: "", count: "" } },
+    { type: "session-card", label: "Session 卡片", extraFields: { sessionCode: "", title: "", speakers: "", quote: "" } },
+  ],
+  "趋势总结": [
+    { type: "trend-title", label: "趋势标题" },
+    { type: "trend-summary", label: "趋势概要" },
+    { type: "evidence-bullet", label: "证据要点" },
+  ],
+  "推演分析": [
+    { type: "stat-card", label: "数据卡片", extraFields: { label: "", value: "", description: "" } },
+    { type: "tree-root", label: "推演根节点", extraFields: { title: "", content: "" } },
+    { type: "tree-branch", label: "推演分支", extraFields: { title: "", content: "" } },
+    { type: "tree-evidence", label: "证据节点", extraFields: { content: "", source: "" } },
+    { type: "tree-conclusion", label: "结论" },
+  ],
+  "关键启示": [
+    { type: "heading", label: "小标题" },
+    { type: "body", label: "正文" },
+  ],
+};
+
 export default function ConferenceReport() {
   const { reportId } = useParams();
 
@@ -467,6 +490,16 @@ ${clone.outerHTML}
     return `${fmt(ds)} \u2013 ${fmt(de)}`;
   }, [reportData?.dateStart, reportData?.dateEnd]);
 
+  const filteredDailyReports = useMemo(() => {
+    const ds = reportData?.dateStart;
+    const de = reportData?.dateEnd;
+    if (!ds || !de) return dailyReports;
+    return dailyReports.filter(r => {
+      const d = parseReportId(r.id).date;
+      return d >= ds && d <= de;
+    });
+  }, [dailyReports, reportData?.dateStart, reportData?.dateEnd]);
+
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -730,8 +763,9 @@ ${clone.outerHTML}
                   {/* Empty state */}
                   {blocks.length === 0 && (
                     <div className="py-6 flex gap-2 flex-wrap no-print">
-                      <button className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, "heading")}>+ 小标题</button>
-                      <button className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, "body")}>+ 正文</button>
+                      {(SECTION_EMPTY_BLOCK_TYPES[sectionName] || [{ type: "heading", label: "小标题" }, { type: "body", label: "正文" }]).map(({ type, label, extraFields }) => (
+                        <button key={type} className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, type, null, extraFields)}>+ {label}</button>
+                      ))}
                     </div>
                   )}
 
@@ -851,18 +885,32 @@ ${clone.outerHTML}
               <div className="bg-surface-container p-8">
                 <h4 className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em] mb-6 font-label">每日日报 (DAILY DISPATCHES)</h4>
                 <div className="space-y-6">
-                  {dailyReports.length === 0 && <p className="text-xs text-secondary">暂无日报</p>}
-                  {dailyReports.map((report, i) => {
+                  {filteredDailyReports.length === 0 && <p className="text-xs text-secondary">暂无日报</p>}
+                  {filteredDailyReports.map((report, i) => {
                     const date = parseReportId(report.id).date;
                     const weekday = DAY_CN[new Date(date + "T00:00").getDay()];
                     return (
-                      <Link key={report.id} to={`/view/report/${report.id}`} className="flex justify-between items-end group cursor-pointer" style={{ textDecoration: "none" }}>
-                        <div>
+                      <div key={report.id} className="flex justify-between items-end group">
+                        <div className="flex-1 min-w-0">
                           <label className="block text-[10px] text-secondary-fixed-dim uppercase mb-1">{date}</label>
-                          <span className="text-sm font-bold block text-on-background">Day {String(i + 1).padStart(2, "0")}: {report.title || `${weekday}日报`}</span>
+                          <div className="text-sm font-bold text-on-background flex items-baseline gap-1">
+                            <span className="flex-shrink-0">Day {String(i + 1).padStart(2, "0")}:</span>
+                            <div className="flex-1 min-w-0">
+                              <EditableField
+                                value={report.title || `${weekday}日报`}
+                                onSave={(html) => {
+                                  setDoc(doc(db, "dailyReports", report.id), { title: html }, { merge: true }).catch(console.error);
+                                }}
+                                placeholder={`${weekday}日报`}
+                                minHeight={20}
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <span className="material-symbols-outlined text-primary text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                      </Link>
+                        <Link to={`/view/report/${report.id}`} className="flex-shrink-0 ml-2" style={{ textDecoration: "none" }}>
+                          <span className="material-symbols-outlined text-primary text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </Link>
+                      </div>
                     );
                   })}
                 </div>
