@@ -1134,6 +1134,10 @@ export default function DailyReport({ viewMode = false }) {
       clone.querySelectorAll("[contenteditable]").forEach(el => {
         el.removeAttribute("contenteditable");
       });
+      // Strip inline styles from category title spans (can accumulate from rich-text paste)
+      clone.querySelectorAll(".onsite-category-title").forEach(el => {
+        el.textContent = el.textContent;
+      });
       // Remove empty field blocks (关键收获 / 启示) from published HTML
       clone.querySelectorAll('.report-field-block').forEach(block => {
         const heading = block.querySelector('.report-field-heading');
@@ -1896,6 +1900,7 @@ ${clone.outerHTML}
                     ) : (
                       <span contentEditable suppressContentEditableWarning className="onsite-category-title"
                         onBlur={e => updateBlock("onsiteInfoBlocks", block.id, e.currentTarget.textContent.trim())}
+                        onPaste={e => { e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); }}
                       >{block.content}</span>
                     )}
                     <button className="onsite-category-remove no-print" onClick={() => removeBlock("onsiteInfoBlocks", block.id)}>×</button>
@@ -1936,6 +1941,7 @@ ${clone.outerHTML}
                     ) : (
                       <span contentEditable suppressContentEditableWarning className="onsite-category-title"
                         onBlur={e => updateBlock("reflectionsBlocks", block.id, e.currentTarget.textContent.trim())}
+                        onPaste={e => { e.preventDefault(); document.execCommand("insertText", false, e.clipboardData.getData("text/plain")); }}
                       >{block.content}</span>
                     )}
                     <button className="onsite-category-remove no-print" onClick={() => removeBlock("reflectionsBlocks", block.id)}>×</button>

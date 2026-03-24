@@ -118,6 +118,17 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
+/* ── Global heading font (match template) ────── */
+h1, h2, h3, .font-work-sans {
+  font-family: 'Work Sans', sans-serif;
+}
+
+/* ── ConferenceReport scoped body font ────────── */
+.conference-report {
+  font-family: 'Inter', "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
 /* ── Typography helpers ──────────────────────── */
 .font-mono    { font-family: 'DM Mono', monospace; }
 
@@ -1374,6 +1385,15 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .site-photo-add-label {
   font-size: var(--report-fs-caption);
+}
+
+/* ── Conference Report: Single-column photo grid ──────────────────────────── */
+.conference-photos-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+  max-width: 600px;
 }
 
 /* ── Footer ────────────────────────────────────── */
