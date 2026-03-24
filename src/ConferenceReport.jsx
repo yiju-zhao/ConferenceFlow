@@ -750,7 +750,7 @@ ${clone.outerHTML}
         </header>
 
         {/* ── Briefing Header ──────────────────────────────────── */}
-        <section className="relative bg-primary text-on-primary p-8 md:p-12 mb-16 overflow-hidden">
+        <section className="briefing-header relative bg-primary text-on-primary p-8 md:p-12 mb-16 overflow-hidden">
           <div className="absolute inset-0 hatching-overlay opacity-20 pointer-events-none" />
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">

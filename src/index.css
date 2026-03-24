@@ -1096,6 +1096,18 @@ input[type="checkbox"].gtc-check:checked::after {
   color: var(--text-placeholder); pointer-events: none;
 }
 
+/* Briefing header: editable fields inherit parent font/color */
+.briefing-header .report-editable {
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  padding: 4px 8px;
+}
+.briefing-header .report-editable * { font-size: inherit !important; color: inherit !important; }
+.briefing-header .report-editable:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+.briefing-header .report-editable:focus { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); }
+.briefing-header .report-editable:empty::before { color: rgba(255,255,255,0.5); }
+
 .report-inline-editable {
   display: inline-block; min-width: 80px;
   padding: 1px 4px;
