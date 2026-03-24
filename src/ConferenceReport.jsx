@@ -23,12 +23,20 @@ import {
   parseReportId,
   useDebouncedSave,
   EditableField,
-  InlineAddButton,
 } from "./shared";
+import VoicesSection from "./sections/VoicesSection";
+import TrendsSection from "./sections/TrendsSection";
+import AnalysisSection from "./sections/AnalysisSection";
+import InsightsSection from "./sections/InsightsSection";
 
 const SECTION_ORDER = ["现场声音", "趋势总结", "推演分析", "关键启示"];
 const SECTION_NAV = { "现场声音": "Voices", "趋势总结": "Trends", "推演分析": "Analysis", "关键启示": "Insights" };
-const INSIGHT_BG_CYCLE = ["bg-primary", "bg-on-background", "bg-secondary"];
+const SECTION_COMPONENTS = {
+  "现场声音": VoicesSection,
+  "趋势总结": TrendsSection,
+  "推演分析": AnalysisSection,
+  "关键启示": InsightsSection,
+};
 
 export default function ConferenceReport() {
   const { reportId } = useParams();
@@ -468,136 +476,6 @@ ${clone.outerHTML}
     );
   }
 
-  // ── Section-specific block renderers ──────────────────────────────────────────
-  const renderVoicesBlock = (block, sectionName) => {
-    if (block.type === "heading") return renderBlockHeading(block, sectionName);
-    return (
-      <div key={block.id} className="bg-surface-container-lowest p-8 border-l-[12px] border-primary-container relative group">
-        <button className="absolute top-2 right-2 text-secondary hover:text-primary text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSectionBlock(sectionName, block.id)}>×</button>
-        <span className="material-symbols-outlined text-primary mb-4 block text-2xl">format_quote</span>
-        <div className="text-lg italic font-medium leading-snug mb-4 text-on-surface">
-          <EditableField value={block.content} onSave={(html) => updateSectionBlock(sectionName, block.id, { content: html })} placeholder="输入现场声音..." minHeight={40} />
-        </div>
-        {renderCitationBadges(block, sectionName)}
-        <button className="citation-add-btn no-print mt-2 text-xs text-secondary hover:text-primary bg-transparent border-none cursor-pointer" onClick={() => openCitationPicker(sectionName, block.id)}>+ 添加引用</button>
-      </div>
-    );
-  };
-
-  const renderTrendsBlock = (block, sectionName, idx) => {
-    if (block.type === "heading") {
-      return (
-        <div key={block.id} className="relative group">
-          <button className="absolute top-0 right-0 text-secondary hover:text-primary text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSectionBlock(sectionName, block.id)}>×</button>
-          <div className="text-sm font-bold text-primary uppercase mb-2">
-            <EditableField value={block.content} onSave={(html) => updateSectionBlock(sectionName, block.id, { content: html })} placeholder="Trend 标题..." minHeight={20} />
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div key={block.id} className="group bg-surface-container-low p-8 border-b-2 border-transparent hover:border-primary transition-all duration-50 relative">
-        <button className="absolute top-2 right-2 text-secondary hover:text-primary text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSectionBlock(sectionName, block.id)}>×</button>
-        <div className="text-on-surface leading-relaxed">
-          <EditableField value={block.content} onSave={(html) => updateSectionBlock(sectionName, block.id, { content: html })} placeholder="输入趋势内容..." minHeight={40} />
-        </div>
-        {renderCitationBadges(block, sectionName)}
-        <button className="citation-add-btn no-print mt-2 text-xs text-secondary hover:text-primary bg-transparent border-none cursor-pointer" onClick={() => openCitationPicker(sectionName, block.id)}>+ 添加引用</button>
-      </div>
-    );
-  };
-
-  const renderAnalysisBlock = (block, sectionName) => {
-    if (block.type === "heading") {
-      return (
-        <div key={block.id} className="p-6 bg-surface-container-low text-center relative group">
-          <button className="absolute top-1 right-1 text-secondary hover:text-primary text-xs no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSectionBlock(sectionName, block.id)}>×</button>
-          <div className="text-3xl font-black text-primary mb-2 font-headline">
-            <EditableField value={block.content} onSave={(html) => updateSectionBlock(sectionName, block.id, { content: html })} placeholder="数据/指标..." minHeight={28} />
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div key={block.id} className="relative group">
-        <button className="absolute top-0 right-0 text-secondary hover:text-primary text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSectionBlock(sectionName, block.id)}>×</button>
-        <div className="text-lg leading-relaxed font-medium text-on-surface">
-          <EditableField value={block.content} onSave={(html) => updateSectionBlock(sectionName, block.id, { content: html })} placeholder="输入分析内容..." minHeight={60} />
-        </div>
-        {renderCitationBadges(block, sectionName)}
-        <button className="citation-add-btn no-print mt-2 text-xs text-secondary hover:text-primary bg-transparent border-none cursor-pointer" onClick={() => openCitationPicker(sectionName, block.id)}>+ 添加引用</button>
-      </div>
-    );
-  };
-
-  const renderInsightsBlock = (block, sectionName, idx) => {
-    if (block.type === "heading") return renderBlockHeading(block, sectionName);
-    const bgClass = INSIGHT_BG_CYCLE[idx % INSIGHT_BG_CYCLE.length];
-    const num = String(idx + 1).padStart(2, "0");
-    return (
-      <div key={block.id} className={`flex items-center ${bgClass} text-white p-6 relative group`}>
-        <button className="absolute top-2 right-2 text-white/60 hover:text-white text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSectionBlock(sectionName, block.id)}>×</button>
-        <div className="flex-shrink-0 w-16 text-4xl font-black opacity-30 font-headline">{num}</div>
-        <div className="ml-6 flex-1">
-          <EditableField value={block.content} onSave={(html) => updateSectionBlock(sectionName, block.id, { content: html })} placeholder="输入关键启示..." minHeight={40} />
-        </div>
-        {renderCitationBadges(block, sectionName, true)}
-      </div>
-    );
-  };
-
-  const renderBlockHeading = (block, sectionName) => (
-    <div key={block.id} className="relative group mb-2">
-      <button className="absolute top-0 right-0 text-secondary hover:text-primary text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeSectionBlock(sectionName, block.id)}>×</button>
-      <div className="text-xl font-bold text-on-background font-headline">
-        <EditableField value={block.content} onSave={(html) => updateSectionBlock(sectionName, block.id, { content: html })} placeholder="输入小标题..." minHeight={28} />
-      </div>
-    </div>
-  );
-
-  const renderCitationBadges = (block, sectionName, light = false) => {
-    if (!(block.citations || []).length) return null;
-    return (
-      <div className="flex gap-1 flex-wrap mt-2">
-        {(block.citations || []).map((cId) => (
-          <span key={cId} className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold ${light ? "bg-white/20 text-white" : "bg-primary/10 text-primary"}`} title={getCitationPreview(cId)}>
-            [{cId}]
-            <button className="no-print hover:opacity-70" onClick={(e) => {
-              e.stopPropagation();
-              const sec = reportDataRef.current?.sections?.[sectionName] || { blocks: [] };
-              const updatedBlocks = sec.blocks.map((b) => b.id === block.id ? { ...b, citations: (b.citations || []).filter((id) => id !== cId) } : b);
-              saveSectionBlocks(sectionName, updatedBlocks);
-            }}>×</button>
-          </span>
-        ))}
-      </div>
-    );
-  };
-
-  const renderSectionBlocks = (sectionName, blocks) => {
-    const renderers = {
-      "现场声音": renderVoicesBlock,
-      "趋势总结": renderTrendsBlock,
-      "推演分析": renderAnalysisBlock,
-      "关键启示": renderInsightsBlock,
-    };
-    const renderer = renderers[sectionName] || ((block, sn) => renderBlockHeading(block, sn));
-
-    // Track body-only index for insights numbering
-    let bodyIdx = 0;
-    return blocks.map((block, i) => {
-      const isBody = block.type === "body";
-      const currentBodyIdx = bodyIdx;
-      if (isBody) bodyIdx++;
-      return (
-        <div key={block.id}>
-          {renderer(block, sectionName, isBody ? currentBodyIdx : i)}
-          <InlineAddButton field={sectionName} afterId={block.id} openKey={openInlineMenu} onOpen={setOpenInlineMenu} onInsert={(field, type, afterId) => addSectionBlock(field, type, afterId)} />
-        </div>
-      );
-    });
-  };
-
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-surface font-body text-on-background">
@@ -839,11 +717,7 @@ ${clone.outerHTML}
             {SECTION_ORDER.map((sectionName) => {
               const section = reportData?.sections?.[sectionName] || { blocks: [] };
               const blocks = section.blocks || [];
-
-              // Section-specific wrapper classes
-              const isAnalysis = sectionName === "推演分析";
-              const isVoices = sectionName === "现场声音";
-              const isInsights = sectionName === "关键启示";
+              const SectionComponent = SECTION_COMPONENTS[sectionName];
 
               return (
                 <section key={sectionName} id={`section-${sectionName}`}>
@@ -855,50 +729,25 @@ ${clone.outerHTML}
 
                   {/* Empty state */}
                   {blocks.length === 0 && (
-                    <div className="py-6 flex gap-2 no-print">
+                    <div className="py-6 flex gap-2 flex-wrap no-print">
                       <button className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, "heading")}>+ 小标题</button>
                       <button className="px-4 py-2 text-xs font-bold uppercase bg-surface-container-low text-secondary hover:text-primary hover:border-primary border border-transparent transition-colors" onClick={() => addSectionBlock(sectionName, "body")}>+ 正文</button>
                     </div>
                   )}
 
-                  {/* Section content with appropriate wrapper */}
-                  {blocks.length > 0 && isAnalysis && (
-                    <div className="bg-surface-dim p-1">
-                      <div className="bg-white p-6 md:p-10 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                          {blocks.filter(b => b.type === "heading").map(block => (
-                            <div key={block.id}>
-                              {renderAnalysisBlock(block, sectionName)}
-                              <InlineAddButton field={sectionName} afterId={block.id} openKey={openInlineMenu} onOpen={setOpenInlineMenu} onInsert={(field, type, afterId) => addSectionBlock(field, type, afterId)} />
-                            </div>
-                          ))}
-                        </div>
-                        {blocks.filter(b => b.type === "body").map(block => (
-                          <div key={block.id}>
-                            {renderAnalysisBlock(block, sectionName)}
-                            <InlineAddButton field={sectionName} afterId={block.id} openKey={openInlineMenu} onOpen={setOpenInlineMenu} onInsert={(field, type, afterId) => addSectionBlock(field, type, afterId)} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {blocks.length > 0 && isVoices && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {renderSectionBlocks(sectionName, blocks)}
-                    </div>
-                  )}
-
-                  {blocks.length > 0 && isInsights && (
-                    <div className="grid grid-cols-1 gap-4">
-                      {renderSectionBlocks(sectionName, blocks)}
-                    </div>
-                  )}
-
-                  {blocks.length > 0 && !isAnalysis && !isVoices && !isInsights && (
-                    <div className="space-y-4">
-                      {renderSectionBlocks(sectionName, blocks)}
-                    </div>
+                  {/* Section content */}
+                  {blocks.length > 0 && SectionComponent && (
+                    <SectionComponent
+                      sectionName={sectionName}
+                      blocks={blocks}
+                      onAddBlock={addSectionBlock}
+                      onUpdateBlock={(blockId, fields) => updateSectionBlock(sectionName, blockId, fields)}
+                      onRemoveBlock={(blockId) => removeSectionBlock(sectionName, blockId)}
+                      onOpenCitationPicker={openCitationPicker}
+                      getCitationPreview={getCitationPreview}
+                      openInlineMenu={openInlineMenu}
+                      onOpenInlineMenu={setOpenInlineMenu}
+                    />
                   )}
                 </section>
               );
