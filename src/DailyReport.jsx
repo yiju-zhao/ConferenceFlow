@@ -172,13 +172,17 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
             {sources.map((s, i) => {
               const text = formatOneSource(s);
               if (!text) return null;
-              return (
-                <span key={i}>
-                  {i > 0 && ' ｜ '}
+              const url = s?.id ? SESSION_CATALOG.get(s.id)?.url : null;
+              const inner = (
+                <>
+                  {i > 0 && <span style={{ margin: "0 4px", color: "var(--text-dim)" }}>｜</span>}
                   {s?.id && <span className="session-picker-id-badge">{s.id}</span>}
                   {s?.id ? ` ${SESSION_CATALOG.get(s.id)?.title?.trim() || ''}` : text}
-                </span>
+                </>
               );
+              return url
+                ? <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>{inner}</a>
+                : <span key={i}>{inner}</span>;
             })}
           </span>
         </div>
