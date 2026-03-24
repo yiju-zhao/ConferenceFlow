@@ -1034,6 +1034,21 @@ export default function DailyReport({ viewMode = false }) {
           },
         });
 
+        // Intel card meta rows (来源 / 贡献人 inside onsite/reflections intel cards)
+        td.addRule('intel-card-meta-row', {
+          filter: (node) =>
+            node.nodeName === 'DIV' &&
+            node.classList?.contains('intel-card-section') &&
+            node.querySelector?.('.intel-card-label'),
+          replacement: (_content, node) => {
+            const label = node.querySelector('.intel-card-label')?.textContent.trim();
+            if (!label) return _content;
+            // _content contains label text + Turndown-processed value (with markdown links)
+            const valueMarkdown = _content.replace(label, '').trim();
+            return valueMarkdown ? `\n\n*${label}:* ${valueMarkdown}\n\n` : '';
+          },
+        });
+
         const frontmatter = `---\ntitle: GTC 2026 日报 ${date}\ndate: ${date}\n---\n\n`;
         const md = frontmatter + td.turndown(clone.outerHTML);
         blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
