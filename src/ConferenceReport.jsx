@@ -727,7 +727,7 @@ ${clone.outerHTML}
       {/* ── Main Content ───────────────────────────────────────── */}
       <main className="min-h-screen p-6 md:p-12 max-w-7xl mx-auto" ref={reportContainerRef}>
         {/* ── Report Header (Architectural Dispatch nav) ────────── */}
-        <header className="sticky top-0 z-40 flex justify-between items-center px-8 h-20 bg-red-800 text-white -mx-6 md:-mx-12 -mt-6 md:-mt-12 mb-8">
+        <header className="sticky top-0 z-40 flex items-center px-8 h-20 bg-red-800 text-white -mx-6 md:-mx-12 -mt-6 md:-mt-12 mb-8">
           <div className="flex items-center gap-8">
             <div className="text-2xl font-black font-headline uppercase tracking-tighter">Architectural Dispatch</div>
             <nav className="hidden md:flex gap-6">
@@ -736,21 +736,10 @@ ${clone.outerHTML}
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="export-dropdown-wrapper no-print" style={{ position: "relative" }}>
-              <button
-                className="px-4 py-2 bg-white text-red-800 font-bold uppercase text-xs hover:bg-red-50 active:scale-95 duration-50 transition-all"
-                onClick={() => !(exporting || publishing) && setShowExportMenu((v) => !v)}
-                disabled={exporting || publishing}
-              >
-                {exporting ? "Exporting..." : publishing ? "Publishing..." : "Download Markdown"}
-              </button>
-            </div>
-          </div>
         </header>
 
         {/* ── Briefing Header ──────────────────────────────────── */}
-        <section className="relative bg-primary text-on-primary p-8 md:p-12 mb-16 overflow-hidden">
+        <section className="briefing-header relative bg-primary text-on-primary p-8 md:p-12 mb-16 overflow-hidden">
           <div className="absolute inset-0 hatching-overlay opacity-20 pointer-events-none" />
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
