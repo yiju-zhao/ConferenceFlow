@@ -512,76 +512,65 @@ ${clone.outerHTML}
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-surface font-body text-on-background">
-      {/* ── Toolbar (DailyReport style) ──────────────────────────────── */}
-      <div className="report-toolbar no-print">
-        <div className="report-toolbar-inner">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Link to="/" className="report-back-btn">← 返回日程</Link>
-            <div style={{ width: 1, height: 20, background: "var(--border)" }} />
-            <Link to="/reports" className="report-tool-btn" style={{ textDecoration: "none" }}>
-              日报列表
-            </Link>
-          </div>
-          <div className="report-toolbar-actions">
-            {saveState === "saving" && (
-              <span className="report-status-msg" style={{ color: "var(--text-dim)" }}>● 保存中...</span>
-            )}
-            {saveState === "saved" && (
-              <span className="report-status-msg" style={{ color: "var(--success)" }}>✓ 已保存</span>
-            )}
-            <div className="report-toolbar-divider" />
-            <button className="report-tool-btn" onClick={handleSave} title="立即保存并创建快照">
-              保存
-            </button>
-            <button className="report-tool-btn" onClick={() => setShowHistory(v => !v)} title="查看历史版本快照">
-              历史版本
-            </button>
-            <div className="report-toolbar-divider" />
-            <button className="report-icon-btn" onClick={execBold} title="加粗">
-              <strong>B</strong>
-            </button>
-            <button className="report-icon-btn" onClick={() => execCmd("italic")} title="斜体">
-              <em style={{ fontStyle: "italic" }}>I</em>
-            </button>
-            <button className="report-icon-btn" onClick={() => execCmd("underline")} title="下划线">
-              <span style={{ textDecoration: "underline" }}>U</span>
-            </button>
-            <div style={{ position: "relative" }}>
-              <button className="report-icon-btn" onClick={() => setShowColorPicker(!showColorPicker)} title="字体颜色">
-                <span style={{ borderBottom: "3px solid var(--brand)", paddingBottom: 1 }}>A</span>
+      {/* ── Fixed Header (Architectural Dispatch style) ──────────────── */}
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-8 h-20 bg-red-800 text-white border-none">
+        <div className="flex items-center gap-8">
+          <Link to="/reports" className="text-2xl font-black font-headline uppercase tracking-tighter text-white" style={{ textDecoration: "none" }}>Architectural Dispatch</Link>
+          <nav className="hidden md:flex gap-6">
+            {SECTION_ORDER.map((name) => (
+              <a key={name} href={`#section-${name}`} className="font-headline font-bold uppercase tracking-tighter text-red-200 hover:text-white transition-colors duration-50 text-sm" style={{ textDecoration: "none" }}>{SECTION_NAV[name]}</a>
+            ))}
+          </nav>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Save status */}
+          {saveState === "saving" && <span className="text-xs text-red-200">saving...</span>}
+          {saveState === "saved" && <span className="text-xs text-green-300">saved</span>}
+          {/* Editor tools */}
+          <div className="hidden md:flex items-center gap-1 no-print">
+            <button className="p-1.5 hover:bg-red-700 text-white text-xs font-bold" onClick={execBold} title="加粗">B</button>
+            <button className="p-1.5 hover:bg-red-700 text-white text-xs italic" onClick={() => execCmd("italic")} title="斜体">I</button>
+            <button className="p-1.5 hover:bg-red-700 text-white text-xs underline" onClick={() => execCmd("underline")} title="下划线">U</button>
+            <div className="relative">
+              <button className="p-1.5 hover:bg-red-700 text-white text-xs" onClick={() => setShowColorPicker(!showColorPicker)} title="字体颜色">
+                <span style={{ borderBottom: "3px solid #fca5a5", paddingBottom: 1 }}>A</span>
               </button>
               {showColorPicker && (
-                <div className="report-color-picker">
+                <div className="absolute top-full right-0 mt-1 bg-white p-2 flex gap-1 z-50 shadow-lg">
                   {COLOR_PRESETS.map((c) => (
-                    <button key={c} className="report-color-swatch" style={{ background: c }} onClick={() => execColor(c)} title={c} />
+                    <button key={c} className="w-5 h-5 border border-gray-300" style={{ background: c }} onClick={() => execColor(c)} title={c} />
                   ))}
                 </div>
               )}
             </div>
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
-            <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
-              <button
-                className="report-export-btn"
-                onClick={() => !(exporting || publishing) && setShowExportMenu((v) => !v)}
-                disabled={exporting || publishing}
-              >
-                {exporting ? "导出中..." : publishing ? "发布中..." : "导出总结稿 ▾"}
-              </button>
-              {showExportMenu && (
-                <div className="export-dropdown-menu">
-                  <button className="export-menu-item" onClick={handleExport}>
-                    <span className="export-menu-label">↓ 导出 Markdown</span>
-                  </button>
-                  <div className="export-menu-divider" />
-                  <button className="export-menu-item export-menu-item--publish" onClick={handlePublish}>
-                    <span className="export-menu-label">{publishing ? "分享中..." : "🔗 分享总结稿"}</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            <div className="w-px h-5 bg-red-600 mx-1" />
+            <button className="px-2 py-1 hover:bg-red-700 text-xs font-bold uppercase" onClick={handleSave} title="保存快照">Save</button>
+            <button className="px-2 py-1 hover:bg-red-700 text-xs font-bold uppercase" onClick={() => setShowHistory(v => !v)} title="历史版本">History</button>
+          </div>
+          <div className="w-px h-5 bg-red-600 mx-1 no-print" />
+          {/* Export */}
+          <div className="export-dropdown-wrapper no-print" style={{ position: "relative" }}>
+            <button
+              className="px-4 py-2 bg-white text-primary font-bold uppercase text-xs hover:bg-red-50 active:scale-95 duration-50 transition-all"
+              onClick={() => !(exporting || publishing) && setShowExportMenu((v) => !v)}
+              disabled={exporting || publishing}
+            >
+              {exporting ? "Exporting..." : publishing ? "Publishing..." : "Export"}
+            </button>
+            {showExportMenu && (
+              <div className="absolute top-full right-0 mt-1 bg-white shadow-lg z-50 min-w-[180px]">
+                <button className="w-full px-4 py-3 text-left text-xs font-bold uppercase text-on-background hover:bg-surface-container-low" onClick={handleExport}>
+                  Download Markdown
+                </button>
+                <div className="h-px bg-surface-container-high" />
+                <button className="w-full px-4 py-3 text-left text-xs font-bold uppercase text-primary hover:bg-surface-container-low" onClick={handlePublish}>
+                  {publishing ? "Publishing..." : "Share Link"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </header>
 
       {/* ── Share Modal ──────────────────────────────────────────── */}
       {shareUrl && (
@@ -725,7 +714,7 @@ ${clone.outerHTML}
       )}
 
       {/* ── Main Content ───────────────────────────────────────── */}
-      <main className="min-h-screen p-6 md:p-12 max-w-7xl mx-auto" ref={reportContainerRef}>
+      <main className="mt-20 min-h-screen p-6 md:p-12 max-w-7xl mx-auto" ref={reportContainerRef}>
         {/* ── Briefing Header ──────────────────────────────────── */}
         <section className="relative bg-primary text-on-primary p-8 md:p-12 mb-16 overflow-hidden">
           <div className="absolute inset-0 hatching-overlay opacity-20 pointer-events-none" />
