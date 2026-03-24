@@ -233,7 +233,7 @@ export default function ReportList() {
                       {isArchived ? "取消归档" : "归档"}
                     </button>
                     <Link to={`/report/${r.id}`} className="report-card-view-btn">
-                      查看总结稿 &rarr;
+                      管理总结稿 &rarr;
                     </Link>
                   </div>
                 </div>
