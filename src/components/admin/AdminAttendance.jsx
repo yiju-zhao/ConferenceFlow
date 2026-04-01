@@ -301,7 +301,7 @@ export default function AdminAttendance() {
       {/* Table */}
       <div className="bg-surface-container-lowest mb-10">
         {/* Header row */}
-        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
+        <div className="hidden md:grid grid-cols-[2fr_100px_100px_100px_180px] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Name</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Mode</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Role</span>
@@ -368,14 +368,14 @@ export default function AdminAttendance() {
                 </div>
               ) : (
                 /* Normal row */
-                <div className="md:grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 flex flex-wrap items-center">
+                <div className="md:grid md:grid-cols-[2fr_100px_100px_100px_180px] gap-4 px-4 py-3 flex flex-wrap items-center">
                   <div className="text-on-surface text-sm font-bold truncate min-w-0">
                     {getMemberName(m)}
                   </div>
                   <div className="flex items-center">
                     <ModeBadge mode={m.attendanceMode || "onsite"} />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center">
                     {m.role === "admin" ? (
                       <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
                         Admin
@@ -385,34 +385,32 @@ export default function AdminAttendance() {
                         Attendee
                       </span>
                     ) : (
-                      <span className="text-secondary text-xs uppercase tracking-wider">
+                      <span className="bg-[#F1C40F]/10 text-[#D4AC0D] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
                         Member
                       </span>
                     )}
-                    {/* Only real registered users can be promoted/demoted (not manual or legacy) */}
+                  </div>
+                  <div className="text-secondary text-xs">
+                    {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {/* Promote/Demote: only real registered users */}
                     {!m.managedByAdmin && !m.legacyName && m.role !== "admin" && m.status === "approved" && (
                       <button
                         onClick={() => handleSetAdmin(m.id)}
                         className="text-primary text-xs hover:underline"
-                        title="Make conference admin"
                       >
-                        ↑ Promote
+                        Promote
                       </button>
                     )}
                     {!m.managedByAdmin && !m.legacyName && m.role === "admin" && isSuperAdmin && m.id !== user.uid && (
                       <button
                         onClick={() => handleRemoveAdmin(m.id)}
                         className="text-secondary text-xs hover:text-primary hover:underline"
-                        title="Remove admin role"
                       >
-                        ↓ Demote
+                        Demote
                       </button>
                     )}
-                  </div>
-                  <div className="text-secondary text-xs">
-                    {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
-                  </div>
-                  <div className="flex gap-2">
                     {m.managedByAdmin && (
                       <button
                         onClick={() =>
@@ -422,7 +420,7 @@ export default function AdminAttendance() {
                             mode: m.attendanceMode || "onsite",
                           })
                         }
-                        className="bg-surface-container text-secondary px-3 py-1 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors"
+                        className="text-secondary text-xs hover:text-on-surface"
                       >
                         Edit
                       </button>
