@@ -21,6 +21,67 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+function SessionAssignSearch({ sessions, onAssign }) {
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return sessions
+      .filter((s) =>
+        s.title?.toLowerCase().includes(q) ||
+        s.code?.toLowerCase().includes(q) ||
+        s.mainTopic?.toLowerCase().includes(q)
+      )
+      .slice(0, 8);
+  }, [sessions, query]);
+
+  const handleSelect = (sessionId) => {
+    onAssign(sessionId);
+    setQuery("");
+    setFocused(false);
+  };
+
+  return (
+    <div className="mt-2 relative" style={{ maxWidth: 480 }}>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        placeholder="+ Assign session — search by title or code..."
+        className="w-full bg-surface-container-high p-2 text-on-surface text-xs border-0 border-b-2 border-transparent focus:border-primary focus:outline-none"
+      />
+      {focused && query.trim() && results.length > 0 && (
+        <div className="absolute z-10 left-0 right-0 bg-surface-container-lowest shadow-lg max-h-60 overflow-y-auto"
+          style={{ top: "100%", border: "1px solid #dadada" }}>
+          {results.map((s) => (
+            <button
+              key={s.id}
+              onMouseDown={() => handleSelect(s.id)}
+              className="w-full text-left px-3 py-2 hover:bg-surface-container/50 transition-colors flex items-center gap-2"
+            >
+              {s.code && (
+                <span className="text-primary text-[10px] font-mono bg-primary/10 px-1.5 py-0.5 flex-shrink-0">{s.code}</span>
+              )}
+              <span className="text-on-surface text-xs flex-1 min-w-0 truncate">{s.title}</span>
+              <span className="text-secondary text-[10px] flex-shrink-0">{s.date} {s.start}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {focused && query.trim() && results.length === 0 && (
+        <div className="absolute z-10 left-0 right-0 bg-surface-container-lowest px-3 py-2 text-secondary text-xs"
+          style={{ top: "100%", border: "1px solid #dadada" }}>
+          No matching sessions
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminAttendance() {
   const { confId } = useParams();
   const { user, isSuperAdmin } = useAuth();
@@ -562,24 +623,12 @@ export default function AdminAttendance() {
                           ))}
                         </div>
                       )}
-                      {/* Assign new session dropdown */}
+                      {/* Assign new session — search input */}
                       {canAssign && unassignedSessions.length > 0 && (
-                        <div className="mt-2">
-                          <select
-                            className="bg-surface-container-high p-2 text-on-surface text-xs border-0 border-b-2 border-transparent focus:border-primary focus:outline-none w-full max-w-md"
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) handleToggleSession(m.id, e.target.value, false);
-                            }}
-                          >
-                            <option value="">+ Assign a session...</option>
-                            {unassignedSessions.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.date} {s.start} — {s.title}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        <SessionAssignSearch
+                          sessions={unassignedSessions}
+                          onAssign={(sessionId) => handleToggleSession(m.id, sessionId, false)}
+                        />
                       )}
                     </div>
                   );
