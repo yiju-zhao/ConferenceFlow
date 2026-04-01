@@ -1,0 +1,140 @@
+import { useState, useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebase";
+import { apiFetch } from "../../lib/api";
+
+export default function AdminSessions() {
+  const { confId } = useParams();
+  const [sessions, setSessions] = useState([]);
+  const [search, setSearch] = useState("");
+  const [editModal, setEditModal] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
+      const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      arr.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+      setSessions(arr);
+    });
+  }, [confId]);
+
+  const filtered = sessions.filter((s) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return s.title?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.mainTopic?.toLowerCase().includes(q);
+  });
+
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files[0]; if (!file) return; e.target.value = "";
+    setUploading(true); setUploadResult(null);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const sessionsArr = Array.isArray(json) ? json : json.sessions || [json];
+      const result = await apiFetch(`/api/conferences/${confId}/sessions/bulk`, { method: "POST", body: JSON.stringify({ sessions: sessionsArr }) });
+      setUploadResult(result);
+    } catch (err) { setUploadResult({ error: err.message }); }
+    finally { setUploading(false); }
+  };
+
+  const handleSaveSession = async () => {
+    if (!editModal) return;
+    const { mode, session } = editModal;
+    try {
+      if (mode === "add") {
+        await apiFetch(`/api/conferences/${confId}/sessions`, { method: "POST", body: JSON.stringify(session) });
+      } else {
+        await apiFetch(`/api/conferences/${confId}/sessions/${session.id}`, { method: "PUT", body: JSON.stringify(session) });
+      }
+      setEditModal(null);
+    } catch (err) { alert(`Error: ${err.message}`); }
+  };
+
+  const handleDelete = async (sessionId) => {
+    setDeleting(sessionId);
+    try { await apiFetch(`/api/conferences/${confId}/sessions/${sessionId}`, { method: "DELETE" }); }
+    catch (err) { alert(`Error: ${err.message}`); }
+    finally { setDeleting(null); }
+  };
+
+  const SessionField = ({ label, field, type = "text" }) => (
+    <div className="mb-3">
+      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
+      <input type={type} value={editModal?.session?.[field] || ""}
+        onChange={(e) => setEditModal({ ...editModal, session: { ...editModal.session, [field]: e.target.value } })}
+        className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-6">
+        <span className="w-1 h-5 bg-primary inline-block"></span>
+        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">Session Management</h2>
+      </div>
+      <div className="flex gap-3 mb-4 flex-wrap items-center">
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search sessions..."
+          className="bg-surface-container-high p-2 text-on-surface text-sm w-64 border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
+        <button onClick={() => setEditModal({ mode: "add", session: { code: "", title: "", date: "", start: "", end: "", room: "", format: "", mainTopic: "", url: "" } })}
+          className="bg-primary text-on-primary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:bg-primary-container transition-colors duration-50">+ Add Session</button>
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+          className="bg-surface-container text-secondary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors disabled:opacity-50">
+          {uploading ? "Uploading..." : "Upload JSON"}</button>
+        <input ref={fileInputRef} type="file" accept=".json" onChange={handleBulkUpload} className="hidden" />
+        <span className="text-secondary text-xs">{sessions.length} sessions total</span>
+      </div>
+      {uploadResult && (
+        <div className={`p-3 mb-4 text-sm ${uploadResult.error ? "bg-primary/10 text-primary" : "bg-[#27AE60]/10 text-[#27AE60]"}`}>
+          {uploadResult.error ? `Upload failed: ${uploadResult.error}` : `${uploadResult.message}${uploadResult.errors?.length ? ` (${uploadResult.errors.length} errors)` : ""}`}
+          <button onClick={() => setUploadResult(null)} className="ml-3 opacity-50 hover:opacity-100">×</button>
+        </div>
+      )}
+      <div className="bg-surface-container-lowest">
+        <table className="w-full text-sm">
+          <thead><tr className="text-left text-secondary text-xs uppercase tracking-wider">
+            <th className="p-3">Code</th><th className="p-3">Title</th><th className="p-3">Date</th><th className="p-3">Time</th><th className="p-3">Room</th><th className="p-3 w-32">Actions</th>
+          </tr></thead>
+          <tbody>
+            {filtered.map((s) => (
+              <tr key={s.id} className="border-t border-surface-dim hover:bg-surface-container-low">
+                <td className="p-3 text-primary font-mono text-xs">{s.code}</td>
+                <td className="p-3 text-on-surface">{s.title}</td>
+                <td className="p-3 text-secondary">{s.date}</td>
+                <td className="p-3 text-secondary">{s.start}–{s.end}</td>
+                <td className="p-3 text-secondary">{s.room}</td>
+                <td className="p-3">
+                  <button onClick={() => setEditModal({ mode: "edit", session: { ...s } })} className="text-primary text-xs uppercase tracking-wider mr-3 hover:underline">Edit</button>
+                  <button onClick={() => handleDelete(s.id)} disabled={deleting === s.id} className="text-secondary text-xs uppercase tracking-wider hover:text-primary disabled:opacity-50">{deleting === s.id ? "..." : "Delete"}</button>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-secondary text-sm">{search ? "No sessions match your search" : "No sessions yet. Add one or upload a JSON file."}</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      {editModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditModal(null)}>
+          <div className="bg-surface-container-lowest p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-headline text-on-surface font-bold text-base mb-4 uppercase">{editModal.mode === "add" ? "Add Session" : "Edit Session"}</h3>
+            <SessionField label="Session Code" field="code" />
+            <SessionField label="Title" field="title" />
+            <SessionField label="Date" field="date" type="date" />
+            <div className="flex gap-3"><div className="flex-1"><SessionField label="Start Time" field="start" type="time" /></div><div className="flex-1"><SessionField label="End Time" field="end" type="time" /></div></div>
+            <SessionField label="Room" field="room" />
+            <SessionField label="Format" field="format" />
+            <SessionField label="Topic" field="mainTopic" />
+            <SessionField label="URL" field="url" />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setEditModal(null)} className="flex-1 bg-surface-container p-2 text-secondary text-sm uppercase tracking-wider hover:text-on-surface">Cancel</button>
+              <button onClick={handleSaveSession} className="flex-1 bg-primary text-on-primary p-2 text-sm font-headline uppercase tracking-wider hover:bg-primary-container">{editModal.mode === "add" ? "Create" : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
