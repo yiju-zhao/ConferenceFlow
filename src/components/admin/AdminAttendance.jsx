@@ -508,12 +508,20 @@ export default function AdminAttendance() {
                   const sortedDates = Object.keys(byDate).sort();
                   sortedDates.forEach((d) => byDate[d].sort((a, b) => (a.start || "").localeCompare(b.start || "")));
 
+                  const canUnassign = m.managedByAdmin; // only attendees can be unassigned by admin
+                  const canAssign = m.role !== "admin"; // admins can't have sessions assigned by other admins
+                  const unassignedSessions = canAssign ? sessions.filter((s) => !(s.attendees || []).includes(m.id)) : [];
+
                   return (
                     <div className="bg-surface-container/20 px-6 py-3 border-t border-surface-dim">
-                      {memberSessions.length === 0 ? (
+                      {memberSessions.length === 0 && !canAssign && (
                         <p className="text-secondary text-xs">No sessions assigned to this member.</p>
-                      ) : (
-                        <div>
+                      )}
+                      {memberSessions.length === 0 && canAssign && (
+                        <p className="text-secondary text-xs mb-3">No sessions assigned yet.</p>
+                      )}
+                      {memberSessions.length > 0 && (
+                        <div className="mb-3">
                           {sortedDates.map((date) => (
                             <div key={date} className="mb-4 last:mb-0">
                               <div className="flex items-center gap-2 mb-2">
@@ -525,10 +533,10 @@ export default function AdminAttendance() {
                               </div>
                               <div className="grid gap-1 ml-3">
                                 {byDate[date].map((s) => (
-                                  <button
+                                  <div
                                     key={s.id}
                                     onClick={() => setSessionDetailModal(s)}
-                                    className="flex items-center gap-3 px-3 py-2 hover:bg-surface-container/50 transition-colors text-left w-full"
+                                    className="flex items-center gap-3 px-3 py-2 hover:bg-surface-container/50 transition-colors text-left w-full cursor-pointer"
                                   >
                                     <span className="text-secondary text-xs font-mono w-24 flex-shrink-0">
                                       {s.start}–{s.end}
@@ -539,17 +547,38 @@ export default function AdminAttendance() {
                                     {s.room && (
                                       <span className="text-secondary text-xs flex-shrink-0">{s.room}</span>
                                     )}
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); handleToggleSession(m.id, s.id, true); }}
-                                      className="text-primary text-xs hover:underline flex-shrink-0"
-                                    >
-                                      Unassign
-                                    </button>
-                                  </button>
+                                    {canUnassign && (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleToggleSession(m.id, s.id, true); }}
+                                        className="text-primary text-xs hover:underline flex-shrink-0"
+                                      >
+                                        Unassign
+                                      </button>
+                                    )}
+                                  </div>
                                 ))}
                               </div>
                             </div>
                           ))}
+                        </div>
+                      )}
+                      {/* Assign new session dropdown */}
+                      {canAssign && unassignedSessions.length > 0 && (
+                        <div className="mt-2">
+                          <select
+                            className="bg-surface-container-high p-2 text-on-surface text-xs border-0 border-b-2 border-transparent focus:border-primary focus:outline-none w-full max-w-md"
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) handleToggleSession(m.id, e.target.value, false);
+                            }}
+                          >
+                            <option value="">+ Assign a session...</option>
+                            {unassignedSessions.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.date} {s.start} — {s.title}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       )}
                     </div>
