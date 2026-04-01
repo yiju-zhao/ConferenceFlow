@@ -87,6 +87,14 @@ export function AuthProvider({ children }) {
     await firebaseSignOut(auth);
   };
 
+  const updateDisplayName = async (newName) => {
+    if (!user) throw new Error("Not authenticated");
+    await updateProfile(user, { displayName: newName });
+    const profileRef = doc(db, "users", user.uid);
+    await setDoc(profileRef, { displayName: newName }, { merge: true });
+    setUserProfile((prev) => ({ ...prev, displayName: newName }));
+  };
+
   const value = {
     user,
     userProfile,
@@ -95,6 +103,7 @@ export function AuthProvider({ children }) {
     signUpWithEmail,
     signInWithGoogle,
     signOut,
+    updateDisplayName,
     isSuperAdmin: userProfile?.globalRole === "super_admin",
   };
 

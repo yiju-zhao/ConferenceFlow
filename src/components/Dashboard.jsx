@@ -3,9 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { collection, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
+import UserAvatar, { FirstTimeNameSetup } from "./UserAvatar";
 
 export default function Dashboard() {
-  const { user, userProfile, signOut, isSuperAdmin } = useAuth();
+  const { user, userProfile, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [conferences, setConferences] = useState([]);
   const [myMemberships, setMyMemberships] = useState({});
@@ -116,11 +117,6 @@ export default function Dashboard() {
     setJoinCode("");
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
-  };
-
   const ConferenceCard = ({ conf, membership, showApply = false }) => (
     <div className="bg-surface-container-lowest p-4 mb-2">
       <div className="flex justify-between items-start">
@@ -176,6 +172,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-surface">
+      <FirstTimeNameSetup />
       <div className="bg-primary p-4 flex justify-between items-center">
         <h1 className="font-headline text-on-primary text-xl font-bold tracking-tight">
           CONFERENCEFLOW
@@ -189,13 +186,7 @@ export default function Dashboard() {
               Admin Panel
             </Link>
           )}
-          <span className="text-on-primary/70 text-sm">{userProfile?.displayName}</span>
-          <button
-            onClick={handleSignOut}
-            className="text-on-primary/70 text-xs uppercase tracking-wider hover:text-on-primary"
-          >
-            Sign Out
-          </button>
+          <UserAvatar size={32} onSignOut={() => navigate("/login")} />
         </div>
       </div>
 

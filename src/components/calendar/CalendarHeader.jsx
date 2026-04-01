@@ -1,10 +1,11 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMembership } from "../../hooks/useMembership";
+import UserAvatar from "../UserAvatar";
 
 export default function CalendarHeader({ confName }) {
   const { confId } = useParams();
-  const { userProfile, signOut } = useAuth();
+  const navigate = useNavigate();
   const { isAdmin } = useMembership(confId);
 
   return (
@@ -26,9 +27,7 @@ export default function CalendarHeader({ confName }) {
         <Link to={`/conference/${confId}/reports`} className="cal-header-btn">
           Reports
         </Link>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>
-          {userProfile?.displayName}
-        </span>
+        <UserAvatar size={28} onSignOut={() => navigate("/login")} />
       </div>
     </div>
   );
