@@ -196,18 +196,19 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
                       outline: s.id === selectedId ? "2px solid #fff" : "none",
                       outlineOffset: s.id === selectedId ? -2 : 0,
                       zIndex: s.id === selectedId ? 10 : 1,
+                      display: "flex", flexDirection: "column",
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
                     onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                   >
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", flexShrink: 0 }}>
                       {s.start}–{s.end}
                     </div>
-                    <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 80 ? 4 : height > 50 ? 2 : 1, WebkitBoxOrient: "vertical", marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginTop: 2, flex: 1, minHeight: 0 }}>
                       {s.title}
                     </div>
-                    {height > 60 && (s.attendees || []).length > 0 && (
-                      <div style={{ display: "flex", gap: 2, marginTop: 3 }}>
+                    {(s.attendees || []).length > 0 && (
+                      <div style={{ display: "flex", gap: 2, marginTop: "auto", paddingTop: 3, flexShrink: 0 }}>
                         {(s.attendees || []).slice(0, 4).map((uid) => {
                           const mc = memberColors[uid];
                           if (!mc) return null;
