@@ -49,6 +49,9 @@ export default function AdminAttendance() {
   // Remove confirmation: memberId string or null
   const [removeConfirm, setRemoveConfirm] = useState(null);
 
+  // Session detail modal: session object or null
+  const [sessionDetailModal, setSessionDetailModal] = useState(null);
+
   // By-session: dropdown open for a session
   const [bySessionDropdown, setBySessionDropdown] = useState(null);
 
@@ -491,46 +494,67 @@ export default function AdminAttendance() {
                   </div>
                 </button>
 
-                {/* Expanded: session checklist */}
-                {isExpanded && (
-                  <div className="bg-surface-container/20 px-6 py-3 border-t border-surface-dim">
-                    {sessions.length === 0 ? (
-                      <p className="text-secondary text-xs">No sessions found.</p>
-                    ) : (
-                      <div className="grid gap-2">
-                        {sessions.map((s) => {
-                          const assigned = (s.attendees || []).includes(m.id);
-                          return (
-                            <label
-                              key={s.id}
-                              className="flex items-center gap-3 cursor-pointer group"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={assigned}
-                                onChange={() => handleToggleSession(m.id, s.id, assigned)}
-                                className="accent-primary w-4 h-4 cursor-pointer"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <span className="text-on-surface text-sm group-hover:text-primary transition-colors">
-                                  {s.title || s.code || s.id}
+                {/* Expanded: attending sessions grouped by date */}
+                {isExpanded && (() => {
+                  const memberSessions = sessions.filter((s) => (s.attendees || []).includes(m.id));
+                  // Group by date
+                  const byDate = {};
+                  memberSessions.forEach((s) => {
+                    const d = s.date || "Unknown";
+                    if (!byDate[d]) byDate[d] = [];
+                    byDate[d].push(s);
+                  });
+                  // Sort dates, sort sessions within each date by start time
+                  const sortedDates = Object.keys(byDate).sort();
+                  sortedDates.forEach((d) => byDate[d].sort((a, b) => (a.start || "").localeCompare(b.start || "")));
+
+                  return (
+                    <div className="bg-surface-container/20 px-6 py-3 border-t border-surface-dim">
+                      {memberSessions.length === 0 ? (
+                        <p className="text-secondary text-xs">No sessions assigned to this member.</p>
+                      ) : (
+                        <div>
+                          {sortedDates.map((date) => (
+                            <div key={date} className="mb-4 last:mb-0">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="w-1 h-4 bg-primary inline-block"></span>
+                                <span className="text-xs font-headline font-bold uppercase tracking-wider text-primary">
+                                  {new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                                 </span>
-                                <span className="text-secondary text-xs ml-2">
-                                  {s.date} {s.start && `· ${s.start}`}
-                                </span>
+                                <span className="text-secondary text-[10px]">({byDate[date].length} sessions)</span>
                               </div>
-                              {assigned && (
-                                <span className="text-xs text-[#27AE60] uppercase tracking-wider font-headline">
-                                  Assigned
-                                </span>
-                              )}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                              <div className="grid gap-1 ml-3">
+                                {byDate[date].map((s) => (
+                                  <button
+                                    key={s.id}
+                                    onClick={() => setSessionDetailModal(s)}
+                                    className="flex items-center gap-3 px-3 py-2 hover:bg-surface-container/50 transition-colors text-left w-full"
+                                  >
+                                    <span className="text-secondary text-xs font-mono w-24 flex-shrink-0">
+                                      {s.start}–{s.end}
+                                    </span>
+                                    <span className="text-on-surface text-sm flex-1 min-w-0 truncate">
+                                      {s.title}
+                                    </span>
+                                    {s.room && (
+                                      <span className="text-secondary text-xs flex-shrink-0">{s.room}</span>
+                                    )}
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleToggleSession(m.id, s.id, true); }}
+                                      className="text-primary text-xs hover:underline flex-shrink-0"
+                                    >
+                                      Unassign
+                                    </button>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
@@ -644,6 +668,95 @@ export default function AdminAttendance() {
           })}
         </div>
       )}
+
+      {/* ── Session Detail Modal ─────────────────────────────────────────── */}
+      {sessionDetailModal && (() => {
+        const s = sessionDetailModal;
+        const sessionAttendees = approvedMembers.filter((m) => (s.attendees || []).includes(m.id));
+        return (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSessionDetailModal(null)}>
+            <div className="bg-surface-container-lowest w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="bg-primary px-6 py-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    {s.code && <div className="text-on-primary/60 text-xs font-mono mb-1">{s.code}</div>}
+                    <h3 className="text-on-primary font-headline font-bold text-base">{s.title}</h3>
+                  </div>
+                  <button onClick={() => setSessionDetailModal(null)} className="text-on-primary/60 hover:text-on-primary text-lg">×</button>
+                </div>
+              </div>
+
+              <div className="px-6 py-4">
+                {/* Meta */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-secondary text-xs mb-3">
+                  <span>{s.date}</span>
+                  <span>{s.start}–{s.end}</span>
+                  {s.room && <span>📍 {s.room}</span>}
+                  {s.format && <span>{s.format}</span>}
+                  {s.recording === "Yes" && <span>Recording: Yes</span>}
+                </div>
+
+                {/* Speakers */}
+                {(s.speakers || []).length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs uppercase tracking-wider text-secondary font-headline mb-1">Speakers</div>
+                    {s.speakers.map((sp, i) => (
+                      <div key={i} className="text-sm text-on-surface">
+                        {sp.name}
+                        {(sp.title || sp.company) && (
+                          <span className="text-secondary"> — {[sp.title, sp.company].filter(Boolean).join(", ")}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Key Themes */}
+                {(s.keyThemes || []).length > 0 && (
+                  <div className="mb-4">
+                    <div className="text-xs uppercase tracking-wider text-secondary font-headline mb-1">Topics</div>
+                    <div className="flex flex-wrap gap-1">
+                      {s.keyThemes.map((t, i) => (
+                        <span key={i} className="bg-surface-container text-secondary text-xs px-2 py-0.5">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Attendees */}
+                <div className="mb-4">
+                  <div className="text-xs uppercase tracking-wider text-secondary font-headline mb-2">
+                    Attendees ({sessionAttendees.length})
+                  </div>
+                  {sessionAttendees.length === 0 ? (
+                    <p className="text-secondary text-xs">No one assigned yet</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {sessionAttendees.map((m) => (
+                        <span key={m.id} className="flex items-center gap-1 bg-surface-container px-2 py-1 text-xs text-on-surface">
+                          {getMemberName(m)}
+                          <span className="text-secondary text-[10px]">
+                            {m.attendanceMode === "online" ? "💻" : "🏢"}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Session URL */}
+                {s.url && (
+                  <a href={s.url} target="_blank" rel="noopener noreferrer"
+                    className="text-primary text-xs hover:underline">
+                    🔗 View Official Session Page
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
