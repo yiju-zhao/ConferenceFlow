@@ -23,7 +23,7 @@ function genId() {
 
 export default function AdminAttendance() {
   const { confId } = useParams();
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
 
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -196,6 +196,24 @@ export default function AdminAttendance() {
     setBySessionDropdown(null);
   };
 
+  // ── Role management ────────────────────────────────────────────────────────
+
+  const handleSetAdmin = async (memberId) => {
+    try {
+      await updateDoc(doc(db, "conferences", confId, "members", memberId), { role: "admin" });
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const handleRemoveAdmin = async (memberId) => {
+    try {
+      await updateDoc(doc(db, "conferences", confId, "members", memberId), { role: "member" });
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
   // ── Render helpers ─────────────────────────────────────────────────────────
 
   const getMemberName = (m) => userNames[m.id] || m.displayName || m.id;
@@ -279,10 +297,11 @@ export default function AdminAttendance() {
       {/* Table */}
       <div className="bg-surface-container-lowest mb-10">
         {/* Header row */}
-        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
+        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Name</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Type</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Mode</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline">Role</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Sessions</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Actions</span>
         </div>
@@ -346,7 +365,7 @@ export default function AdminAttendance() {
                 </div>
               ) : (
                 /* Normal row */
-                <div className="md:grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 flex flex-wrap items-center">
+                <div className="md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 flex flex-wrap items-center">
                   <div className="text-on-surface text-sm font-bold truncate min-w-0">
                     {getMemberName(m)}
                   </div>
@@ -355,6 +374,36 @@ export default function AdminAttendance() {
                   </div>
                   <div className="text-secondary text-xs uppercase tracking-wider">
                     {m.attendanceMode || "onsite"}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {m.role === "admin" ? (
+                      <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
+                        Admin
+                      </span>
+                    ) : (
+                      <span className="text-secondary text-xs uppercase tracking-wider">
+                        Member
+                      </span>
+                    )}
+                    {/* Only real registered users can be promoted/demoted (not manual or legacy) */}
+                    {!m.managedByAdmin && !m.legacyName && m.role !== "admin" && m.status === "approved" && (
+                      <button
+                        onClick={() => handleSetAdmin(m.id)}
+                        className="text-primary text-xs hover:underline"
+                        title="Make conference admin"
+                      >
+                        ↑ Promote
+                      </button>
+                    )}
+                    {!m.managedByAdmin && !m.legacyName && m.role === "admin" && isSuperAdmin && m.id !== user.uid && (
+                      <button
+                        onClick={() => handleRemoveAdmin(m.id)}
+                        className="text-secondary text-xs hover:text-primary hover:underline"
+                        title="Remove admin role"
+                      >
+                        ↓ Demote
+                      </button>
+                    )}
                   </div>
                   <div className="text-secondary text-xs">
                     {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
