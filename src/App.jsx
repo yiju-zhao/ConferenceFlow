@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
+import { useMembership } from "./hooks/useMembership";
 import {
   Upload,
   Download,
@@ -306,6 +307,7 @@ export default function App() {
   const navigate = useNavigate();
   const { confId } = useParams();
   const { user } = useAuth();
+  const { isAdmin } = useMembership(confId);
   const [authError] = useState(null);
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState({});
@@ -675,6 +677,11 @@ export default function App() {
               <FileText size={14} />
               日报管理
             </Link>
+            {isAdmin && (
+              <Link to={`/conference/${confId}/admin/settings`} className="btn-accent schedule-header-report-link">
+                Admin
+              </Link>
+            )}
 
             {/* Export button + dropdown */}
             <div style={{ position: "relative" /* needed for dropdown positioning */ }}>
