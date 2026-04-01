@@ -689,7 +689,7 @@ export default function AdminAttendance() {
         // Sessions for the active day
         const daySessions = sessions.filter((s) => s.date === activeDay);
 
-        const PX_PER_MIN = 2; // 120px per hour
+        const PX_PER_MIN = 2.5; // 150px per hour
         const toMin = (t) => { if (!t) return 0; const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
 
         // Time range
@@ -777,10 +777,10 @@ export default function AdminAttendance() {
                         style={{ position: "absolute", top, left, width, height, background: "#a20513", padding: "3px 6px", cursor: "pointer", overflow: "hidden", boxSizing: "border-box", transition: "opacity 50ms" }}
                         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
                         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{s.start}–{s.end}</div>
-                        <div style={{ fontSize: 10, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 50 ? 3 : 1, WebkitBoxOrient: "vertical" }}>{s.title}</div>
-                        {s.room && height > 36 && <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.room}</div>}
-                        {attendeeCount > 0 && height > 44 && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{s.start}–{s.end}</div>
+                        <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 80 ? 4 : height > 50 ? 2 : 1, WebkitBoxOrient: "vertical", marginTop: 2 }}>{s.title}</div>
+                        {s.room && height > 50 && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.room}</div>}
+                        {attendeeCount > 0 && height > 60 && (
                           <div style={{ display: "flex", gap: 1, marginTop: 3 }}>
                             {(s.attendees || []).slice(0, 5).map((uid) => {
                               const member = approvedMembers.find((mm) => mm.id === uid);

@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
-const PX_PER_MINUTE = 2; // 120px per hour
+const PX_PER_MINUTE = 2.5; // 150px per hour
+const DAYS_PER_PAGE = 3;
 
 function timeToMinutes(t) {
   if (!t) return 0;
@@ -102,24 +103,46 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
     );
   }
 
+  const [dayPage, setDayPage] = useState(0);
   const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MINUTE;
+
+  // Paginate days
+  const totalPages = Math.ceil(days.length / DAYS_PER_PAGE);
+  const visibleDays = days.slice(dayPage * DAYS_PER_PAGE, (dayPage + 1) * DAYS_PER_PAGE);
+  const hasPrev = dayPage > 0;
+  const hasNext = dayPage < totalPages - 1;
 
   return (
     <div className="cal-grid">
       <div className="cal-grid-label">Your Schedule</div>
 
-      {/* Day headers */}
-      <div style={{ display: "flex", marginBottom: 1 }}>
-        <div style={{ width: 56, flexShrink: 0 }} />
-        {days.map((day) => {
+      {/* Day headers with pagination */}
+      <div style={{ display: "flex", marginBottom: 1, alignItems: "center" }}>
+        <div style={{ width: 56, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+          {hasPrev && (
+            <button onClick={() => setDayPage(dayPage - 1)}
+              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: "4px 8px" }}>
+              ←
+            </button>
+          )}
+        </div>
+        {visibleDays.map((day) => {
           const d = new Date(day + "T00:00:00");
-          const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
           return (
             <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
               {label}
             </div>
           );
         })}
+        <div style={{ width: 32, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+          {hasNext && (
+            <button onClick={() => setDayPage(dayPage + 1)}
+              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: "4px 8px" }}>
+              →
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Time grid */}
@@ -137,8 +160,8 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
           })}
         </div>
 
-        {/* Day columns */}
-        {days.map((day) => {
+        {/* Day columns (visible page only) */}
+        {visibleDays.map((day) => {
           const daySessions = daySessionMap[day] || [];
           const placed = computeColumns(daySessions);
 
@@ -168,7 +191,7 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
                     onClick={() => onSelect(s.id)}
                     style={{
                       position: "absolute", top, left, width, height,
-                      background: "#a20513", padding: "3px 6px", cursor: "pointer",
+                      background: "#a20513", padding: "4px 8px", cursor: "pointer",
                       overflow: "hidden", transition: "opacity 50ms", boxSizing: "border-box",
                       outline: s.id === selectedId ? "2px solid #fff" : "none",
                       outlineOffset: s.id === selectedId ? -2 : 0,
@@ -177,13 +200,13 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
                     onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
                     onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                   >
-                    <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>
                       {s.start}–{s.end}
                     </div>
-                    <div style={{ fontSize: 10, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 50 ? 3 : 1, WebkitBoxOrient: "vertical" }}>
+                    <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 80 ? 4 : height > 50 ? 2 : 1, WebkitBoxOrient: "vertical", marginTop: 2 }}>
                       {s.title}
                     </div>
-                    {height > 40 && (s.attendees || []).length > 0 && (
+                    {height > 60 && (s.attendees || []).length > 0 && (
                       <div style={{ display: "flex", gap: 2, marginTop: 3 }}>
                         {(s.attendees || []).slice(0, 4).map((uid) => {
                           const mc = memberColors[uid];
