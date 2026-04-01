@@ -689,25 +689,36 @@ export default function AdminAttendance() {
         // Sessions for the active day
         const daySessions = sessions.filter((s) => s.date === activeDay);
 
-        // Build time slots
+        const PX_PER_MIN = 1.2; // 72px per hour
+        const toMin = (t) => { if (!t) return 0; const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+
+        // Time range
         let minH = 24, maxH = 0;
         daySessions.forEach((s) => {
           const sh = parseInt(s.start?.split(":")[0] || "9");
-          const eh = parseInt(s.end?.split(":")[0] || "10");
+          const eh = Math.ceil(toMin(s.end) / 60);
           if (sh < minH) minH = sh;
           if (eh > maxH) maxH = eh;
         });
-        const timeSlots = [];
-        for (let h = minH; h <= maxH; h++) timeSlots.push(`${String(h).padStart(2, "0")}:00`);
+        const dayStartMin = minH * 60;
+        const dayEndMin = maxH * 60;
+        const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MIN;
+        const hourLabels = [];
+        for (let h = minH; h <= maxH; h++) hourLabels.push(`${String(h).padStart(2, "0")}:00`);
 
-        // Group sessions by hour
-        const byHour = {};
-        daySessions.forEach((s) => {
-          const hour = (s.start?.split(":")[0] || "09") + ":00";
-          if (!byHour[hour]) byHour[hour] = [];
-          byHour[hour].push(s);
-        });
-
+        // Column packing for overlaps
+        const sorted = [...daySessions].sort((a, b) => toMin(a.start) - toMin(b.start));
+        const cols = [];
+        const placements = [];
+        for (const s of sorted) {
+          const sStart = toMin(s.start), sEnd = toMin(s.end);
+          let placed = false;
+          for (let i = 0; i < cols.length; i++) {
+            if (sStart >= cols[i]) { cols[i] = sEnd; placements.push({ session: s, colIndex: i }); placed = true; break; }
+          }
+          if (!placed) { cols.push(sEnd); placements.push({ session: s, colIndex: cols.length - 1 }); }
+        }
+        const totalCols = cols.length;
         const COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
 
         return (
@@ -718,89 +729,77 @@ export default function AdminAttendance() {
                 const label = new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                 const count = sessions.filter((s) => s.date === d).length;
                 return (
-                  <button
-                    key={d}
-                    onClick={() => setSelectedDay(d)}
-                    className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
-                      activeDay === d
-                        ? "bg-primary text-on-primary"
-                        : "bg-surface-container text-secondary hover:text-on-surface"
-                    }`}
-                  >
+                  <button key={d} onClick={() => setSelectedDay(d)}
+                    className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${activeDay === d ? "bg-primary text-on-primary" : "bg-surface-container text-secondary hover:text-on-surface"}`}>
                     {label} <span className="opacity-60">({count})</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Calendar grid — single day */}
-            <div className="bg-[#1a1c1c] p-4" style={{ minHeight: 400 }}>
-              {/* Day header */}
-              <div className="bg-[#2a2a2a] p-3 text-center mb-px">
+            {/* Calendar grid — absolute positioned */}
+            <div className="bg-[#1a1c1c] p-4">
+              <div className="bg-[#2a2a2a] p-3 text-center mb-1">
                 <span className="font-headline font-bold text-sm text-[#a20513] tracking-wider">
                   {new Date(activeDay + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
                 </span>
                 <span className="text-[#555] text-xs ml-3">{daySessions.length} sessions</span>
               </div>
 
-              {/* Time slots */}
-              {timeSlots.map((slot) => {
-                const slotSessions = byHour[slot] || [];
-                return (
-                  <div key={slot} className="flex" style={{ minHeight: 72 }}>
-                    {/* Time label */}
-                    <div className="w-16 flex-shrink-0 text-right pr-3 pt-3 text-[#555] text-xs font-mono">
-                      {slot}
-                    </div>
-                    {/* Session cells */}
-                    <div className="flex-1 bg-[#2a2a2a] p-1 flex gap-1 mb-px">
-                      {slotSessions.map((s) => {
-                        const attendeeCount = (s.attendees || []).length;
-                        return (
-                          <div
-                            key={s.id}
-                            onClick={() => setSessionDetailModal(s)}
-                            className="flex-1 bg-[#a20513] p-2 cursor-pointer hover:opacity-85 transition-opacity min-w-0"
-                          >
-                            <div className="text-[10px] font-bold text-white/80">{s.start}–{s.end}</div>
-                            <div className="text-[11px] text-white leading-tight mt-0.5 line-clamp-2">{s.title}</div>
-                            {s.room && <div className="text-[9px] text-white/50 mt-1">{s.room}</div>}
-                            {/* Attendee avatars */}
-                            {attendeeCount > 0 && (
-                              <div className="flex gap-0.5 mt-1.5">
-                                {(s.attendees || []).slice(0, 6).map((uid) => {
-                                  const member = approvedMembers.find((mm) => mm.id === uid);
-                                  if (!member) return null;
-                                  const color = COLORS[member.colorIndex || 0];
-                                  const initial = (getMemberName(member) || "?").charAt(0).toUpperCase();
-                                  return (
-                                    <div
-                                      key={uid}
-                                      className="w-4 h-4 flex items-center justify-center text-[8px] font-bold text-white"
-                                      style={{ background: color }}
-                                      title={getMemberName(member)}
-                                    >
-                                      {initial}
-                                    </div>
-                                  );
-                                })}
-                                {attendeeCount > 6 && (
-                                  <div className="w-4 h-4 flex items-center justify-center text-[8px] text-white/50 bg-[#333]">
-                                    +{attendeeCount - 6}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+              <div style={{ display: "flex" }}>
+                {/* Hour labels */}
+                <div style={{ width: 56, flexShrink: 0, position: "relative", height: totalHeight }}>
+                  {hourLabels.map((label) => {
+                    const top = (parseInt(label) * 60 - dayStartMin) * PX_PER_MIN;
+                    return <div key={label} style={{ position: "absolute", top, right: 6, fontSize: 10, color: "#555", fontFamily: "monospace" }}>{label}</div>;
+                  })}
+                </div>
+
+                {/* Session area */}
+                <div style={{ flex: 1, position: "relative", height: totalHeight, background: "#2a2a2a" }}>
+                  {/* Hour grid lines */}
+                  {hourLabels.map((label) => {
+                    const top = (parseInt(label) * 60 - dayStartMin) * PX_PER_MIN;
+                    return <div key={label} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid #333", pointerEvents: "none" }} />;
+                  })}
+
+                  {/* Session blocks */}
+                  {placements.map(({ session: s, colIndex }) => {
+                    const sStart = toMin(s.start), sEnd = toMin(s.end);
+                    const top = (sStart - dayStartMin) * PX_PER_MIN;
+                    const height = Math.max((sEnd - sStart) * PX_PER_MIN, 24);
+                    const left = `${(colIndex / totalCols) * 100}%`;
+                    const width = `calc(${100 / totalCols}% - 2px)`;
+                    const attendeeCount = (s.attendees || []).length;
+
+                    return (
+                      <div key={s.id} onClick={() => setSessionDetailModal(s)}
+                        style={{ position: "absolute", top, left, width, height, background: "#a20513", padding: "3px 6px", cursor: "pointer", overflow: "hidden", boxSizing: "border-box", transition: "opacity 50ms" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{s.start}–{s.end}</div>
+                        <div style={{ fontSize: 10, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 50 ? 3 : 1, WebkitBoxOrient: "vertical" }}>{s.title}</div>
+                        {s.room && height > 36 && <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.room}</div>}
+                        {attendeeCount > 0 && height > 44 && (
+                          <div style={{ display: "flex", gap: 1, marginTop: 3 }}>
+                            {(s.attendees || []).slice(0, 5).map((uid) => {
+                              const member = approvedMembers.find((mm) => mm.id === uid);
+                              if (!member) return null;
+                              return (
+                                <div key={uid} style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "#fff", background: COLORS[member.colorIndex || 0] }}
+                                  title={getMemberName(member)}>
+                                  {(getMemberName(member) || "?").charAt(0).toUpperCase()}
+                                </div>
+                              );
+                            })}
+                            {attendeeCount > 5 && <div style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, color: "rgba(255,255,255,0.5)", background: "#333" }}>+{attendeeCount - 5}</div>}
                           </div>
-                        );
-                      })}
-                      {slotSessions.length === 0 && (
-                        <div className="flex-1" />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         );

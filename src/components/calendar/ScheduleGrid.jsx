@@ -1,46 +1,81 @@
 import { useMemo } from "react";
 
-// Generate hour slots from earliest to latest session
-function getTimeSlots(sessions) {
+const PX_PER_MINUTE = 1.2; // 72px per hour
+
+function timeToMinutes(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+/**
+ * Column-packing algorithm for overlapping sessions.
+ * Returns sessions annotated with { colIndex, totalCols }.
+ */
+function computeColumns(sessions) {
   if (sessions.length === 0) return [];
-  let minH = 24, maxH = 0;
-  sessions.forEach((s) => {
-    const sh = parseInt(s.start?.split(":")[0] || "9");
-    const eh = parseInt(s.end?.split(":")[0] || "10");
-    if (sh < minH) minH = sh;
-    if (eh > maxH) maxH = eh;
-  });
-  const slots = [];
-  for (let h = minH; h <= maxH; h++) {
-    slots.push(`${String(h).padStart(2, "0")}:00`);
+  const sorted = [...sessions].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+
+  // Each column tracks the end time of the last session placed in it
+  const columns = []; // array of { lastEnd: number }
+  const placements = []; // { session, colIndex }
+
+  for (const s of sorted) {
+    const sStart = timeToMinutes(s.start);
+    const sEnd = timeToMinutes(s.end);
+    let placed = false;
+    for (let i = 0; i < columns.length; i++) {
+      if (sStart >= columns[i].lastEnd) {
+        columns[i].lastEnd = sEnd;
+        placements.push({ session: s, colIndex: i });
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      columns.push({ lastEnd: sEnd });
+      placements.push({ session: s, colIndex: columns.length - 1 });
+    }
   }
-  return slots;
+
+  const totalCols = columns.length;
+  return placements.map((p) => ({ ...p, totalCols }));
 }
 
 export default function ScheduleGrid({ sessions, selectedId, onSelect, members }) {
-  // Only show user's scheduled sessions
-  const { days, timeSlots, grid } = useMemo(() => {
-    if (sessions.length === 0) return { days: [], timeSlots: [], grid: {} };
+  const { days, hourLabels, dayStartMin, dayEndMin, daySessionMap } = useMemo(() => {
+    if (sessions.length === 0) return { days: [], hourLabels: [], dayStartMin: 0, dayEndMin: 0, daySessionMap: {} };
 
-    // Get unique dates sorted
     const daySet = new Set(sessions.map((s) => s.date));
     const days = [...daySet].sort();
 
-    const timeSlots = getTimeSlots(sessions);
-
-    // Build grid: { "date|hour" : [sessions] }
-    const grid = {};
+    // Find global time range
+    let globalMinH = 24, globalMaxH = 0;
     sessions.forEach((s) => {
-      const hour = s.start?.split(":")[0] + ":00";
-      const key = `${s.date}|${hour}`;
-      if (!grid[key]) grid[key] = [];
-      grid[key].push(s);
+      const sh = parseInt(s.start?.split(":")[0] || "9");
+      const eh = Math.ceil(timeToMinutes(s.end) / 60);
+      if (sh < globalMinH) globalMinH = sh;
+      if (eh > globalMaxH) globalMaxH = eh;
     });
 
-    return { days, timeSlots, grid };
+    const dayStartMin = globalMinH * 60;
+    const dayEndMin = globalMaxH * 60;
+
+    // Hour labels
+    const hourLabels = [];
+    for (let h = globalMinH; h <= globalMaxH; h++) {
+      hourLabels.push(`${String(h).padStart(2, "0")}:00`);
+    }
+
+    // Group sessions by day
+    const daySessionMap = {};
+    days.forEach((d) => {
+      daySessionMap[d] = sessions.filter((s) => s.date === d);
+    });
+
+    return { days, hourLabels, dayStartMin, dayEndMin, daySessionMap };
   }, [sessions]);
 
-  // Map member userId → color + initials
   const memberColors = useMemo(() => {
     const COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
     const map = {};
@@ -67,75 +102,106 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
     );
   }
 
-  const colCount = days.length;
+  const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MINUTE;
 
   return (
     <div className="cal-grid">
       <div className="cal-grid-label">Your Schedule</div>
-      <div
-        className="cal-grid-table"
-        style={{ gridTemplateColumns: `60px repeat(${colCount}, 1fr)` }}
-      >
-        {/* Day headers */}
-        <div style={{ background: "transparent" }} />
+
+      {/* Day headers */}
+      <div style={{ display: "flex", marginBottom: 1 }}>
+        <div style={{ width: 56, flexShrink: 0 }} />
         {days.map((day) => {
           const d = new Date(day + "T00:00:00");
           const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
           return (
-            <div key={day} className="cal-grid-day-header">
+            <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
               {label}
             </div>
           );
         })}
+      </div>
 
-        {/* Time rows */}
-        {timeSlots.map((slot) => (
-          <>
-            <div key={`t-${slot}`} className="cal-grid-time-label">{slot}</div>
-            {days.map((day) => {
-              const key = `${day}|${slot}`;
-              const cellSessions = grid[key] || [];
-              return (
-                <div key={key} className="cal-grid-cell">
-                  {cellSessions.length > 0 && (
-                    <div className="cal-grid-cell-sessions">
-                      {cellSessions.map((s) => (
-                        <div
-                          key={s.id}
-                          className={`cal-grid-session ${s.id === selectedId ? "cal-grid-session--selected" : ""}`}
-                          onClick={() => onSelect(s.id)}
-                        >
-                          <div className="cal-grid-session-time">
-                            {s.start}–{s.end}
-                          </div>
-                          <div className="cal-grid-session-title">{s.title}</div>
-                          {/* Teammate avatars */}
-                          {(s.attendees || []).length > 0 && (
-                            <div className="cal-grid-session-avatars">
-                              {(s.attendees || []).slice(0, 5).map((uid) => {
-                                const mc = memberColors[uid];
-                                if (!mc) return null;
-                                return (
-                                  <div
-                                    key={uid}
-                                    className="cal-grid-avatar"
-                                    style={{ background: mc.color }}
-                                  >
-                                    {mc.initials}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+      {/* Time grid */}
+      <div style={{ display: "flex" }}>
+        {/* Hour labels column */}
+        <div style={{ width: 56, flexShrink: 0, position: "relative", height: totalHeight }}>
+          {hourLabels.map((label) => {
+            const h = parseInt(label.split(":")[0]);
+            const top = (h * 60 - dayStartMin) * PX_PER_MINUTE;
+            return (
+              <div key={label} style={{ position: "absolute", top, right: 6, fontSize: 10, color: "#555", fontFamily: "Inter, sans-serif" }}>
+                {label}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Day columns */}
+        {days.map((day) => {
+          const daySessions = daySessionMap[day] || [];
+          const placed = computeColumns(daySessions);
+
+          return (
+            <div key={day} style={{ flex: 1, position: "relative", height: totalHeight, background: "#2a2a2a", marginLeft: 1 }}>
+              {/* Hour grid lines */}
+              {hourLabels.map((label) => {
+                const h = parseInt(label.split(":")[0]);
+                const top = (h * 60 - dayStartMin) * PX_PER_MINUTE;
+                return (
+                  <div key={label} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid #333", pointerEvents: "none" }} />
+                );
+              })}
+
+              {/* Session blocks */}
+              {placed.map(({ session: s, colIndex, totalCols }) => {
+                const startMin = timeToMinutes(s.start);
+                const endMin = timeToMinutes(s.end);
+                const top = (startMin - dayStartMin) * PX_PER_MINUTE;
+                const height = Math.max((endMin - startMin) * PX_PER_MINUTE, 24);
+                const left = `${(colIndex / totalCols) * 100}%`;
+                const width = `calc(${100 / totalCols}% - 2px)`;
+
+                return (
+                  <div
+                    key={s.id}
+                    onClick={() => onSelect(s.id)}
+                    style={{
+                      position: "absolute", top, left, width, height,
+                      background: "#a20513", padding: "3px 6px", cursor: "pointer",
+                      overflow: "hidden", transition: "opacity 50ms", boxSizing: "border-box",
+                      outline: s.id === selectedId ? "2px solid #fff" : "none",
+                      outlineOffset: s.id === selectedId ? -2 : 0,
+                      zIndex: s.id === selectedId ? 10 : 1,
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                  >
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>
+                      {s.start}–{s.end}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </>
-        ))}
+                    <div style={{ fontSize: 10, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 50 ? 3 : 1, WebkitBoxOrient: "vertical" }}>
+                      {s.title}
+                    </div>
+                    {height > 40 && (s.attendees || []).length > 0 && (
+                      <div style={{ display: "flex", gap: 2, marginTop: 3 }}>
+                        {(s.attendees || []).slice(0, 4).map((uid) => {
+                          const mc = memberColors[uid];
+                          if (!mc) return null;
+                          return (
+                            <div key={uid} style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "#fff", background: mc.color }}>
+                              {mc.initials}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
