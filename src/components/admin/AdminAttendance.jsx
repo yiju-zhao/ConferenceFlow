@@ -46,6 +46,9 @@ export default function AdminAttendance() {
   const [editState, setEditState] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
 
+  // Remove confirmation: memberId string or null
+  const [removeConfirm, setRemoveConfirm] = useState(null);
+
   // By-session: dropdown open for a session
   const [bySessionDropdown, setBySessionDropdown] = useState(null);
 
@@ -366,13 +369,8 @@ export default function AdminAttendance() {
               ) : (
                 /* Normal row */
                 <div className="md:grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 flex flex-wrap items-center">
-                  <div className="text-on-surface text-sm font-bold truncate min-w-0 flex items-center gap-2">
+                  <div className="text-on-surface text-sm font-bold truncate min-w-0">
                     {getMemberName(m)}
-                    {m.managedByAdmin && (
-                      <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">
-                        Manual
-                      </span>
-                    )}
                   </div>
                   <div className="flex items-center">
                     <ModeBadge mode={m.attendanceMode || "onsite"} />
@@ -381,6 +379,10 @@ export default function AdminAttendance() {
                     {m.role === "admin" ? (
                       <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
                         Admin
+                      </span>
+                    ) : m.managedByAdmin ? (
+                      <span className="bg-[#E67E22]/10 text-[#E67E22] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
+                        Attendee
                       </span>
                     ) : (
                       <span className="text-secondary text-xs uppercase tracking-wider">
@@ -412,26 +414,45 @@ export default function AdminAttendance() {
                   </div>
                   <div className="flex gap-2">
                     {m.managedByAdmin && (
-                      <>
+                      <button
+                        onClick={() =>
+                          setEditState({
+                            memberId: m.id,
+                            name: m.displayName || getMemberName(m),
+                            mode: m.attendanceMode || "onsite",
+                          })
+                        }
+                        className="bg-surface-container text-secondary px-3 py-1 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {/* Remove: only non-admin members. Admins must be demoted first. */}
+                    {m.role !== "admin" && m.id !== user.uid && (
+                      removeConfirm === m.id ? (
+                        <div className="flex gap-1 items-center">
+                          <span className="text-primary text-xs">Confirm?</span>
+                          <button
+                            onClick={() => { handleRemoveAttendee(m.id); setRemoveConfirm(null); }}
+                            className="bg-primary text-on-primary px-2 py-1 text-xs font-headline uppercase tracking-wider"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            onClick={() => setRemoveConfirm(null)}
+                            className="bg-surface-container text-secondary px-2 py-1 text-xs font-headline uppercase tracking-wider"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
                         <button
-                          onClick={() =>
-                            setEditState({
-                              memberId: m.id,
-                              name: m.displayName || getMemberName(m),
-                              mode: m.attendanceMode || "onsite",
-                            })
-                          }
-                          className="bg-surface-container text-secondary px-3 py-1 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleRemoveAttendee(m.id)}
+                          onClick={() => setRemoveConfirm(m.id)}
                           className="bg-surface-container text-primary px-3 py-1 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity"
                         >
                           Remove
                         </button>
-                      </>
+                      )
                     )}
                   </div>
                 </div>
@@ -486,10 +507,12 @@ export default function AdminAttendance() {
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-on-surface text-sm font-bold">{getMemberName(m)}</span>
-                    {m.managedByAdmin && (
-                      <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">Manual</span>
-                    )}
                     <ModeBadge mode={m.attendanceMode || "onsite"} />
+                    {m.role === "admin" ? (
+                      <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">Admin</span>
+                    ) : m.managedByAdmin ? (
+                      <span className="bg-[#E67E22]/10 text-[#E67E22] text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">Attendee</span>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-secondary text-xs">
