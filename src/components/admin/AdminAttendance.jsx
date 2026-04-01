@@ -689,7 +689,7 @@ export default function AdminAttendance() {
         // Sessions for the active day
         const daySessions = sessions.filter((s) => s.date === activeDay);
 
-        const PX_PER_MIN = 1.2; // 72px per hour
+        const PX_PER_MIN = 2; // 120px per hour
         const toMin = (t) => { if (!t) return 0; const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
 
         // Time range

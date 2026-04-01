@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-const PX_PER_MINUTE = 1.2; // 72px per hour
+const PX_PER_MINUTE = 2; // 120px per hour
 
 function timeToMinutes(t) {
   if (!t) return 0;
