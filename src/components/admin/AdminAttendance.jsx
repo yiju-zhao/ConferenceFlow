@@ -706,19 +706,33 @@ export default function AdminAttendance() {
         const hourLabels = [];
         for (let h = minH; h <= maxH; h++) hourLabels.push(`${String(h).padStart(2, "0")}:00`);
 
-        // Column packing for overlaps
+        // Column packing for overlaps — per overlap group
         const sorted = [...daySessions].sort((a, b) => toMin(a.start) - toMin(b.start));
-        const cols = [];
-        const placements = [];
+        const groups = [];
         for (const s of sorted) {
           const sStart = toMin(s.start), sEnd = toMin(s.end);
-          let placed = false;
-          for (let i = 0; i < cols.length; i++) {
-            if (sStart >= cols[i]) { cols[i] = sEnd; placements.push({ session: s, colIndex: i }); placed = true; break; }
+          const last = groups[groups.length - 1];
+          if (last && sStart < last.groupEnd) {
+            last.sessions.push(s); last.groupEnd = Math.max(last.groupEnd, sEnd);
+          } else {
+            groups.push({ sessions: [s], groupEnd: sEnd });
           }
-          if (!placed) { cols.push(sEnd); placements.push({ session: s, colIndex: cols.length - 1 }); }
         }
-        const totalCols = cols.length;
+        const placements = [];
+        for (const g of groups) {
+          const cols = [];
+          const gp = [];
+          for (const s of g.sessions) {
+            const sStart = toMin(s.start), sEnd = toMin(s.end);
+            let placed = false;
+            for (let i = 0; i < cols.length; i++) {
+              if (sStart >= cols[i]) { cols[i] = sEnd; gp.push({ session: s, colIndex: i }); placed = true; break; }
+            }
+            if (!placed) { cols.push(sEnd); gp.push({ session: s, colIndex: cols.length - 1 }); }
+          }
+          const totalCols = cols.length;
+          gp.forEach((p) => placements.push({ ...p, totalCols }));
+        }
         const COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
 
         return (

@@ -11,36 +11,56 @@ function timeToMinutes(t) {
 
 /**
  * Column-packing algorithm for overlapping sessions.
+ * Groups overlapping sessions together, assigns columns per group.
  * Returns sessions annotated with { colIndex, totalCols }.
  */
 function computeColumns(sessions) {
   if (sessions.length === 0) return [];
   const sorted = [...sessions].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
-  // Each column tracks the end time of the last session placed in it
-  const columns = []; // array of { lastEnd: number }
-  const placements = []; // { session, colIndex }
-
+  // Step 1: Find overlap groups
+  const groups = []; // array of { sessions: [], groupEnd: number }
   for (const s of sorted) {
     const sStart = timeToMinutes(s.start);
     const sEnd = timeToMinutes(s.end);
-    let placed = false;
-    for (let i = 0; i < columns.length; i++) {
-      if (sStart >= columns[i].lastEnd) {
-        columns[i].lastEnd = sEnd;
-        placements.push({ session: s, colIndex: i });
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) {
-      columns.push({ lastEnd: sEnd });
-      placements.push({ session: s, colIndex: columns.length - 1 });
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && sStart < lastGroup.groupEnd) {
+      // Overlaps with current group
+      lastGroup.sessions.push(s);
+      lastGroup.groupEnd = Math.max(lastGroup.groupEnd, sEnd);
+    } else {
+      // New group
+      groups.push({ sessions: [s], groupEnd: sEnd });
     }
   }
 
-  const totalCols = columns.length;
-  return placements.map((p) => ({ ...p, totalCols }));
+  // Step 2: Assign columns within each group
+  const result = [];
+  for (const group of groups) {
+    const cols = []; // array of lastEnd per column
+    const placements = [];
+    for (const s of group.sessions) {
+      const sStart = timeToMinutes(s.start);
+      const sEnd = timeToMinutes(s.end);
+      let placed = false;
+      for (let i = 0; i < cols.length; i++) {
+        if (sStart >= cols[i]) {
+          cols[i] = sEnd;
+          placements.push({ session: s, colIndex: i });
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        cols.push(sEnd);
+        placements.push({ session: s, colIndex: cols.length - 1 });
+      }
+    }
+    const totalCols = cols.length;
+    placements.forEach((p) => result.push({ ...p, totalCols }));
+  }
+
+  return result;
 }
 
 export default function ScheduleGrid({ sessions, selectedId, onSelect, members }) {
@@ -204,8 +224,10 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
                     <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", flexShrink: 0 }}>
                       {s.start}–{s.end}
                     </div>
-                    <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginTop: 2, flex: 1, minHeight: 0 }}>
-                      {s.title}
+                    <div style={{ flex: 1, minHeight: 0, overflow: "hidden", marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                        {s.title}
+                      </div>
                     </div>
                     {(s.attendees || []).length > 0 && (
                       <div style={{ display: "flex", gap: 2, marginTop: "auto", paddingTop: 3, flexShrink: 0 }}>
