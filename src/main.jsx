@@ -8,7 +8,7 @@ import AuthGuard from "./components/AuthGuard";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import Dashboard from "./components/Dashboard";
-import App from "./App";
+import CalendarPage from "./components/calendar/CalendarPage";
 import DailyReport from "./DailyReport";
 import ConferenceReport from "./ConferenceReport";
 import ReportList from "./ReportList";
@@ -48,7 +48,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
           {/* Conference-scoped routes */}
           <Route path="/conference/:confId" element={
-            <AuthGuard><App /></AuthGuard>
+            <AuthGuard><CalendarPage /></AuthGuard>
           } />
           <Route path="/conference/:confId/reports" element={
             <AuthGuard><ReportList /></AuthGuard>
