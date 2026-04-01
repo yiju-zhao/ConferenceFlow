@@ -486,8 +486,10 @@ export default function AdminAttendance() {
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-on-surface text-sm font-bold">{getMemberName(m)}</span>
-                    <TypeBadge managedByAdmin={m.managedByAdmin} />
-                    <span className="text-secondary text-xs uppercase">{m.attendanceMode || "onsite"}</span>
+                    {m.managedByAdmin && (
+                      <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">Manual</span>
+                    )}
+                    <ModeBadge mode={m.attendanceMode || "onsite"} />
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-secondary text-xs">
