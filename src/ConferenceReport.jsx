@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db, storage } from "./firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "./contexts/AuthContext";
 import { ref as sRef, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { useDebouncedSave } from "./shared";
 

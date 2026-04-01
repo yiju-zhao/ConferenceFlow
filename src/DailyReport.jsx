@@ -14,7 +14,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db, storage } from "./firebase";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "./contexts/AuthContext";
 import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
 import { SESSION_CATALOG, COLOR_PRESETS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
 const topicSlug = (t) =>

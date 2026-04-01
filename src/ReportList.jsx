@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { DAY_CN, parseReportId, generateSummaryId } from "./shared";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "./contexts/AuthContext";
 
 export default function ReportList() {
   const navigate = useNavigate();
