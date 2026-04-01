@@ -1,6 +1,15 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
@@ -19,5 +28,19 @@ const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const googleProvider = new GoogleAuthProvider();
 
-export { app, analytics, auth, db, storage };
+export {
+  app,
+  analytics,
+  auth,
+  db,
+  storage,
+  googleProvider,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
+};
