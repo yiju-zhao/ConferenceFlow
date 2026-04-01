@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { collection, onSnapshot, getDocs, query, where } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
@@ -11,8 +11,6 @@ export default function SuperAdminPanel() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ name: "", description: "", startDate: "", endDate: "", visibility: "public" });
   const [creating, setCreating] = useState(false);
-  const [assignForm, setAssignForm] = useState({ email: "", confId: "" });
-  const [assigning, setAssigning] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -32,18 +30,6 @@ export default function SuperAdminPanel() {
     finally { setCreating(false); }
   };
 
-  const handleAssignAdmin = async () => {
-    setAssigning(true); setMessage("");
-    try {
-      const usersSnap = await getDocs(query(collection(db, "users"), where("email", "==", assignForm.email)));
-      if (usersSnap.empty) { setMessage(`Error: No user found with email ${assignForm.email}`); setAssigning(false); return; }
-      const userId = usersSnap.docs[0].id;
-      await apiFetch("/api/admin/set-role", { method: "POST", body: JSON.stringify({ userId, confId: assignForm.confId, confRole: "admin" }) });
-      setMessage(`Assigned admin role to ${assignForm.email}`);
-      setAssignForm({ email: "", confId: "" });
-    } catch (err) { setMessage(`Error: ${err.message}`); }
-    finally { setAssigning(false); }
-  };
 
   if (!isSuperAdmin) {
     return <div className="min-h-screen bg-surface flex items-center justify-center"><p className="text-primary font-headline uppercase">Super Admin access required</p></div>;
@@ -112,26 +98,6 @@ export default function SuperAdminPanel() {
               <Link to={`/conference/${conf.id}/admin/settings`} className="text-primary text-xs uppercase tracking-wider hover:underline">Manage</Link>
             </div>
           ))}
-        </section>
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1 h-5 bg-primary inline-block"></span>
-            <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">Assign Conference Admin</h2>
-          </div>
-          <div className="bg-surface-container-lowest p-6 max-w-lg">
-            <Field label="User Email" value={assignForm.email} onChange={(v) => setAssignForm({ ...assignForm, email: v })} placeholder="user@example.com" />
-            <div className="mb-3">
-              <label className="block text-secondary text-xs uppercase tracking-wider mb-1">Conference</label>
-              <select value={assignForm.confId} onChange={(e) => setAssignForm({ ...assignForm, confId: e.target.value })}
-                className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none">
-                <option value="">Select conference...</option>
-                {conferences.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <button onClick={handleAssignAdmin} disabled={assigning || !assignForm.email || !assignForm.confId}
-              className="bg-primary text-on-primary px-6 py-2 text-sm font-headline uppercase tracking-wider hover:bg-primary-container disabled:opacity-50">
-              {assigning ? "Assigning..." : "Assign Admin"}</button>
-          </div>
         </section>
       </div>
     </div>
