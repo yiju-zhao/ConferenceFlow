@@ -301,12 +301,12 @@ export default function AdminAttendance() {
       {/* Table */}
       <div className="bg-surface-container-lowest mb-10">
         {/* Header row */}
-        <div className="hidden md:grid grid-cols-[2fr_100px_100px_100px_260px] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
+        <div className="hidden md:grid grid-cols-[2fr_100px_100px_100px_160px] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Name</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline">Mode</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline">Role</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline">Sessions</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline">Actions</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Mode</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Role</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Sessions</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Actions</span>
         </div>
 
         {approvedMembers.length === 0 && (
@@ -368,14 +368,14 @@ export default function AdminAttendance() {
                 </div>
               ) : (
                 /* Normal row */
-                <div className="md:grid md:grid-cols-[2fr_100px_100px_100px_260px] gap-4 px-4 py-3 flex flex-wrap items-center">
+                <div className="md:grid md:grid-cols-[2fr_100px_100px_100px_160px] gap-4 px-4 py-3 flex flex-wrap items-center">
                   <div className="text-on-surface text-sm font-bold truncate min-w-0">
                     {getMemberName(m)}
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     <ModeBadge mode={m.attendanceMode || "onsite"} />
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center justify-center">
                     {m.role === "admin" ? (
                       <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
                         Admin
@@ -390,10 +390,10 @@ export default function AdminAttendance() {
                       </span>
                     )}
                   </div>
-                  <div className="text-secondary text-xs">
+                  <div className="text-secondary text-xs text-center">
                     {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
                   </div>
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center justify-center">
                     {/* Slot 1: Promote / Demote / Edit — fixed width */}
                     <span className="w-16 text-center">
                       {!m.managedByAdmin && !m.legacyName && m.role !== "admin" && m.status === "approved" ? (
