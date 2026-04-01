@@ -6,6 +6,7 @@ const tabs = [
   { path: "settings", label: "Settings" },
   { path: "sessions", label: "Sessions" },
   { path: "applications", label: "Applications" },
+  { path: "attendance", label: "Attendance" },
   { path: "reports", label: "Reports" },
 ];
 

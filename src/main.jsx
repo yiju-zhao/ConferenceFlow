@@ -18,6 +18,7 @@ import AdminSettings from "./components/admin/AdminSettings";
 import AdminSessions from "./components/admin/AdminSessions";
 import AdminApplications from "./components/admin/AdminApplications";
 import AdminReports from "./components/admin/AdminReports";
+import AdminAttendance from "./components/admin/AdminAttendance";
 import SuperAdminPanel from "./components/admin/SuperAdminPanel";
 
 inject();
@@ -66,6 +67,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="sessions" element={<AdminSessions />} />
             <Route path="applications" element={<AdminApplications />} />
             <Route path="reports" element={<AdminReports />} />
+            <Route path="attendance" element={<AdminAttendance />} />
           </Route>
 
           <Route path="/super-admin" element={
