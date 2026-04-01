@@ -218,16 +218,17 @@ export default function AdminAttendance() {
 
   const getMemberName = (m) => userNames[m.id] || m.displayName || m.id;
 
-  const TypeBadge = ({ managedByAdmin }) =>
-    managedByAdmin ? (
-      <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
-        Manual
+  const ModeBadge = ({ mode }) => (
+    mode === "online" ? (
+      <span className="bg-[#2980B9]/10 text-[#2980B9] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
+        💻 Online
       </span>
     ) : (
-      <span className="bg-surface-container text-secondary text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
-        Registered
+      <span className="bg-[#27AE60]/10 text-[#27AE60] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
+        🏢 Onsite
       </span>
-    );
+    )
+  );
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -297,9 +298,8 @@ export default function AdminAttendance() {
       {/* Table */}
       <div className="bg-surface-container-lowest mb-10">
         {/* Header row */}
-        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
+        <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Name</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline">Type</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Mode</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Role</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Sessions</span>
@@ -365,15 +365,17 @@ export default function AdminAttendance() {
                 </div>
               ) : (
                 /* Normal row */
-                <div className="md:grid md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 flex flex-wrap items-center">
-                  <div className="text-on-surface text-sm font-bold truncate min-w-0">
+                <div className="md:grid md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 px-4 py-3 flex flex-wrap items-center">
+                  <div className="text-on-surface text-sm font-bold truncate min-w-0 flex items-center gap-2">
                     {getMemberName(m)}
+                    {m.managedByAdmin && (
+                      <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">
+                        Manual
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center">
-                    <TypeBadge managedByAdmin={m.managedByAdmin} />
-                  </div>
-                  <div className="text-secondary text-xs uppercase tracking-wider">
-                    {m.attendanceMode || "onsite"}
+                    <ModeBadge mode={m.attendanceMode || "onsite"} />
                   </div>
                   <div className="flex items-center gap-2">
                     {m.role === "admin" ? (
