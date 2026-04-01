@@ -91,7 +91,7 @@ export default function AdminAttendance() {
   const [userNames, setUserNames] = useState({});
 
   // Section 2 view mode: "byMember" | "bySession"
-  const [assignView, setAssignView] = useState("byMember");
+  const [assignView, setAssignView] = useState("bySession");
   // Expanded member in "byMember" view
   const [expandedMemberId, setExpandedMemberId] = useState(null);
   // Expanded session in "bySession" view
@@ -506,8 +506,8 @@ export default function AdminAttendance() {
       {/* View toggle */}
       <div className="flex gap-1 mb-6">
         {[
-          { key: "byMember", label: "By Member" },
           { key: "bySession", label: "By Session" },
+          { key: "byMember", label: "By Member" },
         ].map((v) => (
           <button
             key={v.key}
