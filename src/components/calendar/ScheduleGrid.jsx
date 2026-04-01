@@ -89,6 +89,8 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
     return map;
   }, [members]);
 
+  const [dayPage, setDayPage] = useState(0);
+
   if (sessions.length === 0) {
     return (
       <div className="cal-grid">
@@ -102,8 +104,6 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
       </div>
     );
   }
-
-  const [dayPage, setDayPage] = useState(0);
   const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MINUTE;
 
   // Paginate days
