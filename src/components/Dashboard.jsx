@@ -53,9 +53,13 @@ export default function Dashboard() {
       const membership = myMemberships[conf.id];
       const isPast = conf.endDate < today;
 
-      if (membership?.status === "pending") {
+      // Super admins have implicit access to all conferences
+      if (isSuperAdmin && !membership) {
+        if (isPast) past.push(conf);
+        else upcoming.push(conf);
+      } else if (membership?.status === "pending") {
         pending.push(conf);
-      } else if (membership?.status === "approved") {
+      } else if (membership?.status === "approved" || (isSuperAdmin && membership)) {
         if (isPast) past.push(conf);
         else upcoming.push(conf);
       } else if (conf.visibility === "public" && !membership) {
@@ -68,7 +72,7 @@ export default function Dashboard() {
     discover.sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     return { upcoming, past, pending, discover };
-  }, [conferences, myMemberships, today]);
+  }, [conferences, myMemberships, today, isSuperAdmin]);
 
   const handleApply = async () => {
     if (!applyModal) return;
@@ -78,11 +82,12 @@ export default function Dashboard() {
       await setDoc(
         doc(db, "conferences", applyModal.confId, "members", user.uid),
         {
-          role: "member",
-          status: "pending",
+          role: isSuperAdmin ? "admin" : "member",
+          status: isSuperAdmin ? "approved" : "pending",
           attendanceMode,
           colorIndex: nextColorIndex,
           appliedAt: serverTimestamp(),
+          ...(isSuperAdmin ? { approvedAt: serverTimestamp(), approvedBy: user.uid } : {}),
         }
       );
       setApplyModal(null);
