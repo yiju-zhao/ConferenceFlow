@@ -671,7 +671,7 @@ export default function App() {
 
             {/* Header right actions */}
             <div className="schedule-header-actions">
-            <Link to="/reports" className="btn-accent schedule-header-report-link">
+            <Link to={`/conference/${confId}/reports`} className="btn-accent schedule-header-report-link">
               <FileText size={14} />
               日报管理
             </Link>

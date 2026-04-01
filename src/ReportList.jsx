@@ -138,7 +138,7 @@ export default function ReportList() {
     <div className="report-page">
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to="/" className="report-back-btn">&larr; 返回日程</Link>
+          <Link to={`/conference/${confId}`} className="report-back-btn">&larr; 返回日程</Link>
         </div>
       </div>
 

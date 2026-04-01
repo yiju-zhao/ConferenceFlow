@@ -1370,9 +1370,9 @@ ${clone.outerHTML}
       {!viewMode && <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Link to="/" className="report-back-btn">← 返回日程</Link>
+            <Link to={`/conference/${confId}`} className="report-back-btn">← 返回日程</Link>
             <div style={{ width: 1, height: 20, background: "var(--border)" }} />
-            <Link to="/reports" className="report-tool-btn" style={{ textDecoration: "none" }}>
+            <Link to={`/conference/${confId}/reports`} className="report-tool-btn" style={{ textDecoration: "none" }}>
               日报列表
             </Link>
           </div>
