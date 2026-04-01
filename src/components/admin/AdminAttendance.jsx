@@ -301,7 +301,7 @@ export default function AdminAttendance() {
       {/* Table */}
       <div className="bg-surface-container-lowest mb-10">
         {/* Header row */}
-        <div className="hidden md:grid grid-cols-[2fr_100px_100px_100px_180px] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
+        <div className="hidden md:grid grid-cols-[2fr_100px_100px_100px_260px] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Name</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Mode</span>
           <span className="text-secondary text-xs uppercase tracking-wider font-headline">Role</span>
@@ -368,7 +368,7 @@ export default function AdminAttendance() {
                 </div>
               ) : (
                 /* Normal row */
-                <div className="md:grid md:grid-cols-[2fr_100px_100px_100px_180px] gap-4 px-4 py-3 flex flex-wrap items-center">
+                <div className="md:grid md:grid-cols-[2fr_100px_100px_100px_260px] gap-4 px-4 py-3 flex flex-wrap items-center">
                   <div className="text-on-surface text-sm font-bold truncate min-w-0">
                     {getMemberName(m)}
                   </div>
@@ -393,65 +393,34 @@ export default function AdminAttendance() {
                   <div className="text-secondary text-xs">
                     {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {/* Promote/Demote: only real registered users */}
-                    {!m.managedByAdmin && !m.legacyName && m.role !== "admin" && m.status === "approved" && (
-                      <button
-                        onClick={() => handleSetAdmin(m.id)}
-                        className="text-primary text-xs hover:underline"
-                      >
-                        Promote
-                      </button>
-                    )}
-                    {!m.managedByAdmin && !m.legacyName && m.role === "admin" && isSuperAdmin && m.id !== user.uid && (
-                      <button
-                        onClick={() => handleRemoveAdmin(m.id)}
-                        className="text-secondary text-xs hover:text-primary hover:underline"
-                      >
-                        Demote
-                      </button>
-                    )}
-                    {m.managedByAdmin && (
-                      <button
-                        onClick={() =>
-                          setEditState({
-                            memberId: m.id,
-                            name: m.displayName || getMemberName(m),
-                            mode: m.attendanceMode || "onsite",
-                          })
-                        }
-                        className="text-secondary text-xs hover:text-on-surface"
-                      >
-                        Edit
-                      </button>
-                    )}
-                    {/* Remove: only non-admin members. Admins must be demoted first. */}
-                    {m.role !== "admin" && m.id !== user.uid && (
-                      removeConfirm === m.id ? (
-                        <div className="flex gap-1 items-center">
-                          <span className="text-primary text-xs">Confirm?</span>
-                          <button
-                            onClick={() => { handleRemoveAttendee(m.id); setRemoveConfirm(null); }}
-                            className="bg-primary text-on-primary px-2 py-1 text-xs font-headline uppercase tracking-wider"
-                          >
-                            Yes
-                          </button>
-                          <button
-                            onClick={() => setRemoveConfirm(null)}
-                            className="bg-surface-container text-secondary px-2 py-1 text-xs font-headline uppercase tracking-wider"
-                          >
-                            No
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setRemoveConfirm(m.id)}
-                          className="bg-surface-container text-primary px-3 py-1 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity"
-                        >
-                          Remove
-                        </button>
-                      )
-                    )}
+                  <div className="flex gap-2 items-center">
+                    {/* Slot 1: Promote / Demote / Edit — fixed width */}
+                    <span className="w-16 text-center">
+                      {!m.managedByAdmin && !m.legacyName && m.role !== "admin" && m.status === "approved" ? (
+                        <button onClick={() => handleSetAdmin(m.id)} className="text-primary text-xs hover:underline">Promote</button>
+                      ) : !m.managedByAdmin && !m.legacyName && m.role === "admin" && isSuperAdmin && m.id !== user.uid ? (
+                        <button onClick={() => handleRemoveAdmin(m.id)} className="text-secondary text-xs hover:text-primary hover:underline">Demote</button>
+                      ) : m.managedByAdmin ? (
+                        <button onClick={() => setEditState({ memberId: m.id, name: m.displayName || getMemberName(m), mode: m.attendanceMode || "onsite" })}
+                          className="text-secondary text-xs hover:text-on-surface">Edit</button>
+                      ) : null}
+                    </span>
+                    {/* Slot 2: Remove — fixed width */}
+                    <span className="w-20 text-center">
+                      {m.role !== "admin" && m.id !== user.uid ? (
+                        removeConfirm === m.id ? (
+                          <span className="flex gap-1 items-center justify-center">
+                            <button onClick={() => { handleRemoveAttendee(m.id); setRemoveConfirm(null); }}
+                              className="bg-primary text-on-primary px-2 py-1 text-[10px] font-headline uppercase tracking-wider">Yes</button>
+                            <button onClick={() => setRemoveConfirm(null)}
+                              className="bg-surface-container text-secondary px-2 py-1 text-[10px] font-headline uppercase tracking-wider">No</button>
+                          </span>
+                        ) : (
+                          <button onClick={() => setRemoveConfirm(m.id)}
+                            className="bg-surface-container text-primary px-3 py-1 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity">Remove</button>
+                        )
+                      ) : null}
+                    </span>
                   </div>
                 </div>
               )}
