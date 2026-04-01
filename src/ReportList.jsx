@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc } from "firebase/firestore";
-import { auth, db } from "./firebase";
+import { db } from "./firebase";
 import { DAY_CN, parseReportId, generateSummaryId } from "./shared";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function ReportList() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { confId } = useParams();
+  const { user } = useAuth();
   const [reportDocs, setReportDocs] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -18,13 +19,8 @@ export default function ReportList() {
   const [summaryDateEnd, setSummaryDateEnd] = useState("");
 
   useEffect(() => {
-    signInAnonymously(auth).catch(console.error);
-    return onAuthStateChanged(auth, u => setUser(u));
-  }, []);
-
-  useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "dailyReports"), snap => {
+    return onSnapshot(collection(db, "conferences", confId, "dailyReports"), snap => {
       const docs = snap.docs
         .map(d => ({ id: d.id, ...d.data(), ...parseReportId(d.id) }))
         .sort((a, b) => b.id.localeCompare(a.id));
@@ -34,7 +30,7 @@ export default function ReportList() {
 
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "sessions"), snap => {
+    return onSnapshot(collection(db, "conferences", confId, "sessions"), snap => {
       setAllSessions(snap.docs.map(d => d.data()));
     });
   }, [user]);
@@ -90,11 +86,11 @@ export default function ReportList() {
     setShowDatePicker(false);
     // If report already exists, navigate to the existing one
     const existing = reportDocs.find(r => parseReportId(r.id).date === date);
-    navigate(`/report/${existing ? existing.id : date}`);
+    navigate(`/conference/${confId}/report/${existing ? existing.id : date}`);
   };
 
-  const archiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "archived" });
-  const unarchiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "draft" });
+  const archiveReport = (id) => updateDoc(doc(db, "conferences", confId, "dailyReports", id), { status: "archived" });
+  const unarchiveReport = (id) => updateDoc(doc(db, "conferences", confId, "dailyReports", id), { status: "draft" });
 
   const openSummaryDatePicker = () => {
     // Pre-fill with earliest and latest daily report dates
@@ -108,11 +104,11 @@ export default function ReportList() {
     setShowSummaryDatePicker(false);
     setCreatingSummary(true);
     try {
-      const snap = await getDocs(collection(db, "dailyReports"));
+      const snap = await getDocs(collection(db, "conferences", confId, "dailyReports"));
       const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const summaryId = generateSummaryId(allDocs);
 
-      await setDoc(doc(db, "dailyReports", summaryId), {
+      await setDoc(doc(db, "conferences", confId, "dailyReports", summaryId), {
         type: "summary",
         title: "GTC 2026 总结稿",
         status: "draft",
@@ -129,7 +125,7 @@ export default function ReportList() {
         onsiteEvents: [],
       });
 
-      navigate(`/report/${summaryId}`);
+      navigate(`/conference/${confId}/report/${summaryId}`);
     } catch (err) {
       console.error("Failed to create summary:", err);
       alert("创建总结稿失败，请重试");
@@ -232,7 +228,7 @@ export default function ReportList() {
                     >
                       {isArchived ? "取消归档" : "归档"}
                     </button>
-                    <Link to={`/report/${r.id}`} className="report-card-view-btn">
+                    <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
                       管理总结稿 &rarr;
                     </Link>
                   </div>
@@ -260,7 +256,7 @@ export default function ReportList() {
                   >
                     {isArchived ? "取消归档" : "归档"}
                   </button>
-                  <Link to={`/report/${r.id}`} className="report-card-view-btn">
+                  <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
                     查看日报 &rarr;
                   </Link>
                 </div>

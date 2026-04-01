@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
@@ -14,7 +13,8 @@ import {
   deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { auth, db, storage } from "./firebase";
+import { db, storage } from "./firebase";
+import { useAuth } from "../contexts/AuthContext";
 import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
 import { SESSION_CATALOG, COLOR_PRESETS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
 const topicSlug = (t) =>
@@ -450,9 +450,9 @@ function SnapshotViewer({ snapshot, currentData }) {
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport({ viewMode = false }) {
-  const { reportId } = useParams();
+  const { confId, reportId } = useParams();
   const { date } = parseReportId(reportId);
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [members, setMembers] = useState([]);
   const [reportData, setReportData] = useState(null);
@@ -498,12 +498,6 @@ export default function DailyReport({ viewMode = false }) {
   const collapsedInit = useRef(false);
   const { debouncedSave, saveState } = useDebouncedSave(600);
 
-  // Auth
-  useEffect(() => {
-    signInAnonymously(auth).catch(console.error);
-    return onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
-
 // Close export dropdown on outside click or Escape
   useEffect(() => {
     if (!showExportMenu) return;
@@ -538,7 +532,7 @@ export default function DailyReport({ viewMode = false }) {
   useEffect(() => {
     if (!user || !reportId) return;
     const q = query(
-      collection(db, "dailyReports", reportId, "snapshots"),
+      collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"),
       orderBy("createdAt", "desc")
     );
     return onSnapshot(q, snap => {
@@ -556,7 +550,7 @@ export default function DailyReport({ viewMode = false }) {
   // Members
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "members"), (snap) => {
+    return onSnapshot(collection(db, "conferences", confId, "members"), (snap) => {
       const arr = [];
       snap.forEach((d) => arr.push(d.data()));
       arr.sort((a, b) => Number(a.id) - Number(b.id));
@@ -567,7 +561,7 @@ export default function DailyReport({ viewMode = false }) {
   // Sessions (filtered by date)
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "sessions"), (snap) => {
+    return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
       const arr = [];
       snap.forEach((d) => {
         const data = d.data();
@@ -581,7 +575,7 @@ export default function DailyReport({ viewMode = false }) {
   // Report data
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(doc(db, "dailyReports", reportId), (snap) => {
+    return onSnapshot(doc(db, "conferences", confId, "dailyReports", reportId), (snap) => {
       setReportData(snap.exists() ? snap.data() : null);
       setLoading(false);
     });
@@ -602,7 +596,7 @@ export default function DailyReport({ viewMode = false }) {
         illustration: "",
       };
     });
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       date, title: "", summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "", sitePhotos: [],
       sessions: sessionMap, topicOrder: [], status: "draft",
     }).catch(console.error);
@@ -671,7 +665,7 @@ export default function DailyReport({ viewMode = false }) {
   const saveField = useCallback((field, html) => {
     if (!user || viewMode) return;
     debouncedSave(field, () => {
-      setDoc(doc(db, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
+      setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
     });
   }, [user, reportId, debouncedSave, viewMode]);
 
@@ -701,7 +695,7 @@ export default function DailyReport({ viewMode = false }) {
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
   const pruneSnapshots = useCallback(async () => {
     const q = query(
-      collection(db, "dailyReports", reportId, "snapshots"),
+      collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"),
       orderBy("createdAt", "desc"),
       limit(51)
     );
@@ -728,7 +722,7 @@ export default function DailyReport({ viewMode = false }) {
     // Skip auto snapshots when content hasn't changed since last snapshot
     if (type === "auto" && hash === lastSnapshotHashRef.current) return;
     try {
-      await addDoc(collection(db, "dailyReports", reportId, "snapshots"), {
+      await addDoc(collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"), {
         type,
         label: type === "auto" ? "自动保存" : "手动保存",
         createdAt: serverTimestamp(),
@@ -757,7 +751,7 @@ export default function DailyReport({ viewMode = false }) {
     const snapshot = restoreConfirm;
     setRestoreConfirm(null);
     await createSnapshot("manual");
-    await setDoc(doc(db, "dailyReports", reportId), snapshot.data, { merge: true });
+    await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), snapshot.data, { merge: true });
     setShowHistory(false);
     setViewingSnapshot(null);
   };
@@ -765,7 +759,7 @@ export default function DailyReport({ viewMode = false }) {
   const saveSessionField = useCallback((code, field, value) => {
     if (!user) return;
     debouncedSave(`${code}.${field}`, () => {
-      setDoc(doc(db, "dailyReports", reportId), {
+      setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
         sessions: { [code]: { [field]: value } }
       }, { merge: true }).catch(console.error);
     });
@@ -775,7 +769,7 @@ export default function DailyReport({ viewMode = false }) {
   const saveSpeakers = useCallback((code, speakers) => {
     if (!user) return;
     debouncedSave(`${code}.speakers`, () => {
-      setDoc(doc(db, "dailyReports", reportId), {
+      setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
         sessions: { [code]: { speakers } }
       }, { merge: true }).catch(console.error);
     });
@@ -785,7 +779,7 @@ export default function DailyReport({ viewMode = false }) {
     if (!user) return;
     const sd = sessionDataRef.current[code] || {};
     const speakers = [...(sd.speakers || []), { name: "", position: "", company: "" }];
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       sessions: { [code]: { speakers } }
     }, { merge: true }).catch(console.error);
   }, [user, reportId]);
@@ -794,7 +788,7 @@ export default function DailyReport({ viewMode = false }) {
     if (!user) return;
     const sd = sessionDataRef.current[code] || {};
     const speakers = (sd.speakers || []).filter((_, i) => i !== idx);
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       sessions: { [code]: { speakers: speakers.length ? speakers : [{ name: "", position: "", company: "" }] } }
     }, { merge: true }).catch(console.error);
   }, [user, reportId]);
@@ -815,7 +809,7 @@ export default function DailyReport({ viewMode = false }) {
       return;
     }
     const currentDeleted = reportDataRef.current?.deletedSessions || [];
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       deletedSessions: [...currentDeleted, code]
     }, { merge: true }).catch(console.error);
     setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false });
@@ -897,7 +891,7 @@ export default function DailyReport({ viewMode = false }) {
         .then(url => {
           const photos = [...(reportDataRef.current?.sitePhotos || []),
             { image: url, storagePath, caption: "", source: "", w, h }];
-          setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+          setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
         });
     };
     imgEl.src = objUrl;
@@ -910,14 +904,14 @@ export default function DailyReport({ viewMode = false }) {
       deleteObject(ref(storage, photo.storagePath)).catch(() => {});
     }
     const updated = photos.filter((_, i) => i !== idx);
-    setDoc(doc(db, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
   }, [reportId]);
 
   const saveSitePhotoCaption = useCallback((idx, caption) => {
     debouncedSave(`sitePhoto-caption-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], caption };
-      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [reportId, debouncedSave]);
 
@@ -925,7 +919,7 @@ export default function DailyReport({ viewMode = false }) {
     debouncedSave(`sitePhoto-source-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], source };
-      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [debouncedSave, reportId]);
 
@@ -1118,7 +1112,7 @@ export default function DailyReport({ viewMode = false }) {
       if (syncedCount === 0) {
         setSyncMsg("未找到匹配的 catalog 数据");
       } else {
-        await setDoc(doc(db, "dailyReports", reportId), { sessions: updatedMap }, { merge: true });
+        await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sessions: updatedMap }, { merge: true });
         setSyncMsg(`已同步 ${syncedCount} 个 session`);
       }
     } catch (err) {
