@@ -13,6 +13,12 @@ import DailyReport from "./DailyReport";
 import ConferenceReport from "./ConferenceReport";
 import ReportList from "./ReportList";
 import ViewReport from "./ViewReport";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminSettings from "./components/admin/AdminSettings";
+import AdminSessions from "./components/admin/AdminSessions";
+import AdminApplications from "./components/admin/AdminApplications";
+import AdminReports from "./components/admin/AdminReports";
+import SuperAdminPanel from "./components/admin/SuperAdminPanel";
 
 inject();
 
@@ -49,6 +55,21 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           } />
           <Route path="/conference/:confId/report/:reportId" element={
             <AuthGuard><ReportRouter /></AuthGuard>
+          } />
+
+          {/* Admin routes */}
+          <Route path="/conference/:confId/admin" element={
+            <AuthGuard><AdminLayout /></AuthGuard>
+          }>
+            <Route index element={<AdminSettings />} />
+            <Route path="settings" element={<AdminSettings />} />
+            <Route path="sessions" element={<AdminSessions />} />
+            <Route path="applications" element={<AdminApplications />} />
+            <Route path="reports" element={<AdminReports />} />
+          </Route>
+
+          <Route path="/super-admin" element={
+            <AuthGuard requireSuperAdmin><SuperAdminPanel /></AuthGuard>
           } />
 
           {/* Legacy routes redirect to dashboard */}
