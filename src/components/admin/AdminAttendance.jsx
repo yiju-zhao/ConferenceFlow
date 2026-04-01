@@ -58,9 +58,8 @@ export default function AdminAttendance() {
         const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setMembers(arr);
 
-        const names = { ...userNames };
+        const names = {};
         for (const m of arr) {
-          if (names[m.id]) continue;
           if (m.managedByAdmin) {
             names[m.id] = m.displayName || "Unnamed";
           } else if (m.legacyName) {
