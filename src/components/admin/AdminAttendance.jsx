@@ -115,6 +115,9 @@ export default function AdminAttendance() {
   // Session detail modal: session object or null
   const [sessionDetailModal, setSessionDetailModal] = useState(null);
 
+  // Mode filter for By Member view: "all" | "onsite" | "online"
+  const [modeFilter, setModeFilter] = useState("all");
+
   // By-session: dropdown open for a session
   const [bySessionDropdown, setBySessionDropdown] = useState(null);
 
@@ -530,12 +533,38 @@ export default function AdminAttendance() {
       </div>
 
       {/* ── By Member View ────────────────────────────────────────────────── */}
-      {assignView === "byMember" && (
-        <div className="bg-surface-container-lowest">
-          {approvedMembers.length === 0 && (
+      {assignView === "byMember" && (() => {
+        const filteredMembers = approvedMembers.filter((m) => {
+          if (modeFilter === "all") return true;
+          return (m.attendanceMode || "onsite") === modeFilter;
+        });
+        return (
+        <div>
+          {/* Mode filter */}
+          <div className="flex gap-1 mb-3">
+            {[
+              { key: "all", label: "All" },
+              { key: "onsite", label: "Onsite" },
+              { key: "online", label: "Online" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setModeFilter(f.key)}
+                className={`px-3 py-1.5 text-[10px] font-headline uppercase tracking-wider transition-colors duration-50 ${
+                  modeFilter === f.key
+                    ? "bg-primary text-on-primary"
+                    : "bg-surface-container text-secondary hover:text-on-surface"
+                }`}
+              >
+                {f.label} ({f.key === "all" ? approvedMembers.length : approvedMembers.filter((m) => (m.attendanceMode || "onsite") === f.key).length})
+              </button>
+            ))}
+          </div>
+          <div className="bg-surface-container-lowest">
+          {filteredMembers.length === 0 && (
             <div className="p-6 text-center text-secondary text-sm">No members to display</div>
           )}
-          {approvedMembers.map((m) => {
+          {filteredMembers.map((m) => {
             const isExpanded = expandedMemberId === m.id;
             return (
               <div key={m.id} className="border-b border-surface-dim last:border-b-0">
@@ -645,7 +674,9 @@ export default function AdminAttendance() {
             );
           })}
         </div>
-      )}
+        </div>
+        );
+      })()}
 
       {/* ── By Session View — Single-Day Calendar ────────────────────────── */}
       {assignView === "bySession" && (() => {
