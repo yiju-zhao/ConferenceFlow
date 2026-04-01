@@ -289,12 +289,18 @@ export default function AdminAttendance() {
 
   const ModeBadge = ({ mode }) => (
     mode === "online" ? (
-      <span className="bg-[#2980B9]/10 text-[#2980B9] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
-        💻 Online
+      <span className="inline-flex items-center gap-1.5 bg-[#2980B9]/10 text-[#2980B9] text-xs px-2.5 py-1 uppercase tracking-wider font-headline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><circle cx="12" cy="20" r="1" fill="currentColor" />
+        </svg>
+        Online
       </span>
     ) : (
-      <span className="bg-[#27AE60]/10 text-[#27AE60] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
-        🏢 Onsite
+      <span className="inline-flex items-center gap-1.5 bg-[#27AE60]/10 text-[#27AE60] text-xs px-2.5 py-1 uppercase tracking-wider font-headline">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+        </svg>
+        Onsite
       </span>
     )
   );
@@ -834,11 +840,17 @@ export default function AdminAttendance() {
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {sessionAttendees.map((m) => (
-                        <span key={m.id} className="flex items-center gap-1 bg-surface-container px-2 py-1 text-xs text-on-surface">
+                        <span key={m.id} className="flex items-center gap-1.5 bg-surface-container px-2 py-1 text-xs text-on-surface">
                           {getMemberName(m)}
-                          <span className="text-secondary text-[10px]">
-                            {m.attendanceMode === "online" ? "💻" : "🏢"}
-                          </span>
+                          {m.attendanceMode === "online" ? (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#2980B9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="#2980B9"/>
+                            </svg>
+                          ) : (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#27AE60" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                            </svg>
+                          )}
                         </span>
                       ))}
                     </div>
