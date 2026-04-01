@@ -778,7 +778,7 @@ export default function AdminAttendance() {
                   })}
 
                   {/* Session blocks */}
-                  {placements.map(({ session: s, colIndex }) => {
+                  {placements.map(({ session: s, colIndex, totalCols }) => {
                     const sStart = toMin(s.start), sEnd = toMin(s.end);
                     const top = (sStart - dayStartMin) * PX_PER_MIN;
                     const height = Math.max((sEnd - sStart) * PX_PER_MIN, 24);

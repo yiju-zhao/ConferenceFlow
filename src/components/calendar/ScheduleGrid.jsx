@@ -138,13 +138,19 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
 
       {/* Day headers with pagination */}
       <div style={{ display: "flex", marginBottom: 1, alignItems: "center" }}>
-        <div style={{ width: 56, flexShrink: 0, display: "flex", justifyContent: "center" }}>
-          {hasPrev && (
+        <div style={{ width: 56, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px" }}>
+          {hasPrev ? (
             <button onClick={() => setDayPage(dayPage - 1)}
-              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: "4px 8px" }}>
+              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>
               ←
             </button>
-          )}
+          ) : <span />}
+          {hasNext ? (
+            <button onClick={() => setDayPage(dayPage + 1)}
+              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>
+              →
+            </button>
+          ) : <span />}
         </div>
         {visibleDays.map((day) => {
           const d = new Date(day + "T00:00:00");
@@ -155,14 +161,6 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
             </div>
           );
         })}
-        <div style={{ width: 32, flexShrink: 0, display: "flex", justifyContent: "center" }}>
-          {hasNext && (
-            <button onClick={() => setDayPage(dayPage + 1)}
-              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: "4px 8px" }}>
-              →
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Time grid */}
