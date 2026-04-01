@@ -96,6 +96,8 @@ export default function AdminAttendance() {
   const [expandedMemberId, setExpandedMemberId] = useState(null);
   // Expanded session in "bySession" view
   const [expandedSessionId, setExpandedSessionId] = useState(null);
+  // Selected day for "bySession" calendar view
+  const [selectedDay, setSelectedDay] = useState(null);
 
   // Add attendee form
   const [showAddForm, setShowAddForm] = useState(false);
@@ -639,113 +641,133 @@ export default function AdminAttendance() {
         </div>
       )}
 
-      {/* ── By Session View ───────────────────────────────────────────────── */}
-      {assignView === "bySession" && (
-        <div className="bg-surface-container-lowest">
-          {sessions.length === 0 && (
-            <div className="p-6 text-center text-secondary text-sm">No sessions found</div>
-          )}
-          {sessions.map((s) => {
-            const isExpanded = expandedSessionId === s.id;
-            const sessionAttendees = approvedMembers.filter((m) =>
-              (s.attendees || []).includes(m.id)
-            );
-            const unassignedMembers = approvedMembers.filter(
-              (m) => !(s.attendees || []).includes(m.id)
-            );
-            const isDropdownOpen = bySessionDropdown === s.id;
+      {/* ── By Session View — Single-Day Calendar ────────────────────────── */}
+      {assignView === "bySession" && (() => {
+        // Get all unique dates
+        const allDates = [...new Set(sessions.map((s) => s.date))].sort();
+        const activeDay = selectedDay || allDates[0] || null;
 
-            return (
-              <div key={s.id} className="border-b border-surface-dim last:border-b-0">
-                {/* Session row — clickable to expand */}
-                <button
-                  onClick={() => {
-                    setExpandedSessionId(isExpanded ? null : s.id);
-                    setBySessionDropdown(null);
-                  }}
-                  className="w-full px-4 py-3 flex justify-between items-center hover:bg-surface-container/30 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="text-on-surface text-sm font-bold truncate">
-                      {s.title || s.code || s.id}
-                    </span>
-                    <span className="text-secondary text-xs shrink-0">
-                      {s.date} {s.start && `· ${s.start}`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-secondary text-xs">
-                      {sessionAttendees.length} attendee{sessionAttendees.length !== 1 ? "s" : ""}
-                    </span>
-                    <span className="text-secondary text-xs font-headline uppercase tracking-wider">
-                      {isExpanded ? "▲" : "▼"}
-                    </span>
-                  </div>
-                </button>
+        if (!activeDay) return <div className="p-6 text-center text-secondary text-sm">No sessions found</div>;
 
-                {/* Expanded: attendee list + assign dropdown */}
-                {isExpanded && (
-                  <div className="bg-surface-container/20 px-6 py-4 border-t border-surface-dim">
-                    {/* Current attendees */}
-                    {sessionAttendees.length === 0 ? (
-                      <p className="text-secondary text-xs mb-3">No attendees assigned yet.</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {sessionAttendees.map((m) => (
-                          <div
-                            key={m.id}
-                            className="flex items-center gap-2 bg-surface-container px-3 py-1.5"
-                          >
-                            <span className="text-on-surface text-xs">{getMemberName(m)}</span>
-                            <button
-                              onClick={() => handleToggleSession(m.id, s.id, true)}
-                              className="text-primary text-xs hover:opacity-70 transition-opacity font-headline uppercase tracking-wider"
-                              title="Unassign"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+        // Sessions for the active day
+        const daySessions = sessions.filter((s) => s.date === activeDay);
 
-                    {/* Add attendee dropdown */}
-                    {unassignedMembers.length > 0 && (
-                      <div className="relative inline-block">
-                        <button
-                          onClick={() => setBySessionDropdown(isDropdownOpen ? null : s.id)}
-                          className="bg-surface-container text-secondary px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors"
-                        >
-                          + Add Attendee
-                        </button>
-                        {isDropdownOpen && (
-                          <div className="absolute top-full left-0 mt-1 bg-surface-container-lowest border border-surface-dim z-20 min-w-48 max-h-52 overflow-y-auto shadow-none">
-                            {unassignedMembers.map((m) => (
-                              <button
-                                key={m.id}
-                                onClick={() => handleAssignToSession(m.id, s.id)}
-                                className="w-full px-4 py-2 text-left text-sm text-on-surface hover:bg-surface-container transition-colors flex items-center gap-2"
-                              >
-                                <span className="flex-1">{getMemberName(m)}</span>
-                                <span className="text-secondary text-xs uppercase">
-                                  {m.attendanceMode || "onsite"}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {unassignedMembers.length === 0 && (
-                      <p className="text-secondary text-xs">All members assigned.</p>
-                    )}
-                  </div>
-                )}
+        // Build time slots
+        let minH = 24, maxH = 0;
+        daySessions.forEach((s) => {
+          const sh = parseInt(s.start?.split(":")[0] || "9");
+          const eh = parseInt(s.end?.split(":")[0] || "10");
+          if (sh < minH) minH = sh;
+          if (eh > maxH) maxH = eh;
+        });
+        const timeSlots = [];
+        for (let h = minH; h <= maxH; h++) timeSlots.push(`${String(h).padStart(2, "0")}:00`);
+
+        // Group sessions by hour
+        const byHour = {};
+        daySessions.forEach((s) => {
+          const hour = (s.start?.split(":")[0] || "09") + ":00";
+          if (!byHour[hour]) byHour[hour] = [];
+          byHour[hour].push(s);
+        });
+
+        const COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
+
+        return (
+          <div>
+            {/* Day switcher */}
+            <div className="flex gap-1 mb-4 flex-wrap">
+              {allDates.map((d) => {
+                const label = new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                const count = sessions.filter((s) => s.date === d).length;
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setSelectedDay(d)}
+                    className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
+                      activeDay === d
+                        ? "bg-primary text-on-primary"
+                        : "bg-surface-container text-secondary hover:text-on-surface"
+                    }`}
+                  >
+                    {label} <span className="opacity-60">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Calendar grid — single day */}
+            <div className="bg-[#1a1c1c] p-4" style={{ minHeight: 400 }}>
+              {/* Day header */}
+              <div className="bg-[#2a2a2a] p-3 text-center mb-px">
+                <span className="font-headline font-bold text-sm text-[#a20513] tracking-wider">
+                  {new Date(activeDay + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                </span>
+                <span className="text-[#555] text-xs ml-3">{daySessions.length} sessions</span>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* Time slots */}
+              {timeSlots.map((slot) => {
+                const slotSessions = byHour[slot] || [];
+                return (
+                  <div key={slot} className="flex" style={{ minHeight: 72 }}>
+                    {/* Time label */}
+                    <div className="w-16 flex-shrink-0 text-right pr-3 pt-3 text-[#555] text-xs font-mono">
+                      {slot}
+                    </div>
+                    {/* Session cells */}
+                    <div className="flex-1 bg-[#2a2a2a] p-1 flex gap-1 mb-px">
+                      {slotSessions.map((s) => {
+                        const attendeeCount = (s.attendees || []).length;
+                        return (
+                          <div
+                            key={s.id}
+                            onClick={() => setSessionDetailModal(s)}
+                            className="flex-1 bg-[#a20513] p-2 cursor-pointer hover:opacity-85 transition-opacity min-w-0"
+                          >
+                            <div className="text-[10px] font-bold text-white/80">{s.start}–{s.end}</div>
+                            <div className="text-[11px] text-white leading-tight mt-0.5 line-clamp-2">{s.title}</div>
+                            {s.room && <div className="text-[9px] text-white/50 mt-1">{s.room}</div>}
+                            {/* Attendee avatars */}
+                            {attendeeCount > 0 && (
+                              <div className="flex gap-0.5 mt-1.5">
+                                {(s.attendees || []).slice(0, 6).map((uid) => {
+                                  const member = approvedMembers.find((mm) => mm.id === uid);
+                                  if (!member) return null;
+                                  const color = COLORS[member.colorIndex || 0];
+                                  const initial = (getMemberName(member) || "?").charAt(0).toUpperCase();
+                                  return (
+                                    <div
+                                      key={uid}
+                                      className="w-4 h-4 flex items-center justify-center text-[8px] font-bold text-white"
+                                      style={{ background: color }}
+                                      title={getMemberName(member)}
+                                    >
+                                      {initial}
+                                    </div>
+                                  );
+                                })}
+                                {attendeeCount > 6 && (
+                                  <div className="w-4 h-4 flex items-center justify-center text-[8px] text-white/50 bg-[#333]">
+                                    +{attendeeCount - 6}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {slotSessions.length === 0 && (
+                        <div className="flex-1" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Session Detail Modal ─────────────────────────────────────────── */}
       {sessionDetailModal && (() => {
