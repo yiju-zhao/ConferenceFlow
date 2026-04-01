@@ -788,14 +788,15 @@ export default function AdminAttendance() {
 
                     return (
                       <div key={s.id} onClick={() => setSessionDetailModal(s)}
-                        style={{ position: "absolute", top, left, width, height, background: "#a20513", padding: "3px 6px", cursor: "pointer", overflow: "hidden", boxSizing: "border-box", transition: "opacity 50ms" }}
+                        style={{ position: "absolute", top, left, width, height, background: "#a20513", padding: "4px 8px", cursor: "pointer", overflow: "hidden", boxSizing: "border-box", transition: "opacity 50ms", display: "flex", flexDirection: "column" }}
                         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
                         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>{s.start}–{s.end}</div>
-                        <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: height > 80 ? 4 : height > 50 ? 2 : 1, WebkitBoxOrient: "vertical", marginTop: 2 }}>{s.title}</div>
-                        {s.room && height > 50 && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>{s.room}</div>}
-                        {attendeeCount > 0 && height > 60 && (
-                          <div style={{ display: "flex", gap: 1, marginTop: 3 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", flexShrink: 0 }}>{s.start}–{s.end}</div>
+                        <div style={{ flex: 1, minHeight: 0, overflow: "hidden", marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{s.title}</div>
+                        </div>
+                        {attendeeCount > 0 && (
+                          <div style={{ display: "flex", gap: 1, marginTop: "auto", paddingTop: 3, flexShrink: 0 }}>
                             {(s.attendees || []).slice(0, 5).map((uid) => {
                               const member = approvedMembers.find((mm) => mm.id === uid);
                               if (!member) return null;
