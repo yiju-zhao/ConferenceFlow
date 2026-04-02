@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { DAY_CN, parseReportId, generateSummaryId } from "./shared";
 import { useAuth } from "./contexts/AuthContext";
@@ -13,6 +13,7 @@ export default function ReportList() {
   const [allSessions, setAllSessions] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [creatingSummary, setCreatingSummary] = useState(false);
   const [showSummaryDatePicker, setShowSummaryDatePicker] = useState(false);
   const [summaryDateStart, setSummaryDateStart] = useState("");
@@ -91,6 +92,10 @@ export default function ReportList() {
 
   const archiveReport = (id) => updateDoc(doc(db, "conferences", confId, "dailyReports", id), { status: "archived" });
   const unarchiveReport = (id) => updateDoc(doc(db, "conferences", confId, "dailyReports", id), { status: "draft" });
+  const handleDeleteReport = async (id) => {
+    await deleteDoc(doc(db, "conferences", confId, "dailyReports", id));
+    setDeleteConfirmId(null);
+  };
 
   const openSummaryDatePicker = () => {
     // Pre-fill with earliest and latest daily report dates
@@ -153,7 +158,7 @@ export default function ReportList() {
               className={`report-archived-toggle${showArchived ? " active" : ""}`}
               onClick={() => setShowArchived(!showArchived)}
             >
-              {showArchived ? "隐藏已归档" : "显示已归档"}
+              {showArchived ? "隐藏归档" : "显示归档"}
             </button>
             <button
               className="btn-accent"
@@ -228,6 +233,17 @@ export default function ReportList() {
                     >
                       {isArchived ? "取消归档" : "归档"}
                     </button>
+                    {isArchived && (
+                      deleteConfirmId === r.id ? (
+                        <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                          <span style={{ fontSize: 11, color: "#CF0A2C" }}>确认删除?</span>
+                          <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>删除</button>
+                          <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>取消</button>
+                        </span>
+                      ) : (
+                        <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>删除</button>
+                      )
+                    )}
                     <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
                       管理总结稿 &rarr;
                     </Link>
@@ -256,6 +272,17 @@ export default function ReportList() {
                   >
                     {isArchived ? "取消归档" : "归档"}
                   </button>
+                  {isArchived && (
+                    deleteConfirmId === r.id ? (
+                      <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "#CF0A2C" }}>确认删除?</span>
+                        <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>删除</button>
+                        <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>取消</button>
+                      </span>
+                    ) : (
+                      <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>删除</button>
+                    )
+                  )}
                   <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
                     查看日报 &rarr;
                   </Link>
