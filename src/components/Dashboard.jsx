@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { collection, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
@@ -27,9 +27,14 @@ export default function Dashboard() {
     });
   }, [user]);
 
+  const pendingMemberships = useRef({});
+  const initialLoadDone = useRef(false);
+
   useEffect(() => {
     if (!user || conferences.length === 0) return;
     setMembershipsReady(false);
+    initialLoadDone.current = false;
+    pendingMemberships.current = {};
     const unsubscribes = [];
     let loaded = 0;
     const total = conferences.length;
@@ -37,12 +42,20 @@ export default function Dashboard() {
     conferences.forEach((conf) => {
       const memberRef = doc(db, "conferences", conf.id, "members", user.uid);
       const unsub = onSnapshot(memberRef, (snap) => {
-        setMyMemberships((prev) => ({
-          ...prev,
-          [conf.id]: snap.exists() ? snap.data() : null,
-        }));
-        loaded++;
-        if (loaded >= total) setMembershipsReady(true);
+        const data = snap.exists() ? snap.data() : null;
+        if (!initialLoadDone.current) {
+          // Batch initial loads — collect in ref, flush once all done
+          pendingMemberships.current[conf.id] = data;
+          loaded++;
+          if (loaded >= total) {
+            initialLoadDone.current = true;
+            setMyMemberships({ ...pendingMemberships.current });
+            setMembershipsReady(true);
+          }
+        } else {
+          // After initial load, update individually (real-time changes)
+          setMyMemberships((prev) => ({ ...prev, [conf.id]: data }));
+        }
       });
       unsubscribes.push(unsub);
     });
