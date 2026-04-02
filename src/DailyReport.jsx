@@ -204,45 +204,47 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
           </span>
         </div>
       )}
-      <div className="intel-card-section intel-card-meta no-print">
+      <div className="intel-card-section intel-card-meta no-print" style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="intel-card-label">贡献人</span>
-        <div className="intel-card-contributors-wrap">
-          {contributorIds.map(id => {
-            const name = members.find(m => m.id === id)?.name || id;
-            return (
-              <span key={id} className="intel-card-contributor-pill">
-                {name}
-                <button className="intel-card-contributor-pill-remove" onClick={() => {
-                  const next = contributorIds.filter(x => x !== id);
-                  onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
-                }}>×</button>
-              </span>
-            );
-          })}
-          <select
-            className="intel-card-contributor-select"
-            value=""
-            onChange={e => {
-              const id = e.target.value;
-              if (!id || contributorIds.includes(id)) return;
-              const next = [...contributorIds, id];
-              onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
-            }}
-          >
-            <option value="">{contributorIds.length ? "添加..." : "选择贡献人..."}</option>
-            {members.filter(m => !contributorIds.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
+        {contributorIds.map(id => {
+          const name = members.find(m => m.id === id)?.name || id;
+          const colorIdx = memberColorMap?.[id] ?? 0;
+          const color = COLORS[colorIdx]?.hex || "#5f5e5e";
+          return (
+            <span key={id} style={{ background: color, color: "#fff", padding: "1px 8px", fontSize: 10, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {name}
+              {isEditable && (
+                <button style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1 }}
+                  onClick={() => {
+                    const next = contributorIds.filter(x => x !== id);
+                    onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
+                  }}>×</button>
+              )}
+            </span>
+          );
+        })}
+        <select
+          className="intel-card-contributor-select"
+          value=""
+          style={{ fontSize: 10, color: "#888", background: "none", border: "none", cursor: "pointer" }}
+          onChange={e => {
+            const id = e.target.value;
+            if (!id || contributorIds.includes(id)) return;
+            const next = [...contributorIds, id];
+            onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
+          }}
+        >
+          <option value="">{contributorIds.length ? "添加..." : "选择贡献人..."}</option>
+          {members.filter(m => !contributorIds.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        {editLabel && (
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>{editLabel}</span>
+        )}
       </div>
       {contributorText && (
         <div className="intel-card-section intel-card-meta print-only">
           <span className="intel-card-label">贡献人</span>
           <span className="intel-card-static-value">{contributorText}</span>
-        </div>
-      )}
-      {editLabel && (
-        <div style={{ fontSize: 10, color: "var(--text-dim)", padding: "0 12px 6px", textAlign: "right" }}>
-          {editLabel}
         </div>
       )}
     </div>
@@ -1846,12 +1848,30 @@ ${clone.outerHTML}
                       readOnly={viewMode}
                     />
                   </div>
-                  {contributors && (
-                    <div className="report-contributors-row">
-                      <span className="report-contributors-label">贡献人</span>
-                      <span className="report-contributors-names">{contributors}</span>
-                    </div>
-                  )}
+                  <div className="report-contributors-row" style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8, borderTop: "1px solid #eee", marginTop: 8 }}>
+                    <span style={{ fontSize: 10, color: "#5f5e5e" }}>贡献人</span>
+                    {Array.from(session.attendees || []).map(id => {
+                      const name = memberMap[id];
+                      if (!name) return null;
+                      const colorIdx = memberColorMap[id] ?? 0;
+                      const color = COLORS[colorIdx]?.hex || "#5f5e5e";
+                      return (
+                        <span key={id} style={{ background: color, color: "#fff", padding: "1px 8px", fontSize: 10, fontWeight: 600 }}>
+                          {name}
+                        </span>
+                      );
+                    })}
+                    {sd.lastEditedBy && (() => {
+                      const editorName = memberMap[sd.lastEditedBy] || "";
+                      const ago = sd.lastEditedAt ? Math.round((Date.now() - sd.lastEditedAt) / 60000) : null;
+                      if (!editorName) return null;
+                      return (
+                        <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>
+                          edited {ago !== null && ago < 60 ? `${ago}m ago` : ""} by {editorName}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
                 </>}
               </div>
