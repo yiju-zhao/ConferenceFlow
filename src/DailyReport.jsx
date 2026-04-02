@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { db, storage } from "./firebase";
 import { useAuth } from "./contexts/AuthContext";
+import { useMembership } from "./hooks/useMembership";
 import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
 import { SESSION_CATALOG, COLOR_PRESETS, COLORS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
 import { usePresence } from "./components/report/usePresence";
@@ -114,7 +115,7 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false, currentUid, memberColorMap }) {
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false, currentUid, memberColorMap, isAdmin = false }) {
   const sources = normaliseSources(block);
   // Normalise legacy single contributorId → contributorIds array
   const contributorIds = block.contributorIds?.length
@@ -126,7 +127,10 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
   const ownerColorIdx = memberColorMap?.[block.ownerId] ?? null;
   const ownerColor = ownerColorIdx !== null ? (COLORS[ownerColorIdx]?.hex || "#5f5e5e") : null;
   const isOwner = currentUid && block.ownerId === currentUid;
-  const isEditable = !readOnly && (!block.ownerId || isOwner);
+  // Admins can edit any block, members can only edit their own
+  const isEditable = !readOnly && (!block.ownerId || isOwner || isAdmin);
+  // Admins can delete any block, members can only delete their own
+  const canDelete = !readOnly && (!block.ownerId || isOwner || isAdmin);
 
   const lastEditor = block.lastEditedBy ? members.find(m => m.id === block.lastEditedBy)?.name : null;
   const editedAgo = block.lastEditedAt ? Math.round((Date.now() - block.lastEditedAt) / 60000) : null;
@@ -150,7 +154,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
 
   return (
     <div className="intel-card" style={ownerColor ? { borderLeft: `3px solid ${ownerColor}` } : undefined}>
-      <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>
+      {canDelete && <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>}
       <div className="intel-card-section intel-card-content">
         <EditableField
           value={block.content}
@@ -471,6 +475,7 @@ export default function DailyReport({ viewMode = false }) {
   const { confId, reportId } = useParams();
   const { date } = parseReportId(reportId);
   const { user } = useAuth();
+  const { isAdmin: isConfAdmin } = useMembership(confId);
   const [sessions, setSessions] = useState([]);
   const [members, setMembers] = useState([]);
   const [reportData, setReportData] = useState(null);
@@ -2011,6 +2016,7 @@ ${clone.outerHTML}
                     readOnly={viewMode}
                     currentUid={user?.uid}
                     memberColorMap={memberColorMap}
+                    isAdmin={isConfAdmin}
                   />
                 );
               }
@@ -2055,6 +2061,7 @@ ${clone.outerHTML}
                     readOnly={viewMode}
                     currentUid={user?.uid}
                     memberColorMap={memberColorMap}
+                    isAdmin={isConfAdmin}
                   />
                 );
               }
