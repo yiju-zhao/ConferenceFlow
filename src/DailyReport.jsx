@@ -574,11 +574,19 @@ export default function DailyReport({ viewMode = false }) {
     });
   }, [user, reportId]);
 
-  // 5-minute auto snapshot
+  // 2-minute auto snapshot
   useEffect(() => {
     if (!user || viewMode) return;
-    const timer = setInterval(() => { createSnapshotRef.current?.("auto"); }, 5 * 60 * 1000);
+    const timer = setInterval(() => { createSnapshotRef.current?.("auto"); }, 2 * 60 * 1000);
     return () => clearInterval(timer);
+  }, [user, viewMode]);
+
+  // Save snapshot on page leave
+  useEffect(() => {
+    if (!user || viewMode) return;
+    const handleBeforeUnload = () => { createSnapshotRef.current?.("auto"); };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [user, viewMode]);
 
   // Conference name
@@ -736,6 +744,7 @@ export default function DailyReport({ viewMode = false }) {
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
   const addBlock = useCallback((field, type) => {
+    createSnapshotRef.current?.("auto"); // snapshot before structural change
     const newBlock = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       type, content: "",
@@ -750,9 +759,11 @@ export default function DailyReport({ viewMode = false }) {
     saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, content } : b));
   }, [saveField]);
   const removeBlock = useCallback((field, id) => {
+    createSnapshotRef.current?.("auto"); // snapshot before deletion
     saveField(field, (reportDataRef.current?.[field] || []).filter(b => b.id !== id));
   }, [saveField]);
   const insertBlock = useCallback((field, type, afterId) => {
+    createSnapshotRef.current?.("auto"); // snapshot before structural change
     const newBlock = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       type, content: "",
@@ -881,6 +892,7 @@ export default function DailyReport({ viewMode = false }) {
   }, []);
 
   const confirmDeleteSession = useCallback(() => {
+    createSnapshotRef.current?.("auto"); // snapshot before session deletion
     const { code, contributorNames, nameInput } = deleteConfirm;
     const trimmed = nameInput.trim();
     const valid = contributorNames.length === 0
