@@ -117,12 +117,14 @@ export default function Dashboard() {
     setJoinCode("");
   };
 
-  const ConferenceCard = ({ conf, membership, showApply = false }) => (
+  const ConferenceCard = ({ conf, membership, showApply = false }) => {
+    const canAccess = membership?.status === "approved" || isSuperAdmin;
+    return (
     <div className="bg-surface-container-lowest p-4 mb-2">
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-headline text-on-surface font-bold text-base">
-            {membership?.status === "approved" ? (
+            {canAccess ? (
               <Link
                 to={`/conference/${conf.id}`}
                 className="text-on-surface hover:text-primary transition-colors"
@@ -156,9 +158,15 @@ export default function Dashboard() {
               Admin
             </span>
           )}
+          {isSuperAdmin && !membership && (
+            <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary uppercase tracking-wider">
+              Super Admin
+            </span>
+          )}
         </div>
       </div>
-      {showApply && !membership && (
+      {/* Show apply button: for non-members on discover, OR super_admin without membership */}
+      {!membership && (showApply || isSuperAdmin) && (
         <button
           onClick={() => setApplyModal({ confId: conf.id, confName: conf.name })}
           className="mt-3 bg-primary text-on-primary px-4 py-2 text-xs font-headline
@@ -168,7 +176,8 @@ export default function Dashboard() {
         </button>
       )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-surface">
