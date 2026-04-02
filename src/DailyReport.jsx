@@ -2286,98 +2286,186 @@ ${clone.outerHTML}
       )}
 
       {/* ── History Panel ────────────────────────────────────────── */}
-      {!viewMode && showHistory && (
+      {!viewMode && showHistory && (() => {
+        // Relative time helper
+        const relativeTime = (date) => {
+          if (!date) return "";
+          const now = Date.now();
+          const diff = now - date.getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 1) return "刚刚";
+          if (mins < 60) return `${mins} 分钟前`;
+          const hours = Math.floor(mins / 60);
+          if (hours < 24) return `${hours} 小时前`;
+          const days = Math.floor(hours / 24);
+          if (days < 7) return `${days} 天前`;
+          return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        };
+
+        // Group snapshots: manual saves are always shown, auto saves grouped by hour
+        const grouped = [];
+        let lastAutoHour = null;
+        let autoGroup = [];
+        const flushAutoGroup = () => {
+          if (autoGroup.length > 0) {
+            grouped.push({ type: "auto-group", snapshots: autoGroup, latest: autoGroup[0] });
+            autoGroup = [];
+          }
+        };
+        snapshots.forEach((snap) => {
+          if (snap.type === "manual") {
+            flushAutoGroup();
+            grouped.push({ type: "manual", snap });
+          } else {
+            const hour = snap.createdAt?.toDate ? Math.floor(snap.createdAt.toDate().getTime() / 3600000) : 0;
+            if (lastAutoHour !== null && hour !== lastAutoHour) flushAutoGroup();
+            lastAutoHour = hour;
+            autoGroup.push(snap);
+          }
+        });
+        flushAutoGroup();
+
+        return (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
-          <div
-            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
-            onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
-          />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
+            onClick={() => { setShowHistory(false); setViewingSnapshot(null); }} />
           <div style={{
             position: "absolute", right: 0, top: 0, bottom: 0,
-            width: viewingSnapshot ? "min(80%, 960px)" : "360px",
+            width: viewingSnapshot ? "min(80%, 960px)" : "380px",
             background: "#fff", display: "flex", flexDirection: "column",
             boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
           }}>
             {/* Panel header */}
             <div style={{
-              padding: "14px 20px", borderBottom: "1px solid var(--border)",
+              padding: "16px 20px", background: "#222", color: "#fff",
               display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
             }}>
               {viewingSnapshot && (
-                <button
-                  onClick={() => setViewingSnapshot(null)}
-                  className="text-caption"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--info)", padding: "0 8px 0 0" }}
-                >
-                  ← 返回列表
+                <button onClick={() => setViewingSnapshot(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 12 }}>
+                  ← 返回
                 </button>
               )}
-              <h2 className="text-body" style={{ margin: 0, fontWeight: 700, flex: 1 }}>
-                {viewingSnapshot ? `快照 · ${viewingSnapshot.label}` : "历史版本"}
+              <h2 style={{ margin: 0, fontWeight: 700, flex: 1, fontSize: 14, fontFamily: "'Work Sans', sans-serif", letterSpacing: 0.5 }}>
+                {viewingSnapshot ? "版本详情" : "版本历史"}
               </h2>
-              <button
-                onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-muted)", lineHeight: 1 }}
-              >
-                ✕
-              </button>
+              <span style={{ fontSize: 10, color: "#666" }}>{snapshots.length} 个版本</span>
+              <button onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#666", lineHeight: 1 }}>✕</button>
             </div>
 
             {!viewingSnapshot ? (
-              /* Snapshot list */
               <div style={{ flex: 1, overflowY: "auto" }}>
+                {/* Current version indicator */}
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 10, height: 10, background: "#27AE60", borderRadius: "50%", flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1c1c" }}>当前版本</div>
+                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>正在编辑中</div>
+                  </div>
+                  <span style={{ fontSize: 10, padding: "2px 8px", background: "#27AE60", color: "#fff", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: "'Work Sans', sans-serif" }}>
+                    Current
+                  </span>
+                </div>
+
+                {/* Timeline */}
                 {snapshots.length === 0 ? (
-                  <p className="text-caption" style={{ padding: "32px 20px", color: "var(--text-muted)", textAlign: "center" }}>
-                    暂无历史快照<br />
-                    <span className="text-label">点击「保存」按钮或等待 5 分钟自动生成</span>
-                  </p>
-                ) : snapshots.map(snap => {
-                  const ts = snap.createdAt?.toDate
-                    ? snap.createdAt.toDate().toLocaleString("zh-CN")
-                    : "时间未知";
-                  return (
-                    <div key={snap.id} style={{ padding: "12px 20px", borderBottom: "1px solid var(--border-dim)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <span className="text-body">{snap.type === "manual" ? "📌" : "🕐"}</span>
-                        <div style={{ flex: 1 }}>
-                          <div className="text-body" style={{ fontWeight: snap.type === "manual" ? 600 : 400, color: "var(--text-secondary)" }}>
-                            {snap.label}
+                  <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                    <div style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>暂无历史版本</div>
+                    <div style={{ fontSize: 11, color: "#bbb" }}>每 5 分钟自动保存，或点击「手动保存」创建</div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "0 20px" }}>
+                    {grouped.map((item, i) => {
+                      if (item.type === "manual") {
+                        const snap = item.snap;
+                        const date = snap.createdAt?.toDate?.();
+                        return (
+                          <div key={snap.id} style={{ display: "flex", gap: 12, paddingTop: 16, paddingBottom: 16, borderBottom: "1px solid #f3f3f3" }}>
+                            {/* Timeline dot */}
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0, paddingTop: 2 }}>
+                              <div style={{ width: 12, height: 12, background: "#a20513", borderRadius: "50%" }} />
+                              {i < grouped.length - 1 && <div style={{ flex: 1, width: 1, background: "#eee", marginTop: 4 }} />}
+                            </div>
+                            {/* Content */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1c1c" }}>手动保存</span>
+                                <span style={{ fontSize: 10, padding: "1px 6px", background: "rgba(162,5,19,0.08)", color: "#a20513", fontWeight: 600 }}>Manual</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: "#888" }}>{date ? relativeTime(date) : "未知时间"}</div>
+                              {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
+                              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                <button onClick={() => setViewingSnapshot(snap)}
+                                  style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
+                                  查看变更
+                                </button>
+                                <button onClick={() => handleRestore(snap)}
+                                  style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
+                                  恢复
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-label" style={{ color: "var(--text-muted)", marginTop: 1 }}>{ts}</div>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          onClick={() => setViewingSnapshot(snap)}
-                          style={{
-                            fontSize: 13, padding: "4px 12px", borderRadius: 5,
-                            background: "var(--border-dim)", border: "1px solid #E0E0E0", cursor: "pointer", color: "var(--text-secondary)",
-                          }}
-                        >
-                          查看
-                        </button>
-                        <button
-                          onClick={() => handleRestore(snap)}
-                          style={{
-                            fontSize: 13, padding: "4px 12px", borderRadius: 5,
-                            background: "rgba(207,10,44,0.05)", border: "1px solid rgba(207,10,44,0.2)",
-                            cursor: "pointer", color: "var(--brand)",
-                          }}
-                        >
-                          恢复此版本
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                        );
+                      } else {
+                        // Auto-save group
+                        const latest = item.latest;
+                        const date = latest.createdAt?.toDate?.();
+                        const count = item.snapshots.length;
+                        return (
+                          <div key={latest.id} style={{ display: "flex", gap: 12, paddingTop: 12, paddingBottom: 12, borderBottom: "1px solid #f3f3f3" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0, paddingTop: 2 }}>
+                              <div style={{ width: 8, height: 8, background: "#dadada", borderRadius: "50%", margin: 2 }} />
+                              {i < grouped.length - 1 && <div style={{ flex: 1, width: 1, background: "#eee", marginTop: 4 }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 12, color: "#888" }}>自动保存</span>
+                                {count > 1 && <span style={{ fontSize: 10, color: "#bbb" }}>({count} 次)</span>}
+                              </div>
+                              <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{date ? relativeTime(date) : ""}</div>
+                              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                                <button onClick={() => setViewingSnapshot(latest)}
+                                  style={{ fontSize: 10, padding: "3px 10px", background: "#f9f9f9", border: "none", cursor: "pointer", color: "#888" }}>
+                                  查看
+                                </button>
+                                <button onClick={() => handleRestore(latest)}
+                                  style={{ fontSize: 10, padding: "3px 10px", background: "none", border: "none", cursor: "pointer", color: "#bbb" }}>
+                                  恢复
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               /* Snapshot viewer with diff */
-              <SnapshotViewer snapshot={viewingSnapshot} currentData={reportDataRef.current} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "12px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#1a1c1c" }}>
+                    {viewingSnapshot.type === "manual" ? "📌 手动保存" : "🕐 自动保存"}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#888" }}>
+                    {viewingSnapshot.createdAt?.toDate ? relativeTime(viewingSnapshot.createdAt.toDate()) : ""}
+                  </span>
+                  <div style={{ flex: 1 }} />
+                  <button onClick={() => handleRestore(viewingSnapshot)}
+                    style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
+                    恢复此版本
+                  </button>
+                </div>
+                <SnapshotViewer snapshot={viewingSnapshot} currentData={reportDataRef.current} />
+              </div>
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Restore confirm modal */}
       {restoreConfirm && (
