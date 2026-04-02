@@ -631,10 +631,10 @@ export default function DailyReport({ viewMode = false }) {
     });
   }, [user, reportId]);
 
-  // 2-minute auto snapshot
+  // 5-minute auto snapshot
   useEffect(() => {
     if (!user || viewMode) return;
-    const timer = setInterval(() => { createSnapshotRef.current?.("auto"); }, 2 * 60 * 1000);
+    const timer = setInterval(() => { createSnapshotRef.current?.("auto"); }, 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [user, viewMode]);
 
@@ -801,7 +801,6 @@ export default function DailyReport({ viewMode = false }) {
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
   const addBlock = useCallback((field, type) => {
-    createSnapshotRef.current?.("auto"); // snapshot before structural change
     const newBlock = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       type, content: "",
@@ -816,11 +815,9 @@ export default function DailyReport({ viewMode = false }) {
     saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, content } : b));
   }, [saveField]);
   const removeBlock = useCallback((field, id) => {
-    createSnapshotRef.current?.("auto"); // snapshot before deletion
     saveField(field, (reportDataRef.current?.[field] || []).filter(b => b.id !== id));
   }, [saveField]);
   const insertBlock = useCallback((field, type, afterId) => {
-    createSnapshotRef.current?.("auto"); // snapshot before structural change
     const newBlock = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       type, content: "",
@@ -951,7 +948,6 @@ export default function DailyReport({ viewMode = false }) {
   }, []);
 
   const confirmDeleteSession = useCallback(() => {
-    createSnapshotRef.current?.("auto"); // snapshot before session deletion
     const { code, contributorNames, nameInput } = deleteConfirm;
     const trimmed = nameInput.trim();
     const valid = contributorNames.length === 0
@@ -2373,28 +2369,7 @@ ${clone.outerHTML}
           return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
         };
 
-        // Group snapshots: manual saves are always shown, auto saves grouped by hour
-        const grouped = [];
-        let lastAutoHour = null;
-        let autoGroup = [];
-        const flushAutoGroup = () => {
-          if (autoGroup.length > 0) {
-            grouped.push({ type: "auto-group", snapshots: autoGroup, latest: autoGroup[0] });
-            autoGroup = [];
-          }
-        };
-        snapshots.forEach((snap) => {
-          if (snap.type === "manual") {
-            flushAutoGroup();
-            grouped.push({ type: "manual", snap });
-          } else {
-            const hour = snap.createdAt?.toDate ? Math.floor(snap.createdAt.toDate().getTime() / 3600000) : 0;
-            if (lastAutoHour !== null && hour !== lastAutoHour) flushAutoGroup();
-            lastAutoHour = hour;
-            autoGroup.push(snap);
-          }
-        });
-        flushAutoGroup();
+        // No grouping — flat list, all versions equal
 
         return (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
@@ -2447,69 +2422,45 @@ ${clone.outerHTML}
                   </div>
                 ) : (
                   <div style={{ padding: "0 20px" }}>
-                    {grouped.map((item, i) => {
-                      if (item.type === "manual") {
-                        const snap = item.snap;
-                        const date = snap.createdAt?.toDate?.();
-                        return (
-                          <div key={snap.id} style={{ display: "flex", gap: 12, paddingTop: 16, paddingBottom: 16, borderBottom: "1px solid #f3f3f3" }}>
-                            {/* Timeline dot */}
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0, paddingTop: 2 }}>
-                              <div style={{ width: 12, height: 12, background: "#a20513", borderRadius: "50%" }} />
-                              {i < grouped.length - 1 && <div style={{ flex: 1, width: 1, background: "#eee", marginTop: 4 }} />}
+                    {snapshots.map((snap, i) => {
+                      const date = snap.createdAt?.toDate?.();
+                      const isManual = snap.type === "manual";
+                      const shortId = snap.id.slice(-6).toUpperCase();
+                      return (
+                        <div key={snap.id} style={{ display: "flex", gap: 12, paddingTop: 14, paddingBottom: 14, borderBottom: "1px solid #f3f3f3" }}>
+                          {/* Timeline dot */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0, paddingTop: 2 }}>
+                            <div style={{ width: 10, height: 10, background: "#a20513", borderRadius: "50%" }} />
+                            {i < snapshots.length - 1 && <div style={{ flex: 1, width: 1, background: "#eee", marginTop: 4 }} />}
+                          </div>
+                          {/* Content */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "#888", fontFamily: "monospace" }}>#{shortId}</span>
+                              <span style={{
+                                fontSize: 9, padding: "1px 6px", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+                                fontFamily: "'Work Sans', sans-serif",
+                                background: isManual ? "rgba(162,5,19,0.08)" : "rgba(41,128,185,0.08)",
+                                color: isManual ? "#a20513" : "#2980B9",
+                              }}>
+                                {isManual ? "Manual" : "Auto"}
+                              </span>
                             </div>
-                            {/* Content */}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1c1c" }}>手动保存</span>
-                                <span style={{ fontSize: 10, padding: "1px 6px", background: "rgba(162,5,19,0.08)", color: "#a20513", fontWeight: 600 }}>Manual</span>
-                              </div>
-                              <div style={{ fontSize: 11, color: "#888" }}>{date ? relativeTime(date) : "未知时间"}</div>
-                              {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
-                              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                                <button onClick={() => setViewingSnapshot(snap)}
-                                  style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
-                                  查看变更
-                                </button>
-                                <button onClick={() => handleRestore(snap)}
-                                  style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
-                                  恢复
-                                </button>
-                              </div>
+                            <div style={{ fontSize: 12, color: "#1a1c1c", fontWeight: 600 }}>{date ? relativeTime(date) : "未知时间"}</div>
+                            {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
+                            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                              <button onClick={() => setViewingSnapshot(snap)}
+                                style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
+                                查看变更
+                              </button>
+                              <button onClick={() => handleRestore(snap)}
+                                style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
+                                恢复
+                              </button>
                             </div>
                           </div>
-                        );
-                      } else {
-                        // Auto-save group
-                        const latest = item.latest;
-                        const date = latest.createdAt?.toDate?.();
-                        const count = item.snapshots.length;
-                        return (
-                          <div key={latest.id} style={{ display: "flex", gap: 12, paddingTop: 12, paddingBottom: 12, borderBottom: "1px solid #f3f3f3" }}>
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0, paddingTop: 2 }}>
-                              <div style={{ width: 8, height: 8, background: "#dadada", borderRadius: "50%", margin: 2 }} />
-                              {i < grouped.length - 1 && <div style={{ flex: 1, width: 1, background: "#eee", marginTop: 4 }} />}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <span style={{ fontSize: 12, color: "#888" }}>自动保存</span>
-                                {count > 1 && <span style={{ fontSize: 10, color: "#bbb" }}>({count} 次)</span>}
-                              </div>
-                              <div style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>{date ? relativeTime(date) : ""}</div>
-                              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-                                <button onClick={() => setViewingSnapshot(latest)}
-                                  style={{ fontSize: 10, padding: "3px 10px", background: "#f9f9f9", border: "none", cursor: "pointer", color: "#888" }}>
-                                  查看
-                                </button>
-                                <button onClick={() => handleRestore(latest)}
-                                  style={{ fontSize: 10, padding: "3px 10px", background: "none", border: "none", cursor: "pointer", color: "#bbb" }}>
-                                  恢复
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
+                        </div>
+                      );
                     })}
                   </div>
                 )}
@@ -2518,8 +2469,16 @@ ${clone.outerHTML}
               /* Snapshot viewer with diff */
               <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                 <div style={{ padding: "12px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#1a1c1c" }}>
-                    {viewingSnapshot.type === "manual" ? "📌 手动保存" : "🕐 自动保存"}
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#888", fontFamily: "monospace" }}>
+                    #{viewingSnapshot.id.slice(-6).toUpperCase()}
+                  </span>
+                  <span style={{
+                    fontSize: 9, padding: "1px 6px", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+                    fontFamily: "'Work Sans', sans-serif",
+                    background: viewingSnapshot.type === "manual" ? "rgba(162,5,19,0.08)" : "rgba(41,128,185,0.08)",
+                    color: viewingSnapshot.type === "manual" ? "#a20513" : "#2980B9",
+                  }}>
+                    {viewingSnapshot.type === "manual" ? "Manual" : "Auto"}
                   </span>
                   <span style={{ fontSize: 11, color: "#888" }}>
                     {viewingSnapshot.createdAt?.toDate ? relativeTime(viewingSnapshot.createdAt.toDate()) : ""}
