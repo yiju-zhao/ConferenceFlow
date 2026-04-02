@@ -476,6 +476,7 @@ export default function DailyReport({ viewMode = false }) {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [floatingToolbar, setFloatingToolbar] = useState(null); // { top, left } or null
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -1396,6 +1397,33 @@ ${clone.outerHTML}
   const execBold = () => execCmd("bold");
   const execColor = (color) => { execCmd("foreColor", color); setShowColorPicker(false); };
 
+  // Floating formatting toolbar on text selection
+  useEffect(() => {
+    if (viewMode) return;
+    const handleSelection = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        setFloatingToolbar(null);
+        setShowColorPicker(false);
+        return;
+      }
+      // Only show if selection is inside report container
+      const range = sel.getRangeAt(0);
+      const container = reportContainerRef.current;
+      if (!container || !container.contains(range.commonAncestorContainer)) {
+        setFloatingToolbar(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setFloatingToolbar({
+        top: rect.top + window.scrollY - 44,
+        left: rect.left + window.scrollX + rect.width / 2,
+      });
+    };
+    document.addEventListener("selectionchange", handleSelection);
+    return () => document.removeEventListener("selectionchange", handleSelection);
+  }, [viewMode]);
+
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -1496,6 +1524,19 @@ ${clone.outerHTML}
                 </div>
               )}
           </div>
+          <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
+          <button onClick={() => setShowDeleteSelect(true)} title="删除 Session"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "transparent", color: "#a20513", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            删除 Session
+          </button>
+          <button onClick={handleSyncFromCatalog} disabled={syncing} title="更新 Session 信息"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "transparent", color: "#888", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif", opacity: syncing ? 0.5 : 1 }}>
+            {syncing ? "更新中..." : "更新 Session 信息"}
+          </button>
+          {syncMsg && <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>{syncMsg}</span>}
+          <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
           {/* Publish button */}
           <button
             onClick={() => handlePublish()}
@@ -1511,39 +1552,38 @@ ${clone.outerHTML}
         </div>
       </div>}
 
-      {/* ── Formatting toolbar (secondary) ── */}
-      {!viewMode && <div className="no-print" style={{
-        position: "sticky", top: 46, zIndex: 99,
-        background: "#f9f9f9", borderBottom: "1px solid #eee",
-        padding: "4px 24px", display: "flex", alignItems: "center", gap: 4,
-      }}>
-        <button className="report-icon-btn" onClick={execBold} title="加粗"><strong>B</strong></button>
-        <button className="report-icon-btn" onClick={() => execCmd("italic")} title="斜体"><em style={{ fontStyle: "italic" }}>I</em></button>
-        <button className="report-icon-btn" onClick={() => execCmd("underline")} title="下划线"><span style={{ textDecoration: "underline" }}>U</span></button>
-        <div style={{ position: "relative" }}>
-          <button className="report-icon-btn" onClick={() => setShowColorPicker(!showColorPicker)} title="字体颜色">
-            <span style={{ borderBottom: "3px solid var(--brand)", paddingBottom: 1 }}>A</span>
+      {/* ── Floating formatting toolbar (appears on text selection) ── */}
+      {!viewMode && floatingToolbar && (
+        <div className="no-print" style={{
+          position: "absolute", top: floatingToolbar.top, left: floatingToolbar.left,
+          transform: "translateX(-50%)", zIndex: 200,
+          background: "#222", padding: "4px 6px", display: "flex", alignItems: "center", gap: 3,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+        }}
+          onMouseDown={(e) => e.preventDefault()} /* prevent losing selection */
+        >
+          <button onMouseDown={(e) => { e.preventDefault(); execBold(); }} title="加粗"
+            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+            B
           </button>
-          {showColorPicker && (
-            <div className="report-color-picker">
-              {COLOR_PRESETS.map((c) => (
-                <button key={c} className="report-color-swatch" style={{ background: c }}
-                  onClick={() => execColor(c)} title={c} />
-              ))}
-            </div>
-          )}
+          <button onMouseDown={(e) => { e.preventDefault(); execCmd("italic"); }} title="斜体"
+            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, fontStyle: "italic" }}>
+            I
+          </button>
+          <button onMouseDown={(e) => { e.preventDefault(); execCmd("underline"); }} title="下划线"
+            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>
+            U
+          </button>
+          <div style={{ width: 1, height: 18, background: "#444" }} />
+          {COLOR_PRESETS.map((c) => (
+            <button key={c} onMouseDown={(e) => { e.preventDefault(); execColor(c); }} title={c}
+              style={{ width: 18, height: 18, background: c, border: "none", cursor: "pointer", flexShrink: 0 }} />
+          ))}
         </div>
-        <div style={{ width: 1, height: 18, background: "#ddd", margin: "0 6px" }} />
-        <button onClick={() => setShowDeleteSelect(true)} title="删除 Session"
-          style={{ fontSize: 11, color: "#a20513", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
-          删除 Session
-        </button>
-        <button onClick={handleSyncFromCatalog} disabled={syncing} title="同步外源信息"
-          style={{ fontSize: 11, color: "#5f5e5e", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif", opacity: syncing ? 0.5 : 1 }}>
-          {syncing ? "同步中..." : "同步外源信息"}
-        </button>
-        {syncMsg && <span style={{ fontSize: 11, color: "#2980B9" }}>{syncMsg}</span>}
-      </div>}
+      )}
 
       {/* ── Share Modal ──────────────────────────────────────────── */}
       {!viewMode && shareUrl && (
