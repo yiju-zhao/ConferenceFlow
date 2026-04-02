@@ -16,7 +16,9 @@ import {
 import { db, storage } from "./firebase";
 import { useAuth } from "./contexts/AuthContext";
 import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
-import { SESSION_CATALOG, COLOR_PRESETS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
+import { SESSION_CATALOG, COLOR_PRESETS, COLORS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
+import { usePresence } from "./components/report/usePresence";
+import PresenceBar from "./components/report/PresenceBar";
 const topicSlug = (t) =>
   t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
@@ -112,7 +114,7 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false }) {
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false, currentUid, memberColorMap }) {
   const sources = normaliseSources(block);
   // Normalise legacy single contributorId → contributorIds array
   const contributorIds = block.contributorIds?.length
@@ -120,6 +122,17 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
     : block.contributorId ? [block.contributorId] : [];
   const contributorNames = contributorIds.map(id => members.find(m => m.id === id)?.name).filter(Boolean);
   const contributorText = contributorNames.join("、") || (block.contributor || "").trim();
+
+  const ownerColorIdx = memberColorMap?.[block.ownerId] ?? null;
+  const ownerColor = ownerColorIdx !== null ? (COLORS[ownerColorIdx]?.hex || "#5f5e5e") : null;
+  const isOwner = currentUid && block.ownerId === currentUid;
+  const isEditable = !readOnly && (!block.ownerId || isOwner);
+
+  const lastEditor = block.lastEditedBy ? members.find(m => m.id === block.lastEditedBy)?.name : null;
+  const editedAgo = block.lastEditedAt ? Math.round((Date.now() - block.lastEditedAt) / 60000) : null;
+  const editLabel = lastEditor
+    ? (editedAgo !== null && editedAgo < 60 ? `${lastEditor} · ${editedAgo}m ago` : lastEditor)
+    : null;
 
   const updateSource = (idx, v) => {
     const next = [...sources];
@@ -136,7 +149,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
   };
 
   return (
-    <div className="intel-card">
+    <div className="intel-card" style={ownerColor ? { borderLeft: `3px solid ${ownerColor}` } : undefined}>
       <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>
       <div className="intel-card-section intel-card-content">
         <EditableField
@@ -144,7 +157,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
           onSave={html => onUpdate({ content: html })}
           placeholder={placeholder}
           minHeight={60}
-          readOnly={readOnly}
+          readOnly={!isEditable}
         />
       </div>
       {sources.map((src, i) => (
@@ -221,6 +234,11 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
         <div className="intel-card-section intel-card-meta print-only">
           <span className="intel-card-label">贡献人</span>
           <span className="intel-card-static-value">{contributorText}</span>
+        </div>
+      )}
+      {editLabel && (
+        <div style={{ fontSize: 10, color: "var(--text-dim)", padding: "0 12px 6px", textAlign: "right" }}>
+          {editLabel}
         </div>
       )}
     </div>
@@ -614,6 +632,16 @@ export default function DailyReport({ viewMode = false }) {
     return map;
   }, [members]);
 
+  const memberColorMap = useMemo(() => {
+    const map = {};
+    members.forEach((m) => {
+      map[m.id || m.userId] = m.colorIndex ?? 0;
+    });
+    return map;
+  }, [members]);
+
+  const { activeUsers } = usePresence(confId, reportId);
+
   const deletedSessionCodes = useMemo(() =>
     new Set(reportData?.deletedSessions || [])
   , [reportData]);
@@ -671,9 +699,16 @@ export default function DailyReport({ viewMode = false }) {
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
   const addBlock = useCallback((field, type) => {
-    const newBlock = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, content: "" };
+    const newBlock = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      type, content: "",
+      ownerId: user?.uid || "",
+      contributorIds: user?.uid ? [user.uid] : [],
+      lastEditedBy: user?.uid || "",
+      lastEditedAt: Date.now(),
+    };
     saveField(field, [...(reportDataRef.current?.[field] || []), newBlock]);
-  }, [saveField]);
+  }, [saveField, user]);
   const updateBlock = useCallback((field, id, content) => {
     saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, content } : b));
   }, [saveField]);
@@ -681,16 +716,26 @@ export default function DailyReport({ viewMode = false }) {
     saveField(field, (reportDataRef.current?.[field] || []).filter(b => b.id !== id));
   }, [saveField]);
   const insertBlock = useCallback((field, type, afterId) => {
-    const newBlock = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, content: "" };
+    const newBlock = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      type, content: "",
+      ownerId: user?.uid || "",
+      contributorIds: user?.uid ? [user.uid] : [],
+      lastEditedBy: user?.uid || "",
+      lastEditedAt: Date.now(),
+    };
     const blocks = reportDataRef.current?.[field] || [];
     const idx = afterId ? blocks.findIndex(b => b.id === afterId) : -1;
     const next = [...blocks];
     next.splice(idx + 1, 0, newBlock);
     saveField(field, next);
-  }, [saveField]);
+  }, [saveField, user]);
   const updateBlockFields = useCallback((field, id, fields) => {
-    saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, ...fields } : b));
-  }, [saveField]);
+    saveField(field, (reportDataRef.current?.[field] || []).map(b => {
+      if (b.id !== id) return b;
+      return { ...b, ...fields, lastEditedBy: user?.uid || b.lastEditedBy, lastEditedAt: Date.now() };
+    }));
+  }, [saveField, user]);
 
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
   const pruneSnapshots = useCallback(async () => {
@@ -760,10 +805,10 @@ export default function DailyReport({ viewMode = false }) {
     if (!user) return;
     debouncedSave(`${code}.${field}`, () => {
       setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
-        sessions: { [code]: { [field]: value } }
+        sessions: { [code]: { [field]: value, lastEditedBy: user.uid, lastEditedAt: Date.now() } }
       }, { merge: true }).catch(console.error);
     });
-  }, [user, reportId, debouncedSave]);
+  }, [user, reportId, debouncedSave, confId]);
 
   // Speakers: save whole array debounced
   const saveSpeakers = useCallback((code, speakers) => {
@@ -1377,6 +1422,11 @@ ${clone.outerHTML}
             </Link>
           </div>
           <div className="report-toolbar-actions">
+            <PresenceBar
+              activeUsers={activeUsers}
+              memberColorMap={memberColorMap}
+              currentUid={user?.uid}
+            />
             {saveState === "saving" && (
               <span className="report-status-msg" style={{ color: "var(--text-dim)" }}>● 保存中...</span>
             )}
@@ -1926,6 +1976,8 @@ ${clone.outerHTML}
                     onUpdate={fields => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
                     onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
                     readOnly={viewMode}
+                    currentUid={user?.uid}
+                    memberColorMap={memberColorMap}
                   />
                 );
               }
@@ -1968,6 +2020,8 @@ ${clone.outerHTML}
                     onUpdate={fields => updateBlockFields("reflectionsBlocks", block.id, fields)}
                     onRemove={() => removeBlock("reflectionsBlocks", block.id)}
                     readOnly={viewMode}
+                    currentUid={user?.uid}
+                    memberColorMap={memberColorMap}
                   />
                 );
               }
