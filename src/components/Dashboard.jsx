@@ -8,7 +8,7 @@ import UserAvatar, { FirstTimeNameSetup } from "./UserAvatar";
 export default function Dashboard() {
   const { user, userProfile, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
-  const [conferences, setConferences] = useState([]);
+  const [conferences, setConferences] = useState(null); // null = not loaded yet
   const [myMemberships, setMyMemberships] = useState({});
   const [membershipsReady, setMembershipsReady] = useState(false);
   const [showPast, setShowPast] = useState(false);
@@ -23,7 +23,9 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "conferences"), (snap) => {
-      setConferences(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setConferences(list);
+      if (list.length === 0) setMembershipsReady(true);
     });
   }, [user]);
 
@@ -31,7 +33,7 @@ export default function Dashboard() {
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
-    if (!user || conferences.length === 0) return;
+    if (!user || !conferences || conferences.length === 0) return;
     setMembershipsReady(false);
     initialLoadDone.current = false;
     pendingMemberships.current = {};
@@ -64,7 +66,7 @@ export default function Dashboard() {
   }, [user, conferences]);
 
   const { upcoming, past, pending, discover } = useMemo(() => {
-    if (!membershipsReady && conferences.length > 0) {
+    if (!conferences || !membershipsReady) {
       return { upcoming: [], past: [], pending: [], discover: [] };
     }
 
@@ -211,7 +213,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6" style={{ opacity: membershipsReady || conferences.length === 0 ? 1 : 0, transition: "opacity 150ms" }}>
+      <div className="max-w-4xl mx-auto p-6">
+        {!membershipsReady ? (
+          /* Skeleton loading state */
+          <div className="animate-pulse">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-1 h-5 bg-surface-dim inline-block"></span>
+              <div className="h-5 w-48 bg-surface-container"></div>
+            </div>
+            {[1, 2].map((i) => (
+              <div key={i} className="bg-surface-container-lowest p-4 mb-2">
+                <div className="h-4 w-64 bg-surface-container mb-2"></div>
+                <div className="h-3 w-40 bg-surface-dim"></div>
+              </div>
+            ))}
+            <div className="flex items-center gap-2 mb-4 mt-8">
+              <span className="w-1 h-5 bg-surface-dim inline-block"></span>
+              <div className="h-5 w-32 bg-surface-container"></div>
+            </div>
+            {[1].map((i) => (
+              <div key={i} className="bg-surface-container-lowest p-4 mb-2">
+                <div className="h-4 w-56 bg-surface-container mb-2"></div>
+                <div className="h-3 w-36 bg-surface-dim"></div>
+              </div>
+            ))}
+          </div>
+        ) : (<>
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-1 h-5 bg-primary inline-block"></span>
@@ -299,6 +326,7 @@ export default function Dashboard() {
             <ConferenceCard key={conf.id} conf={conf} showApply />
           ))}
         </section>
+        </>)}
       </div>
 
       {applyModal && (
