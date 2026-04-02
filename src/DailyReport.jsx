@@ -1433,10 +1433,24 @@ ${clone.outerHTML}
         setShowColorPicker(false);
         return;
       }
-      // Only show if selection is inside report container
+      // Only show if selection is inside an editable element
       const range = sel.getRangeAt(0);
       const container = reportContainerRef.current;
       if (!container || !container.contains(range.commonAncestorContainer)) {
+        setFloatingToolbar(null);
+        return;
+      }
+      // Check if selection is within a contenteditable element
+      let node = range.commonAncestorContainer;
+      let inEditable = false;
+      while (node && node !== container) {
+        if (node.nodeType === 1 && node.getAttribute("contenteditable") === "true") {
+          inEditable = true;
+          break;
+        }
+        node = node.parentNode;
+      }
+      if (!inEditable) {
         setFloatingToolbar(null);
         return;
       }
