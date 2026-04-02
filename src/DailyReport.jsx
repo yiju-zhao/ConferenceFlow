@@ -476,6 +476,7 @@ export default function DailyReport({ viewMode = false }) {
   const { date } = parseReportId(reportId);
   const { user } = useAuth();
   const { isAdmin: isConfAdmin } = useMembership(confId);
+  const [confName, setConfName] = useState("");
   const [sessions, setSessions] = useState([]);
   const [members, setMembers] = useState([]);
   const [reportData, setReportData] = useState(null);
@@ -571,16 +572,34 @@ export default function DailyReport({ viewMode = false }) {
     return () => clearInterval(timer);
   }, [user, viewMode]);
 
-  // Members
+  // Conference name
+  useEffect(() => {
+    if (!confId) return;
+    return onSnapshot(doc(db, "conferences", confId), (snap) => {
+      setConfName(snap.exists() ? snap.data().name || confId : confId);
+    });
+  }, [confId]);
+
+  // Members — load with doc ID and resolve display names
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "conferences", confId, "members"), (snap) => {
+    return onSnapshot(collection(db, "conferences", confId, "members"), async (snap) => {
       const arr = [];
-      snap.forEach((d) => arr.push(d.data()));
-      arr.sort((a, b) => Number(a.id) - Number(b.id));
+      for (const d of snap.docs) {
+        const data = d.data();
+        let name = data.legacyName || data.displayName || null;
+        if (!name && !data.managedByAdmin) {
+          try {
+            const { getDoc: gd, doc: dc } = await import("firebase/firestore");
+            const userSnap = await gd(dc(db, "users", d.id));
+            name = userSnap.exists() ? userSnap.data().displayName || userSnap.data().email : d.id;
+          } catch { name = d.id; }
+        }
+        arr.push({ ...data, id: d.id, name: name || d.id });
+      }
       setMembers(arr);
     });
-  }, [user]);
+  }, [user, confId]);
 
   // Sessions (filtered by date)
   useEffect(() => {
@@ -1094,7 +1113,7 @@ export default function DailyReport({ viewMode = false }) {
           },
         });
 
-        const frontmatter = `---\ntitle: GTC 2026 日报 ${date}\ndate: ${date}\n---\n\n`;
+        const frontmatter = `---\ntitle: ${confName || "Conference"} 日报 ${date}\ndate: ${date}\n---\n\n`;
         const md = frontmatter + td.turndown(clone.outerHTML);
         blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
         filename = `GTC2026_日报_${date}.md`;
@@ -1356,7 +1375,7 @@ ${clone.outerHTML}
     style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
     <!-- Header bar -->
     <tr><td style="background:#C41E3A;padding:14px 28px;">
-      <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;font-weight:bold;">GTC 2026 · DAILY BRIEFING</p>
+      <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;font-weight:bold;">${escapeHtml(confName || "Conference")} · DAILY BRIEFING</p>
     </td></tr>
     <!-- Title + date -->
     <tr><td style="padding:28px 28px 12px;">
@@ -1380,7 +1399,7 @@ ${clone.outerHTML}
     </td></tr>
     <!-- Footer -->
     <tr><td style="padding:16px 28px;border-top:1px solid #f0f0f0;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#bbb;">GTC 2026 Daily Report · ${escapeHtml(date)}</p>
+      <p style="margin:0;font-size:12px;color:#bbb;">${escapeHtml(confName || "Conference")} Daily Report · ${escapeHtml(date)}</p>
     </td></tr>
   </table>
 </td></tr>
@@ -1621,7 +1640,7 @@ ${clone.outerHTML}
 
         {/* Title bar */}
         <div className="report-title-bar">
-          <div className="report-title-eyebrow">GTC 2026 · DAILY BRIEFING</div>
+          <div className="report-title-eyebrow">{confName || "CONFERENCE"} · DAILY BRIEFING</div>
           <h1>
             {viewMode ? (
               <span>{reportData?.title || `【${date}】日报`}</span>
@@ -2168,7 +2187,7 @@ ${clone.outerHTML}
         {/* Footer */}
         <div className="report-footer">
           <div className="report-footer-inner">
-            <p>GTC 2026 · {date} · 团队协作生成</p>
+            <p>{confName || "Conference"} · {date} · 团队协作生成</p>
           </div>
         </div>
 
