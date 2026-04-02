@@ -120,7 +120,7 @@ export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
         className="inline-add-btn"
         onClick={() => isOpen ? onOpen(null) : onOpen(`${field}::${afterId}`)}
         title="插入 block"
-      >+</button>
+      >添加 block</button>
       {isOpen && (
         <div className="inline-add-popover">
           <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'heading', afterId); onOpen(null); }}>小标题</button>
@@ -140,7 +140,7 @@ export function SectionInlineAdd({ sectionName, afterId, openKey, onOpen, onInse
         className="inline-add-btn"
         onClick={() => isOpen ? onOpen(null) : onOpen(`${sectionName}::${afterId}`)}
         title="插入 block"
-      >+</button>
+      >添加 block</button>
       {isOpen && (
         <div className="inline-add-popover">
           {blockTypes.map(({ type, label, extraFields }) => (

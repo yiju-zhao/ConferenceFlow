@@ -1981,24 +1981,24 @@ input[type="checkbox"].gtc-check:checked::after {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 20px;
-  margin: 2px 0;
+  margin: 6px 0;
 }
 .inline-add-btn {
-  opacity: 0;
   background: none;
-  border: 1px dashed var(--border);
-  border-radius: 50%;
-  color: var(--text-placeholder);
+  border: 1px dashed #dadada;
+  color: #888;
   cursor: pointer;
-  width: 22px; height: 22px;
-  font-size: 16px; line-height: 1;
+  width: 100%;
+  padding: 8px 0;
+  font-size: 11px;
+  font-family: "Inter", sans-serif;
   display: flex; align-items: center; justify-content: center;
-  padding: 0;
-  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+  gap: 4px;
+  transition: color 0.15s, border-color 0.15s;
 }
+.inline-add-btn::before { content: "+"; font-size: 14px; }
 .inline-add-zone:hover .inline-add-btn,
-.inline-add-btn:focus { opacity: 1; color: var(--brand); border-color: var(--brand); }
+.inline-add-btn:focus { color: var(--brand); border-color: var(--brand); }
 .inline-add-popover {
   position: absolute;
   top: calc(100% + 4px);
@@ -2105,11 +2105,10 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .intel-card-contributor-pill-remove:hover { color: #e74c3c; }
 .intel-card-contributor-select {
-  flex: 1;
-  min-width: 60px;
+  width: auto;
   border: none;
   outline: none;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-tertiary, #aaa);
   background: transparent;
   padding: 0;

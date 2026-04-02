@@ -1,30 +1,27 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc } from "firebase/firestore";
-import { auth, db } from "./firebase";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
+import { db } from "./firebase";
 import { DAY_CN, parseReportId, generateSummaryId } from "./shared";
+import { useAuth } from "./contexts/AuthContext";
 
 export default function ReportList() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { confId } = useParams();
+  const { user } = useAuth();
   const [reportDocs, setReportDocs] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [creatingSummary, setCreatingSummary] = useState(false);
   const [showSummaryDatePicker, setShowSummaryDatePicker] = useState(false);
   const [summaryDateStart, setSummaryDateStart] = useState("");
   const [summaryDateEnd, setSummaryDateEnd] = useState("");
 
   useEffect(() => {
-    signInAnonymously(auth).catch(console.error);
-    return onAuthStateChanged(auth, u => setUser(u));
-  }, []);
-
-  useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "dailyReports"), snap => {
+    return onSnapshot(collection(db, "conferences", confId, "dailyReports"), snap => {
       const docs = snap.docs
         .map(d => ({ id: d.id, ...d.data(), ...parseReportId(d.id) }))
         .sort((a, b) => b.id.localeCompare(a.id));
@@ -34,7 +31,7 @@ export default function ReportList() {
 
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "sessions"), snap => {
+    return onSnapshot(collection(db, "conferences", confId, "sessions"), snap => {
       setAllSessions(snap.docs.map(d => d.data()));
     });
   }, [user]);
@@ -64,8 +61,12 @@ export default function ReportList() {
       return acc;
     }, {});
     const dailyList = Object.values(latestByDate).sort((a, b) => b._date.localeCompare(a._date));
-    const filteredDaily = showArchived ? dailyList : dailyList.filter(r => r.status !== "archived");
-    const filteredSummary = showArchived ? summaryReports : summaryReports.filter(r => r.status !== "archived");
+    const filteredDaily = showArchived
+      ? dailyList.filter(r => r.status === "archived")
+      : dailyList.filter(r => r.status !== "archived");
+    const filteredSummary = showArchived
+      ? summaryReports.filter(r => r.status === "archived")
+      : summaryReports.filter(r => r.status !== "archived");
 
     // Summary reports at top, then daily reports
     return [...filteredSummary.sort((a, b) => b.id.localeCompare(a.id)), ...filteredDaily];
@@ -90,11 +91,15 @@ export default function ReportList() {
     setShowDatePicker(false);
     // If report already exists, navigate to the existing one
     const existing = reportDocs.find(r => parseReportId(r.id).date === date);
-    navigate(`/report/${existing ? existing.id : date}`);
+    navigate(`/conference/${confId}/report/${existing ? existing.id : date}`);
   };
 
-  const archiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "archived" });
-  const unarchiveReport = (id) => updateDoc(doc(db, "dailyReports", id), { status: "draft" });
+  const archiveReport = (id) => updateDoc(doc(db, "conferences", confId, "dailyReports", id), { status: "archived" });
+  const unarchiveReport = (id) => updateDoc(doc(db, "conferences", confId, "dailyReports", id), { status: "draft" });
+  const handleDeleteReport = async (id) => {
+    await deleteDoc(doc(db, "conferences", confId, "dailyReports", id));
+    setDeleteConfirmId(null);
+  };
 
   const openSummaryDatePicker = () => {
     // Pre-fill with earliest and latest daily report dates
@@ -108,11 +113,11 @@ export default function ReportList() {
     setShowSummaryDatePicker(false);
     setCreatingSummary(true);
     try {
-      const snap = await getDocs(collection(db, "dailyReports"));
+      const snap = await getDocs(collection(db, "conferences", confId, "dailyReports"));
       const allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const summaryId = generateSummaryId(allDocs);
 
-      await setDoc(doc(db, "dailyReports", summaryId), {
+      await setDoc(doc(db, "conferences", confId, "dailyReports", summaryId), {
         type: "summary",
         title: "GTC 2026 总结稿",
         status: "draft",
@@ -129,7 +134,7 @@ export default function ReportList() {
         onsiteEvents: [],
       });
 
-      navigate(`/report/${summaryId}`);
+      navigate(`/conference/${confId}/report/${summaryId}`);
     } catch (err) {
       console.error("Failed to create summary:", err);
       alert("创建总结稿失败，请重试");
@@ -142,7 +147,7 @@ export default function ReportList() {
     <div className="report-page">
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to="/" className="report-back-btn">&larr; 返回日程</Link>
+          <Link to={`/conference/${confId}`} className="report-back-btn">&larr; 返回日程</Link>
         </div>
       </div>
 
@@ -157,7 +162,7 @@ export default function ReportList() {
               className={`report-archived-toggle${showArchived ? " active" : ""}`}
               onClick={() => setShowArchived(!showArchived)}
             >
-              {showArchived ? "隐藏已归档" : "显示已归档"}
+              {showArchived ? "隐藏归档" : "显示归档"}
             </button>
             <button
               className="btn-accent"
@@ -232,7 +237,18 @@ export default function ReportList() {
                     >
                       {isArchived ? "取消归档" : "归档"}
                     </button>
-                    <Link to={`/report/${r.id}`} className="report-card-view-btn">
+                    {isArchived && (
+                      deleteConfirmId === r.id ? (
+                        <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                          <span style={{ fontSize: 11, color: "#CF0A2C" }}>确认删除?</span>
+                          <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>删除</button>
+                          <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>取消</button>
+                        </span>
+                      ) : (
+                        <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>删除</button>
+                      )
+                    )}
+                    <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
                       管理总结稿 &rarr;
                     </Link>
                   </div>
@@ -260,7 +276,18 @@ export default function ReportList() {
                   >
                     {isArchived ? "取消归档" : "归档"}
                   </button>
-                  <Link to={`/report/${r.id}`} className="report-card-view-btn">
+                  {isArchived && (
+                    deleteConfirmId === r.id ? (
+                      <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: "#CF0A2C" }}>确认删除?</span>
+                        <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>删除</button>
+                        <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>取消</button>
+                      </span>
+                    ) : (
+                      <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>删除</button>
+                    )
+                  )}
+                  <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
                     查看日报 &rarr;
                   </Link>
                 </div>

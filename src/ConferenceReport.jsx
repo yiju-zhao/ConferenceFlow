@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
-import { auth, db, storage } from "./firebase";
+import { db, storage } from "./firebase";
+import { useAuth } from "./contexts/AuthContext";
 import { ref as sRef, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { useDebouncedSave } from "./shared";
 
 export default function ConferenceReport() {
-  const { reportId } = useParams();
-
-  const [user, setUser] = useState(null);
+  const { confId, reportId } = useParams();
+  const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [urlCopied, setUrlCopied] = useState(false);
@@ -29,16 +28,10 @@ export default function ConferenceReport() {
   const htmlFileInputRef = useRef(null);
   const { debouncedSave } = useDebouncedSave();
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    signInAnonymously(auth).catch(console.error);
-    return onAuthStateChanged(auth, u => setUser(u));
-  }, []);
-
   // ── Real-time Firestore listener ────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-    const unsub = onSnapshot(doc(db, "dailyReports", reportId), (snap) => {
+    const unsub = onSnapshot(doc(db, "conferences", confId, "dailyReports", reportId), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
         setReportData(data);
@@ -108,7 +101,7 @@ export default function ConferenceReport() {
       const url = await getDownloadURL(fileRef);
 
       await setDoc(
-        doc(db, "dailyReports", reportId),
+        doc(db, "conferences", confId, "dailyReports", reportId),
         { publishedUrl: url, publishedAt: serverTimestamp() },
         { merge: true }
       );
@@ -137,7 +130,7 @@ export default function ConferenceReport() {
       });
       const url = await getDownloadURL(fileRef);
       await setDoc(
-        doc(db, "dailyReports", reportId),
+        doc(db, "conferences", confId, "dailyReports", reportId),
         { publishedUrl: url, publishedAt: serverTimestamp() },
         { merge: true }
       );
@@ -217,7 +210,7 @@ export default function ConferenceReport() {
         .then(url => {
           const photos = [...(reportDataRef.current?.sitePhotos || []),
             { image: url, storagePath, caption: "", source: "", w, h }];
-          setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+          setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
         });
     };
     imgEl.src = objUrl;
@@ -230,14 +223,14 @@ export default function ConferenceReport() {
       deleteObject(sRef(storage, photo.storagePath)).catch(() => {});
     }
     const updated = photos.filter((_, i) => i !== idx);
-    setDoc(doc(db, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
   }, [reportId]);
 
   const saveSitePhotoCaption = useCallback((idx, caption) => {
     debouncedSave(`sitePhoto-caption-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], caption };
-      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [reportId, debouncedSave]);
 
@@ -245,7 +238,7 @@ export default function ConferenceReport() {
     debouncedSave(`sitePhoto-source-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], source };
-      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [debouncedSave, reportId]);
 
@@ -296,7 +289,7 @@ export default function ConferenceReport() {
       {/* ── Toolbar ──────────────────────────────────────────── */}
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to="/reports" className="report-back-btn">&larr; 返回日程</Link>
+          <Link to={`/conference/${confId}/reports`} className="report-back-btn">&larr; 返回日程</Link>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {!editing && (
               <button

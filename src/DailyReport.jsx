@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
@@ -14,9 +13,13 @@ import {
   deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { auth, db, storage } from "./firebase";
+import { db, storage } from "./firebase";
+import { useAuth } from "./contexts/AuthContext";
+import { useMembership } from "./hooks/useMembership";
 import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
-import { SESSION_CATALOG, COLOR_PRESETS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
+import { SESSION_CATALOG, COLOR_PRESETS, COLORS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
+import { usePresence } from "./components/report/usePresence";
+import PresenceBar from "./components/report/PresenceBar";
 const topicSlug = (t) =>
   t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
@@ -34,22 +37,28 @@ function normaliseSources(block) {
 }
 
 // ── SessionPicker ─────────────────────────────────────────────────────────────
-function SessionPicker({ value, onChange }) {
+function SessionPicker({ value, onChange, conferenceSessions = [] }) {
   const [query, setQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const selectedTitle = value?.id ? (SESSION_CATALOG.get(value.id)?.title || value.id) : null;
+  // Look up title from conference sessions first, then fall back to SESSION_CATALOG
+  const findSession = (id) => conferenceSessions.find(s => s.code === id || s.id === id) || SESSION_CATALOG.get(id);
+  const selectedTitle = value?.id ? (findSession(value.id)?.title || value.id) : null;
 
   const results = useMemo(() => {
     const q = query.trim();
     if (!q) return [];
     const ql = q.toLowerCase();
-    return [...SESSION_CATALOG.values()]
+    // Search conference sessions if available, otherwise fall back to catalog
+    const source = conferenceSessions.length > 0
+      ? conferenceSessions.map(s => ({ session_id: s.code || s.id, title: s.title }))
+      : [...SESSION_CATALOG.values()];
+    return source
       .filter(s =>
-        s.session_id.toLowerCase().includes(ql) ||
-        s.title.toLowerCase().includes(ql)
+        (s.session_id || "").toLowerCase().includes(ql) ||
+        (s.title || "").toLowerCase().includes(ql)
       )
       .slice(0, 20);
-  }, [query]);
+  }, [query, conferenceSessions]);
 
   const handleSelect = (s) => {
     onChange({ id: s.session_id, manual: '' });
@@ -112,7 +121,7 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false }) {
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false, currentUid, memberColorMap, isAdmin = false, conferenceSessions = [] }) {
   const sources = normaliseSources(block);
   // Normalise legacy single contributorId → contributorIds array
   const contributorIds = block.contributorIds?.length
@@ -120,6 +129,20 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
     : block.contributorId ? [block.contributorId] : [];
   const contributorNames = contributorIds.map(id => members.find(m => m.id === id)?.name).filter(Boolean);
   const contributorText = contributorNames.join("、") || (block.contributor || "").trim();
+
+  const ownerColorIdx = memberColorMap?.[block.ownerId] ?? null;
+  const ownerColor = ownerColorIdx !== null ? (COLORS[ownerColorIdx]?.hex || "#5f5e5e") : null;
+  const isOwner = currentUid && block.ownerId === currentUid;
+  // Admins can edit any block, members can only edit their own
+  const isEditable = !readOnly && (!block.ownerId || isOwner || isAdmin);
+  // Admins can delete any block, members can only delete their own
+  const canDelete = !readOnly && (!block.ownerId || isOwner || isAdmin);
+
+  const lastEditor = block.lastEditedBy ? members.find(m => m.id === block.lastEditedBy)?.name : null;
+  const editedAgo = block.lastEditedAt ? Math.round((Date.now() - block.lastEditedAt) / 60000) : null;
+  const editLabel = lastEditor
+    ? (editedAgo !== null && editedAgo < 60 ? `${lastEditor} · ${editedAgo}m ago` : lastEditor)
+    : null;
 
   const updateSource = (idx, v) => {
     const next = [...sources];
@@ -136,21 +159,21 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
   };
 
   return (
-    <div className="intel-card">
-      <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>
+    <div className="intel-card" style={ownerColor ? { borderLeft: `3px solid ${ownerColor}` } : undefined}>
+      {canDelete && <button className="onsite-block-body-remove no-print" onClick={onRemove}>×</button>}
       <div className="intel-card-section intel-card-content">
         <EditableField
           value={block.content}
           onSave={html => onUpdate({ content: html })}
           placeholder={placeholder}
           minHeight={60}
-          readOnly={readOnly}
+          readOnly={!isEditable}
         />
       </div>
       {sources.map((src, i) => (
         <div key={i} className="intel-card-section intel-card-meta no-print">
           <span className="intel-card-label">来源{sources.length > 1 ? ` ${i + 1}` : ''}</span>
-          <SessionPicker value={src} onChange={v => updateSource(i, v)} />
+          <SessionPicker value={src} onChange={v => updateSource(i, v)} conferenceSessions={conferenceSessions} />
           {sources.length > 1 && (
             <button className="intel-card-source-remove" onClick={() => removeSource(i)} title="移除此来源">×</button>
           )}
@@ -159,7 +182,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
       {sources.length === 0 && (
         <div className="intel-card-section intel-card-meta no-print">
           <span className="intel-card-label">来源</span>
-          <SessionPicker value={{ id: null, manual: '' }} onChange={v => onUpdate({ sourceSessions: [v], sourceSession: v })} />
+          <SessionPicker value={{ id: null, manual: '' }} onChange={v => onUpdate({ sourceSessions: [v], sourceSession: v })} conferenceSessions={conferenceSessions} />
         </div>
       )}
       <div className="intel-card-section intel-card-meta no-print">
@@ -187,35 +210,42 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
           </span>
         </div>
       )}
-      <div className="intel-card-section intel-card-meta no-print">
+      <div className="intel-card-section intel-card-meta no-print" style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span className="intel-card-label">贡献人</span>
-        <div className="intel-card-contributors-wrap">
-          {contributorIds.map(id => {
-            const name = members.find(m => m.id === id)?.name || id;
-            return (
-              <span key={id} className="intel-card-contributor-pill">
-                {name}
-                <button className="intel-card-contributor-pill-remove" onClick={() => {
-                  const next = contributorIds.filter(x => x !== id);
-                  onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
-                }}>×</button>
-              </span>
-            );
-          })}
-          <select
-            className="intel-card-contributor-select"
-            value=""
-            onChange={e => {
-              const id = e.target.value;
-              if (!id || contributorIds.includes(id)) return;
-              const next = [...contributorIds, id];
-              onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
-            }}
-          >
-            <option value="">{contributorIds.length ? "添加..." : "选择贡献人..."}</option>
-            {members.filter(m => !contributorIds.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
+        {contributorIds.map(id => {
+          const name = members.find(m => m.id === id)?.name || id;
+          const colorIdx = memberColorMap?.[id] ?? 0;
+          const color = COLORS[colorIdx]?.hex || "#5f5e5e";
+          return (
+            <span key={id} style={{ background: color, color: "#fff", padding: "1px 8px", fontSize: 10, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {name}
+              {isEditable && (
+                <button style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1 }}
+                  onClick={() => {
+                    const next = contributorIds.filter(x => x !== id);
+                    onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
+                  }}>×</button>
+              )}
+            </span>
+          );
+        })}
+        <select
+          className="intel-card-contributor-select"
+          value=""
+          style={{ fontSize: 10, color: "#888", background: "none", border: "none", cursor: "pointer" }}
+          onChange={e => {
+            const id = e.target.value;
+            if (!id || contributorIds.includes(id)) return;
+            const next = [...contributorIds, id];
+            onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
+          }}
+        >
+          <option value="">{contributorIds.length ? "添加..." : "选择贡献人..."}</option>
+          {members.filter(m => !contributorIds.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+        {editLabel && (
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>{editLabel}</span>
+        )}
       </div>
       {contributorText && (
         <div className="intel-card-section intel-card-meta print-only">
@@ -444,20 +474,81 @@ function SnapshotViewer({ snapshot, currentData }) {
           </section>
         );
       })}
+
+      {/* Block-based section diffs */}
+      {[
+        { field: "onsiteInfoBlocks", label: "现场情报 (Blocks)" },
+        { field: "reflectionsBlocks", label: "圈内声音 (Blocks)" },
+      ].map(({ field, label }) => {
+        const oldBlocks = currentData?.[field] || [];
+        const newBlocks = data?.[field] || [];
+        if (JSON.stringify(oldBlocks) === JSON.stringify(newBlocks)) return null;
+
+        // Build maps for comparison
+        const oldMap = new Map(oldBlocks.map(b => [b.id, b]));
+        const newMap = new Map(newBlocks.map(b => [b.id, b]));
+        const allIds = [...new Set([...oldBlocks.map(b => b.id), ...newBlocks.map(b => b.id)])];
+
+        return (
+          <section key={field} style={{ marginBottom: 24 }}>
+            <h4 className="text-body" style={{ margin: "0 0 12px", fontWeight: 700, color: "var(--text-secondary)" }}>{label}</h4>
+            {allIds.map(id => {
+              const oldB = oldMap.get(id);
+              const newB = newMap.get(id);
+              const oldContent = stripHtml(oldB?.content);
+              const newContent = stripHtml(newB?.content);
+
+              if (!newB && oldB) {
+                // Block removed in snapshot (exists in current, not in snapshot)
+                return (
+                  <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(207,10,44,0.06)", borderLeft: "3px solid #CF0A2C" }}>
+                    <div style={{ fontSize: 10, color: "#CF0A2C", fontWeight: 600, marginBottom: 4 }}>删除</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through" }}>{oldContent || "(空)"}</div>
+                  </div>
+                );
+              }
+              if (!oldB && newB) {
+                // Block added in snapshot (not in current, exists in snapshot)
+                return (
+                  <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(39,174,96,0.06)", borderLeft: "3px solid #27AE60" }}>
+                    <div style={{ fontSize: 10, color: "#27AE60", fontWeight: 600, marginBottom: 4 }}>新增</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{newContent || "(空)"}</div>
+                  </div>
+                );
+              }
+              if (oldContent !== newContent) {
+                // Block content changed
+                return (
+                  <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(41,128,185,0.06)", borderLeft: "3px solid #2980B9" }}>
+                    <div style={{ fontSize: 10, color: "#2980B9", fontWeight: 600, marginBottom: 4 }}>已修改</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through", marginBottom: 4 }}>{oldContent || "(空)"}</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{newContent || "(空)"}</div>
+                  </div>
+                );
+              }
+              return null; // No change
+            })}
+          </section>
+        );
+      })}
     </div>
   );
 }
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport({ viewMode = false }) {
-  const { reportId } = useParams();
+  const { confId, reportId } = useParams();
   const { date } = parseReportId(reportId);
-  const [user, setUser] = useState(null);
+  const { user } = useAuth();
+  const { isAdmin: isConfAdmin } = useMembership(confId);
+  const [confName, setConfName] = useState("");
   const [sessions, setSessions] = useState([]);
+  const [allConferenceSessions, setAllConferenceSessions] = useState([]);
   const [members, setMembers] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [floatingToolbar, setFloatingToolbar] = useState(null); // { top, left } or null
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -498,12 +589,6 @@ export default function DailyReport({ viewMode = false }) {
   const collapsedInit = useRef(false);
   const { debouncedSave, saveState } = useDebouncedSave(600);
 
-  // Auth
-  useEffect(() => {
-    signInAnonymously(auth).catch(console.error);
-    return onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
-
 // Close export dropdown on outside click or Escape
   useEffect(() => {
     if (!showExportMenu) return;
@@ -538,7 +623,7 @@ export default function DailyReport({ viewMode = false }) {
   useEffect(() => {
     if (!user || !reportId) return;
     const q = query(
-      collection(db, "dailyReports", reportId, "snapshots"),
+      collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"),
       orderBy("createdAt", "desc")
     );
     return onSnapshot(q, snap => {
@@ -553,35 +638,64 @@ export default function DailyReport({ viewMode = false }) {
     return () => clearInterval(timer);
   }, [user, viewMode]);
 
-  // Members
+  // Save snapshot on page leave
+  useEffect(() => {
+    if (!user || viewMode) return;
+    const handleBeforeUnload = () => { createSnapshotRef.current?.("auto"); };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [user, viewMode]);
+
+  // Conference name
+  useEffect(() => {
+    if (!confId) return;
+    return onSnapshot(doc(db, "conferences", confId), (snap) => {
+      setConfName(snap.exists() ? snap.data().name || confId : confId);
+    });
+  }, [confId]);
+
+  // Members — load with doc ID and resolve display names
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "members"), (snap) => {
+    return onSnapshot(collection(db, "conferences", confId, "members"), async (snap) => {
       const arr = [];
-      snap.forEach((d) => arr.push(d.data()));
-      arr.sort((a, b) => Number(a.id) - Number(b.id));
+      for (const d of snap.docs) {
+        const data = d.data();
+        let name = data.legacyName || data.displayName || null;
+        if (!name && !data.managedByAdmin) {
+          try {
+            const { getDoc: gd, doc: dc } = await import("firebase/firestore");
+            const userSnap = await gd(dc(db, "users", d.id));
+            name = userSnap.exists() ? userSnap.data().displayName || userSnap.data().email : d.id;
+          } catch { name = d.id; }
+        }
+        arr.push({ ...data, id: d.id, name: name || d.id });
+      }
       setMembers(arr);
     });
-  }, [user]);
+  }, [user, confId]);
 
-  // Sessions (filtered by date)
+  // Sessions (filtered by date + all for session picker)
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(collection(db, "sessions"), (snap) => {
-      const arr = [];
+    return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
+      const all = [];
+      const filtered = [];
       snap.forEach((d) => {
         const data = d.data();
-        if (data.date === date) arr.push({ ...data, attendees: new Set(data.attendees || []) });
+        all.push({ ...data, id: d.id });
+        if (data.date === date) filtered.push({ ...data, attendees: new Set(data.attendees || []) });
       });
-      arr.sort((a, b) => a.start.localeCompare(b.start));
-      setSessions(arr);
+      filtered.sort((a, b) => a.start.localeCompare(b.start));
+      setSessions(filtered);
+      setAllConferenceSessions(all);
     });
-  }, [user, date]);
+  }, [user, date, confId]);
 
   // Report data
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(doc(db, "dailyReports", reportId), (snap) => {
+    return onSnapshot(doc(db, "conferences", confId, "dailyReports", reportId), (snap) => {
       setReportData(snap.exists() ? snap.data() : null);
       setLoading(false);
     });
@@ -602,7 +716,7 @@ export default function DailyReport({ viewMode = false }) {
         illustration: "",
       };
     });
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       date, title: "", summaryPoints: [], onsiteInfo: "", reflections: "", rumors: "", sitePhotos: [],
       sessions: sessionMap, topicOrder: [], status: "draft",
     }).catch(console.error);
@@ -619,6 +733,16 @@ export default function DailyReport({ viewMode = false }) {
     members.forEach((m) => { map[m.id] = m.name; });
     return map;
   }, [members]);
+
+  const memberColorMap = useMemo(() => {
+    const map = {};
+    members.forEach((m) => {
+      map[m.id || m.userId] = m.colorIndex ?? 0;
+    });
+    return map;
+  }, [members]);
+
+  const { activeUsers } = usePresence(confId, reportId);
 
   const deletedSessionCodes = useMemo(() =>
     new Set(reportData?.deletedSessions || [])
@@ -671,15 +795,22 @@ export default function DailyReport({ viewMode = false }) {
   const saveField = useCallback((field, html) => {
     if (!user || viewMode) return;
     debouncedSave(field, () => {
-      setDoc(doc(db, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
+      setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { [field]: html }, { merge: true }).catch(console.error);
     });
   }, [user, reportId, debouncedSave, viewMode]);
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
   const addBlock = useCallback((field, type) => {
-    const newBlock = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, content: "" };
+    const newBlock = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      type, content: "",
+      ownerId: user?.uid || "",
+      contributorIds: user?.uid ? [user.uid] : [],
+      lastEditedBy: user?.uid || "",
+      lastEditedAt: Date.now(),
+    };
     saveField(field, [...(reportDataRef.current?.[field] || []), newBlock]);
-  }, [saveField]);
+  }, [saveField, user]);
   const updateBlock = useCallback((field, id, content) => {
     saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, content } : b));
   }, [saveField]);
@@ -687,21 +818,31 @@ export default function DailyReport({ viewMode = false }) {
     saveField(field, (reportDataRef.current?.[field] || []).filter(b => b.id !== id));
   }, [saveField]);
   const insertBlock = useCallback((field, type, afterId) => {
-    const newBlock = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, content: "" };
+    const newBlock = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      type, content: "",
+      ownerId: user?.uid || "",
+      contributorIds: user?.uid ? [user.uid] : [],
+      lastEditedBy: user?.uid || "",
+      lastEditedAt: Date.now(),
+    };
     const blocks = reportDataRef.current?.[field] || [];
     const idx = afterId ? blocks.findIndex(b => b.id === afterId) : -1;
     const next = [...blocks];
     next.splice(idx + 1, 0, newBlock);
     saveField(field, next);
-  }, [saveField]);
+  }, [saveField, user]);
   const updateBlockFields = useCallback((field, id, fields) => {
-    saveField(field, (reportDataRef.current?.[field] || []).map(b => b.id === id ? { ...b, ...fields } : b));
-  }, [saveField]);
+    saveField(field, (reportDataRef.current?.[field] || []).map(b => {
+      if (b.id !== id) return b;
+      return { ...b, ...fields, lastEditedBy: user?.uid || b.lastEditedBy, lastEditedAt: Date.now() };
+    }));
+  }, [saveField, user]);
 
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
   const pruneSnapshots = useCallback(async () => {
     const q = query(
-      collection(db, "dailyReports", reportId, "snapshots"),
+      collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"),
       orderBy("createdAt", "desc"),
       limit(51)
     );
@@ -723,12 +864,14 @@ export default function DailyReport({ viewMode = false }) {
       onsiteInfo: rd.onsiteInfo || "",
       reflections: rd.reflections || "",
       rumors: rd.rumors || "",
+      onsiteInfoBlocks: rd.onsiteInfoBlocks || [],
+      reflectionsBlocks: rd.reflectionsBlocks || [],
     };
     const hash = JSON.stringify(data);
     // Skip auto snapshots when content hasn't changed since last snapshot
     if (type === "auto" && hash === lastSnapshotHashRef.current) return;
     try {
-      await addDoc(collection(db, "dailyReports", reportId, "snapshots"), {
+      await addDoc(collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"), {
         type,
         label: type === "auto" ? "自动保存" : "手动保存",
         createdAt: serverTimestamp(),
@@ -757,7 +900,7 @@ export default function DailyReport({ viewMode = false }) {
     const snapshot = restoreConfirm;
     setRestoreConfirm(null);
     await createSnapshot("manual");
-    await setDoc(doc(db, "dailyReports", reportId), snapshot.data, { merge: true });
+    await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), snapshot.data, { merge: true });
     setShowHistory(false);
     setViewingSnapshot(null);
   };
@@ -765,17 +908,17 @@ export default function DailyReport({ viewMode = false }) {
   const saveSessionField = useCallback((code, field, value) => {
     if (!user) return;
     debouncedSave(`${code}.${field}`, () => {
-      setDoc(doc(db, "dailyReports", reportId), {
-        sessions: { [code]: { [field]: value } }
+      setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
+        sessions: { [code]: { [field]: value, lastEditedBy: user.uid, lastEditedAt: Date.now() } }
       }, { merge: true }).catch(console.error);
     });
-  }, [user, reportId, debouncedSave]);
+  }, [user, reportId, debouncedSave, confId]);
 
   // Speakers: save whole array debounced
   const saveSpeakers = useCallback((code, speakers) => {
     if (!user) return;
     debouncedSave(`${code}.speakers`, () => {
-      setDoc(doc(db, "dailyReports", reportId), {
+      setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
         sessions: { [code]: { speakers } }
       }, { merge: true }).catch(console.error);
     });
@@ -785,7 +928,7 @@ export default function DailyReport({ viewMode = false }) {
     if (!user) return;
     const sd = sessionDataRef.current[code] || {};
     const speakers = [...(sd.speakers || []), { name: "", position: "", company: "" }];
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       sessions: { [code]: { speakers } }
     }, { merge: true }).catch(console.error);
   }, [user, reportId]);
@@ -794,7 +937,7 @@ export default function DailyReport({ viewMode = false }) {
     if (!user) return;
     const sd = sessionDataRef.current[code] || {};
     const speakers = (sd.speakers || []).filter((_, i) => i !== idx);
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       sessions: { [code]: { speakers: speakers.length ? speakers : [{ name: "", position: "", company: "" }] } }
     }, { merge: true }).catch(console.error);
   }, [user, reportId]);
@@ -815,7 +958,7 @@ export default function DailyReport({ viewMode = false }) {
       return;
     }
     const currentDeleted = reportDataRef.current?.deletedSessions || [];
-    setDoc(doc(db, "dailyReports", reportId), {
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       deletedSessions: [...currentDeleted, code]
     }, { merge: true }).catch(console.error);
     setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false });
@@ -897,7 +1040,7 @@ export default function DailyReport({ viewMode = false }) {
         .then(url => {
           const photos = [...(reportDataRef.current?.sitePhotos || []),
             { image: url, storagePath, caption: "", source: "", w, h }];
-          setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+          setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
         });
     };
     imgEl.src = objUrl;
@@ -910,14 +1053,14 @@ export default function DailyReport({ viewMode = false }) {
       deleteObject(ref(storage, photo.storagePath)).catch(() => {});
     }
     const updated = photos.filter((_, i) => i !== idx);
-    setDoc(doc(db, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
   }, [reportId]);
 
   const saveSitePhotoCaption = useCallback((idx, caption) => {
     debouncedSave(`sitePhoto-caption-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], caption };
-      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [reportId, debouncedSave]);
 
@@ -925,7 +1068,7 @@ export default function DailyReport({ viewMode = false }) {
     debouncedSave(`sitePhoto-source-${idx}`, async () => {
       const photos = [...(reportDataRef.current?.sitePhotos || [])];
       if (photos[idx]) photos[idx] = { ...photos[idx], source };
-      await setDoc(doc(db, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
+      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
     });
   }, [debouncedSave, reportId]);
 
@@ -1049,7 +1192,7 @@ export default function DailyReport({ viewMode = false }) {
           },
         });
 
-        const frontmatter = `---\ntitle: GTC 2026 日报 ${date}\ndate: ${date}\n---\n\n`;
+        const frontmatter = `---\ntitle: ${confName || "Conference"} 日报 ${date}\ndate: ${date}\n---\n\n`;
         const md = frontmatter + td.turndown(clone.outerHTML);
         blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
         filename = `GTC2026_日报_${date}.md`;
@@ -1118,7 +1261,7 @@ export default function DailyReport({ viewMode = false }) {
       if (syncedCount === 0) {
         setSyncMsg("未找到匹配的 catalog 数据");
       } else {
-        await setDoc(doc(db, "dailyReports", reportId), { sessions: updatedMap }, { merge: true });
+        await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sessions: updatedMap }, { merge: true });
         setSyncMsg(`已同步 ${syncedCount} 个 session`);
       }
     } catch (err) {
@@ -1311,7 +1454,7 @@ ${clone.outerHTML}
     style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
     <!-- Header bar -->
     <tr><td style="background:#C41E3A;padding:14px 28px;">
-      <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;font-weight:bold;">GTC 2026 · DAILY BRIEFING</p>
+      <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;font-weight:bold;">${escapeHtml(confName || "Conference")} · DAILY BRIEFING</p>
     </td></tr>
     <!-- Title + date -->
     <tr><td style="padding:28px 28px 12px;">
@@ -1335,7 +1478,7 @@ ${clone.outerHTML}
     </td></tr>
     <!-- Footer -->
     <tr><td style="padding:16px 28px;border-top:1px solid #f0f0f0;text-align:center;">
-      <p style="margin:0;font-size:12px;color:#bbb;">GTC 2026 Daily Report · ${escapeHtml(date)}</p>
+      <p style="margin:0;font-size:12px;color:#bbb;">${escapeHtml(confName || "Conference")} Daily Report · ${escapeHtml(date)}</p>
     </td></tr>
   </table>
 </td></tr>
@@ -1357,6 +1500,47 @@ ${clone.outerHTML}
   const execBold = () => execCmd("bold");
   const execColor = (color) => { execCmd("foreColor", color); setShowColorPicker(false); };
 
+  // Floating formatting toolbar on text selection
+  useEffect(() => {
+    if (viewMode) return;
+    const handleSelection = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        setFloatingToolbar(null);
+        setShowColorPicker(false);
+        return;
+      }
+      // Only show if selection is inside an editable element
+      const range = sel.getRangeAt(0);
+      const container = reportContainerRef.current;
+      if (!container || !container.contains(range.commonAncestorContainer)) {
+        setFloatingToolbar(null);
+        return;
+      }
+      // Check if selection is within a contenteditable element
+      let node = range.commonAncestorContainer;
+      let inEditable = false;
+      while (node && node !== container) {
+        if (node.nodeType === 1 && node.getAttribute("contenteditable") === "true") {
+          inEditable = true;
+          break;
+        }
+        node = node.parentNode;
+      }
+      if (!inEditable) {
+        setFloatingToolbar(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setFloatingToolbar({
+        top: rect.top + window.scrollY - 44,
+        left: rect.left + window.scrollX + rect.width / 2,
+      });
+    };
+    document.addEventListener("selectionchange", handleSelection);
+    return () => document.removeEventListener("selectionchange", handleSelection);
+  }, [viewMode]);
+
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -1372,108 +1556,62 @@ ${clone.outerHTML}
   return (
     <div className={`report-page${viewMode ? " report-view-mode" : ""}`}>
 
-      {/* ── Toolbar ──────────────────────────────────────────────── */}
-      {!viewMode && <div className="report-toolbar no-print">
-        <div className="report-toolbar-inner">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Link to="/" className="report-back-btn">← 返回日程</Link>
-            <div style={{ width: 1, height: 20, background: "var(--border)" }} />
-            <Link to="/reports" className="report-tool-btn" style={{ textDecoration: "none" }}>
-              日报列表
-            </Link>
-          </div>
-          <div className="report-toolbar-actions">
-            {saveState === "saving" && (
-              <span className="report-status-msg" style={{ color: "var(--text-dim)" }}>● 保存中...</span>
-            )}
-            {saveState === "saved" && (
-              <span className="report-status-msg" style={{ color: "var(--success)" }}>✓ 已保存</span>
-            )}
-            <div className="report-toolbar-divider" />
+      {/* ── Toolbar (redesigned) ────────────────────────────────── */}
+      {!viewMode && <div className="no-print" style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "#222", borderBottom: "1px solid #333",
+        padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        {/* Left: nav + title + status badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link to={`/conference/${confId}/reports`} style={{ color: "#888", fontSize: 12, textDecoration: "none" }}>
+            ← 返回报告列表
+          </Link>
+          <span style={{ color: "#555" }}>|</span>
+          <span style={{ color: "#eee", fontSize: 14, fontWeight: 700, fontFamily: "'Work Sans', sans-serif" }}>
+            {reportData?.title || `【${date}】日报`}
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase",
+            padding: "2px 8px", background: "rgba(255,255,255,0.1)", color: "#888",
+            fontFamily: "'Work Sans', sans-serif",
+          }}>
+            {reportData?.status === "published" ? "PUBLISHED" : "DRAFT"}
+          </span>
+        </div>
+
+        {/* Right: presence + actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <PresenceBar
+            activeUsers={activeUsers}
+            memberColorMap={memberColorMap}
+            currentUid={user?.uid}
+          />
+          {saveState === "saving" && (
+            <span style={{ fontSize: 11, color: "#666" }}>● 保存中...</span>
+          )}
+          {saveState === "saved" && (
+            <span style={{ fontSize: 11, color: "#27AE60" }}>✓ 已保存</span>
+          )}
+          <button onClick={handleSave} title="保存"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            保存
+          </button>
+          <button onClick={() => setShowHistory(true)} title="历史版本"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            历史版本
+          </button>
+          {/* Export dropdown */}
+          <div style={{ position: "relative" }}>
             <button
-              className="report-tool-btn"
-              onClick={handleSave}
-              title="立即保存并创建快照"
-            >
-              保存
-            </button>
-            <button
-              className="report-tool-btn"
-              onClick={() => setShowHistory(true)}
-              title="查看历史版本快照"
-            >
-              历史版本
-            </button>
-            <button
-              className="report-tool-btn"
-              onClick={() => window.open(`/view/report/${reportId}`, '_blank')}
-              title="在新标签页预览只读视图"
-            >
-              预览
-            </button>
-            {/* ── Delete session ── */}
-            <div className="report-toolbar-divider" />
-            <button
-              className="report-tool-btn"
-              onClick={() => setShowDeleteSelect(true)}
-              title="从日报移除一个 session"
-              style={{ color: "var(--brand)" }}
-            >
-              删除 Session
-            </button>
-            {/* ── Sync from catalog ── */}
-            <div className="report-toolbar-divider" />
-            {syncMsg && (
-              <span className="report-status-msg" style={{ color: "var(--info)" }}>
-                {syncMsg}
-              </span>
-            )}
-            <button
-              className="report-tool-btn"
-              onClick={handleSyncFromCatalog}
-              disabled={syncing || !user}
-              title="从 JSON catalog 同步所有 session 的演讲者信息"
-              style={syncing ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
-            >
-              {syncing ? "同步中..." : "同步外源信息"}
-            </button>
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
-            <button className="report-icon-btn" onClick={execBold} title="加粗">
-              <strong>B</strong>
-            </button>
-            <button className="report-icon-btn" onClick={() => execCmd("italic")} title="斜体">
-              <em style={{ fontStyle: "italic" }}>I</em>
-            </button>
-            <button className="report-icon-btn" onClick={() => execCmd("underline")} title="下划线">
-              <span style={{ textDecoration: "underline" }}>U</span>
-            </button>
-            <div style={{ position: "relative" }}>
-              <button
-                className="report-icon-btn"
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                title="字体颜色"
-              >
-                <span style={{ borderBottom: "3px solid var(--brand)", paddingBottom: 1 }}>A</span>
-              </button>
-              {showColorPicker && (
-                <div className="report-color-picker">
-                  {COLOR_PRESETS.map((c) => (
-                    <button key={c} className="report-color-swatch" style={{ background: c }}
-                      onClick={() => execColor(c)} title={c} />
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
-            <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
-              <button
-                className="report-export-btn"
                 onClick={() => !exporting && setShowExportMenu(v => !v)}
                 disabled={exporting}
-                aria-haspopup="true"
-                aria-expanded={showExportMenu}
+                style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+                  background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}
               >
-                {exporting ? "生成中..." : "导出日报 ▾"}
+                {exporting ? "生成中..." : "导出 ▾"}
               </button>
               {showExportMenu && (
                 <div className="export-dropdown-menu">
@@ -1502,11 +1640,67 @@ ${clone.outerHTML}
                   </button>
                 </div>
               )}
-            </div>
           </div>
+          <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
+          <button onClick={() => setShowDeleteSelect(true)} title="删除 Session"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "transparent", color: "#a20513", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            删除 Session
+          </button>
+          <button onClick={handleSyncFromCatalog} disabled={syncing} title="更新 Session 信息"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "transparent", color: "#888", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif", opacity: syncing ? 0.5 : 1 }}>
+            {syncing ? "更新中..." : "更新 Session 信息"}
+          </button>
+          {syncMsg && <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>{syncMsg}</span>}
+          <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
+          {/* Publish button */}
+          <button
+            onClick={() => handlePublish()}
+            disabled={publishing}
+            style={{
+              padding: "5px 18px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
+              background: "#a20513", color: "#fff", border: "none", cursor: "pointer",
+              fontFamily: "'Work Sans', sans-serif", opacity: publishing ? 0.6 : 1,
+            }}
+          >
+            {publishing ? "发布中..." : "发布"}
+          </button>
         </div>
-
       </div>}
+
+      {/* ── Floating formatting toolbar (appears on text selection) ── */}
+      {!viewMode && floatingToolbar && (
+        <div className="no-print" style={{
+          position: "absolute", top: floatingToolbar.top, left: floatingToolbar.left,
+          transform: "translateX(-50%)", zIndex: 200,
+          background: "#222", padding: "4px 6px", display: "flex", alignItems: "center", gap: 3,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+        }}
+          onMouseDown={(e) => e.preventDefault()} /* prevent losing selection */
+        >
+          <button onMouseDown={(e) => { e.preventDefault(); execBold(); }} title="加粗"
+            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+            B
+          </button>
+          <button onMouseDown={(e) => { e.preventDefault(); execCmd("italic"); }} title="斜体"
+            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, fontStyle: "italic" }}>
+            I
+          </button>
+          <button onMouseDown={(e) => { e.preventDefault(); execCmd("underline"); }} title="下划线"
+            style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>
+            U
+          </button>
+          <div style={{ width: 1, height: 18, background: "#444" }} />
+          {COLOR_PRESETS.map((c) => (
+            <button key={c} onMouseDown={(e) => { e.preventDefault(); execColor(c); }} title={c}
+              style={{ width: 18, height: 18, background: c, border: "none", cursor: "pointer", flexShrink: 0 }} />
+          ))}
+        </div>
+      )}
 
       {/* ── Share Modal ──────────────────────────────────────────── */}
       {!viewMode && shareUrl && (
@@ -1539,7 +1733,7 @@ ${clone.outerHTML}
 
         {/* Title bar */}
         <div className="report-title-bar">
-          <div className="report-title-eyebrow">GTC 2026 · DAILY BRIEFING</div>
+          <div className="report-title-eyebrow">{confName || "CONFERENCE"} · DAILY BRIEFING</div>
           <h1>
             {viewMode ? (
               <span>{reportData?.title || `【${date}】日报`}</span>
@@ -1745,12 +1939,30 @@ ${clone.outerHTML}
                       readOnly={viewMode}
                     />
                   </div>
-                  {contributors && (
-                    <div className="report-contributors-row">
-                      <span className="report-contributors-label">贡献人</span>
-                      <span className="report-contributors-names">{contributors}</span>
-                    </div>
-                  )}
+                  <div className="report-contributors-row" style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8, borderTop: "1px solid #eee", marginTop: 8 }}>
+                    <span style={{ fontSize: 10, color: "#5f5e5e" }}>贡献人</span>
+                    {Array.from(session.attendees || []).map(id => {
+                      const name = memberMap[id];
+                      if (!name) return null;
+                      const colorIdx = memberColorMap[id] ?? 0;
+                      const color = COLORS[colorIdx]?.hex || "#5f5e5e";
+                      return (
+                        <span key={id} style={{ background: color, color: "#fff", padding: "1px 8px", fontSize: 10, fontWeight: 600 }}>
+                          {name}
+                        </span>
+                      );
+                    })}
+                    {sd.lastEditedBy && (() => {
+                      const editorName = memberMap[sd.lastEditedBy] || "";
+                      const ago = sd.lastEditedAt ? Math.round((Date.now() - sd.lastEditedAt) / 60000) : null;
+                      if (!editorName) return null;
+                      return (
+                        <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>
+                          edited {ago !== null && ago < 60 ? `${ago}m ago` : ""} by {editorName}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
                 </>}
               </div>
@@ -1932,6 +2144,10 @@ ${clone.outerHTML}
                     onUpdate={fields => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
                     onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
                     readOnly={viewMode}
+                    currentUid={user?.uid}
+                    memberColorMap={memberColorMap}
+                    isAdmin={isConfAdmin}
+                    conferenceSessions={allConferenceSessions}
                   />
                 );
               }
@@ -1974,6 +2190,10 @@ ${clone.outerHTML}
                     onUpdate={fields => updateBlockFields("reflectionsBlocks", block.id, fields)}
                     onRemove={() => removeBlock("reflectionsBlocks", block.id)}
                     readOnly={viewMode}
+                    currentUid={user?.uid}
+                    memberColorMap={memberColorMap}
+                    isAdmin={isConfAdmin}
+                    conferenceSessions={allConferenceSessions}
                   />
                 );
               }
@@ -2080,7 +2300,7 @@ ${clone.outerHTML}
         {/* Footer */}
         <div className="report-footer">
           <div className="report-footer-inner">
-            <p>GTC 2026 · {date} · 团队协作生成</p>
+            <p>{confName || "Conference"} · {date} · 团队协作生成</p>
           </div>
         </div>
 
@@ -2133,98 +2353,149 @@ ${clone.outerHTML}
       )}
 
       {/* ── History Panel ────────────────────────────────────────── */}
-      {!viewMode && showHistory && (
+      {!viewMode && showHistory && (() => {
+        // Relative time helper
+        const relativeTime = (date) => {
+          if (!date) return "";
+          const now = Date.now();
+          const diff = now - date.getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 1) return "刚刚";
+          if (mins < 60) return `${mins} 分钟前`;
+          const hours = Math.floor(mins / 60);
+          if (hours < 24) return `${hours} 小时前`;
+          const days = Math.floor(hours / 24);
+          if (days < 7) return `${days} 天前`;
+          return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+        };
+
+        // No grouping — flat list, all versions equal
+
+        return (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
-          <div
-            style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
-            onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
-          />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
+            onClick={() => { setShowHistory(false); setViewingSnapshot(null); }} />
           <div style={{
             position: "absolute", right: 0, top: 0, bottom: 0,
-            width: viewingSnapshot ? "min(80%, 960px)" : "360px",
+            width: viewingSnapshot ? "min(80%, 960px)" : "380px",
             background: "#fff", display: "flex", flexDirection: "column",
             boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
           }}>
             {/* Panel header */}
             <div style={{
-              padding: "14px 20px", borderBottom: "1px solid var(--border)",
+              padding: "16px 20px", background: "#222", color: "#fff",
               display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
             }}>
               {viewingSnapshot && (
-                <button
-                  onClick={() => setViewingSnapshot(null)}
-                  className="text-caption"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--info)", padding: "0 8px 0 0" }}
-                >
-                  ← 返回列表
+                <button onClick={() => setViewingSnapshot(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 12 }}>
+                  ← 返回
                 </button>
               )}
-              <h2 className="text-body" style={{ margin: 0, fontWeight: 700, flex: 1 }}>
-                {viewingSnapshot ? `快照 · ${viewingSnapshot.label}` : "历史版本"}
+              <h2 style={{ margin: 0, fontWeight: 700, flex: 1, fontSize: 14, fontFamily: "'Work Sans', sans-serif", letterSpacing: 0.5 }}>
+                {viewingSnapshot ? "版本详情" : "版本历史"}
               </h2>
-              <button
-                onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-muted)", lineHeight: 1 }}
-              >
-                ✕
-              </button>
+              <span style={{ fontSize: 10, color: "#666" }}>{snapshots.length} 个版本</span>
+              <button onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#666", lineHeight: 1 }}>✕</button>
             </div>
 
             {!viewingSnapshot ? (
-              /* Snapshot list */
               <div style={{ flex: 1, overflowY: "auto" }}>
+                {/* Current version indicator */}
+                <div style={{ padding: "14px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 10, height: 10, background: "#27AE60", borderRadius: "50%", flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1c1c" }}>当前版本</div>
+                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>正在编辑中</div>
+                  </div>
+                  <span style={{ fontSize: 10, padding: "2px 8px", background: "#27AE60", color: "#fff", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: "'Work Sans', sans-serif" }}>
+                    Current
+                  </span>
+                </div>
+
+                {/* Timeline */}
                 {snapshots.length === 0 ? (
-                  <p className="text-caption" style={{ padding: "32px 20px", color: "var(--text-muted)", textAlign: "center" }}>
-                    暂无历史快照<br />
-                    <span className="text-label">点击「保存」按钮或等待 5 分钟自动生成</span>
-                  </p>
-                ) : snapshots.map(snap => {
-                  const ts = snap.createdAt?.toDate
-                    ? snap.createdAt.toDate().toLocaleString("zh-CN")
-                    : "时间未知";
-                  return (
-                    <div key={snap.id} style={{ padding: "12px 20px", borderBottom: "1px solid var(--border-dim)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                        <span className="text-body">{snap.type === "manual" ? "📌" : "🕐"}</span>
-                        <div style={{ flex: 1 }}>
-                          <div className="text-body" style={{ fontWeight: snap.type === "manual" ? 600 : 400, color: "var(--text-secondary)" }}>
-                            {snap.label}
+                  <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                    <div style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>暂无历史版本</div>
+                    <div style={{ fontSize: 11, color: "#bbb" }}>每 5 分钟自动保存，或点击「手动保存」创建</div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "0 20px" }}>
+                    {snapshots.map((snap, i) => {
+                      const date = snap.createdAt?.toDate?.();
+                      const isManual = snap.type === "manual";
+                      const shortId = snap.id.slice(-6).toUpperCase();
+                      return (
+                        <div key={snap.id} style={{ display: "flex", gap: 12, paddingTop: 14, paddingBottom: 14, borderBottom: "1px solid #f3f3f3" }}>
+                          {/* Timeline dot */}
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 20, flexShrink: 0, paddingTop: 2 }}>
+                            <div style={{ width: 10, height: 10, background: "#a20513", borderRadius: "50%" }} />
+                            {i < snapshots.length - 1 && <div style={{ flex: 1, width: 1, background: "#eee", marginTop: 4 }} />}
                           </div>
-                          <div className="text-label" style={{ color: "var(--text-muted)", marginTop: 1 }}>{ts}</div>
+                          {/* Content */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "#888", fontFamily: "monospace" }}>#{shortId}</span>
+                              <span style={{
+                                fontSize: 9, padding: "1px 6px", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+                                fontFamily: "'Work Sans', sans-serif",
+                                background: isManual ? "rgba(162,5,19,0.08)" : "rgba(41,128,185,0.08)",
+                                color: isManual ? "#a20513" : "#2980B9",
+                              }}>
+                                {isManual ? "Manual" : "Auto"}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: "#1a1c1c", fontWeight: 600 }}>{date ? relativeTime(date) : "未知时间"}</div>
+                            {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
+                            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                              <button onClick={() => setViewingSnapshot(snap)}
+                                style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
+                                查看变更
+                              </button>
+                              <button onClick={() => handleRestore(snap)}
+                                style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
+                                恢复
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          onClick={() => setViewingSnapshot(snap)}
-                          style={{
-                            fontSize: 13, padding: "4px 12px", borderRadius: 5,
-                            background: "var(--border-dim)", border: "1px solid #E0E0E0", cursor: "pointer", color: "var(--text-secondary)",
-                          }}
-                        >
-                          查看
-                        </button>
-                        <button
-                          onClick={() => handleRestore(snap)}
-                          style={{
-                            fontSize: 13, padding: "4px 12px", borderRadius: 5,
-                            background: "rgba(207,10,44,0.05)", border: "1px solid rgba(207,10,44,0.2)",
-                            cursor: "pointer", color: "var(--brand)",
-                          }}
-                        >
-                          恢复此版本
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               /* Snapshot viewer with diff */
-              <SnapshotViewer snapshot={viewingSnapshot} currentData={reportDataRef.current} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "12px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#888", fontFamily: "monospace" }}>
+                    #{viewingSnapshot.id.slice(-6).toUpperCase()}
+                  </span>
+                  <span style={{
+                    fontSize: 9, padding: "1px 6px", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+                    fontFamily: "'Work Sans', sans-serif",
+                    background: viewingSnapshot.type === "manual" ? "rgba(162,5,19,0.08)" : "rgba(41,128,185,0.08)",
+                    color: viewingSnapshot.type === "manual" ? "#a20513" : "#2980B9",
+                  }}>
+                    {viewingSnapshot.type === "manual" ? "Manual" : "Auto"}
+                  </span>
+                  <span style={{ fontSize: 11, color: "#888" }}>
+                    {viewingSnapshot.createdAt?.toDate ? relativeTime(viewingSnapshot.createdAt.toDate()) : ""}
+                  </span>
+                  <div style={{ flex: 1 }} />
+                  <button onClick={() => handleRestore(viewingSnapshot)}
+                    style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
+                    恢复此版本
+                  </button>
+                </div>
+                <SnapshotViewer snapshot={viewingSnapshot} currentData={reportDataRef.current} />
+              </div>
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Restore confirm modal */}
       {restoreConfirm && (

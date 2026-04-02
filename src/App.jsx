@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "./contexts/AuthContext";
+import { useMembership } from "./hooks/useMembership";
 import {
   Upload,
   Download,
@@ -19,7 +21,6 @@ import {
   Plus,
 } from "lucide-react";
 
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
@@ -304,8 +305,10 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [authError, setAuthError] = useState(null);
+  const { confId } = useParams();
+  const { user } = useAuth();
+  const { isAdmin } = useMembership(confId);
+  const [authError] = useState(null);
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState({});
   const [newMemberName, setNewMemberName] = useState("");
@@ -325,23 +328,11 @@ export default function App() {
       return next;
     });
 
-  // Auth
-  useEffect(() => {
-    signInAnonymously(auth).catch((err) => {
-      console.error("Auth error:", err);
-      setAuthError(err.message);
-    });
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      if (u) setAuthError(null);
-    });
-  }, []);
-
   // Members realtime
   useEffect(() => {
     if (!user) return;
     return onSnapshot(
-      collection(db, "members"),
+      collection(db, "conferences", confId, "members"),
       (snap) => {
         const arr = [];
         snap.forEach((d) => arr.push(d.data()));
@@ -350,13 +341,13 @@ export default function App() {
       },
       console.error
     );
-  }, [user]);
+  }, [user, confId]);
 
   // Sessions realtime
   useEffect(() => {
     if (!user) return;
     return onSnapshot(
-      collection(db, "sessions"),
+      collection(db, "conferences", confId, "sessions"),
       (snap) => {
         const map = {};
         snap.forEach((d) => {
@@ -367,7 +358,7 @@ export default function App() {
       },
       console.error
     );
-  }, [user]);
+  }, [user, confId]);
 
   // Auto-enrich existing sessions with catalog data
   useEffect(() => {
@@ -379,7 +370,7 @@ export default function App() {
     Promise.all(
       toEnrich.map((s) => {
         const info = SESSION_CATALOG.get(s.code);
-        return setDoc(doc(db, "sessions", s.code), {
+        return setDoc(doc(db, "conferences", confId, "sessions", s.code), {
           url: info.url || "",
           speakers: info.speakers || [],
           format: info.format || "",
@@ -459,7 +450,7 @@ export default function App() {
       if (user) {
         Promise.all(
           Array.from(touched).map((code) =>
-            setDoc(doc(db, "sessions", code), {
+            setDoc(doc(db, "conferences", confId, "sessions", code), {
               ...map[code],
               attendees: Array.from(map[code].attendees),
             })
@@ -482,7 +473,7 @@ export default function App() {
     if (!user) { alert("Firebase 尚未完成登录，请稍候再试。\n错误：" + (authError || "user is null")); return; }
     try {
       const id = Date.now().toString();
-      await setDoc(doc(db, "members", id), {
+      await setDoc(doc(db, "conferences", confId, "members", id), {
         id,
         name: newMemberName.trim(),
         mode: "onsite",
@@ -501,16 +492,16 @@ export default function App() {
 
   const removeMember = async (id) => {
     if (!user) return;
-    await deleteDoc(doc(db, "members", id));
+    await deleteDoc(doc(db, "conferences", confId, "members", id));
     await Promise.all(
       Object.values(sessions)
         .filter((session) => session.attendees.has(id))
         .map((session) => {
           const att = Array.from(session.attendees).filter((x) => x !== id);
           if (att.length === 0) {
-            return deleteDoc(doc(db, "sessions", session.code));
+            return deleteDoc(doc(db, "conferences", confId, "sessions", session.code));
           }
-          return setDoc(doc(db, "sessions", session.code), { ...session, attendees: att }, { merge: true });
+          return setDoc(doc(db, "conferences", confId, "sessions", session.code), { ...session, attendees: att }, { merge: true });
         })
     );
   };
@@ -521,7 +512,7 @@ export default function App() {
     if (!session) return;
     const att = new Set(session.attendees);
     if (att.has(memberId)) att.delete(memberId); else att.add(memberId);
-    await setDoc(doc(db, "sessions", code), { ...session, attendees: Array.from(att) }, { merge: true });
+    await setDoc(doc(db, "conferences", confId, "sessions", code), { ...session, attendees: Array.from(att) }, { merge: true });
   };
 
   const emptySessions = useMemo(
@@ -532,7 +523,7 @@ export default function App() {
   const cleanupEmptySessions = async () => {
     if (!user) return;
     await Promise.all(
-      emptySessions.map(s => deleteDoc(doc(db, "sessions", s.code)))
+      emptySessions.map(s => deleteDoc(doc(db, "conferences", confId, "sessions", s.code)))
     );
     setShowCleanupConfirm(false);
   };
@@ -568,7 +559,7 @@ export default function App() {
     const start = parseTime(timeParts[0]);
     const end = parseTime(timeParts[1]);
 
-    await setDoc(doc(db, "sessions", id), {
+    await setDoc(doc(db, "conferences", confId, "sessions", id), {
       code: id,
       title: info.title || "",
       date: parseDate(info.date),
@@ -682,10 +673,15 @@ export default function App() {
 
             {/* Header right actions */}
             <div className="schedule-header-actions">
-            <Link to="/reports" className="btn-accent schedule-header-report-link">
+            <Link to={`/conference/${confId}/reports`} className="btn-accent schedule-header-report-link">
               <FileText size={14} />
               日报管理
             </Link>
+            {isAdmin && (
+              <Link to={`/conference/${confId}/admin/settings`} className="btn-accent schedule-header-report-link">
+                Admin
+              </Link>
+            )}
 
             {/* Export button + dropdown */}
             <div style={{ position: "relative" /* needed for dropdown positioning */ }}>
@@ -772,7 +768,7 @@ export default function App() {
                   </div>
                   <button
                     className="member-card-mode"
-                    onClick={() => setDoc(doc(db, "members", member.id), { ...member, mode: (member.mode || "onsite") === "online" ? "onsite" : "online" })}
+                    onClick={() => setDoc(doc(db, "conferences", confId, "members", member.id), { ...member, mode: (member.mode || "onsite") === "online" ? "onsite" : "online" })}
                     title="切换线上/线下"
                   >
                     {(member.mode || "onsite") === "online" ? "线上" : "线下"}
