@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/firebase-admin";
-import { requireConfAdmin, AuthError } from "@/lib/auth-middleware";
+import { requireConfAdmin, requireSuperAdmin, AuthError } from "@/lib/auth-middleware";
 import { FieldValue } from "firebase-admin/firestore";
 
 export async function PUT(request, { params }) {
@@ -26,6 +26,36 @@ export async function PUT(request, { params }) {
 
     await confRef.update(updates);
     return NextResponse.json({ id: confId, ...updates });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const { confId } = await params;
+    await requireSuperAdmin(request);
+
+    const confRef = db.collection("conferences").doc(confId);
+    const snap = await confRef.get();
+    if (!snap.exists) {
+      return NextResponse.json({ error: "Conference not found" }, { status: 404 });
+    }
+
+    // Delete subcollections: members, sessions, dailyReports
+    const subcollections = ["members", "sessions", "dailyReports"];
+    for (const sub of subcollections) {
+      const subSnap = await confRef.collection(sub).get();
+      const batch = db.batch();
+      subSnap.docs.forEach((d) => batch.delete(d.ref));
+      if (subSnap.size > 0) await batch.commit();
+    }
+
+    await confRef.delete();
+    return NextResponse.json({ id: confId, deleted: true });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

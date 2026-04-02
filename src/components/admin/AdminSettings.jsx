@@ -1,15 +1,20 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
 
 export default function AdminSettings() {
   const { confId } = useParams();
+  const navigate = useNavigate();
+  const { isSuperAdmin } = useAuth();
   const [conf, setConf] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     return onSnapshot(doc(db, "conferences", confId), (snap) => {
@@ -83,6 +88,55 @@ export default function AdminSettings() {
           {message && <span className={`text-sm ${message.startsWith("Error") ? "text-primary" : "text-[#27AE60]"}`}>{message}</span>}
         </div>
       </div>
+
+      {/* Danger Zone — super admin only */}
+      {isSuperAdmin && (
+        <div className="mt-10 max-w-2xl">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="w-1 h-5 bg-primary inline-block"></span>
+            <h2 className="font-headline text-primary text-lg font-bold uppercase tracking-wider">Danger Zone</h2>
+          </div>
+          <div className="bg-surface-container-lowest p-6 border-l-4 border-primary">
+            <p className="text-on-surface text-sm mb-1 font-bold">Delete this conference</p>
+            <p className="text-secondary text-xs mb-4">This will permanently delete the conference and all its data including sessions, reports, and member records. This action cannot be undone.</p>
+            {deleteConfirm ? (
+              <div className="flex items-center gap-3">
+                <span className="text-primary text-sm font-bold">Are you sure?</span>
+                <button
+                  onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      await apiFetch(`/api/conferences/${confId}`, { method: "DELETE" });
+                      navigate("/dashboard");
+                    } catch (err) {
+                      setMessage(`Error: ${err.message}`);
+                      setDeleting(false);
+                      setDeleteConfirm(false);
+                    }
+                  }}
+                  disabled={deleting}
+                  className="bg-primary text-on-primary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:opacity-80 disabled:opacity-50"
+                >
+                  {deleting ? "Deleting..." : "Yes, Delete Conference"}
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(false)}
+                  className="bg-surface-container text-secondary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:text-on-surface"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setDeleteConfirm(true)}
+                className="bg-surface-container text-primary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:bg-primary hover:text-on-primary transition-colors"
+              >
+                Delete Conference
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
