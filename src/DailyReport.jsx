@@ -37,22 +37,28 @@ function normaliseSources(block) {
 }
 
 // ── SessionPicker ─────────────────────────────────────────────────────────────
-function SessionPicker({ value, onChange }) {
+function SessionPicker({ value, onChange, conferenceSessions = [] }) {
   const [query, setQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const selectedTitle = value?.id ? (SESSION_CATALOG.get(value.id)?.title || value.id) : null;
+  // Look up title from conference sessions first, then fall back to SESSION_CATALOG
+  const findSession = (id) => conferenceSessions.find(s => s.code === id || s.id === id) || SESSION_CATALOG.get(id);
+  const selectedTitle = value?.id ? (findSession(value.id)?.title || value.id) : null;
 
   const results = useMemo(() => {
     const q = query.trim();
     if (!q) return [];
     const ql = q.toLowerCase();
-    return [...SESSION_CATALOG.values()]
+    // Search conference sessions if available, otherwise fall back to catalog
+    const source = conferenceSessions.length > 0
+      ? conferenceSessions.map(s => ({ session_id: s.code || s.id, title: s.title }))
+      : [...SESSION_CATALOG.values()];
+    return source
       .filter(s =>
-        s.session_id.toLowerCase().includes(ql) ||
-        s.title.toLowerCase().includes(ql)
+        (s.session_id || "").toLowerCase().includes(ql) ||
+        (s.title || "").toLowerCase().includes(ql)
       )
       .slice(0, 20);
-  }, [query]);
+  }, [query, conferenceSessions]);
 
   const handleSelect = (s) => {
     onChange({ id: s.session_id, manual: '' });
@@ -115,7 +121,7 @@ function SessionPicker({ value, onChange }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false, currentUid, memberColorMap, isAdmin = false }) {
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false, currentUid, memberColorMap, isAdmin = false, conferenceSessions = [] }) {
   const sources = normaliseSources(block);
   // Normalise legacy single contributorId → contributorIds array
   const contributorIds = block.contributorIds?.length
@@ -167,7 +173,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
       {sources.map((src, i) => (
         <div key={i} className="intel-card-section intel-card-meta no-print">
           <span className="intel-card-label">来源{sources.length > 1 ? ` ${i + 1}` : ''}</span>
-          <SessionPicker value={src} onChange={v => updateSource(i, v)} />
+          <SessionPicker value={src} onChange={v => updateSource(i, v)} conferenceSessions={conferenceSessions} />
           {sources.length > 1 && (
             <button className="intel-card-source-remove" onClick={() => removeSource(i)} title="移除此来源">×</button>
           )}
@@ -176,7 +182,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
       {sources.length === 0 && (
         <div className="intel-card-section intel-card-meta no-print">
           <span className="intel-card-label">来源</span>
-          <SessionPicker value={{ id: null, manual: '' }} onChange={v => onUpdate({ sourceSessions: [v], sourceSession: v })} />
+          <SessionPicker value={{ id: null, manual: '' }} onChange={v => onUpdate({ sourceSessions: [v], sourceSession: v })} conferenceSessions={conferenceSessions} />
         </div>
       )}
       <div className="intel-card-section intel-card-meta no-print">
@@ -480,6 +486,7 @@ export default function DailyReport({ viewMode = false }) {
   const { isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
   const [sessions, setSessions] = useState([]);
+  const [allConferenceSessions, setAllConferenceSessions] = useState([]);
   const [members, setMembers] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -603,19 +610,22 @@ export default function DailyReport({ viewMode = false }) {
     });
   }, [user, confId]);
 
-  // Sessions (filtered by date)
+  // Sessions (filtered by date + all for session picker)
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
-      const arr = [];
+      const all = [];
+      const filtered = [];
       snap.forEach((d) => {
         const data = d.data();
-        if (data.date === date) arr.push({ ...data, attendees: new Set(data.attendees || []) });
+        all.push({ ...data, id: d.id });
+        if (data.date === date) filtered.push({ ...data, attendees: new Set(data.attendees || []) });
       });
-      arr.sort((a, b) => a.start.localeCompare(b.start));
-      setSessions(arr);
+      filtered.sort((a, b) => a.start.localeCompare(b.start));
+      setSessions(filtered);
+      setAllConferenceSessions(all);
     });
-  }, [user, date]);
+  }, [user, date, confId]);
 
   // Report data
   useEffect(() => {
@@ -2070,6 +2080,7 @@ ${clone.outerHTML}
                     currentUid={user?.uid}
                     memberColorMap={memberColorMap}
                     isAdmin={isConfAdmin}
+                    conferenceSessions={allConferenceSessions}
                   />
                 );
               }
@@ -2115,6 +2126,7 @@ ${clone.outerHTML}
                     currentUid={user?.uid}
                     memberColorMap={memberColorMap}
                     isAdmin={isConfAdmin}
+                    conferenceSessions={allConferenceSessions}
                   />
                 );
               }
