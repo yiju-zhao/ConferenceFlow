@@ -20,14 +20,14 @@ export default function AdminReports() {
 
   const handlePublish = async (reportId) => {
     setPublishing(reportId);
-    try { await apiFetch(`/api/conferences/${confId}/reports/${reportId}/publish`, { method: "POST" }); }
+    try { await apiFetch(`/api/conferences/${confId}/reports/${reportId}`, { method: "POST" }); }
     catch (err) { alert(`Error: ${err.message}`); }
     finally { setPublishing(null); }
   };
 
   const handleUnpublish = async (reportId) => {
     setPublishing(reportId);
-    try { await apiFetch(`/api/conferences/${confId}/reports/${reportId}/publish`, { method: "DELETE" }); }
+    try { await apiFetch(`/api/conferences/${confId}/reports/${reportId}`, { method: "DELETE" }); }
     catch (err) { alert(`Error: ${err.message}`); }
     finally { setPublishing(null); }
   };
