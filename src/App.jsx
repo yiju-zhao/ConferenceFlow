@@ -30,13 +30,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { SESSION_CATALOG, COLORS } from "./shared";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const getInitials = (name) => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return parts.map(p => p[0]).join("").toUpperCase().substring(0, 3);
-};
+import { getInitials } from "./lib/reportUtils";
 function parseCSVLine(text) {
   let ret = [], inQuote = false, value = "";
   for (let i = 0; i < text.length; i++) {
@@ -361,12 +355,14 @@ export default function App() {
   }, [user, confId]);
 
   // Auto-enrich existing sessions with catalog data
+  const enrichedRef = useRef(new Set());
   useEffect(() => {
     if (!user || Object.keys(sessions).length === 0) return;
     const toEnrich = Object.values(sessions).filter(
-      (s) => !s.url && SESSION_CATALOG.has(s.code)
+      (s) => !s.url && SESSION_CATALOG.has(s.code) && !enrichedRef.current.has(s.code)
     );
     if (toEnrich.length === 0) return;
+    toEnrich.forEach((s) => enrichedRef.current.add(s.code));
     Promise.all(
       toEnrich.map((s) => {
         const info = SESSION_CATALOG.get(s.code);
@@ -379,8 +375,7 @@ export default function App() {
         }, { merge: true });
       })
     ).catch(console.error);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, Object.keys(sessions).join(",")]);
+  }, [user, confId, sessions]);
 
   // CSV upload
   const handleFileUpload = (e) => {
@@ -600,7 +595,7 @@ export default function App() {
 
   useEffect(() => {
     setExportDates(new Set(groupedSessions.map((g) => g.date)));
-  }, [groupedSessions.length]);
+  }, [groupedSessions]);
 
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -609,7 +604,7 @@ export default function App() {
       .filter((d) => d !== "TBD" && d < today);
     if (pastDates.length > 0)
       setCollapsedDates((prev) => new Set([...prev, ...pastDates]));
-  }, [groupedSessions.length]);
+  }, [groupedSessions]);
 
   const toggleExportDate = (date) =>
     setExportDates((prev) => {

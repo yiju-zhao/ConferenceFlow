@@ -1,80 +1,24 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import catalogData from "../data/gtc-2026-sessions-detailed.json";
+/**
+ * Barrel re-export file — maintains backward compatibility.
+ * Prefer importing directly from the source modules:
+ *   - constants: src/constants.js
+ *   - report utils: src/lib/reportUtils.js
+ *   - hooks: src/hooks/useDebouncedSave.js
+ *   - components: this file (EditableField, BulletEditor, InlineAddButton, SectionInlineAdd)
+ */
 
-// ── Session catalog ─────────────────────────────────────────────────────────
-export const SESSION_CATALOG = new Map(catalogData.map((s) => [s.session_id, s]));
+// Re-export constants
+export { COLORS, COLOR_PRESETS, DAY_CN } from "./constants";
+export { SESSION_CATALOG } from "./sessionCatalog";
 
-// ── Report version helpers ──────────────────────────────────────────────────
-export function parseReportId(reportId) {
-  const m = reportId.match(/^(.+)-v(\d+)$/);
-  return m
-    ? { date: m[1], version: parseInt(m[2]), isLegacy: false }
-    : { date: reportId, version: 1, isLegacy: true };
-}
+// Re-export report utilities
+export { parseReportId, latestOrNewVersionId, generateSummaryId, getInitials, generateId } from "./lib/reportUtils";
 
-export function latestOrNewVersionId(date, allDocs) {
-  if (allDocs.some(r => r.id === date)) return date;
-  const vDocs = allDocs.filter(r => parseReportId(r.id).date === date);
-  if (vDocs.length > 0) {
-    const maxV = vDocs.reduce((max, r) => Math.max(max, parseReportId(r.id).version), 0);
-    return `${date}-v${maxV}`;
-  }
-  return date;
-}
+// Re-export hooks
+export { useDebouncedSave } from "./hooks/useDebouncedSave";
 
-// ── Summary ID generator ─────────────────────────────────────────────────────
-export function generateSummaryId(existingDocs) {
-  const summaryDocs = existingDocs
-    .filter(d => d.id.startsWith("summary-GTC2026"))
-    .sort((a, b) => a.id.localeCompare(b.id));
-  if (summaryDocs.length === 0) return "summary-GTC2026";
-  const versions = summaryDocs.map(d => {
-    const m = d.id.match(/-v(\d+)$/);
-    return m ? parseInt(m[1]) : 1;
-  });
-  return `summary-GTC2026-v${Math.max(...versions) + 1}`;
-}
-
-// ── Member color palette (light-theme tuned) ────────────────────────────────
-export const COLORS = [
-  { hex: "#CF0A2C", bg: "rgba(207,10,44,0.08)",  glow: "rgba(207,10,44,0.20)" },
-  { hex: "#2980B9", bg: "rgba(41,128,185,0.10)",  glow: "rgba(41,128,185,0.25)" },
-  { hex: "#E67E22", bg: "rgba(230,126,34,0.10)",  glow: "rgba(230,126,34,0.25)" },
-  { hex: "#8E44AD", bg: "rgba(142,68,173,0.10)",  glow: "rgba(142,68,173,0.25)" },
-  { hex: "#27AE60", bg: "rgba(39,174,96,0.10)",   glow: "rgba(39,174,96,0.25)" },
-  { hex: "#2C3E50", bg: "rgba(44,62,80,0.08)",    glow: "rgba(44,62,80,0.20)" },
-];
-
-// ── Color presets for rich text formatting ───────────────────────────────────
-export const COLOR_PRESETS = ["#333333", "#CF0A2C", "#E67E22", "#27AE60", "#2980B9", "#8E44AD"];
-
-// ── Chinese day names ───────────────────────────────────────────────────────
-export const DAY_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-
-// ── Debounce helper ──────────────────────────────────────────────────────────
-export function useDebouncedSave(delay = 600) {
-  const timers = useRef({});
-  const pending = useRef(0);
-  const savedTimer = useRef(null);
-  const [saveState, setSaveState] = useState("idle");
-  const debouncedSave = useCallback((key, fn) => {
-    if (!timers.current[key]) pending.current += 1;
-    else clearTimeout(timers.current[key]);
-    setSaveState("saving");
-    timers.current[key] = setTimeout(() => {
-      delete timers.current[key];
-      pending.current -= 1;
-      Promise.resolve(fn()).finally(() => {
-        if (pending.current === 0) {
-          setSaveState("saved");
-          clearTimeout(savedTimer.current);
-          savedTimer.current = setTimeout(() => setSaveState("idle"), 2000);
-        }
-      });
-    }, delay);
-  }, [delay]);
-  return { debouncedSave, saveState };
-}
+// ── Components remain here ──────────────────────────────────────────────────
+import { useState, useEffect, useRef } from "react";
 
 // ── EditableField ────────────────────────────────────────────────────────────
 export function EditableField({ value, onSave, placeholder, minHeight = 60, readOnly = false }) {
@@ -165,7 +109,6 @@ export function BulletEditor({ points, onSave, placeholder = "请输入要点...
     if (!focused.current) setLocal(points || []);
   }, [points]);
 
-  // Resize all textareas whenever content changes (handles initial load)
   useEffect(() => {
     if (!readOnly) {
       containerRef.current?.querySelectorAll(".bullet-input").forEach(el => {

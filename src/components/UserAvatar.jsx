@@ -1,12 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
-
-const AVATAR_COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
+import { COLORS } from "../constants";
 
 function getAvatarColor(name) {
   let hash = 0;
   for (let i = 0; i < (name || "").length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return COLORS[Math.abs(hash) % COLORS.length].hex;
 }
 
 function getInitial(name) {

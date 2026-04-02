@@ -27,14 +27,14 @@ export default function ReportList() {
         .sort((a, b) => b.id.localeCompare(a.id));
       setReportDocs(docs);
     });
-  }, [user]);
+  }, [user, confId]);
 
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "conferences", confId, "sessions"), snap => {
       setAllSessions(snap.docs.map(d => d.data()));
     });
-  }, [user]);
+  }, [user, confId]);
 
   // Daily report dates (non-summary)
   const dailyReportDates = useMemo(() => {

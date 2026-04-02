@@ -14,12 +14,12 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
+import { COLORS } from "../../constants";
+import { generateId } from "../../lib/reportUtils";
 
 const COLOR_INDICES = [0, 1, 2, 3, 4, 5, 6, 7];
 
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
+const genId = generateId;
 
 function SessionAssignSearch({ sessions, onAssign }) {
   const [query, setQuery] = useState("");
@@ -733,7 +733,7 @@ export default function AdminAttendance() {
           const totalCols = cols.length;
           gp.forEach((p) => placements.push({ ...p, totalCols }));
         }
-        const COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
+        // COLORS imported from constants
 
         return (
           <div>
@@ -801,7 +801,7 @@ export default function AdminAttendance() {
                               const member = approvedMembers.find((mm) => mm.id === uid);
                               if (!member) return null;
                               return (
-                                <div key={uid} style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "#fff", background: COLORS[member.colorIndex || 0] }}
+                                <div key={uid} style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "#fff", background: COLORS[member.colorIndex || 0].hex }}
                                   title={getMemberName(member)}>
                                   {(getMemberName(member) || "?").charAt(0).toUpperCase()}
                                 </div>

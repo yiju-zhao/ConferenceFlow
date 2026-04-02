@@ -1,4 +1,5 @@
 import { EditableField, SectionInlineAdd } from "../shared";
+import CitationBadges from "../components/CitationBadges";
 
 // ── Block type definitions for the inline-add popover ────────────────────────
 const BLOCK_TYPES = [
@@ -47,37 +48,6 @@ function groupBlocks(blocks) {
   }
 
   return groups;
-}
-
-// ── Citation badges (inline) ─────────────────────────────────────────────────
-function CitationBadges({ block, onUpdateBlock, getCitationPreview }) {
-  const citations = block.citations || [];
-  if (citations.length === 0) return null;
-
-  return (
-    <div className="flex gap-1 flex-wrap mt-2">
-      {citations.map((cId) => (
-        <span
-          key={cId}
-          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary"
-          title={getCitationPreview(cId)}
-        >
-          [{cId}]
-          <button
-            className="no-print hover:opacity-70"
-            onClick={(e) => {
-              e.stopPropagation();
-              onUpdateBlock(block.id, {
-                citations: citations.filter((id) => id !== cId),
-              });
-            }}
-          >
-            x
-          </button>
-        </span>
-      ))}
-    </div>
-  );
 }
 
 // ── Remove button (appears on hover) ─────────────────────────────────────────
