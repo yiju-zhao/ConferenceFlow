@@ -4,6 +4,17 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { apiFetch } from "../../lib/api";
 
+function SessionField({ label, field, type = "text", value, onChange }) {
+  return (
+    <div className="mb-3">
+      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
+      <input type={type} value={value || ""}
+        onChange={(e) => onChange(field, e.target.value)}
+        className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
+    </div>
+  );
+}
+
 export default function AdminSessions() {
   const { confId } = useParams();
   const [sessions, setSessions] = useState([]);
@@ -62,14 +73,9 @@ export default function AdminSessions() {
     finally { setDeleting(null); }
   };
 
-  const SessionField = ({ label, field, type = "text" }) => (
-    <div className="mb-3">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
-      <input type={type} value={editModal?.session?.[field] || ""}
-        onChange={(e) => setEditModal({ ...editModal, session: { ...editModal.session, [field]: e.target.value } })}
-        className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
-    </div>
-  );
+  const handleFieldChange = (field, value) => {
+    setEditModal((prev) => ({ ...prev, session: { ...prev.session, [field]: value } }));
+  };
 
   return (
     <div>
@@ -124,14 +130,14 @@ export default function AdminSessions() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setEditModal(null)}>
           <div className="bg-surface-container-lowest p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-headline text-on-surface font-bold text-base mb-4 uppercase">{editModal.mode === "add" ? "Add Session" : "Edit Session"}</h3>
-            <SessionField label="Session Code" field="code" />
-            <SessionField label="Title" field="title" />
-            <SessionField label="Date" field="date" type="date" />
-            <div className="flex gap-3"><div className="flex-1"><SessionField label="Start Time" field="start" type="time" /></div><div className="flex-1"><SessionField label="End Time" field="end" type="time" /></div></div>
-            <SessionField label="Room" field="room" />
-            <SessionField label="Format" field="format" />
-            <SessionField label="Topic" field="mainTopic" />
-            <SessionField label="URL" field="url" />
+            <SessionField label="Session Code" field="code" value={editModal?.session?.code} onChange={handleFieldChange} />
+            <SessionField label="Title" field="title" value={editModal?.session?.title} onChange={handleFieldChange} />
+            <SessionField label="Date" field="date" type="date" value={editModal?.session?.date} onChange={handleFieldChange} />
+            <div className="flex gap-3"><div className="flex-1"><SessionField label="Start Time" field="start" type="time" value={editModal?.session?.start} onChange={handleFieldChange} /></div><div className="flex-1"><SessionField label="End Time" field="end" type="time" value={editModal?.session?.end} onChange={handleFieldChange} /></div></div>
+            <SessionField label="Room" field="room" value={editModal?.session?.room} onChange={handleFieldChange} />
+            <SessionField label="Format" field="format" value={editModal?.session?.format} onChange={handleFieldChange} />
+            <SessionField label="Topic" field="mainTopic" value={editModal?.session?.mainTopic} onChange={handleFieldChange} />
+            <SessionField label="URL" field="url" value={editModal?.session?.url} onChange={handleFieldChange} />
             <div className="flex gap-3 mt-4">
               <button onClick={() => setEditModal(null)} className="flex-1 bg-surface-container p-2 text-secondary text-sm uppercase tracking-wider hover:text-on-surface">Cancel</button>
               <button onClick={handleSaveSession} className="flex-1 bg-primary text-on-primary p-2 text-sm font-headline uppercase tracking-wider hover:bg-primary-container">{editModal.mode === "add" ? "Create" : "Save"}</button>

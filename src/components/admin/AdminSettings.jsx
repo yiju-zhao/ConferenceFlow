@@ -5,6 +5,21 @@ import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
 
+function SettingsField({ label, field, type = "text", placeholder = "", value, onChange }) {
+  return (
+    <div className="mb-4">
+      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
+      {type === "textarea" ? (
+        <textarea value={value || ""} onChange={(e) => onChange(field, e.target.value)} placeholder={placeholder} rows={3}
+          className="w-full bg-surface-container-high p-3 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none resize-none" />
+      ) : (
+        <input type={type} value={value || ""} onChange={(e) => onChange(field, e.target.value)} placeholder={placeholder}
+          className="w-full bg-surface-container-high p-3 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
+      )}
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const { confId } = useParams();
   const navigate = useNavigate();
@@ -37,18 +52,9 @@ export default function AdminSettings() {
 
   if (!conf) return <div className="text-secondary text-sm">Loading settings...</div>;
 
-  const Field = ({ label, field, type = "text", placeholder = "" }) => (
-    <div className="mb-4">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
-      {type === "textarea" ? (
-        <textarea value={form[field] || ""} onChange={(e) => setForm({ ...form, [field]: e.target.value })} placeholder={placeholder} rows={3}
-          className="w-full bg-surface-container-high p-3 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none resize-none" />
-      ) : (
-        <input type={type} value={form[field] || ""} onChange={(e) => setForm({ ...form, [field]: e.target.value })} placeholder={placeholder}
-          className="w-full bg-surface-container-high p-3 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
-      )}
-    </div>
-  );
+  const handleFieldChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
 
   return (
     <div>
@@ -57,10 +63,10 @@ export default function AdminSettings() {
         <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">Conference Settings</h2>
       </div>
       <div className="bg-surface-container-lowest p-6 max-w-2xl">
-        <Field label="Name" field="name" placeholder="Conference name" />
-        <Field label="Description" field="description" type="textarea" placeholder="Conference description" />
-        <Field label="Start Date" field="startDate" type="date" />
-        <Field label="End Date" field="endDate" type="date" />
+        <SettingsField label="Name" field="name" placeholder="Conference name" value={form.name} onChange={handleFieldChange} />
+        <SettingsField label="Description" field="description" type="textarea" placeholder="Conference description" value={form.description} onChange={handleFieldChange} />
+        <SettingsField label="Start Date" field="startDate" type="date" value={form.startDate} onChange={handleFieldChange} />
+        <SettingsField label="End Date" field="endDate" type="date" value={form.endDate} onChange={handleFieldChange} />
         <div className="mb-4">
           <label className="block text-secondary text-xs uppercase tracking-wider mb-2">Visibility</label>
           <div className="flex gap-3">
