@@ -474,6 +474,63 @@ function SnapshotViewer({ snapshot, currentData }) {
           </section>
         );
       })}
+
+      {/* Block-based section diffs */}
+      {[
+        { field: "onsiteInfoBlocks", label: "现场情报 (Blocks)" },
+        { field: "reflectionsBlocks", label: "圈内声音 (Blocks)" },
+      ].map(({ field, label }) => {
+        const oldBlocks = currentData?.[field] || [];
+        const newBlocks = data?.[field] || [];
+        if (JSON.stringify(oldBlocks) === JSON.stringify(newBlocks)) return null;
+
+        // Build maps for comparison
+        const oldMap = new Map(oldBlocks.map(b => [b.id, b]));
+        const newMap = new Map(newBlocks.map(b => [b.id, b]));
+        const allIds = [...new Set([...oldBlocks.map(b => b.id), ...newBlocks.map(b => b.id)])];
+
+        return (
+          <section key={field} style={{ marginBottom: 24 }}>
+            <h4 className="text-body" style={{ margin: "0 0 12px", fontWeight: 700, color: "var(--text-secondary)" }}>{label}</h4>
+            {allIds.map(id => {
+              const oldB = oldMap.get(id);
+              const newB = newMap.get(id);
+              const oldContent = stripHtml(oldB?.content);
+              const newContent = stripHtml(newB?.content);
+
+              if (!newB && oldB) {
+                // Block removed in snapshot (exists in current, not in snapshot)
+                return (
+                  <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(207,10,44,0.06)", borderLeft: "3px solid #CF0A2C" }}>
+                    <div style={{ fontSize: 10, color: "#CF0A2C", fontWeight: 600, marginBottom: 4 }}>已删除</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through" }}>{oldContent || "(空)"}</div>
+                  </div>
+                );
+              }
+              if (!oldB && newB) {
+                // Block added in snapshot (not in current, exists in snapshot)
+                return (
+                  <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(39,174,96,0.06)", borderLeft: "3px solid #27AE60" }}>
+                    <div style={{ fontSize: 10, color: "#27AE60", fontWeight: 600, marginBottom: 4 }}>新增</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{newContent || "(空)"}</div>
+                  </div>
+                );
+              }
+              if (oldContent !== newContent) {
+                // Block content changed
+                return (
+                  <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(41,128,185,0.06)", borderLeft: "3px solid #2980B9" }}>
+                    <div style={{ fontSize: 10, color: "#2980B9", fontWeight: 600, marginBottom: 4 }}>已修改</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through", marginBottom: 4 }}>{oldContent || "(空)"}</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{newContent || "(空)"}</div>
+                  </div>
+                );
+              }
+              return null; // No change
+            })}
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -810,6 +867,8 @@ export default function DailyReport({ viewMode = false }) {
       onsiteInfo: rd.onsiteInfo || "",
       reflections: rd.reflections || "",
       rumors: rd.rumors || "",
+      onsiteInfoBlocks: rd.onsiteInfoBlocks || [],
+      reflectionsBlocks: rd.reflectionsBlocks || [],
     };
     const hash = JSON.stringify(data);
     // Skip auto snapshots when content hasn't changed since last snapshot
