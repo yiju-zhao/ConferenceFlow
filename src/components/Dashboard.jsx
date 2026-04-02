@@ -207,12 +207,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6">
-        {conferences.length > 0 && !membershipsReady ? (
-          <div className="flex items-center justify-center py-16">
-            <span className="text-secondary text-sm uppercase tracking-wider">Loading...</span>
-          </div>
-        ) : (<>
+      <div className="max-w-4xl mx-auto p-6" style={{ opacity: membershipsReady || conferences.length === 0 ? 1 : 0, transition: "opacity 150ms" }}>
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-1 h-5 bg-primary inline-block"></span>
@@ -300,7 +295,6 @@ export default function Dashboard() {
             <ConferenceCard key={conf.id} conf={conf} showApply />
           ))}
         </section>
-        </>)}
       </div>
 
       {applyModal && (
