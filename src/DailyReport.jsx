@@ -1411,113 +1411,62 @@ ${clone.outerHTML}
   return (
     <div className={`report-page${viewMode ? " report-view-mode" : ""}`}>
 
-      {/* ── Toolbar ──────────────────────────────────────────────── */}
-      {!viewMode && <div className="report-toolbar no-print">
-        <div className="report-toolbar-inner">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Link to={`/conference/${confId}`} className="report-back-btn">← 返回日程</Link>
-            <div style={{ width: 1, height: 20, background: "var(--border)" }} />
-            <Link to={`/conference/${confId}/reports`} className="report-tool-btn" style={{ textDecoration: "none" }}>
-              日报列表
-            </Link>
-          </div>
-          <div className="report-toolbar-actions">
-            <PresenceBar
-              activeUsers={activeUsers}
-              memberColorMap={memberColorMap}
-              currentUid={user?.uid}
-            />
-            {saveState === "saving" && (
-              <span className="report-status-msg" style={{ color: "var(--text-dim)" }}>● 保存中...</span>
-            )}
-            {saveState === "saved" && (
-              <span className="report-status-msg" style={{ color: "var(--success)" }}>✓ 已保存</span>
-            )}
-            <div className="report-toolbar-divider" />
+      {/* ── Toolbar (redesigned) ────────────────────────────────── */}
+      {!viewMode && <div className="no-print" style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "#222", borderBottom: "1px solid #333",
+        padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        {/* Left: nav + title + status badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link to={`/conference/${confId}/reports`} style={{ color: "#888", fontSize: 12, textDecoration: "none" }}>
+            ← 返回报告列表
+          </Link>
+          <span style={{ color: "#555" }}>|</span>
+          <span style={{ color: "#eee", fontSize: 14, fontWeight: 700, fontFamily: "'Work Sans', sans-serif" }}>
+            {reportData?.title || `【${date}】日报`}
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase",
+            padding: "2px 8px", background: "rgba(255,255,255,0.1)", color: "#888",
+            fontFamily: "'Work Sans', sans-serif",
+          }}>
+            {reportData?.status === "published" ? "PUBLISHED" : "DRAFT"}
+          </span>
+        </div>
+
+        {/* Right: presence + actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <PresenceBar
+            activeUsers={activeUsers}
+            memberColorMap={memberColorMap}
+            currentUid={user?.uid}
+          />
+          {saveState === "saving" && (
+            <span style={{ fontSize: 11, color: "#666" }}>● 保存中...</span>
+          )}
+          {saveState === "saved" && (
+            <span style={{ fontSize: 11, color: "#27AE60" }}>✓ 已保存</span>
+          )}
+          <button onClick={handleSave} title="手动保存"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            手动保存
+          </button>
+          <button onClick={() => setShowHistory(true)} title="历史版本"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            历史版本
+          </button>
+          {/* Export dropdown */}
+          <div style={{ position: "relative" }}>
             <button
-              className="report-tool-btn"
-              onClick={handleSave}
-              title="立即保存并创建快照"
-            >
-              保存
-            </button>
-            <button
-              className="report-tool-btn"
-              onClick={() => setShowHistory(true)}
-              title="查看历史版本快照"
-            >
-              历史版本
-            </button>
-            <button
-              className="report-tool-btn"
-              onClick={() => window.open(`/view/report/${reportId}`, '_blank')}
-              title="在新标签页预览只读视图"
-            >
-              预览
-            </button>
-            {/* ── Delete session ── */}
-            <div className="report-toolbar-divider" />
-            <button
-              className="report-tool-btn"
-              onClick={() => setShowDeleteSelect(true)}
-              title="从日报移除一个 session"
-              style={{ color: "var(--brand)" }}
-            >
-              删除 Session
-            </button>
-            {/* ── Sync from catalog ── */}
-            <div className="report-toolbar-divider" />
-            {syncMsg && (
-              <span className="report-status-msg" style={{ color: "var(--info)" }}>
-                {syncMsg}
-              </span>
-            )}
-            <button
-              className="report-tool-btn"
-              onClick={handleSyncFromCatalog}
-              disabled={syncing || !user}
-              title="从 JSON catalog 同步所有 session 的演讲者信息"
-              style={syncing ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
-            >
-              {syncing ? "同步中..." : "同步外源信息"}
-            </button>
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
-            <button className="report-icon-btn" onClick={execBold} title="加粗">
-              <strong>B</strong>
-            </button>
-            <button className="report-icon-btn" onClick={() => execCmd("italic")} title="斜体">
-              <em style={{ fontStyle: "italic" }}>I</em>
-            </button>
-            <button className="report-icon-btn" onClick={() => execCmd("underline")} title="下划线">
-              <span style={{ textDecoration: "underline" }}>U</span>
-            </button>
-            <div style={{ position: "relative" }}>
-              <button
-                className="report-icon-btn"
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                title="字体颜色"
-              >
-                <span style={{ borderBottom: "3px solid var(--brand)", paddingBottom: 1 }}>A</span>
-              </button>
-              {showColorPicker && (
-                <div className="report-color-picker">
-                  {COLOR_PRESETS.map((c) => (
-                    <button key={c} className="report-color-swatch" style={{ background: c }}
-                      onClick={() => execColor(c)} title={c} />
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ width: 1, height: 20, background: "var(--border)", margin: "0 8px" }} />
-            <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
-              <button
-                className="report-export-btn"
                 onClick={() => !exporting && setShowExportMenu(v => !v)}
                 disabled={exporting}
-                aria-haspopup="true"
-                aria-expanded={showExportMenu}
+                style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+                  background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}
               >
-                {exporting ? "生成中..." : "导出日报 ▾"}
+                {exporting ? "生成中..." : "导出 ▾"}
               </button>
               {showExportMenu && (
                 <div className="export-dropdown-menu">
@@ -1546,10 +1495,54 @@ ${clone.outerHTML}
                   </button>
                 </div>
               )}
-            </div>
           </div>
+          {/* Publish button */}
+          <button
+            onClick={() => handlePublish()}
+            disabled={publishing}
+            style={{
+              padding: "5px 18px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
+              background: "#a20513", color: "#fff", border: "none", cursor: "pointer",
+              fontFamily: "'Work Sans', sans-serif", opacity: publishing ? 0.6 : 1,
+            }}
+          >
+            {publishing ? "发布中..." : "发布"}
+          </button>
         </div>
+      </div>}
 
+      {/* ── Formatting toolbar (secondary) ── */}
+      {!viewMode && <div className="no-print" style={{
+        position: "sticky", top: 46, zIndex: 99,
+        background: "#f9f9f9", borderBottom: "1px solid #eee",
+        padding: "4px 24px", display: "flex", alignItems: "center", gap: 4,
+      }}>
+        <button className="report-icon-btn" onClick={execBold} title="加粗"><strong>B</strong></button>
+        <button className="report-icon-btn" onClick={() => execCmd("italic")} title="斜体"><em style={{ fontStyle: "italic" }}>I</em></button>
+        <button className="report-icon-btn" onClick={() => execCmd("underline")} title="下划线"><span style={{ textDecoration: "underline" }}>U</span></button>
+        <div style={{ position: "relative" }}>
+          <button className="report-icon-btn" onClick={() => setShowColorPicker(!showColorPicker)} title="字体颜色">
+            <span style={{ borderBottom: "3px solid var(--brand)", paddingBottom: 1 }}>A</span>
+          </button>
+          {showColorPicker && (
+            <div className="report-color-picker">
+              {COLOR_PRESETS.map((c) => (
+                <button key={c} className="report-color-swatch" style={{ background: c }}
+                  onClick={() => execColor(c)} title={c} />
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ width: 1, height: 18, background: "#ddd", margin: "0 6px" }} />
+        <button onClick={() => setShowDeleteSelect(true)} title="删除 Session"
+          style={{ fontSize: 11, color: "#a20513", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+          删除 Session
+        </button>
+        <button onClick={handleSyncFromCatalog} disabled={syncing} title="同步外源信息"
+          style={{ fontSize: 11, color: "#5f5e5e", background: "none", border: "none", cursor: "pointer", fontFamily: "'Inter', sans-serif", opacity: syncing ? 0.5 : 1 }}>
+          {syncing ? "同步中..." : "同步外源信息"}
+        </button>
+        {syncMsg && <span style={{ fontSize: 11, color: "#2980B9" }}>{syncMsg}</span>}
       </div>}
 
       {/* ── Share Modal ──────────────────────────────────────────── */}

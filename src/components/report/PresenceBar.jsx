@@ -18,7 +18,7 @@ export default function PresenceBar({ activeUsers, memberColorMap, currentUid })
                 width: 26, height: 26, borderRadius: "50%", background: color, color: "#fff",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 700, fontFamily: "'Work Sans', sans-serif",
-                marginLeft: i > 0 ? -6 : 0, border: "2px solid var(--bg, #fff)",
+                marginLeft: i > 0 ? -6 : 0, border: "2px solid #222",
                 zIndex: 5 - i, position: "relative",
               }}>
               {initial}
