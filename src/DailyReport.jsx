@@ -2449,12 +2449,10 @@ ${clone.outerHTML}
                             <div style={{ fontSize: 12, color: "#1a1c1c", fontWeight: 600 }}>{date ? relativeTime(date) : "未知时间"}</div>
                             {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
                             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                              {i > 0 && (
-                                <button onClick={() => setViewingSnapshot(snap)}
-                                  style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
-                                  查看变更
-                                </button>
-                              )}
+                              <button onClick={() => setViewingSnapshot(snap)}
+                                style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
+                                查看变更
+                              </button>
                               <button onClick={() => handleRestore(snap)}
                                 style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
                                 恢复
