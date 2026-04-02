@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -12,6 +12,7 @@ export default function AdminSessions() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [showFormatGuide, setShowFormatGuide] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -85,6 +86,9 @@ export default function AdminSessions() {
           className="bg-surface-container text-secondary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors disabled:opacity-50">
           {uploading ? "Uploading..." : "Upload JSON"}</button>
         <input ref={fileInputRef} type="file" accept=".json" onChange={handleBulkUpload} className="hidden" />
+        <button onClick={() => setShowFormatGuide(true)}
+          className="text-secondary text-xs hover:text-primary transition-colors underline">
+          Format Guide</button>
         <span className="text-secondary text-xs">{sessions.length} sessions total</span>
       </div>
       {uploadResult && (
@@ -131,6 +135,115 @@ export default function AdminSessions() {
             <div className="flex gap-3 mt-4">
               <button onClick={() => setEditModal(null)} className="flex-1 bg-surface-container p-2 text-secondary text-sm uppercase tracking-wider hover:text-on-surface">Cancel</button>
               <button onClick={handleSaveSession} className="flex-1 bg-primary text-on-primary p-2 text-sm font-headline uppercase tracking-wider hover:bg-primary-container">{editModal.mode === "add" ? "Create" : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Format Guide Modal */}
+      {showFormatGuide && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowFormatGuide(false)}>
+          <div className="bg-surface-container-lowest w-full max-w-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-primary px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+              <h3 className="text-on-primary font-headline font-bold text-base uppercase tracking-wider">JSON Upload Format Guide</h3>
+              <button onClick={() => setShowFormatGuide(false)} className="text-on-primary/60 hover:text-on-primary text-lg">×</button>
+            </div>
+            <div className="px-6 py-5" style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, lineHeight: 1.7, color: "#1a1c1c" }}>
+
+              <p className="text-secondary text-sm mb-4">Upload a <code className="bg-surface-container-high px-1.5 py-0.5 text-xs">.json</code> file containing an array of session objects. Maximum 1000 sessions per upload.</p>
+
+              <div className="mb-5">
+                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-primary mb-2 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary inline-block"></span> Required Fields
+                </h4>
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-surface-container">
+                      <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline">Field</th>
+                      <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline">Format</th>
+                      <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline">Example</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">title</td><td className="p-2">string</td><td className="p-2 text-secondary">"Keynote: Future of AI"</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">date</td><td className="p-2">YYYY-MM-DD</td><td className="p-2 text-secondary">"2026-03-18"</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">start</td><td className="p-2">HH:MM (24h)</td><td className="p-2 text-secondary">"09:00"</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">end</td><td className="p-2">HH:MM (24h)</td><td className="p-2 text-secondary">"10:30"</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mb-5">
+                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-primary mb-2 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary inline-block"></span> Optional Fields
+                </h4>
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-surface-container">
+                      <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline">Field</th>
+                      <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline">Description</th>
+                      <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline">Alias</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">session_id</td><td className="p-2">Unique code (e.g. "S62911"). Used as document ID.</td><td className="p-2 text-secondary font-mono">code</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">room</td><td className="p-2">Room or venue name</td><td className="p-2 text-secondary font-mono">location</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">speakers</td><td className="p-2">Array of speaker objects</td><td className="p-2">—</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">format</td><td className="p-2">"In-Person", "Virtual", "Both"</td><td className="p-2">—</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">recording</td><td className="p-2">"Yes" or "No"</td><td className="p-2">—</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">session_type</td><td className="p-2">"Talk", "Panel", "Keynote", "Workshop"</td><td className="p-2 text-secondary font-mono">sessionType</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">topic</td><td className="p-2">Primary topic/category</td><td className="p-2 text-secondary font-mono">mainTopic</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">url</td><td className="p-2">Link to official session page</td><td className="p-2">—</td></tr>
+                    <tr className="border-t border-surface-dim"><td className="p-2 font-mono text-primary">key_themes</td><td className="p-2">Array of topic tags for filtering</td><td className="p-2 text-secondary font-mono">keyThemes</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mb-5">
+                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-primary mb-2 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary inline-block"></span> Speaker Object
+                </h4>
+                <pre className="bg-surface-container-high p-3 text-xs font-mono overflow-x-auto">{`{ "name": "Dr. Jane Smith", "title": "Chief Scientist", "company": "NVIDIA" }`}</pre>
+              </div>
+
+              <div className="mb-5">
+                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-primary mb-2 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary inline-block"></span> Complete Example
+                </h4>
+                <pre className="bg-surface-container-high p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{`[
+  {
+    "session_id": "S62911",
+    "title": "NVIDIA AI Factory Architecture Deep Dive",
+    "date": "2026-03-18",
+    "start": "09:00",
+    "end": "10:30",
+    "room": "Hall A",
+    "speakers": [
+      { "name": "Jensen Huang", "title": "CEO", "company": "NVIDIA" }
+    ],
+    "format": "In-Person",
+    "recording": "Yes",
+    "session_type": "Keynote",
+    "topic": "AI Infrastructure",
+    "url": "https://example.com/session/S62911",
+    "key_themes": ["AI", "Infrastructure", "Data Center"]
+  }
+]`}</pre>
+              </div>
+
+              <div className="mb-2">
+                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-primary mb-2 flex items-center gap-2">
+                  <span className="w-1 h-4 bg-primary inline-block"></span> Minimal Example
+                </h4>
+                <pre className="bg-surface-container-high p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{`[
+  { "title": "Morning Keynote", "date": "2026-03-18", "start": "09:00", "end": "10:00" },
+  { "title": "Lunch Workshop", "date": "2026-03-18", "start": "12:00", "end": "13:00" }
+]`}</pre>
+              </div>
+
+              <div className="mt-4 p-3 bg-surface-container text-secondary text-xs">
+                <strong>Note:</strong> Sessions missing required fields are skipped. If <code className="font-mono">session_id</code> matches an existing session, it will be overwritten.
+              </div>
             </div>
           </div>
         </div>
