@@ -54,16 +54,13 @@ export default function Dashboard() {
       const membership = myMemberships[conf.id];
       const isPast = conf.endDate < today;
 
-      // Super admins have implicit access to all conferences
-      if (isSuperAdmin && !membership) {
-        if (isPast) past.push(conf);
-        else upcoming.push(conf);
-      } else if (membership?.status === "pending") {
+      if (membership?.status === "pending") {
         pending.push(conf);
-      } else if (membership?.status === "approved" || (isSuperAdmin && membership)) {
+      } else if (membership?.status === "approved") {
         if (isPast) past.push(conf);
         else upcoming.push(conf);
-      } else if (conf.visibility === "public" && !membership) {
+      } else if (!membership && (conf.visibility === "public" || isSuperAdmin)) {
+        // Super admins can see all conferences in discover (including private)
         discover.push(conf);
       }
     });
@@ -83,12 +80,11 @@ export default function Dashboard() {
       await setDoc(
         doc(db, "conferences", applyModal.confId, "members", user.uid),
         {
-          role: isSuperAdmin ? "admin" : "member",
-          status: isSuperAdmin ? "approved" : "pending",
+          role: "member",
+          status: "pending",
           attendanceMode,
           colorIndex: nextColorIndex,
           appliedAt: serverTimestamp(),
-          ...(isSuperAdmin ? { approvedAt: serverTimestamp(), approvedBy: user.uid } : {}),
         }
       );
       setApplyModal(null);
@@ -118,13 +114,12 @@ export default function Dashboard() {
   };
 
   const ConferenceCard = ({ conf, membership, showApply = false }) => {
-    const canAccess = membership?.status === "approved" || isSuperAdmin;
     return (
     <div className="bg-surface-container-lowest p-4 mb-2">
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-headline text-on-surface font-bold text-base">
-            {canAccess ? (
+            {membership?.status === "approved" ? (
               <Link
                 to={`/conference/${conf.id}`}
                 className="text-on-surface hover:text-primary transition-colors"
@@ -158,15 +153,9 @@ export default function Dashboard() {
               Admin
             </span>
           )}
-          {isSuperAdmin && !membership && (
-            <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary uppercase tracking-wider">
-              Super Admin
-            </span>
-          )}
         </div>
       </div>
-      {/* Show apply button: for non-members on discover, OR super_admin without membership */}
-      {!membership && (showApply || isSuperAdmin) && (
+      {showApply && !membership && (
         <button
           onClick={() => setApplyModal({ confId: conf.id, confName: conf.name })}
           className="mt-3 bg-primary text-on-primary px-4 py-2 text-xs font-headline
