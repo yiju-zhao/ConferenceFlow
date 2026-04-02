@@ -61,8 +61,12 @@ export default function ReportList() {
       return acc;
     }, {});
     const dailyList = Object.values(latestByDate).sort((a, b) => b._date.localeCompare(a._date));
-    const filteredDaily = showArchived ? dailyList : dailyList.filter(r => r.status !== "archived");
-    const filteredSummary = showArchived ? summaryReports : summaryReports.filter(r => r.status !== "archived");
+    const filteredDaily = showArchived
+      ? dailyList.filter(r => r.status === "archived")
+      : dailyList.filter(r => r.status !== "archived");
+    const filteredSummary = showArchived
+      ? summaryReports.filter(r => r.status === "archived")
+      : summaryReports.filter(r => r.status !== "archived");
 
     // Summary reports at top, then daily reports
     return [...filteredSummary.sort((a, b) => b.id.localeCompare(a.id)), ...filteredDaily];
