@@ -4,7 +4,7 @@ export function proxy(request) {
   const origin = request.headers.get("origin");
   const allowedOrigins = [
     process.env.FRONTEND_ORIGIN || "http://localhost:5173",
-    "https://conferenceflow.vercel.app",
+    "https://conference-flow.vercel.app",
   ];
 
   const response = NextResponse.next();
