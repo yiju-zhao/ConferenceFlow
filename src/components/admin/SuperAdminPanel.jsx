@@ -5,6 +5,16 @@ import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
 
+function Field({ label, value, onChange, type = "text", placeholder = "" }) {
+  return (
+    <div className="mb-3">
+      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
+    </div>
+  );
+}
+
 export default function SuperAdminPanel() {
   const { isSuperAdmin } = useAuth();
   const [conferences, setConferences] = useState([]);
@@ -34,14 +44,6 @@ export default function SuperAdminPanel() {
   if (!isSuperAdmin) {
     return <div className="min-h-screen bg-surface flex items-center justify-center"><p className="text-primary font-headline uppercase">Super Admin access required</p></div>;
   }
-
-  const Field = ({ label, value, onChange, type = "text", placeholder = "" }) => (
-    <div className="mb-3">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-surface">
