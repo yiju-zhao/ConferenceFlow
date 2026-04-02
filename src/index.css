@@ -2105,11 +2105,10 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .intel-card-contributor-pill-remove:hover { color: #e74c3c; }
 .intel-card-contributor-select {
-  flex: 1;
-  min-width: 60px;
+  width: auto;
   border: none;
   outline: none;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-tertiary, #aaa);
   background: transparent;
   padding: 0;
