@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-
-const COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
+import { COLORS } from "../../constants";
 
 export default function SessionDetail({ session, members, isAttending, onToggleAttend }) {
   if (!session) {
@@ -24,7 +23,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
           userId: uid,
           name: member.displayName || member.legacyName || uid,
           mode: member.attendanceMode || member.mode || "onsite",
-          color: COLORS[member.colorIndex || 0],
+          color: COLORS[member.colorIndex || 0].hex,
         };
       })
       .filter(Boolean);

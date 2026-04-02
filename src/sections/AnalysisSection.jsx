@@ -1,4 +1,5 @@
 import { EditableField, SectionInlineAdd } from "../shared";
+import CitationBadges from "../components/CitationBadges";
 
 const blockTypes = [
   { type: "stat-card", label: "数据卡片", extraFields: { label: "", value: "", description: "" } },
@@ -92,33 +93,14 @@ export default function AnalysisSection({
     </button>
   );
 
-  // ── Citation badges ───────────────────────────────────────────────────────
-  const renderCitationBadges = (block) => {
-    if (!(block.citations || []).length) return null;
-    return (
-      <div className="flex flex-wrap gap-1 mt-2">
-        {block.citations.map((cId) => (
-          <span
-            key={cId}
-            className="text-[9px] font-bold text-primary-fixed-dim bg-white/10 px-1.5 py-0.5 inline-flex items-center gap-1"
-            title={getCitationPreview?.(cId) || ""}
-          >
-            [{cId}]
-            <button
-              className="no-print hover:opacity-70"
-              onClick={(e) => {
-                e.stopPropagation();
-                const updated = (block.citations || []).filter((id) => id !== cId);
-                onUpdateBlock(block.id, { citations: updated });
-              }}
-            >
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-    );
-  };
+  const renderCitationBadges = (block) => (
+    <CitationBadges
+      block={block}
+      onUpdateBlock={onUpdateBlock}
+      getCitationPreview={getCitationPreview}
+      badgeClassName="text-[9px] font-bold text-primary-fixed-dim bg-white/10 px-1.5 py-0.5 inline-flex items-center gap-1"
+    />
+  );
 
   return (
     <div className="bg-surface-dim p-1 px-1">

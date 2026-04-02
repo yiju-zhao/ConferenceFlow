@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { COLORS } from "../../constants";
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
 const DAYS_PER_PAGE = 3;
@@ -98,11 +99,10 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
   }, [sessions]);
 
   const memberColors = useMemo(() => {
-    const COLORS = ["#CF0A2C", "#2980B9", "#E67E22", "#8E44AD", "#27AE60", "#2C3E50"];
     const map = {};
     members.forEach((m) => {
       map[m.userId || m.id] = {
-        color: COLORS[m.colorIndex || 0],
+        color: COLORS[m.colorIndex || 0].hex,
         initials: (m.displayName || m.legacyName || m.userId || "?").slice(0, 1).toUpperCase(),
       };
     });
