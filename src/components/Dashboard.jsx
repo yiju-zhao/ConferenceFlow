@@ -10,6 +10,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [conferences, setConferences] = useState([]);
   const [myMemberships, setMyMemberships] = useState({});
+  const [membershipsReady, setMembershipsReady] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
@@ -28,7 +29,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user || conferences.length === 0) return;
+    setMembershipsReady(false);
     const unsubscribes = [];
+    let loaded = 0;
+    const total = conferences.length;
 
     conferences.forEach((conf) => {
       const memberRef = doc(db, "conferences", conf.id, "members", user.uid);
@@ -37,6 +41,8 @@ export default function Dashboard() {
           ...prev,
           [conf.id]: snap.exists() ? snap.data() : null,
         }));
+        loaded++;
+        if (loaded >= total) setMembershipsReady(true);
       });
       unsubscribes.push(unsub);
     });
@@ -189,6 +195,11 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-4xl mx-auto p-6">
+        {conferences.length > 0 && !membershipsReady ? (
+          <div className="flex items-center justify-center py-16">
+            <span className="text-secondary text-sm uppercase tracking-wider">Loading...</span>
+          </div>
+        ) : (<>
         <section className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="w-1 h-5 bg-primary inline-block"></span>
@@ -276,6 +287,7 @@ export default function Dashboard() {
             <ConferenceCard key={conf.id} conf={conf} showApply />
           ))}
         </section>
+        </>)}
       </div>
 
       {applyModal && (
