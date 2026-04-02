@@ -502,7 +502,7 @@ function SnapshotViewer({ snapshot, currentData }) {
                 // Block removed in snapshot (exists in current, not in snapshot)
                 return (
                   <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(207,10,44,0.06)", borderLeft: "3px solid #CF0A2C" }}>
-                    <div style={{ fontSize: 10, color: "#CF0A2C", fontWeight: 600, marginBottom: 4 }}>已删除</div>
+                    <div style={{ fontSize: 10, color: "#CF0A2C", fontWeight: 600, marginBottom: 4 }}>删除</div>
                     <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through" }}>{oldContent || "(空)"}</div>
                   </div>
                 );
@@ -1593,10 +1593,10 @@ ${clone.outerHTML}
           {saveState === "saved" && (
             <span style={{ fontSize: 11, color: "#27AE60" }}>✓ 已保存</span>
           )}
-          <button onClick={handleSave} title="手动保存"
+          <button onClick={handleSave} title="保存"
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
               background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
-            手动保存
+            保存
           </button>
           <button onClick={() => setShowHistory(true)} title="历史版本"
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
@@ -2449,10 +2449,12 @@ ${clone.outerHTML}
                             <div style={{ fontSize: 12, color: "#1a1c1c", fontWeight: 600 }}>{date ? relativeTime(date) : "未知时间"}</div>
                             {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
                             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                              <button onClick={() => setViewingSnapshot(snap)}
-                                style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
-                                查看变更
-                              </button>
+                              {i > 0 && (
+                                <button onClick={() => setViewingSnapshot(snap)}
+                                  style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
+                                  查看变更
+                                </button>
+                              )}
                               <button onClick={() => handleRestore(snap)}
                                 style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
                                 恢复
