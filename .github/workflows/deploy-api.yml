@@ -1,0 +1,35 @@
+name: Deploy Conference API
+
+on:
+  push:
+    branches: [main, feat/auth-multi-conference]
+    paths:
+      - 'conference-api/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 184.150.234.220
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd ~/ConferenceFlow || git clone https://github.com/yiju-zhao/ConferenceFlow.git ~/ConferenceFlow
+            cd ~/ConferenceFlow
+            git fetch origin
+            git checkout ${{ github.ref_name }}
+            git pull
+            cd conference-api
+            docker build -t conference-api .
+            docker stop conference-api 2>/dev/null || true
+            docker rm conference-api 2>/dev/null || true
+            docker run -d \
+              -p 3000:3000 \
+              --env-file .env.local \
+              --restart unless-stopped \
+              --name conference-api \
+              conference-api
+            echo "Deployed successfully"
