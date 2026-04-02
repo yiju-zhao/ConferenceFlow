@@ -2,12 +2,15 @@ import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-function getFirebaseAdmin() {
+let _auth;
+let _db;
+
+function init() {
+  if (_auth && _db) return;
   if (getApps().length > 0) {
-    return {
-      auth: getAuth(),
-      db: getFirestore(),
-    };
+    _auth = getAuth();
+    _db = getFirestore();
+    return;
   }
 
   const app = initializeApp({
@@ -18,10 +21,14 @@ function getFirebaseAdmin() {
     }),
   });
 
-  return {
-    auth: getAuth(app),
-    db: getFirestore(app),
-  };
+  _auth = getAuth(app);
+  _db = getFirestore(app);
 }
 
-export const { auth, db } = getFirebaseAdmin();
+export const auth = new Proxy({}, {
+  get(_, prop) { init(); return _auth[prop]; }
+});
+
+export const db = new Proxy({}, {
+  get(_, prop) { init(); return typeof _db[prop] === "function" ? _db[prop].bind(_db) : _db[prop]; }
+});
