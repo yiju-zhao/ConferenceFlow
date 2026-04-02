@@ -198,7 +198,7 @@ export default function Dashboard() {
       <FirstTimeNameSetup />
       <div className="bg-primary p-4 flex justify-between items-center">
         <h1 className="font-headline text-on-primary text-xl font-bold tracking-tight">
-          CONFERENCEFLOW
+          ConferenceFlow
         </h1>
         <div className="flex items-center gap-4">
           {isSuperAdmin && (

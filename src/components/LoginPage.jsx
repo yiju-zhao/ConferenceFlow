@@ -44,7 +44,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-primary p-6 mb-0">
           <h1 className="font-headline text-on-primary text-2xl font-bold tracking-tight">
-            CONFERENCEFLOW
+            ConferenceFlow
           </h1>
           <p className="text-on-primary/70 text-sm mt-1">Sign in to your account</p>
         </div>
