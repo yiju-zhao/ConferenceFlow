@@ -64,6 +64,10 @@ export default function Dashboard() {
   }, [user, conferences]);
 
   const { upcoming, past, pending, discover } = useMemo(() => {
+    if (!membershipsReady && conferences.length > 0) {
+      return { upcoming: [], past: [], pending: [], discover: [] };
+    }
+
     const upcoming = [];
     const past = [];
     const pending = [];
@@ -89,7 +93,7 @@ export default function Dashboard() {
     discover.sort((a, b) => a.startDate.localeCompare(b.startDate));
 
     return { upcoming, past, pending, discover };
-  }, [conferences, myMemberships, today, isSuperAdmin]);
+  }, [conferences, myMemberships, today, isSuperAdmin, membershipsReady]);
 
   const handleApply = async () => {
     if (!applyModal) return;
