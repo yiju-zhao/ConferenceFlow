@@ -1,4 +1,68 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+
+const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
+
+## Required Fields
+| Field | Format | Example |
+|-------|--------|---------|
+| title | string | "Keynote: Future of AI" |
+| date | YYYY-MM-DD | "2026-03-18" |
+| start | HH:MM (24h) | "09:00" |
+| end | HH:MM (24h) | "10:30" |
+
+## Optional Fields
+| Field | Description | Alias |
+|-------|-------------|-------|
+| session_id | Unique code (used as doc ID) | code |
+| room | Room or venue name | location |
+| speakers | Array of {name, title, company} | — |
+| format | "In-Person", "Virtual", "Both" | — |
+| recording | "Yes" or "No" | — |
+| session_type | "Talk", "Panel", "Keynote", etc. | sessionType |
+| topic | Primary topic/category | mainTopic |
+| url | Link to official session page | — |
+| key_themes | Array of topic tags | keyThemes |
+
+## Speaker Object
+\`\`\`json
+{ "name": "Dr. Jane Smith", "title": "Chief Scientist", "company": "NVIDIA" }
+\`\`\`
+
+## Complete Example
+\`\`\`json
+[
+  {
+    "session_id": "S62911",
+    "title": "NVIDIA AI Factory Architecture Deep Dive",
+    "date": "2026-03-18",
+    "start": "09:00",
+    "end": "10:30",
+    "room": "Hall A",
+    "speakers": [{ "name": "Jensen Huang", "title": "CEO", "company": "NVIDIA" }],
+    "format": "In-Person",
+    "recording": "Yes",
+    "session_type": "Keynote",
+    "topic": "AI Infrastructure",
+    "url": "https://example.com/session/S62911",
+    "key_themes": ["AI", "Infrastructure", "Data Center"]
+  }
+]
+\`\`\`
+
+## Minimal Example
+\`\`\`json
+[
+  { "title": "Morning Keynote", "date": "2026-03-18", "start": "09:00", "end": "10:00" },
+  { "title": "Lunch Workshop", "date": "2026-03-18", "start": "12:00", "end": "13:00" }
+]
+\`\`\`
+
+## Notes
+- Maximum 1000 sessions per upload
+- Sessions missing required fields are skipped
+- If session_id matches an existing session, it will be overwritten
+`;
+
 import { useParams } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -24,6 +88,7 @@ export default function AdminSessions() {
   const [uploadResult, setUploadResult] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [showFormatGuide, setShowFormatGuide] = useState(false);
+  const [mdCopied, setMdCopied] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -152,7 +217,16 @@ export default function AdminSessions() {
           <div className="bg-surface-container-lowest w-full max-w-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="bg-primary px-6 py-4 flex justify-between items-center sticky top-0 z-10">
               <h3 className="text-on-primary font-headline font-bold text-base uppercase tracking-wider">JSON Upload Format Guide</h3>
-              <button onClick={() => setShowFormatGuide(false)} className="text-on-primary/60 hover:text-on-primary text-lg">×</button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => { navigator.clipboard.writeText(FORMAT_GUIDE_MD); setMdCopied(true); setTimeout(() => setMdCopied(false), 2000); }}
+                  className="text-on-primary/70 hover:text-on-primary text-xs font-headline uppercase tracking-wider"
+                  style={{ background: "rgba(255,255,255,0.15)", padding: "4px 12px", border: "none", cursor: "pointer" }}
+                >
+                  {mdCopied ? "✓ Copied" : "Copy as Markdown"}
+                </button>
+                <button onClick={() => setShowFormatGuide(false)} className="text-on-primary/60 hover:text-on-primary text-lg">×</button>
+              </div>
             </div>
             <div className="px-6 py-5" style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, lineHeight: 1.7, color: "#1a1c1c" }}>
 
