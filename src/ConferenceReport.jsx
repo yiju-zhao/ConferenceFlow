@@ -4,7 +4,7 @@ import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db, storage } from "./firebase";
 import { useAuth } from "./contexts/AuthContext";
 import { ref as sRef, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
-import { useDebouncedSave } from "./shared";
+import { useDebouncedSave } from "./hooks/useDebouncedSave";
 
 export default function ConferenceReport() {
   const { confId, reportId } = useParams();

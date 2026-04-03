@@ -1,4 +1,4 @@
-import { COLORS } from "../../shared";
+import { COLORS } from "../../constants";
 
 export default function PresenceBar({ activeUsers, memberColorMap, currentUid }) {
   if (activeUsers.length <= 1) return null;

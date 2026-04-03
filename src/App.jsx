@@ -29,7 +29,8 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
-import { SESSION_CATALOG, COLORS } from "./shared";
+import { COLORS } from "./constants";
+import { SESSION_CATALOG } from "./sessionCatalog";
 import { getInitials } from "./lib/reportUtils";
 function parseCSVLine(text) {
   let ret = [], inQuote = false, value = "";
