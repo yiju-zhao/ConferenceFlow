@@ -799,7 +799,7 @@ export default function AdminAttendance() {
                               const member = approvedMembers.find((mm) => mm.id === uid);
                               if (!member) return null;
                               return (
-                                <div key={uid} style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "#fff", background: COLORS[member.colorIndex || 0].hex }}
+                                <div key={uid} style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "#fff", background: COLORS[(member.colorIndex || 0) % COLORS.length].hex }}
                                   title={getMemberName(member)}>
                                   {(getMemberName(member) || "?").charAt(0).toUpperCase()}
                                 </div>

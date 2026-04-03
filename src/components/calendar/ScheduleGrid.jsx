@@ -102,7 +102,7 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
     const map = {};
     members.forEach((m) => {
       map[m.userId || m.id] = {
-        color: COLORS[m.colorIndex || 0].hex,
+        color: COLORS[(m.colorIndex || 0) % COLORS.length].hex,
         initials: (m.displayName || m.legacyName || m.userId || "?").slice(0, 1).toUpperCase(),
       };
     });
