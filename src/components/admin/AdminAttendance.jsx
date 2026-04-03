@@ -19,8 +19,6 @@ import { generateId } from "../../lib/reportUtils";
 
 const COLOR_INDICES = [0, 1, 2, 3, 4, 5, 6, 7];
 
-const genId = generateId;
-
 function SessionAssignSearch({ sessions, onAssign }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -182,7 +180,7 @@ export default function AdminAttendance() {
     if (!addName.trim()) return;
     setAddLoading(true);
     try {
-      const id = genId();
+      const id = generateId();
       const usedIndices = members.map((m) => m.colorIndex).filter((c) => c !== undefined);
       const colorIndex =
         COLOR_INDICES.find((i) => !usedIndices.includes(i)) ??
@@ -733,7 +731,7 @@ export default function AdminAttendance() {
           const totalCols = cols.length;
           gp.forEach((p) => placements.push({ ...p, totalCols }));
         }
-        // COLORS imported from constants
+
 
         return (
           <div>

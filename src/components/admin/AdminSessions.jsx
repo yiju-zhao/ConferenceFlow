@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams } from "react-router-dom";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebase";
+import { apiFetch } from "../../lib/api";
 
 const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 
@@ -62,11 +66,6 @@ const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 - Sessions missing required fields are skipped
 - If session_id matches an existing session, it will be overwritten
 `;
-
-import { useParams } from "react-router-dom";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase";
-import { apiFetch } from "../../lib/api";
 
 function SessionField({ label, field, type = "text", value, onChange }) {
   return (

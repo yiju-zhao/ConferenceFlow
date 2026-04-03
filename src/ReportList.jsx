@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { DAY_CN, parseReportId, generateSummaryId } from "./shared";
+import { DAY_CN } from "./constants";
+import { parseReportId, generateSummaryId } from "./lib/reportUtils";
 import { useAuth } from "./contexts/AuthContext";
 
 export default function ReportList() {

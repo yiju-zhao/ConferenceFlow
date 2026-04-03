@@ -1,23 +1,11 @@
 /**
- * Barrel re-export file — maintains backward compatibility.
- * Prefer importing directly from the source modules:
- *   - constants: src/constants.js
- *   - report utils: src/lib/reportUtils.js
- *   - hooks: src/hooks/useDebouncedSave.js
- *   - components: this file (EditableField, BulletEditor, InlineAddButton, SectionInlineAdd)
+ * Shared UI components for report editing.
+ * For constants, utils, and hooks, import directly from their source modules:
+ *   - src/constants.js
+ *   - src/lib/reportUtils.js
+ *   - src/hooks/useDebouncedSave.js
+ *   - src/sessionCatalog.js
  */
-
-// Re-export constants
-export { COLORS, COLOR_PRESETS, DAY_CN } from "./constants";
-export { SESSION_CATALOG } from "./sessionCatalog";
-
-// Re-export report utilities
-export { parseReportId, latestOrNewVersionId, generateSummaryId, getInitials, generateId } from "./lib/reportUtils";
-
-// Re-export hooks
-export { useDebouncedSave } from "./hooks/useDebouncedSave";
-
-// ── Components remain here ──────────────────────────────────────────────────
 import { useState, useEffect, useRef } from "react";
 
 // ── EditableField ────────────────────────────────────────────────────────────
@@ -116,7 +104,7 @@ export function BulletEditor({ points, onSave, placeholder = "请输入要点...
         el.style.height = el.scrollHeight + "px";
       });
     }
-  }, [local, readOnly]);
+  }, [local.length, readOnly]);
 
   if (readOnly) {
     const items = (points || []).filter(Boolean);

@@ -17,7 +17,11 @@ import { db, storage } from "./firebase";
 import { useAuth } from "./contexts/AuthContext";
 import { useMembership } from "./hooks/useMembership";
 import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
-import { SESSION_CATALOG, COLOR_PRESETS, COLORS, parseReportId, useDebouncedSave, EditableField, InlineAddButton, BulletEditor } from "./shared";
+import { COLORS, COLOR_PRESETS } from "./constants";
+import { SESSION_CATALOG } from "./sessionCatalog";
+import { parseReportId, generateId } from "./lib/reportUtils";
+import { useDebouncedSave } from "./hooks/useDebouncedSave";
+import { EditableField, InlineAddButton, BulletEditor } from "./shared";
 import { usePresence } from "./components/report/usePresence";
 import PresenceBar from "./components/report/PresenceBar";
 const topicSlug = (t) =>
@@ -39,16 +43,20 @@ function normaliseSources(block) {
 // ── SessionPicker ─────────────────────────────────────────────────────────────
 function SessionPicker({ value, onChange, conferenceSessions = [] }) {
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 200);
+    return () => clearTimeout(t);
+  }, [query]);
   // Look up title from conference sessions first, then fall back to SESSION_CATALOG
   const findSession = (id) => conferenceSessions.find(s => s.code === id || s.id === id) || SESSION_CATALOG.get(id);
   const selectedTitle = value?.id ? (findSession(value.id)?.title || value.id) : null;
 
   const results = useMemo(() => {
-    const q = query.trim();
+    const q = debouncedQuery.trim();
     if (!q) return [];
     const ql = q.toLowerCase();
-    // Search conference sessions if available, otherwise fall back to catalog
     const source = conferenceSessions.length > 0
       ? conferenceSessions.map(s => ({ session_id: s.code || s.id, title: s.title }))
       : [...SESSION_CATALOG.values()];
@@ -58,7 +66,7 @@ function SessionPicker({ value, onChange, conferenceSessions = [] }) {
         (s.title || "").toLowerCase().includes(ql)
       )
       .slice(0, 20);
-  }, [query, conferenceSessions]);
+  }, [debouncedQuery, conferenceSessions]);
 
   const handleSelect = (s) => {
     onChange({ id: s.session_id, manual: '' });
@@ -654,23 +662,22 @@ export default function DailyReport({ viewMode = false }) {
     });
   }, [confId]);
 
-  // Members — load with doc ID and resolve display names
+  // Members — load with doc ID and resolve display names in parallel
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "conferences", confId, "members"), async (snap) => {
-      const arr = [];
-      for (const d of snap.docs) {
+      const { getDoc: gd, doc: dc } = await import("firebase/firestore");
+      const arr = await Promise.all(snap.docs.map(async (d) => {
         const data = d.data();
         let name = data.legacyName || data.displayName || null;
         if (!name && !data.managedByAdmin) {
           try {
-            const { getDoc: gd, doc: dc } = await import("firebase/firestore");
             const userSnap = await gd(dc(db, "users", d.id));
             name = userSnap.exists() ? userSnap.data().displayName || userSnap.data().email : d.id;
           } catch { name = d.id; }
         }
-        arr.push({ ...data, id: d.id, name: name || d.id });
-      }
+        return { ...data, id: d.id, name: name || d.id };
+      }));
       setMembers(arr);
     });
   }, [user, confId]);
@@ -802,7 +809,7 @@ export default function DailyReport({ viewMode = false }) {
   // ── Block helpers ─────────────────────────────────────────────────────────────
   const addBlock = useCallback((field, type) => {
     const newBlock = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      id: generateId(),
       type, content: "",
       ownerId: user?.uid || "",
       contributorIds: user?.uid ? [user.uid] : [],
@@ -819,7 +826,7 @@ export default function DailyReport({ viewMode = false }) {
   }, [saveField]);
   const insertBlock = useCallback((field, type, afterId) => {
     const newBlock = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      id: generateId(),
       type, content: "",
       ownerId: user?.uid || "",
       contributorIds: user?.uid ? [user.uid] : [],

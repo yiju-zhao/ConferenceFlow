@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { apiFetch } from "../../lib/api";
-import { parseReportId } from "../../shared";
+import { parseReportId } from "../../lib/reportUtils";
 
 export default function AdminReports() {
   const { confId } = useParams();
