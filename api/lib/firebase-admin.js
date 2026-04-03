@@ -1,6 +1,6 @@
-const { initializeApp, getApps, cert } = require("firebase-admin/app");
-const { getAuth } = require("firebase-admin/auth");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 
 let _auth, _db;
 
@@ -22,8 +22,7 @@ function init() {
   _db = getFirestore(app);
 }
 
-module.exports = {
-  get auth() { init(); return _auth; },
-  get db() { init(); return _db; },
-  FieldValue,
-};
+const auth = new Proxy({}, { get(_, p) { init(); return typeof _auth[p] === "function" ? _auth[p].bind(_auth) : _auth[p]; } });
+const db = new Proxy({}, { get(_, p) { init(); return typeof _db[p] === "function" ? _db[p].bind(_db) : _db[p]; } });
+
+export { auth, db, FieldValue };

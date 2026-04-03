@@ -1,11 +1,10 @@
-const { db, FieldValue } = require("../../../lib/firebase-admin");
-const { requireConfAdmin, AuthError } = require("../../../lib/auth-middleware");
+import { db, FieldValue } from "../../../lib/firebase-admin.js";
+import { requireConfAdmin, AuthError } from "../../../lib/auth-middleware.js";
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   const { confId, action } = req.query;
   if (!["approve", "reject"].includes(action)) return res.status(404).json({ error: "Not found" });
-
   try {
     const decoded = await requireConfAdmin(req, confId);
     const { userId } = req.body;
@@ -14,15 +13,11 @@ module.exports = async (req, res) => {
     const snap = await memberRef.get();
     if (!snap.exists) return res.status(404).json({ error: "Member not found" });
     if (snap.data().status !== "pending") return res.status(400).json({ error: "Member is not in pending status" });
-
-    if (action === "approve") {
-      await memberRef.update({ status: "approved", approvedAt: FieldValue.serverTimestamp(), approvedBy: decoded.uid });
-    } else {
-      await memberRef.update({ status: "rejected" });
-    }
+    if (action === "approve") { await memberRef.update({ status: "approved", approvedAt: FieldValue.serverTimestamp(), approvedBy: decoded.uid }); }
+    else { await memberRef.update({ status: "rejected" }); }
     res.json({ userId, status: action === "approve" ? "approved" : "rejected" });
   } catch (error) {
     if (error instanceof AuthError) return res.status(error.status).json({ error: error.message });
     res.status(500).json({ error: error.message });
   }
-};
+}

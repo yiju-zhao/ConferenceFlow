@@ -1,7 +1,7 @@
-const { db, FieldValue } = require("../../lib/firebase-admin");
-const { requireConfAdmin, requireSuperAdmin, AuthError } = require("../../lib/auth-middleware");
+import { db, FieldValue } from "../../lib/firebase-admin.js";
+import { requireConfAdmin, requireSuperAdmin, AuthError } from "../../lib/auth-middleware.js";
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   const { confId } = req.query;
   try {
     if (req.method === "GET") {
@@ -13,26 +13,26 @@ module.exports = async (req, res) => {
       await requireConfAdmin(req, confId);
       const allowedFields = ["name", "description", "startDate", "endDate", "visibility", "joinCode"];
       const updates = {};
-      for (const field of allowedFields) { if (req.body[field] !== undefined) updates[field] = req.body[field]; }
+      for (const f of allowedFields) { if (req.body[f] !== undefined) updates[f] = req.body[f]; }
       updates.updatedAt = FieldValue.serverTimestamp();
-      const confRef = db.collection("conferences").doc(confId);
-      const snap = await confRef.get();
+      const ref = db.collection("conferences").doc(confId);
+      const snap = await ref.get();
       if (!snap.exists) return res.status(404).json({ error: "Conference not found" });
-      await confRef.update(updates);
+      await ref.update(updates);
       return res.json({ id: confId, ...updates });
     }
     if (req.method === "DELETE") {
       await requireSuperAdmin(req);
-      const confRef = db.collection("conferences").doc(confId);
-      const snap = await confRef.get();
+      const ref = db.collection("conferences").doc(confId);
+      const snap = await ref.get();
       if (!snap.exists) return res.status(404).json({ error: "Conference not found" });
       for (const sub of ["members", "sessions", "dailyReports"]) {
-        const subSnap = await confRef.collection(sub).get();
+        const subSnap = await ref.collection(sub).get();
         const batch = db.batch();
         subSnap.docs.forEach((d) => batch.delete(d.ref));
         if (subSnap.size > 0) await batch.commit();
       }
-      await confRef.delete();
+      await ref.delete();
       return res.json({ id: confId, deleted: true });
     }
     res.status(405).json({ error: "Method not allowed" });
@@ -40,4 +40,4 @@ module.exports = async (req, res) => {
     if (error instanceof AuthError) return res.status(error.status).json({ error: error.message });
     res.status(500).json({ error: error.message });
   }
-};
+}
