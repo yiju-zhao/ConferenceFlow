@@ -23,7 +23,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
           userId: uid,
           name: member.displayName || member.legacyName || uid,
           mode: member.attendanceMode || member.mode || "onsite",
-          color: COLORS[member.colorIndex || 0].hex,
+          color: COLORS[(member.colorIndex || 0) % COLORS.length].hex,
         };
       })
       .filter(Boolean);
