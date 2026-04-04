@@ -191,6 +191,79 @@ h1, h2, h3, .font-work-sans {
   background: var(--surface-dim);
 }
 
+/* ── Reusable Base Components ────────────────── */
+
+/* ── Shared: Modal overlays ──────────────────── */
+.add-session-overlay,
+.delete-confirm-overlay,
+.share-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.add-session-overlay { backdrop-filter: blur(4px); }
+.delete-confirm-overlay { z-index: 9999; }
+
+/* ── Shared: Dropdown menus ─────────────────── */
+.import-member-dropdown,
+.create-report-dropdown {
+  position: absolute; top: 100%; margin-top: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; box-shadow: var(--shadow-lg);
+  z-index: 50; padding: 6px 0;
+  animation: calendarSlotIn 0.15s ease;
+}
+.import-member-dropdown { left: 0; min-width: 180px; }
+.create-report-dropdown { right: 0; min-width: 260px; }
+
+.import-member-dropdown-label,
+.create-report-dropdown-label {
+  font-size: 11px; color: var(--text-muted); padding: 6px 14px 4px;
+  font-weight: 600; letter-spacing: 0.04em;
+}
+.create-report-dropdown-label { text-transform: uppercase; }
+
+.import-member-dropdown-item,
+.create-report-dropdown-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 14px; border: none; background: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; color: var(--text);
+  transition: background 0.1s;
+}
+.import-member-dropdown-item:hover,
+.create-report-dropdown-item:hover { background: var(--surface-alt); }
+
+/* ── Shared: Form inputs ────────────────────── */
+.gtc-input,
+.add-session-input,
+.delete-confirm-input {
+  width: 100%; box-sizing: border-box;
+  font-size: 13px; padding: 9px 12px;
+  background: var(--surface-dim); border: 1px solid var(--border);
+  border-radius: var(--radius-md); color: var(--text);
+  outline: none; font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.gtc-input:focus,
+.add-session-input:focus,
+.delete-confirm-input:focus {
+  border-color: rgba(207, 10, 44, 0.4);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+.gtc-input::placeholder { color: var(--text-placeholder); }
+
+/* ── Shared: Card with left accent border ───── */
+.report-card,
+.report-session {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
+  background: var(--surface);
+  transition: box-shadow 0.15s;
+}
+.report-card:hover,
+.report-session:hover { box-shadow: var(--shadow-md); }
+
 /* ── Member pill cards ───────────────────────── */
 .member-card {
   border-radius: 10px;
@@ -365,24 +438,7 @@ h1, h2, h3, .font-work-sans {
   display: inline-block;
 }
 
-/* ── Input ───────────────────────────────────── */
-.gtc-input {
-  background: var(--surface-dim);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  padding: 9px 12px;
-  border-radius: var(--radius-md);
-  outline: none;
-  width: 100%;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.gtc-input:focus {
-  border-color: rgba(207, 10, 44, 0.4);
-  box-shadow: 0 0 0 3px var(--brand-soft);
-}
-.gtc-input::placeholder { color: var(--text-placeholder); }
+/* .gtc-input, .add-session-input, .delete-confirm-input — consolidated into shared rule above */
 
 /* ── Animations ──────────────────────────────── */
 @keyframes fadeUp {
@@ -548,24 +604,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .member-card-mode:hover { border-color: var(--text-dim); color: var(--text-secondary); }
 
-/* ── Import member dropdown ──────────────────── */
-.import-member-dropdown {
-  position: absolute; top: 100%; left: 0; margin-top: 6px;
-  min-width: 180px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 50;
-  padding: 6px 0; animation: calendarSlotIn 0.15s ease;
-}
-.import-member-dropdown-label {
-  font-size: 11px; color: var(--text-muted); padding: 6px 14px 4px;
-  font-weight: 600; letter-spacing: 0.04em;
-}
-.import-member-dropdown-item {
-  display: flex; align-items: center; gap: 8px; width: 100%;
-  padding: 8px 14px; border: none; background: none; cursor: pointer;
-  font-family: inherit; font-size: 13px; color: var(--text);
-  transition: background 0.1s;
-}
-.import-member-dropdown-item:hover { background: var(--surface-alt); }
+/* .import-member-dropdown — consolidated into shared dropdown rule above */
 
 /* ── Members section card ─────────────────────── */
 .schedule-members-card { padding: 20px 24px; }
@@ -711,11 +750,7 @@ input[type="checkbox"].gtc-check:checked::after {
 .calendar-card--popular { border-left-color: var(--success); }
 
 /* ── AddSession modal ─────────────────────────── */
-.add-session-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
-}
+/* .add-session-overlay — consolidated into shared modal overlay rule above */
 .add-session-modal {
   width: 600px; max-width: 90vw; max-height: 80vh;
   background: var(--surface); border: 1px solid var(--border);
@@ -732,17 +767,7 @@ input[type="checkbox"].gtc-check:checked::after {
   background: none; border: none; cursor: pointer;
   color: var(--text-muted); font-size: 18px; line-height: 1; padding: 2px;
 }
-.add-session-input {
-  width: 100%; box-sizing: border-box;
-  font-size: 13px; padding: 8px 12px;
-  background: var(--surface-dim); border: 1px solid var(--border);
-  border-radius: var(--radius-md); color: var(--text);
-  outline: none; font-family: inherit;
-}
-.add-session-input:focus {
-  border-color: rgba(207, 10, 44, 0.4);
-  box-shadow: 0 0 0 3px var(--brand-soft);
-}
+/* .add-session-input — consolidated into shared input rule above */
 .add-session-results { flex: 1; overflow-y: auto; padding: 8px 0; }
 .add-session-empty {
   padding: 32px 20px; text-align: center; color: var(--text-muted); font-size: 13px;
@@ -1184,13 +1209,11 @@ input[type="checkbox"].gtc-check:checked::after {
 /* ── Session Report Cards ──────────────────────── */
 .report-sessions { padding: 0 40px 8px; }
 .report-session {
+  /* border, border-left, background, transition from shared rule above */
   margin-bottom: 14px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--brand);
   border-radius: 4px;
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.15s;
 }
 .report-session:hover { box-shadow: var(--shadow-md); }
 .report-session-header {
@@ -1421,37 +1444,17 @@ input[type="checkbox"].gtc-check:checked::after {
   padding: 24px 40px 16px;
   border-bottom: 1px solid var(--border-soft);
 }
-.create-report-dropdown {
-  position: absolute; top: 100%; right: 0; margin-top: 6px;
-  min-width: 260px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 50;
-  padding: 6px 0; animation: calendarSlotIn 0.15s ease;
-}
-.create-report-dropdown-label {
-  font-size: 11px; color: var(--text-muted); padding: 6px 14px 4px;
-  font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
-}
-.create-report-dropdown-item {
-  display: flex; align-items: center; gap: 8px; width: 100%;
-  padding: 8px 14px; border: none; background: none; cursor: pointer;
-  font-family: inherit; font-size: 13px; color: var(--text);
-  transition: background 0.1s;
-}
-.create-report-dropdown-item:hover { background: var(--surface-alt); }
+/* .create-report-dropdown — consolidated into shared dropdown rule above */
 .report-list-cards {
   padding: 16px 40px 40px;
   display: flex; flex-direction: column; gap: 10px;
 }
 .report-card {
+  /* border, border-left, background, transition from shared rule above */
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 18px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--brand);
   border-radius: 4px;
-  background: var(--surface);
-  transition: box-shadow 0.15s;
 }
-.report-card:hover { box-shadow: var(--shadow-md); }
 .report-card-main { display: flex; flex-direction: column; gap: 6px; }
 .report-card-date { font-size: var(--report-fs-heading); font-weight: 700; color: var(--text-primary); }
 .summary-badge {
@@ -1482,6 +1485,132 @@ input[type="checkbox"].gtc-check:checked::after {
   font-weight: 600; transition: opacity 0.15s;
 }
 .report-card-view-btn:hover { opacity: 0.88; }
+
+/* ── Report List Page: Huawei Red Theme ────────────── */
+.report-list-page {
+  background: #F7F5F2;
+}
+.report-list-page .summary-badge {
+  background: linear-gradient(135deg, #CF0A2C 0%, #E67E22 100%);
+}
+
+/* Toolbar: Huawei red header with calendar-style buttons */
+.report-list-page .report-toolbar {
+  background: var(--brand);
+  border-bottom: none;
+  box-shadow: none;
+}
+.report-list-page .report-toolbar-inner {
+  padding: 12px 24px;
+}
+.report-list-page .report-back-btn {
+  color: #fff;
+  font-family: "Work Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 6px 14px;
+  border-radius: 4px;
+  transition: background 0.12s ease;
+}
+.report-list-page .report-back-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Container: warmer, rounder */
+.report-list-page .report-container {
+  background: #fff;
+  border: 1px solid #E8E4DF;
+  border-radius: 10px;
+}
+
+/* Header: generous spacing, Work Sans */
+.report-list-page .report-list-header {
+  padding: 28px 32px 20px;
+  border-bottom-color: #E8E4DF;
+}
+.report-list-page .report-title-eyebrow {
+  font-family: "Work Sans", sans-serif;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #888;
+}
+.report-list-page .report-list-header h2 {
+  font-family: "Work Sans", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Buttons: match calendar btn style */
+.report-list-page .btn-accent {
+  font-family: "Work Sans", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+}
+.report-list-page .report-archived-toggle {
+  font-family: "Work Sans", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  border-color: #E8E4DF;
+}
+
+/* Cards: better spacing, warmer borders */
+.report-list-page .report-list-cards {
+  padding: 20px 32px 36px;
+  gap: 12px;
+}
+.report-list-page .report-card {
+  padding: 16px 20px;
+  border-color: #E8E4DF;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+.report-list-page .report-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border-color: #D4D0CB;
+}
+.report-list-page .report-card-date {
+  font-family: "Work Sans", sans-serif;
+  font-size: 16px;
+}
+.report-list-page .report-card-meta span {
+  font-size: 13px;
+  color: #999;
+}
+.report-list-page .report-card-view-btn {
+  font-family: "Work Sans", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border-radius: 6px;
+  padding: 6px 14px;
+}
+.report-list-page .report-archive-btn {
+  font-family: "Work Sans", sans-serif;
+  border-color: #E8E4DF;
+  border-radius: 6px;
+}
+
+/* Dropdown: warmer */
+.report-list-page .create-report-dropdown {
+  border-color: #E8E4DF;
+  border-radius: 8px;
+}
+.report-list-page .create-report-dropdown-label {
+  font-family: "Work Sans", sans-serif;
+  letter-spacing: 1px;
+}
+.report-list-page .create-report-dropdown-item {
+  font-size: 14px;
+}
+.report-list-page .create-report-dropdown-item:hover {
+  background: #F7F5F2;
+}
 
 /* ── Session Collapse ──────────────────────────────── */
 .session-collapse-btn {
@@ -1869,12 +1998,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 /* ── Delete Session Confirmation Modal ─────────── */
-.delete-confirm-overlay {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.45);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9999;
-}
+/* .delete-confirm-overlay — consolidated into shared modal overlay rule above */
 .delete-confirm-modal {
   background: var(--surface);
   border-radius: 8px;
@@ -1890,13 +2014,7 @@ input[type="checkbox"].gtc-check:checked::after {
   font-size: var(--report-fs-body); color: var(--text-tertiary);
   margin: 0 0 14px; line-height: 1.6;
 }
-.delete-confirm-input {
-  width: 100%; box-sizing: border-box;
-  padding: 8px 10px; font-size: var(--report-fs-body);
-  border: 1px solid var(--border); border-radius: 5px;
-  outline: none; transition: border-color 0.15s;
-}
-.delete-confirm-input:focus { border-color: var(--brand); }
+/* .delete-confirm-input — consolidated into shared input rule above */
 .delete-confirm-input--error { border-color: var(--brand) !important; }
 .delete-confirm-error {
   font-size: var(--report-fs-caption); color: var(--brand);
@@ -1921,10 +2039,7 @@ input[type="checkbox"].gtc-check:checked::after {
 .delete-confirm-submit:hover { opacity: 0.88; }
 
 /* ── Share Modal ─────────────────────────────────────────────────── */
-.share-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-  display: flex; align-items: center; justify-content: center; z-index: 1000;
-}
+/* .share-modal-overlay — consolidated into shared modal overlay rule above */
 .share-modal-card {
   background: var(--surface); border-radius: 16px; padding: 28px 32px;
   width: 480px; max-width: 90vw; box-shadow: var(--shadow-xl);

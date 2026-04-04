@@ -20,6 +20,14 @@ export default {
         "outline": "#8f706c",
         "outline-variant": "#e4beba",
         "secondary-fixed-dim": "#c8c6c6",
+        /* Dashboard: Clear Blue */
+        "dash-blue": "#4A7FB5",
+        "dash-blue-deep": "#3A6A9E",
+        "dash-sand": "#C9A882",
+        /* Admin: Sage Green */
+        "admin-teal": "#5E8B7E",
+        "admin-teal-deep": "#4A7569",
+        "admin-amber": "#D4A574",
       },
       fontFamily: {
         "headline": ["Work Sans", "sans-serif"],
@@ -27,9 +35,9 @@ export default {
         "label": ["Work Sans", "sans-serif"],
       },
       borderRadius: {
-        "DEFAULT": "0px",
-        "lg": "0px",
-        "xl": "0px",
+        "DEFAULT": "6px",
+        "lg": "10px",
+        "xl": "14px",
       },
     },
   },
