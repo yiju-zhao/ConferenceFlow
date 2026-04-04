@@ -10,7 +10,7 @@ function Field({ label, value, onChange, type = "text", placeholder = "" }) {
     <div className="mb-3">
       <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
       <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-primary focus:outline-none" />
+        className="w-full bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none transition-colors" />
     </div>
   );
 }
@@ -42,34 +42,40 @@ export default function SuperAdminPanel() {
 
 
   if (!isSuperAdmin) {
-    return <div className="min-h-screen bg-surface flex items-center justify-center"><p className="text-primary font-headline uppercase">Super Admin access required</p></div>;
+    return <div className="min-h-screen bg-[#F7F5F2] flex items-center justify-center"><p className="text-admin-teal font-headline uppercase">Super Admin access required</p></div>;
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="bg-primary p-4">
+    <div className="min-h-screen bg-[#F7F5F2]">
+      <div className="bg-gradient-to-r from-admin-teal-deep to-admin-teal px-6 py-3.5">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <h1 className="font-headline text-on-primary text-lg font-bold tracking-tight uppercase">Super Admin</h1>
-          <Link to="/dashboard" className="text-on-primary/70 text-xs uppercase tracking-wider hover:text-on-primary">← Dashboard</Link>
+          <h1 className="font-headline text-white text-lg font-bold" style={{ letterSpacing: "0.3px" }}>Super Admin</h1>
+          <Link to="/dashboard"
+            className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
+            style={{ background: "rgba(255,255,255,0.18)", letterSpacing: "0.8px" }}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.3)"}
+            onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}>
+            ← Dashboard
+          </Link>
         </div>
       </div>
       <div className="max-w-4xl mx-auto p-6">
         {message && (
-          <div className={`p-3 mb-4 text-sm ${message.startsWith("Error") ? "bg-primary/10 text-primary" : "bg-[#27AE60]/10 text-[#27AE60]"}`}>
+          <div className={`p-3 mb-4 text-sm rounded-lg ${message.startsWith("Error") ? "bg-red-500/10 text-red-600 border border-red-200" : "bg-[#27AE60]/10 text-[#27AE60] border border-[#27AE60]/20"}`}>
             {message}<button onClick={() => setMessage("")} className="ml-3 opacity-50 hover:opacity-100">×</button>
           </div>
         )}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <span className="w-1 h-5 bg-primary inline-block"></span>
+              <div className="w-1 h-6 rounded-full bg-admin-teal"></div>
               <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">All Conferences ({conferences.length})</h2>
             </div>
             <button onClick={() => setShowCreate(!showCreate)}
-              className="bg-primary text-on-primary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:bg-primary-container transition-colors duration-50">+ Create Conference</button>
+              className="bg-admin-teal text-white px-4 py-2.5 text-xs font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg transition-all duration-150 shadow-sm hover:shadow">+ Create Conference</button>
           </div>
           {showCreate && (
-            <div className="bg-surface-container-lowest p-6 mb-4">
+            <div className="bg-white border border-[#E8E4DF] rounded-lg p-6 mb-4">
               <h3 className="font-headline text-on-surface font-bold text-sm mb-3 uppercase">New Conference</h3>
               <Field label="Name" value={createForm.name} onChange={(v) => setCreateForm({ ...createForm, name: v })} placeholder="Conference name" />
               <Field label="Description" value={createForm.description} onChange={(v) => setCreateForm({ ...createForm, description: v })} placeholder="Description" />
@@ -82,22 +88,27 @@ export default function SuperAdminPanel() {
                 <div className="flex gap-3">
                   {["public", "private"].map((v) => (
                     <button key={v} onClick={() => setCreateForm({ ...createForm, visibility: v })}
-                      className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${createForm.visibility === v ? "bg-primary text-on-primary" : "bg-surface-container text-secondary"}`}>{v}</button>
+                      className={`px-4 py-1.5 text-xs font-headline uppercase tracking-wider transition-all duration-150 rounded-full ${createForm.visibility === v ? "bg-admin-teal text-white" : "bg-white border border-[#E8E4DF] text-secondary hover:border-admin-teal/30"}`}>{v}</button>
                   ))}
                 </div>
               </div>
               <button onClick={handleCreate} disabled={creating || !createForm.name || !createForm.startDate || !createForm.endDate}
-                className="bg-primary text-on-primary px-6 py-2 text-sm font-headline uppercase tracking-wider hover:bg-primary-container disabled:opacity-50">
+                className="bg-admin-teal text-white px-6 py-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg disabled:opacity-50 shadow-sm hover:shadow transition-all">
                 {creating ? "Creating..." : "Create"}</button>
             </div>
           )}
           {conferences.map((conf) => (
-            <div key={conf.id} className="bg-surface-container-lowest p-4 mb-2 flex justify-between items-center">
-              <div>
-                <div className="text-on-surface font-bold text-sm">{conf.name}</div>
-                <div className="text-secondary text-xs mt-1">{conf.startDate} — {conf.endDate} · {conf.visibility}{conf.joinCode && ` · Code: ${conf.joinCode}`}</div>
+            <div key={conf.id} className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3 hover:shadow-sm transition-all duration-200">
+              <div className="flex items-stretch">
+                <div className="w-1 bg-admin-teal flex-shrink-0"></div>
+                <div className="flex-1 p-4 flex justify-between items-center">
+                  <div>
+                    <div className="text-on-surface font-bold text-sm">{conf.name}</div>
+                    <div className="text-secondary text-xs mt-1">{conf.startDate} — {conf.endDate} · {conf.visibility}{conf.joinCode && ` · Code: ${conf.joinCode}`}</div>
+                  </div>
+                  <Link to={`/conference/${conf.id}/admin/settings`} className="text-admin-teal text-xs uppercase tracking-wider hover:underline">Manage</Link>
+                </div>
               </div>
-              <Link to={`/conference/${conf.id}/admin/settings`} className="text-primary text-xs uppercase tracking-wider hover:underline">Manage</Link>
             </div>
           ))}
         </section>

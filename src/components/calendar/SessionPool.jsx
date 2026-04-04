@@ -114,7 +114,7 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
           </div>
         ))}
         {filtered.length === 0 && (
-          <div style={{ color: "#555", fontSize: 12, textAlign: "center", padding: 20 }}>
+          <div style={{ color: "#7A7670", fontSize: 14, textAlign: "center", padding: 20 }}>
             {search ? "No sessions match" : "No sessions available"}
           </div>
         )}

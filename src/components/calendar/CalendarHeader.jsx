@@ -11,7 +11,7 @@ export default function CalendarHeader({ confName }) {
   return (
     <div className="cal-header">
       <div className="cal-header-left">
-        <Link to="/dashboard" className="cal-header-btn" style={{ padding: "4px 10px", fontSize: 10 }}>
+        <Link to="/dashboard" className="cal-header-btn" style={{ padding: "6px 12px", fontSize: 12 }}>
           ← Dashboard
         </Link>
         <span className="cal-header-title">{confName || "Conference"}</span>

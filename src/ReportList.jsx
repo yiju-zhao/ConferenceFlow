@@ -145,7 +145,7 @@ export default function ReportList() {
   };
 
   return (
-    <div className="report-page">
+    <div className="report-page report-list-page">
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
           <Link to={`/conference/${confId}`} className="report-back-btn">&larr; 返回日程</Link>
@@ -300,25 +300,27 @@ export default function ReportList() {
 
       {/* ── Summary Date Picker Modal ─────────────────────────── */}
       {showSummaryDatePicker && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowSummaryDatePicker(false)}>
-          <div style={{ background: "#fff", padding: 32, maxWidth: 400, width: "90vw", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <span style={{ fontWeight: 700, fontSize: 16 }}>创建总结稿 — 确认日期范围</span>
-              <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#888" }} onClick={() => setShowSummaryDatePicker(false)}>×</button>
+        <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowSummaryDatePicker(false)}>
+          <div style={{ background: "#fff", maxWidth: 400, width: "90vw", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ background: "#CF0A2C", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontFamily: "Work Sans, sans-serif", fontWeight: 700, fontSize: 14, color: "#fff", letterSpacing: "0.3px" }}>创建总结稿 — 确认日期范围</span>
+              <button style={{ background: "rgba(255,255,255,0.18)", border: "none", borderRadius: 4, width: 28, height: 28, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowSummaryDatePicker(false)}>×</button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>
-                起始日期
-                <input type="date" value={summaryDateStart} onChange={(e) => setSummaryDateStart(e.target.value)} style={{ display: "block", width: "100%", marginTop: 4, padding: "8px 10px", border: "1px solid #ddd", fontSize: 14 }} />
-              </label>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>
-                结束日期
-                <input type="date" value={summaryDateEnd} onChange={(e) => setSummaryDateEnd(e.target.value)} style={{ display: "block", width: "100%", marginTop: 4, padding: "8px 10px", border: "1px solid #ddd", fontSize: 14 }} />
-              </label>
+            <div style={{ padding: "24px 24px 0" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <label style={{ fontFamily: "Work Sans, sans-serif", fontSize: 11, fontWeight: 600, color: "#888", letterSpacing: "1px", textTransform: "uppercase" }}>
+                  起始日期
+                  <input type="date" value={summaryDateStart} onChange={(e) => setSummaryDateStart(e.target.value)} style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "1px solid #E8E4DF", borderRadius: 6, fontSize: 14, background: "#F7F5F2", boxSizing: "border-box" }} />
+                </label>
+                <label style={{ fontFamily: "Work Sans, sans-serif", fontSize: 11, fontWeight: 600, color: "#888", letterSpacing: "1px", textTransform: "uppercase" }}>
+                  结束日期
+                  <input type="date" value={summaryDateEnd} onChange={(e) => setSummaryDateEnd(e.target.value)} style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "1px solid #E8E4DF", borderRadius: 6, fontSize: 14, background: "#F7F5F2", boxSizing: "border-box" }} />
+                </label>
+              </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 24 }}>
-              <button style={{ padding: "8px 16px", fontSize: 13, background: "none", border: "1px solid #ddd", cursor: "pointer" }} onClick={() => setShowSummaryDatePicker(false)}>取消</button>
-              <button className="btn-accent" style={{ padding: "8px 20px", fontSize: 13 }} disabled={!summaryDateStart || !summaryDateEnd} onClick={() => handleCreateSummary(summaryDateStart, summaryDateEnd)}>确认创建</button>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "20px 24px 24px" }}>
+              <button style={{ fontFamily: "Work Sans, sans-serif", padding: "8px 18px", fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", background: "none", border: "1px solid #E8E4DF", borderRadius: 6, cursor: "pointer", color: "#888", textTransform: "uppercase" }} onClick={() => setShowSummaryDatePicker(false)}>取消</button>
+              <button className="btn-accent" style={{ padding: "8px 20px", fontSize: 12, fontFamily: "Work Sans, sans-serif", letterSpacing: "0.5px" }} disabled={!summaryDateStart || !summaryDateEnd} onClick={() => handleCreateSummary(summaryDateStart, summaryDateEnd)}>确认创建</button>
             </div>
           </div>
         </div>

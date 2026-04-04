@@ -117,8 +117,8 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
         <div className="cal-grid-label">Your Schedule</div>
         <div className="cal-grid-empty">
           <div>
-            <div style={{ fontSize: 16, marginBottom: 8 }}>No sessions scheduled</div>
-            <div style={{ fontSize: 11 }}>Browse the session pool and mark sessions to attend</div>
+            <div style={{ fontSize: 18, marginBottom: 8, color: "#A9A5A0" }}>No sessions scheduled</div>
+            <div style={{ fontSize: 13 }}>Browse the session pool and mark sessions to attend</div>
           </div>
         </div>
       </div>
@@ -141,13 +141,13 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
         <div style={{ width: 56, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px" }}>
           {hasPrev ? (
             <button onClick={() => setDayPage(dayPage - 1)}
-              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>
+              style={{ background: "none", border: "none", color: "#E8976B", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: 0 }}>
               ←
             </button>
           ) : <span />}
           {hasNext ? (
             <button onClick={() => setDayPage(dayPage + 1)}
-              style={{ background: "none", border: "none", color: "#a20513", cursor: "pointer", fontSize: 14, fontWeight: 700, padding: 0 }}>
+              style={{ background: "none", border: "none", color: "#E8976B", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: 0 }}>
               →
             </button>
           ) : <span />}
@@ -171,7 +171,7 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
             const h = parseInt(label.split(":")[0]);
             const top = (h * 60 - dayStartMin) * PX_PER_MINUTE;
             return (
-              <div key={label} style={{ position: "absolute", top, right: 6, fontSize: 10, color: "#555", fontFamily: "Inter, sans-serif" }}>
+              <div key={label} style={{ position: "absolute", top, right: 6, fontSize: 12, color: "#7A7670", fontFamily: "Inter, sans-serif" }}>
                 {label}
               </div>
             );
@@ -184,13 +184,13 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
           const placed = computeColumns(daySessions);
 
           return (
-            <div key={day} style={{ flex: 1, position: "relative", height: totalHeight, background: "#2a2a2a", marginLeft: 1 }}>
+            <div key={day} style={{ flex: 1, position: "relative", height: totalHeight, background: "#272C35", marginLeft: 1 }}>
               {/* Hour grid lines */}
               {hourLabels.map((label) => {
                 const h = parseInt(label.split(":")[0]);
                 const top = (h * 60 - dayStartMin) * PX_PER_MINUTE;
                 return (
-                  <div key={label} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid #333", pointerEvents: "none" }} />
+                  <div key={label} style={{ position: "absolute", top, left: 0, right: 0, borderTop: "1px solid #333840", pointerEvents: "none" }} />
                 );
               })}
 
@@ -209,8 +209,9 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
                     onClick={() => onSelect(s.id)}
                     style={{
                       position: "absolute", top, left, width, height,
-                      background: "#a20513", padding: "4px 8px", cursor: "pointer",
-                      overflow: "hidden", transition: "opacity 50ms", boxSizing: "border-box",
+                      background: "#E8976B", padding: "6px 10px", cursor: "pointer",
+                      overflow: "hidden", transition: "opacity 120ms ease", boxSizing: "border-box",
+                      borderRadius: 3,
                       outline: s.id === selectedId ? "2px solid #fff" : "none",
                       outlineOffset: s.id === selectedId ? -2 : 0,
                       zIndex: s.id === selectedId ? 10 : 1,
@@ -219,11 +220,11 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
                     onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
                     onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                   >
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", flexShrink: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.88)", flexShrink: 0 }}>
                       {s.start}–{s.end}
                     </div>
-                    <div style={{ flex: 1, minHeight: 0, overflow: "hidden", marginTop: 2 }}>
-                      <div style={{ fontSize: 12, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                    <div style={{ flex: 1, minHeight: 0, overflow: "hidden", marginTop: 3 }}>
+                      <div style={{ fontSize: 13, color: "#fff", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                         {s.title}
                       </div>
                     </div>
@@ -233,7 +234,7 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
                           const mc = memberColors[uid];
                           if (!mc) return null;
                           return (
-                            <div key={uid} style={{ width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "#fff", background: mc.color }}>
+                            <div key={uid} style={{ width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff", background: mc.color, borderRadius: 2 }}>
                               {mc.initials}
                             </div>
                           );
