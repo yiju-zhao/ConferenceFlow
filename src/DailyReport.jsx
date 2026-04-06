@@ -1206,6 +1206,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         filename = `GTC2026_日报_${date}.md`;
       }
 
+      if (!blob) throw new Error(`Unsupported export format: ${format}`);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = filename;
@@ -1214,7 +1215,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
     } catch (err) {
-      console.error("[Export] Failed:", err.message);
+      console.error("[Export] Failed:", err);
       alert(`导出失败：${err.message}`);
     } finally {
       setCollapsedSessions(prevCollapsed);
