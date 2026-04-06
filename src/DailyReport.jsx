@@ -901,6 +901,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         type,
         label: type === "auto" ? "自动保存" : "手动保存",
         createdAt: serverTimestamp(),
+        createdBy: user.uid,
         data,
       });
       lastSnapshotHashRef.current = hash;
@@ -2498,6 +2499,11 @@ ${clone.outerHTML}
                               }}>
                                 {isManual ? "Manual" : "Auto"}
                               </span>
+                              {snap.createdBy && memberMap[snap.createdBy] && (
+                                <span style={{ fontSize: 10, color: "#888" }}>
+                                  by {memberMap[snap.createdBy]}
+                                </span>
+                              )}
                             </div>
                             <div style={{ fontSize: 12, color: "#1a1c1c", fontWeight: 600 }}>{date ? relativeTime(date) : "未知时间"}</div>
                             {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
@@ -2536,6 +2542,11 @@ ${clone.outerHTML}
                   <span style={{ fontSize: 11, color: "#888" }}>
                     {viewingSnapshot.createdAt?.toDate ? relativeTime(viewingSnapshot.createdAt.toDate()) : ""}
                   </span>
+                  {viewingSnapshot.createdBy && memberMap[viewingSnapshot.createdBy] && (
+                    <span style={{ fontSize: 11, color: "#888" }}>
+                      · {memberMap[viewingSnapshot.createdBy]}
+                    </span>
+                  )}
                   <div style={{ flex: 1 }} />
                   <button onClick={() => handleRestore(viewingSnapshot)}
                     style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
