@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-
-const BUCKET = "gtc-2026-session-daal.firebasestorage.app";
+import { ref, getDownloadURL } from "firebase/storage";
+import { storage } from "./firebase";
 
 export default function ViewReport() {
   const { date, fileId } = useParams();
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const path = encodeURIComponent(`published-reports/${date}/${fileId}.html`);
-    fetch(`https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${path}?alt=media`)
+    const storageRef = ref(storage, `published-reports/${date}/${fileId}.html`);
+    getDownloadURL(storageRef)
+      .then(url => fetch(url))
       .then(r => {
         if (!r.ok) throw new Error(`Report not found (${r.status})`);
         return r.text();
