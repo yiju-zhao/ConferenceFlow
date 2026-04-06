@@ -24,6 +24,7 @@ import { useDebouncedSave } from "./hooks/useDebouncedSave";
 import { EditableField, InlineAddButton, BulletEditor } from "./shared";
 import { usePresence } from "./components/report/usePresence";
 import PresenceBar from "./components/report/PresenceBar";
+import huaweiLogo from "./assets/huawei_logo.png";
 const topicSlug = (t) =>
   t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
@@ -1113,6 +1114,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
           const bodyText = block.textContent.replace(heading.textContent, '').trim();
           if (!bodyText) block.remove();
         });
+        // 1a. Remove entire session cards where all field blocks were empty
+        clone.querySelectorAll('.report-session').forEach(session => {
+          if (session.querySelectorAll('.report-field-block').length === 0) {
+            session.remove();
+          }
+        });
 
         // 1b. Add ids to topic dividers so TOC #topic-* links have targets
         clone.querySelectorAll('.report-topic-divider').forEach(el => {
@@ -1315,6 +1322,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         if (!heading) return;
         const bodyText = block.textContent.replace(heading.textContent, '').trim();
         if (!bodyText) block.remove();
+      });
+      // Remove entire session cards where all field blocks were empty
+      clone.querySelectorAll('.report-session').forEach(session => {
+        if (session.querySelectorAll('.report-field-block').length === 0) {
+          session.remove();
+        }
       });
       // Convert form fields to static text (before removing interactive elements)
       const origCaptions = container.querySelectorAll('.site-photo-caption');
@@ -1589,13 +1602,15 @@ ${clone.outerHTML}
           </span>
         </div>
 
-        {/* Right: presence + actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Right: presence + grouped actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <PresenceBar
             activeUsers={activeUsers}
             memberColorMap={memberColorMap}
             currentUid={user?.uid}
           />
+
+          {/* ① Save status + button */}
           {saveState === "saving" && (
             <span style={{ fontSize: 11, color: "#666" }}>● 保存中...</span>
           )}
@@ -1607,12 +1622,20 @@ ${clone.outerHTML}
               background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
             保存
           </button>
-          <button onClick={() => setShowHistory(true)} title="历史版本"
-            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
-              background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
-            历史版本
+
+          {/* ② Preview — primary action, visually distinct */}
+          <button
+            onClick={() => window.open(`/conference/${confId}/report/${reportId}?preview=1`, '_blank')}
+            style={{
+              padding: "5px 16px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
+              background: "#a20513", color: "#fff", border: "none", cursor: "pointer",
+              fontFamily: "'Work Sans', sans-serif",
+            }}
+          >
+            预览
           </button>
-          {/* Export dropdown */}
+
+          {/* ③ Export/Share dropdown */}
           <div style={{ position: "relative" }}>
             <button
                 onClick={() => !exporting && setShowExportMenu(v => !v)}
@@ -1624,18 +1647,18 @@ ${clone.outerHTML}
               </button>
               {showExportMenu && (
                 <div className="export-dropdown-menu">
-                  <button className="export-menu-item" onClick={() => handleExport('markdown')}>
-                    <span className="export-menu-icon">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4 10V6l2 2 2-2v4M11 10V8.5M11 6.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </span>
-                    <span className="export-menu-label">导出 Markdown</span>
-                  </button>
-                  <div className="export-menu-divider" />
                   <button className="export-menu-item export-menu-item--publish" onClick={handlePublish}>
                     <span className="export-menu-icon">
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M6 7l4-2M6 9l4 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
                     </span>
                     <span className="export-menu-label">{publishing ? "分享中..." : "分享日报"}</span>
+                  </button>
+                  <div className="export-menu-divider" />
+                  <button className="export-menu-item" onClick={() => handleExport('markdown')}>
+                    <span className="export-menu-icon">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4 10V6l2 2 2-2v4M11 10V8.5M11 6.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </span>
+                    <span className="export-menu-label">导出 Markdown</span>
                   </button>
                   <div className="export-menu-divider" />
                   <button className="export-menu-item" onClick={handleEmailExport}>
@@ -1650,11 +1673,14 @@ ${clone.outerHTML}
                 </div>
               )}
           </div>
+
           <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
-          <button onClick={() => setShowDeleteSelect(true)} title="删除 Session"
+
+          {/* ④ Maintenance: history + sync */}
+          <button onClick={() => setShowHistory(true)} title="历史版本"
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
-              background: "transparent", color: "#a20513", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
-            删除 Session
+              background: "transparent", color: "#888", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            历史版本
           </button>
           <button onClick={handleSyncFromCatalog} disabled={syncing} title="更新 Session 信息"
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
@@ -1662,17 +1688,14 @@ ${clone.outerHTML}
             {syncing ? "更新中..." : "更新 Session 信息"}
           </button>
           {syncMsg && <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>{syncMsg}</span>}
+
           <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
-          {/* Preview button */}
-          <button
-            onClick={() => window.open(`/conference/${confId}/report/${reportId}?preview=1`, '_blank')}
-            style={{
-              padding: "5px 18px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
-              background: "#333", color: "#ccc", border: "none", cursor: "pointer",
-              fontFamily: "'Work Sans', sans-serif",
-            }}
-          >
-            预览
+
+          {/* ⑤ Destructive: delete — far right, red */}
+          <button onClick={() => setShowDeleteSelect(true)} title="删除 Session"
+            style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
+              background: "transparent", color: "#a20513", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
+            删除 Session
           </button>
         </div>
       </div>}
@@ -1740,19 +1763,22 @@ ${clone.outerHTML}
       <div className="report-container" ref={reportContainerRef}>
 
         {/* Title bar */}
-        <div className="report-title-bar">
-          <div className="report-title-eyebrow">{confName || "CONFERENCE"} · DAILY BRIEFING</div>
-          <h1>
-            {viewMode ? (
-              <span>{reportData?.title || `【${date}】日报`}</span>
-            ) : (
-              <span
-                contentEditable
-                suppressContentEditableWarning
-                onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
-              >{reportData?.title || `【${date}】日报`}</span>
-            )}
-          </h1>
+        <div className="report-title-bar" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div style={{ position: "relative", zIndex: 1 }}>
+            <div className="report-title-eyebrow">{confName || "CONFERENCE"} · DAILY BRIEFING</div>
+            <h1>
+              {viewMode ? (
+                <span>{reportData?.title || `【${date}】日报`}</span>
+              ) : (
+                <span
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
+                >{reportData?.title || `【${date}】日报`}</span>
+              )}
+            </h1>
+          </div>
+          <img src={huaweiLogo} alt="Huawei" style={{ height: 28, opacity: 0.9, flexShrink: 0, marginTop: 6, position: "relative", zIndex: 1, filter: "brightness(0) invert(1)" }} />
         </div>
 
         {/* Header: TOC + Summary */}
@@ -1841,6 +1867,8 @@ ${clone.outerHTML}
 
           {noTopicSessions.map(session => {
             const sd = sessionData[session.code] || {};
+            // In preview/viewMode, skip sessions with no content
+            if (viewMode && !sd.takeaways?.replace(/<[^>]*>/g, '').trim() && !sd.insights?.replace(/<[^>]*>/g, '').trim()) return null;
             const speakers = sd.speakers
               || (sd.speaker
                 ? [{ name: sd.speaker, position: "", company: sd.company || "" }]
