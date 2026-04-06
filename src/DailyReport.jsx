@@ -1661,17 +1661,16 @@ ${clone.outerHTML}
           </button>
           {syncMsg && <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>{syncMsg}</span>}
           <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
-          {/* Publish button */}
+          {/* Preview button */}
           <button
-            onClick={() => handlePublish()}
-            disabled={publishing}
+            onClick={() => window.open(`/view/report/${reportId}`, '_blank')}
             style={{
               padding: "5px 18px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
-              background: "#a20513", color: "#fff", border: "none", cursor: "pointer",
-              fontFamily: "'Work Sans', sans-serif", opacity: publishing ? 0.6 : 1,
+              background: "#333", color: "#ccc", border: "none", cursor: "pointer",
+              fontFamily: "'Work Sans', sans-serif",
             }}
           >
-            {publishing ? "发布中..." : "发布"}
+            预览
           </button>
         </div>
       </div>}
