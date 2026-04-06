@@ -544,9 +544,10 @@ function SnapshotViewer({ snapshot, currentData }) {
 }
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
-export default function DailyReport({ viewMode = false }) {
+export default function DailyReport({ viewMode: viewModeProp = false }) {
   const { confId, reportId } = useParams();
   const { date } = parseReportId(reportId);
+  const viewMode = viewModeProp || new URLSearchParams(window.location.search).get('preview') === '1';
   const { user } = useAuth();
   const { isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
@@ -1205,6 +1206,7 @@ export default function DailyReport({ viewMode = false }) {
         filename = `GTC2026_日报_${date}.md`;
       }
 
+      if (!blob) throw new Error(`Unsupported export format: ${format}`);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = filename;
@@ -1213,7 +1215,7 @@ export default function DailyReport({ viewMode = false }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
     } catch (err) {
-      console.error("[Export] Failed:", err.message);
+      console.error("[Export] Failed:", err);
       alert(`导出失败：${err.message}`);
     } finally {
       setCollapsedSessions(prevCollapsed);
@@ -1663,7 +1665,7 @@ ${clone.outerHTML}
           <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
           {/* Preview button */}
           <button
-            onClick={() => window.open(`/view/report/${reportId}`, '_blank')}
+            onClick={() => window.open(`/conference/${confId}/report/${reportId}?preview=1`, '_blank')}
             style={{
               padding: "5px 18px", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase",
               background: "#333", color: "#ccc", border: "none", cursor: "pointer",
