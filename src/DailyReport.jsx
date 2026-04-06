@@ -608,6 +608,14 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   const collapsedInit = useRef(false);
   const { debouncedSave, saveState } = useDebouncedSave(600);
 
+  // Lock body scroll when history panel is open
+  useEffect(() => {
+    if (!showHistory) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [showHistory]);
+
 // Close export dropdown on outside click or Escape
   useEffect(() => {
     if (!showExportMenu) return;
@@ -2417,14 +2425,15 @@ ${clone.outerHTML}
         // No grouping — flat list, all versions equal
 
         return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000, overflow: "hidden" }}
+          onWheel={e => e.stopPropagation()}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
             onClick={() => { setShowHistory(false); setViewingSnapshot(null); }} />
           <div style={{
             position: "absolute", right: 0, top: 0, bottom: 0,
             width: viewingSnapshot ? "min(80%, 960px)" : "380px",
             background: "#fff", display: "flex", flexDirection: "column",
-            boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
+            boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", overflow: "hidden",
           }}>
             {/* Panel header */}
             <div style={{
