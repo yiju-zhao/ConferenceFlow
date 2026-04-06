@@ -440,7 +440,7 @@ function SnapshotViewer({ snapshot, currentData }) {
     : "未知时间";
   const FIELD_LABELS = { onsiteInfo: "现场情报", reflections: "圈内声音", rumors: "深度研判" };
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px" }}>
       <p className="text-caption" style={{ margin: "0 0 20px", color: "var(--text-muted)" }}>
         快照时间：{ts}　·　绿色 = 快照后新增，红色删除线 = 快照后删除/修改
       </p>
@@ -2425,15 +2425,14 @@ ${clone.outerHTML}
         // No grouping — flat list, all versions equal
 
         return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1000, overflow: "hidden" }}
-          onWheel={e => e.stopPropagation()}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }}
             onClick={() => { setShowHistory(false); setViewingSnapshot(null); }} />
           <div style={{
             position: "absolute", right: 0, top: 0, bottom: 0,
             width: viewingSnapshot ? "min(80%, 960px)" : "380px",
             background: "#fff", display: "flex", flexDirection: "column",
-            boxShadow: "-8px 0 32px rgba(0,0,0,0.12)", overflow: "hidden",
+            boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
           }}>
             {/* Panel header */}
             <div style={{
@@ -2521,7 +2520,7 @@ ${clone.outerHTML}
               </div>
             ) : (
               /* Snapshot viewer with diff */
-              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
                 <div style={{ padding: "12px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: "#888", fontFamily: "monospace" }}>
                     #{viewingSnapshot.id.slice(-6).toUpperCase()}
