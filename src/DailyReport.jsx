@@ -442,17 +442,19 @@ function SnapshotViewer({ snapshot, currentData }) {
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
       <p className="text-caption" style={{ margin: "0 0 20px", color: "var(--text-muted)" }}>
-        快照时间：{ts}　·　绿色 = 快照中新增，红色删除线 = 当前版本中已改动
+        快照时间：{ts}　·　绿色 = 快照后新增，红色删除线 = 快照后删除/修改
       </p>
+      {JSON.stringify(currentData?.summaryPoints || []) !== JSON.stringify(data?.summaryPoints || []) && (
       <section style={{ marginBottom: 24 }}>
         <h4 className="text-body" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-secondary)" }}>核心要点</h4>
-        <DiffList oldItems={currentData?.summaryPoints || []} newItems={data?.summaryPoints || []} />
+        <DiffList oldItems={data?.summaryPoints || []} newItems={currentData?.summaryPoints || []} />
       </section>
-      {Object.keys(data?.sessions || {}).map(code => {
-        const oldSd = currentData?.sessions?.[code] || {};
-        const newSd = data?.sessions?.[code] || {};
-        const hasTakeawaysDiff = stripHtml(oldSd.takeaways) !== stripHtml(newSd.takeaways);
-        const hasInsightsDiff = stripHtml(oldSd.insights) !== stripHtml(newSd.insights);
+      )}
+      {Object.keys({ ...data?.sessions, ...currentData?.sessions }).map(code => {
+        const snapshotSd = data?.sessions?.[code] || {};
+        const currentSd = currentData?.sessions?.[code] || {};
+        const hasTakeawaysDiff = stripHtml(snapshotSd.takeaways) !== stripHtml(currentSd.takeaways);
+        const hasInsightsDiff = stripHtml(snapshotSd.insights) !== stripHtml(currentSd.insights);
         if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
         return (
           <section key={code} style={{ marginBottom: 24, paddingLeft: 12, borderLeft: "3px solid var(--border)" }}>
@@ -460,26 +462,26 @@ function SnapshotViewer({ snapshot, currentData }) {
             {hasTakeawaysDiff && (
               <div style={{ marginBottom: 8 }}>
                 <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>关键收获</div>
-                <DiffText oldText={oldSd.takeaways} newText={newSd.takeaways} />
+                <DiffText oldText={snapshotSd.takeaways} newText={currentSd.takeaways} />
               </div>
             )}
             {hasInsightsDiff && (
               <div>
                 <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>启示</div>
-                <DiffText oldText={oldSd.insights} newText={newSd.insights} />
+                <DiffText oldText={snapshotSd.insights} newText={currentSd.insights} />
               </div>
             )}
           </section>
         );
       })}
       {["onsiteInfo", "reflections", "rumors"].map(field => {
-        const oldVal = currentData?.[field];
-        const newVal = data?.[field];
-        if (stripHtml(oldVal) === stripHtml(newVal)) return null;
+        const snapshotVal = data?.[field];
+        const currentVal = currentData?.[field];
+        if (stripHtml(snapshotVal) === stripHtml(currentVal)) return null;
         return (
           <section key={field} style={{ marginBottom: 24 }}>
             <h4 className="text-caption" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-secondary)" }}>{FIELD_LABELS[field]}</h4>
-            <DiffText oldText={oldVal} newText={newVal} />
+            <DiffText oldText={snapshotVal} newText={currentVal} />
           </section>
         );
       })}
@@ -489,53 +491,60 @@ function SnapshotViewer({ snapshot, currentData }) {
         { field: "onsiteInfoBlocks", label: "现场情报 (Blocks)" },
         { field: "reflectionsBlocks", label: "圈内声音 (Blocks)" },
       ].map(({ field, label }) => {
-        const oldBlocks = currentData?.[field] || [];
-        const newBlocks = data?.[field] || [];
-        if (JSON.stringify(oldBlocks) === JSON.stringify(newBlocks)) return null;
+        const snapshotBlocks = data?.[field] || [];
+        const currentBlocks = currentData?.[field] || [];
 
         // Build maps for comparison
-        const oldMap = new Map(oldBlocks.map(b => [b.id, b]));
-        const newMap = new Map(newBlocks.map(b => [b.id, b]));
-        const allIds = [...new Set([...oldBlocks.map(b => b.id), ...newBlocks.map(b => b.id)])];
+        const snapshotMap = new Map(snapshotBlocks.map(b => [b.id, b]));
+        const currentMap = new Map(currentBlocks.map(b => [b.id, b]));
+        const allIds = [...new Set([...snapshotBlocks.map(b => b.id), ...currentBlocks.map(b => b.id)])];
+
+        // Check if any block actually has content differences
+        const hasAnyDiff = allIds.some(id => {
+          const sB = snapshotMap.get(id);
+          const cB = currentMap.get(id);
+          if (!sB || !cB) return true;
+          return stripHtml(sB?.content) !== stripHtml(cB?.content);
+        });
+        if (!hasAnyDiff) return null;
 
         return (
           <section key={field} style={{ marginBottom: 24 }}>
             <h4 className="text-body" style={{ margin: "0 0 12px", fontWeight: 700, color: "var(--text-secondary)" }}>{label}</h4>
             {allIds.map(id => {
-              const oldB = oldMap.get(id);
-              const newB = newMap.get(id);
-              const oldContent = stripHtml(oldB?.content);
-              const newContent = stripHtml(newB?.content);
+              const sB = snapshotMap.get(id);
+              const cB = currentMap.get(id);
+              const snapshotContent = stripHtml(sB?.content);
+              const currentContent = stripHtml(cB?.content);
 
-              if (!newB && oldB) {
-                // Block removed in snapshot (exists in current, not in snapshot)
+              if (sB && !cB) {
+                // Existed in snapshot, removed in current
                 return (
                   <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(207,10,44,0.06)", borderLeft: "3px solid #CF0A2C" }}>
                     <div style={{ fontSize: 10, color: "#CF0A2C", fontWeight: 600, marginBottom: 4 }}>删除</div>
-                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through" }}>{oldContent || "(空)"}</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through" }}>{snapshotContent || "(空)"}</div>
                   </div>
                 );
               }
-              if (!oldB && newB) {
-                // Block added in snapshot (not in current, exists in snapshot)
+              if (!sB && cB) {
+                // Not in snapshot, added in current
                 return (
                   <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(39,174,96,0.06)", borderLeft: "3px solid #27AE60" }}>
                     <div style={{ fontSize: 10, color: "#27AE60", fontWeight: 600, marginBottom: 4 }}>新增</div>
-                    <div style={{ fontSize: 12, color: "#333" }}>{newContent || "(空)"}</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{currentContent || "(空)"}</div>
                   </div>
                 );
               }
-              if (oldContent !== newContent) {
-                // Block content changed
+              if (snapshotContent !== currentContent) {
                 return (
                   <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(41,128,185,0.06)", borderLeft: "3px solid #2980B9" }}>
-                    <div style={{ fontSize: 10, color: "#2980B9", fontWeight: 600, marginBottom: 4 }}>已修改</div>
-                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through", marginBottom: 4 }}>{oldContent || "(空)"}</div>
-                    <div style={{ fontSize: 12, color: "#333" }}>{newContent || "(空)"}</div>
+                    <div style={{ fontSize: 10, color: "#2980B9", fontWeight: 600, marginBottom: 4 }}>修改</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through", marginBottom: 4 }}>{snapshotContent || "(空)"}</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{currentContent || "(空)"}</div>
                   </div>
                 );
               }
-              return null; // No change
+              return null;
             })}
           </section>
         );
@@ -1636,7 +1645,7 @@ ${clone.outerHTML}
           </button>
 
           {/* ③ Export/Share dropdown */}
-          <div style={{ position: "relative" }}>
+          <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
             <button
                 onClick={() => !exporting && setShowExportMenu(v => !v)}
                 disabled={exporting}
@@ -1763,8 +1772,8 @@ ${clone.outerHTML}
       <div className="report-container" ref={reportContainerRef}>
 
         {/* Title bar */}
-        <div className="report-title-bar" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <div style={{ position: "relative", zIndex: 1 }}>
+        <div className="report-title-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
             <div className="report-title-eyebrow">{confName || "CONFERENCE"} · DAILY BRIEFING</div>
             <h1>
               {viewMode ? (
@@ -1778,7 +1787,7 @@ ${clone.outerHTML}
               )}
             </h1>
           </div>
-          <img src={huaweiLogo} alt="Huawei" style={{ height: 28, opacity: 0.9, flexShrink: 0, marginTop: 6, position: "relative", zIndex: 1, filter: "brightness(0) invert(1)" }} />
+          <img src={huaweiLogo} alt="Huawei" style={{ height: 28, opacity: 0.9, flexShrink: 0, filter: "brightness(0) invert(1)" }} />
         </div>
 
         {/* Header: TOC + Summary */}
