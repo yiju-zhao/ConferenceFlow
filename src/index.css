@@ -998,19 +998,7 @@ input[type="checkbox"].gtc-check:checked::after {
   position: relative;
   overflow: hidden;
 }
-/* Diagonal stripe accent */
-.report-title-bar::after {
-  content: '';
-  position: absolute;
-  right: -30px; top: -30px;
-  width: 220px; height: 220px;
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent, transparent 13px,
-    rgba(255,255,255,0.045) 13px, rgba(255,255,255,0.045) 26px
-  );
-  pointer-events: none;
-}
+/* Diagonal stripe accent — removed for cleaner look */
 .report-title-eyebrow {
   font-size: var(--report-fs-label);
   letter-spacing: 0.2em;
