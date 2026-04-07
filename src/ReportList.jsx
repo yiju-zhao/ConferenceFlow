@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { DAY_CN } from "./constants";
 import { parseReportId, generateSummaryId } from "./lib/reportUtils";
+import { formatWeekday } from './i18n/dateUtils';
 import { useAuth } from "./contexts/AuthContext";
 
 export default function ReportList() {
@@ -186,7 +186,7 @@ export default function ReportList() {
                 <div className="create-report-dropdown">
                   <div className="create-report-dropdown-label">选择日期</div>
                   {allSessionDates.map(date => {
-                    const weekday = DAY_CN[new Date(date + "T00:00").getDay()];
+                    const weekday = formatWeekday(new Date(date + "T00:00"));
                     const count = allSessions.filter(s => s.date === date).length;
                     const hasReport = reportedDates.has(date);
                     return (
@@ -257,7 +257,7 @@ export default function ReportList() {
               );
             }
 
-            const weekday = DAY_CN[new Date(r.date + "T00:00").getDay()];
+            const weekday = formatWeekday(new Date(r.date + "T00:00"));
             return (
               <div key={r.id} className="report-card" style={isArchived ? { opacity: 0.6 } : undefined}>
                 <div className="report-card-main">
