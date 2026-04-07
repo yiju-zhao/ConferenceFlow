@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "./firebase";
+import { useTranslation } from "react-i18next";
 
 export default function ViewReport() {
   const { date, fileId } = useParams();
+  const { t } = useTranslation();
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -59,13 +61,13 @@ export default function ViewReport() {
 
   if (error) return (
     <div style={{ padding: 40, fontFamily: "sans-serif", color: "#555" }}>
-      <h2>报告不存在</h2><p>{error}</p>
+      <h2>{t('report.reportNotFound')}</h2><p>{error}</p>
     </div>
   );
 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", color: "#888" }}>
-      加载中…
+      {t('common.loading')}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { COLORS } from "../../constants";
+import { formatShortDate } from '../../i18n/dateUtils';
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
 const DAYS_PER_PAGE = 3;
@@ -154,7 +155,7 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
         </div>
         {visibleDays.map((day) => {
           const d = new Date(day + "T00:00:00");
-          const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          const label = formatShortDate(d);
           return (
             <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
               {label}

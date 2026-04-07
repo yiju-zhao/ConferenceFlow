@@ -16,10 +16,12 @@ import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { COLORS } from "../../constants";
 import { generateId } from "../../lib/reportUtils";
+import { useTranslation } from "react-i18next";
+import { formatShortDate, formatLongDate } from '../../i18n/dateUtils';
 
 const COLOR_INDICES = [0, 1, 2, 3, 4, 5, 6, 7];
 
-function SessionAssignSearch({ sessions, onAssign }) {
+function SessionAssignSearch({ sessions, onAssign, t }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
@@ -49,7 +51,7 @@ function SessionAssignSearch({ sessions, onAssign }) {
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setTimeout(() => setFocused(false), 150)}
-        placeholder="+ Assign session — search by title or code..."
+        placeholder={t('admin.assignSessionSearch')}
         className="w-full bg-surface-container-high p-2 text-on-surface text-xs border-0 border-b-2 border-transparent focus:border-admin-teal focus:outline-none"
       />
       {focused && query.trim() && results.length > 0 && (
@@ -73,7 +75,7 @@ function SessionAssignSearch({ sessions, onAssign }) {
       {focused && query.trim() && results.length === 0 && (
         <div className="absolute z-10 left-0 right-0 bg-surface-container-lowest px-3 py-2 text-secondary text-xs"
           style={{ top: "100%", border: "1px solid #dadada" }}>
-          No matching sessions
+          {t('admin.noMatchingSessions')}
         </div>
       )}
     </div>
@@ -83,6 +85,7 @@ function SessionAssignSearch({ sessions, onAssign }) {
 export default function AdminAttendance() {
   const { confId } = useParams();
   const { user, isSuperAdmin } = useAuth();
+  const { t } = useTranslation();
 
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -315,17 +318,17 @@ export default function AdminAttendance() {
         <div className="flex items-center gap-2">
           <span className="w-1 h-5 bg-admin-teal inline-block" />
           <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
-            Attendee Management
+            {t('admin.attendeeManagement')}
           </h2>
           <span className="text-secondary text-xs uppercase tracking-wider ml-1">
-            {approvedMembers.length} members
+            {approvedMembers.length} {t('admin.members')}
           </span>
         </div>
         <button
           onClick={() => { setShowAddForm((v) => !v); setAddName(""); setAddMode("onsite"); }}
           className="bg-admin-teal text-white px-4 py-2 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity rounded-lg"
         >
-          {showAddForm ? "Cancel" : "+ Add Attendee"}
+          {showAddForm ? t('common.cancel') : t('admin.addAttendee')}
         </button>
       </div>
 
@@ -333,18 +336,18 @@ export default function AdminAttendance() {
       {showAddForm && (
         <div className="bg-surface-container-lowest border-b border-surface-dim p-4 mb-4 flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-40">
-            <label className="block text-secondary text-xs uppercase tracking-wider mb-1">Name</label>
+            <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{t('admin.name')}</label>
             <input
               type="text"
               value={addName}
               onChange={(e) => setAddName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddAttendee()}
-              placeholder="Full name"
+              placeholder={t('admin.fullName')}
               className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-admin-teal focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-secondary text-xs uppercase tracking-wider mb-1">Mode</label>
+            <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{t('admin.mode')}</label>
             <div className="flex gap-1">
               {["onsite", "online"].map((m) => (
                 <button
@@ -366,7 +369,7 @@ export default function AdminAttendance() {
             disabled={addLoading || !addName.trim()}
             className="bg-admin-teal text-white px-5 py-2 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity disabled:opacity-50 rounded-lg"
           >
-            {addLoading ? "Adding..." : "Add"}
+            {addLoading ? t('admin.adding') : t('admin.add')}
           </button>
         </div>
       )}
@@ -375,15 +378,15 @@ export default function AdminAttendance() {
       <div className="bg-surface-container-lowest mb-10 rounded-lg shadow-sm">
         {/* Header row */}
         <div className="hidden md:grid grid-cols-[2fr_100px_100px_100px_160px] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline">Name</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Mode</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Role</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Sessions</span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">Actions</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline">{t('admin.name')}</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">{t('admin.mode')}</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">{t('admin.role')}</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">{t('admin.sessions')}</span>
+          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">{t('admin.actions')}</span>
         </div>
 
         {approvedMembers.length === 0 && (
-          <div className="p-6 text-center text-secondary text-sm">No approved members found</div>
+          <div className="p-6 text-center text-secondary text-sm">{t('admin.noApprovedMembers')}</div>
         )}
 
         {approvedMembers.map((m) => {
@@ -396,7 +399,7 @@ export default function AdminAttendance() {
                 /* Edit row */
                 <div className="p-4 flex flex-wrap gap-3 items-end bg-surface-container/40">
                   <div className="flex-1 min-w-40">
-                    <label className="block text-secondary text-xs uppercase tracking-wider mb-1">Name</label>
+                    <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{t('admin.name')}</label>
                     <input
                       type="text"
                       value={editState.name}
@@ -406,7 +409,7 @@ export default function AdminAttendance() {
                     />
                   </div>
                   <div>
-                    <label className="block text-secondary text-xs uppercase tracking-wider mb-1">Mode</label>
+                    <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{t('admin.mode')}</label>
                     <div className="flex gap-1">
                       {["onsite", "online"].map((mo) => (
                         <button
@@ -429,13 +432,13 @@ export default function AdminAttendance() {
                       disabled={editLoading}
                       className="bg-admin-teal text-white px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity disabled:opacity-50"
                     >
-                      {editLoading ? "Saving..." : "Save"}
+                      {editLoading ? t('common.saving') : t('common.save')}
                     </button>
                     <button
                       onClick={() => setEditState(null)}
                       className="bg-surface-container text-secondary px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
@@ -464,18 +467,18 @@ export default function AdminAttendance() {
                     )}
                   </div>
                   <div className="text-secondary text-xs text-center">
-                    {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
+                    {sessionCount} {t('admin.sessions').toLowerCase()}
                   </div>
                   <div className="flex gap-2 items-center justify-center">
                     {/* Slot 1: Promote / Demote / Edit — fixed width */}
                     <span className="w-16 text-center">
                       {!m.managedByAdmin && !m.legacyName && m.role !== "admin" && m.status === "approved" ? (
-                        <button onClick={() => handleSetAdmin(m.id)} className="text-admin-teal text-xs hover:underline">Promote</button>
+                        <button onClick={() => handleSetAdmin(m.id)} className="text-admin-teal text-xs hover:underline">{t('admin.promote')}</button>
                       ) : !m.managedByAdmin && !m.legacyName && m.role === "admin" && isSuperAdmin && m.id !== user.uid ? (
-                        <button onClick={() => handleRemoveAdmin(m.id)} className="text-secondary text-xs hover:text-admin-teal hover:underline">Demote</button>
+                        <button onClick={() => handleRemoveAdmin(m.id)} className="text-secondary text-xs hover:text-admin-teal hover:underline">{t('admin.demote')}</button>
                       ) : m.managedByAdmin ? (
                         <button onClick={() => setEditState({ memberId: m.id, name: m.displayName || getMemberName(m), mode: m.attendanceMode || "onsite" })}
-                          className="text-secondary text-xs hover:text-on-surface">Edit</button>
+                          className="text-secondary text-xs hover:text-on-surface">{t('admin.edit')}</button>
                       ) : null}
                     </span>
                     {/* Slot 2: Remove — fixed width */}
@@ -484,13 +487,13 @@ export default function AdminAttendance() {
                         removeConfirm === m.id ? (
                           <span className="flex gap-1 items-center justify-center">
                             <button onClick={() => { handleRemoveAttendee(m.id); setRemoveConfirm(null); }}
-                              className="bg-admin-teal text-white px-2 py-1 text-[10px] font-headline uppercase tracking-wider">Yes</button>
+                              className="bg-admin-teal text-white px-2 py-1 text-[10px] font-headline uppercase tracking-wider">{t('admin.yes')}</button>
                             <button onClick={() => setRemoveConfirm(null)}
-                              className="bg-surface-container text-secondary px-2 py-1 text-[10px] font-headline uppercase tracking-wider">No</button>
+                              className="bg-surface-container text-secondary px-2 py-1 text-[10px] font-headline uppercase tracking-wider">{t('admin.no')}</button>
                           </span>
                         ) : (
                           <button onClick={() => setRemoveConfirm(m.id)}
-                            className="bg-surface-container text-admin-teal px-3 py-1 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity">Remove</button>
+                            className="bg-surface-container text-admin-teal px-3 py-1 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity">{t('admin.remove')}</button>
                         )
                       ) : null}
                     </span>
@@ -506,15 +509,15 @@ export default function AdminAttendance() {
       <div className="flex items-center gap-2 mb-4">
         <span className="w-1 h-5 bg-admin-teal inline-block" />
         <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
-          Session Assignment
+          {t('admin.sessionAssignment')}
         </h2>
       </div>
 
       {/* View toggle */}
       <div className="flex gap-1 mb-6">
         {[
-          { key: "bySession", label: "By Session" },
-          { key: "byMember", label: "By Member" },
+          { key: "bySession", label: t('admin.bySession') },
+          { key: "byMember", label: t('admin.byMember') },
         ].map((v) => (
           <button
             key={v.key}
@@ -541,9 +544,9 @@ export default function AdminAttendance() {
           {/* Mode filter */}
           <div className="flex gap-1 mb-3">
             {[
-              { key: "all", label: "All" },
-              { key: "onsite", label: "Onsite" },
-              { key: "online", label: "Online" },
+              { key: "all", label: t('admin.filterAll') },
+              { key: "onsite", label: t('dashboard.onsite') },
+              { key: "online", label: t('dashboard.online') },
             ].map((f) => (
               <button
                 key={f.key}
@@ -560,7 +563,7 @@ export default function AdminAttendance() {
           </div>
           <div className="bg-surface-container-lowest">
           {filteredMembers.length === 0 && (
-            <div className="p-6 text-center text-secondary text-sm">No members to display</div>
+            <div className="p-6 text-center text-secondary text-sm">{t('admin.noMembersToDisplay')}</div>
           )}
           {filteredMembers.map((m) => {
             const isExpanded = expandedMemberId === m.id;
@@ -582,7 +585,7 @@ export default function AdminAttendance() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-secondary text-xs">
-                      {sessionCountForMember(m.id)} sessions assigned
+                      {sessionCountForMember(m.id)} {t('admin.sessionsAssigned')}
                     </span>
                     <span className="text-secondary text-xs font-headline uppercase tracking-wider">
                       {isExpanded ? "▲" : "▼"}
@@ -611,10 +614,10 @@ export default function AdminAttendance() {
                   return (
                     <div className="bg-surface-container/20 px-6 py-3 border-t border-surface-dim">
                       {memberSessions.length === 0 && !canAssign && (
-                        <p className="text-secondary text-xs">No sessions assigned to this member.</p>
+                        <p className="text-secondary text-xs">{t('admin.noSessionsAssigned')}</p>
                       )}
                       {memberSessions.length === 0 && canAssign && (
-                        <p className="text-secondary text-xs mb-3">No sessions assigned yet.</p>
+                        <p className="text-secondary text-xs mb-3">{t('admin.noSessionsAssigned')}</p>
                       )}
                       {memberSessions.length > 0 && (
                         <div className="mb-3">
@@ -623,7 +626,7 @@ export default function AdminAttendance() {
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="w-1 h-4 bg-admin-teal inline-block"></span>
                                 <span className="text-xs font-headline font-bold uppercase tracking-wider text-admin-teal">
-                                  {new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                                  {formatShortDate(new Date(date + "T00:00:00"))}
                                 </span>
                                 <span className="text-secondary text-[10px]">({byDate[date].length} sessions)</span>
                               </div>
@@ -648,7 +651,7 @@ export default function AdminAttendance() {
                                         onClick={(e) => { e.stopPropagation(); handleToggleSession(m.id, s.id, true); }}
                                         className="text-admin-teal text-xs hover:underline flex-shrink-0"
                                       >
-                                        Unassign
+                                        {t('admin.unassign')}
                                       </button>
                                     )}
                                   </div>
@@ -663,6 +666,7 @@ export default function AdminAttendance() {
                         <SessionAssignSearch
                           sessions={unassignedSessions}
                           onAssign={(sessionId) => handleToggleSession(m.id, sessionId, false)}
+                          t={t}
                         />
                       )}
                     </div>
@@ -682,7 +686,7 @@ export default function AdminAttendance() {
         const allDates = [...new Set(sessions.map((s) => s.date))].sort();
         const activeDay = selectedDay || allDates[0] || null;
 
-        if (!activeDay) return <div className="p-6 text-center text-secondary text-sm">No sessions found</div>;
+        if (!activeDay) return <div className="p-6 text-center text-secondary text-sm">{t('admin.noSessions')}</div>;
 
         // Sessions for the active day
         const daySessions = sessions.filter((s) => s.date === activeDay);
@@ -738,7 +742,7 @@ export default function AdminAttendance() {
             {/* Day switcher — Warm Midnight style */}
             <div style={{ display: "flex", gap: 4, marginBottom: 12, flexWrap: "wrap" }}>
               {allDates.map((d) => {
-                const label = new Date(d + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                const label = formatShortDate(new Date(d + "T00:00:00"));
                 const count = sessions.filter((s) => s.date === d).length;
                 const isActive = activeDay === d;
                 return (
@@ -762,9 +766,9 @@ export default function AdminAttendance() {
             <div style={{ background: "#171B21", padding: 16, borderRadius: 8, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}>
               <div style={{ background: "#272C35", padding: "12px 16px", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
                 <span style={{ fontFamily: "'Work Sans', sans-serif", fontWeight: 700, fontSize: 14, color: "#E8976B", letterSpacing: "0.3px" }}>
-                  {new Date(activeDay + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+                  {formatLongDate(new Date(activeDay + "T00:00:00"))}
                 </span>
-                <span style={{ color: "#7A7670", fontSize: 13 }}>{daySessions.length} sessions</span>
+                <span style={{ color: "#7A7670", fontSize: 13 }}>{daySessions.length} {t('admin.sessions').toLowerCase()}</span>
               </div>
 
               <div style={{ display: "flex" }}>
@@ -869,7 +873,7 @@ export default function AdminAttendance() {
               {/* Themes */}
               {(s.keyThemes || []).length > 0 && (
                 <div style={{ padding: "14px 20px", borderBottom: "1px solid #333840" }}>
-                  <div style={{ fontFamily: "'Work Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#7A7670", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>Topics</div>
+                  <div style={{ fontFamily: "'Work Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#7A7670", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>{t('admin.topics')}</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                     {s.keyThemes.map((t, i) => (
                       <span key={i} style={{ fontSize: 12, fontWeight: 500, color: "#EDEAE5", background: "#272C35", padding: "4px 10px", borderRadius: 12, border: "1px solid #333840" }}>{t}</span>
@@ -881,7 +885,7 @@ export default function AdminAttendance() {
               {/* Speakers */}
               {(s.speakers || []).length > 0 && (
                 <div style={{ padding: "14px 20px", borderBottom: "1px solid #333840" }}>
-                  <div style={{ fontFamily: "'Work Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#7A7670", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>Speaker{s.speakers.length > 1 ? "s" : ""}</div>
+                  <div style={{ fontFamily: "'Work Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#7A7670", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10 }}>{t('admin.speakers')}</div>
                   {s.speakers.map((sp, i) => (
                     <div key={i} style={{ marginBottom: i < s.speakers.length - 1 ? 8 : 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: "#EDEAE5", lineHeight: 1.3 }}>{sp.name}</div>
@@ -896,11 +900,11 @@ export default function AdminAttendance() {
               {/* Attendees */}
               <div style={{ padding: "14px 20px", borderBottom: s.url ? "1px solid #333840" : "none" }}>
                 <div style={{ fontFamily: "'Work Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#7A7670", letterSpacing: "1px", textTransform: "uppercase", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                  Attending
+                  {t('admin.attending')}
                   <span style={{ fontSize: 10, fontWeight: 700, color: "#E8976B", background: "rgba(232,151,107,0.12)", padding: "1px 7px", borderRadius: 10, letterSpacing: 0, textTransform: "none" }}>{sessionAttendees.length}</span>
                 </div>
                 {sessionAttendees.length === 0 ? (
-                  <p style={{ color: "#7A7670", fontSize: 13 }}>No one assigned yet</p>
+                  <p style={{ color: "#7A7670", fontSize: 13 }}>{t('admin.noOneAssigned')}</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {sessionAttendees.map((m) => (
@@ -932,7 +936,7 @@ export default function AdminAttendance() {
                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "#272C35", color: "#A9A5A0", textAlign: "center", padding: "10px 14px", fontSize: 13, border: "1px solid #333840", borderRadius: 6, textDecoration: "none", transition: "all 120ms ease" }}
                     onMouseEnter={e => { e.currentTarget.style.color = "#EDEAE5"; e.currentTarget.style.borderColor = "#7A7670"; }}
                     onMouseLeave={e => { e.currentTarget.style.color = "#A9A5A0"; e.currentTarget.style.borderColor = "#333840"; }}>
-                    View Official Session Page
+                    {t('admin.viewOfficialPage')}
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                   </a>
                 </div>
