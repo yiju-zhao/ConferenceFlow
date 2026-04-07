@@ -1,7 +1,9 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { COLORS } from "../../constants";
 
 export default function SessionDetail({ session, members, isAttending, onToggleAttend }) {
+  const { t } = useTranslation();
   if (!session) {
     return (
       <div className="cal-detail">
@@ -14,7 +16,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           </div>
-          <div className="cal-detail-empty-text">Select a session to see details</div>
+          <div className="cal-detail-empty-text">{t('calendar.selectSession')}</div>
         </div>
       </div>
     );
@@ -45,11 +47,11 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
       <div className="cal-detail-action-bar">
         {isAttending ? (
           <button className="cal-detail-btn-primary cal-detail-btn-primary--danger" onClick={onToggleAttend}>
-            Remove from Schedule
+            {t('calendar.removeFromSchedule')}
           </button>
         ) : (
           <button className="cal-detail-btn-primary" onClick={onToggleAttend}>
-            Mark Attending
+            {t('calendar.markAttending')}
           </button>
         )}
       </div>
@@ -94,7 +96,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
               <circle cx="12" cy="12" r="10" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <span>Recording</span>
+            <span>{t('calendar.recording')}</span>
           </div>
         )}
       </div>
@@ -102,7 +104,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
       {/* ── Themes / Topics ────────────────────────────────── */}
       {session.keyThemes?.length > 0 && (
         <div className="cal-detail-section">
-          <div className="cal-detail-section-label">Topics</div>
+          <div className="cal-detail-section-label">{t('calendar.topics')}</div>
           <div className="cal-detail-tags">
             {session.keyThemes.map((theme, i) => (
               <span key={i} className="cal-detail-tag">{theme}</span>
@@ -115,7 +117,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
       {speakers.length > 0 && (
         <div className="cal-detail-section">
           <div className="cal-detail-section-label">
-            Speaker{speakers.length > 1 ? "s" : ""}
+            {speakers.length > 1 ? t('calendar.speakers') : t('calendar.speaker')}
           </div>
           <div className="cal-detail-speakers">
             {speakers.map((sp, i) => (
@@ -136,7 +138,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
       {attendees.length > 0 && (
         <div className="cal-detail-section">
           <div className="cal-detail-section-label">
-            Attending
+            {t('calendar.attending')}
             <span className="cal-detail-count">{attendees.length}</span>
           </div>
           <div className="cal-detail-attendees">
@@ -148,7 +150,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
                 <div className="cal-detail-attendee-info">
                   <span className="cal-detail-attendee-name">{a.name}</span>
                   <span className={`cal-detail-attendee-badge cal-detail-attendee-badge--${a.mode === "online" ? "online" : "onsite"}`}>
-                    {a.mode === "online" ? "Online" : "Onsite"}
+                    {a.mode === "online" ? t('dashboard.online') : t('dashboard.onsite')}
                   </span>
                 </div>
               </div>
@@ -161,7 +163,7 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
       {session.url && (
         <div className="cal-detail-section">
           <a href={session.url} target="_blank" rel="noopener noreferrer" className="cal-detail-btn-secondary">
-            View Official Session Page
+            {t('calendar.viewOfficialPage')}
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
               <polyline points="15 3 21 3 21 9" />
