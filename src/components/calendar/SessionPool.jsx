@@ -89,13 +89,13 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
             {f === "IN-PERSON" ? t('calendar.inPerson') : t('calendar.virtual')}
           </button>
         ))}
-        {topics.slice(0, 4).map((t) => (
+        {topics.slice(0, 4).map((topic) => (
           <button
-            key={t}
-            className={`cal-pool-filter ${activeFilter === t ? "cal-pool-filter--active" : ""}`}
-            onClick={() => setActiveFilter(activeFilter === t ? "ALL" : t)}
+            key={topic}
+            className={`cal-pool-filter ${activeFilter === topic ? "cal-pool-filter--active" : ""}`}
+            onClick={() => setActiveFilter(activeFilter === topic ? "ALL" : topic)}
           >
-            {t.length > 12 ? t.slice(0, 12) + "…" : t}
+            {topic.length > 12 ? topic.slice(0, 12) + "…" : topic}
           </button>
         ))}
       </div>
