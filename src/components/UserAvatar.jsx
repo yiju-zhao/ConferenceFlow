@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants";
 
@@ -22,6 +23,7 @@ function getInitial(name) {
  */
 export default function UserAvatar({ size = 32, onSignOut, light = false }) {
   const { userProfile, updateDisplayName, signOut } = useAuth();
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
@@ -138,7 +140,7 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
                     border: "none", borderBottom: "2px solid #a20513",
                     background: "#f3f3f3", outline: "none", fontFamily: "'Inter', sans-serif",
                   }}
-                  placeholder="Enter display name"
+                  placeholder={t('avatar.enterDisplayName')}
                 />
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <button
@@ -151,7 +153,7 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
                       opacity: saving || !name.trim() ? 0.5 : 1,
                     }}
                   >
-                    {saving ? "Saving..." : "Save"}
+                    {saving ? t('common.saving') : t('common.save')}
                   </button>
                   <button
                     onClick={() => setEditing(false)}
@@ -161,7 +163,7 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
                       textTransform: "uppercase", letterSpacing: 1, fontFamily: "'Work Sans', sans-serif",
                     }}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -174,7 +176,7 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
                   fontFamily: "'Work Sans', sans-serif", fontWeight: 600,
                 }}
               >
-                Edit Name
+                {t('avatar.editName')}
               </button>
             )}
           </div>
@@ -191,7 +193,7 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
               onMouseEnter={(e) => (e.target.style.background = "#f3f3f3")}
               onMouseLeave={(e) => (e.target.style.background = "none")}
             >
-              Sign Out
+              {t('avatar.signOut')}
             </button>
           </div>
         </div>
@@ -206,6 +208,7 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
  */
 export function FirstTimeNameSetup() {
   const { userProfile, updateDisplayName } = useAuth();
+  const { t } = useTranslation();
   const [name, setName] = useState(userProfile?.displayName || "");
   const [saving, setSaving] = useState(false);
 
@@ -234,15 +237,15 @@ export function FirstTimeNameSetup() {
           background: "#a20513", padding: "20px 24px", color: "#fff",
           fontFamily: "'Work Sans', sans-serif",
         }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Welcome to ConferenceFlow</h2>
-          <p style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Set up your display name</p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t('avatar.welcome')}</h2>
+          <p style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{t('avatar.setupName')}</p>
         </div>
         <div style={{ padding: 24 }}>
           <label style={{
             display: "block", fontSize: 11, color: "#5f5e5e", textTransform: "uppercase",
             letterSpacing: 1, marginBottom: 6, fontFamily: "'Work Sans', sans-serif", fontWeight: 600,
           }}>
-            Display Name
+            {t('auth.displayName')}
           </label>
           <input
             type="text"
@@ -250,7 +253,7 @@ export function FirstTimeNameSetup() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSave()}
             autoFocus
-            placeholder="Enter your name"
+            placeholder={t('avatar.enterYourName')}
             style={{
               width: "100%", padding: "10px 12px", fontSize: 14, border: "none",
               borderBottom: "2px solid transparent", background: "#e8e8e8",
@@ -269,7 +272,7 @@ export function FirstTimeNameSetup() {
               opacity: saving || !name.trim() ? 0.5 : 1,
             }}
           >
-            {saving ? "Saving..." : "Continue"}
+            {saving ? t('common.saving') : t('avatar.continue')}
           </button>
         </div>
       </div>
