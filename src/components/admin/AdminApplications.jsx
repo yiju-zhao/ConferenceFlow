@@ -3,9 +3,11 @@ import { useParams } from "react-router-dom";
 import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { apiFetch } from "../../lib/api";
+import { useTranslation } from "react-i18next";
 
 export default function AdminApplications() {
   const { confId } = useParams();
+  const { t } = useTranslation();
   const [members, setMembers] = useState([]);
   const [userNames, setUserNames] = useState({});
   const [processing, setProcessing] = useState(null);
@@ -50,33 +52,33 @@ export default function AdminApplications() {
     <div>
       <div className="flex items-center gap-2 mb-6">
         <div className="w-1 h-6 rounded-full bg-admin-teal"></div>
-        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">Member Applications</h2>
-        {pendingCount > 0 && <span className="bg-[#E67E22]/10 text-[#E67E22] text-xs px-2.5 py-0.5 uppercase tracking-wider rounded-full">{pendingCount} pending</span>}
+        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">{t('admin.memberApplications')}</h2>
+        {pendingCount > 0 && <span className="bg-[#E67E22]/10 text-[#E67E22] text-xs px-2.5 py-0.5 uppercase tracking-wider rounded-full">{pendingCount} {t('admin.filterPending').toLowerCase()}</span>}
       </div>
       <div className="flex gap-2 mb-4">
-        {[{ key: "pending", label: "Pending" }, { key: "approved", label: "Approved" }, { key: "all", label: "All" }].map((f) => (
+        {[{ key: "pending", label: t('admin.filterPending') }, { key: "approved", label: t('admin.filterApproved') }, { key: "all", label: t('admin.filterAll') }].map((f) => (
           <button key={f.key} onClick={() => setFilter(f.key)}
             className={`px-4 py-1.5 text-xs font-headline uppercase tracking-wider transition-all duration-150 rounded-full ${filter === f.key ? "bg-admin-teal text-white" : "bg-white border border-[#E8E4DF] text-secondary hover:border-admin-teal/30"}`}>{f.label}</button>
         ))}
       </div>
       <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden">
-        {filtered.length === 0 && <div className="p-6 text-center text-secondary text-sm">{filter === "pending" ? "No pending applications" : "No members found"}</div>}
+        {filtered.length === 0 && <div className="p-6 text-center text-secondary text-sm">{filter === "pending" ? t('admin.noPendingApplications') : t('admin.noApplications')}</div>}
         {filtered.map((m, index) => (
           <div key={m.userId} className={`p-4 flex justify-between items-center hover:bg-[#FAFAF8] transition-colors ${index > 0 ? "border-t border-[#E8E4DF]" : ""}`}>
             <div>
               <div className="text-on-surface font-bold text-sm">{userNames[m.userId] || m.userId}</div>
               <div className="text-secondary text-xs mt-1 flex gap-3">
                 <span>{m.attendanceMode || "onsite"}</span>
-                <span>Role: {m.role}</span>
+                <span>{t('admin.role')}: {m.role}</span>
                 <span className={`uppercase tracking-wider ${m.status === "approved" ? "text-[#27AE60]" : m.status === "pending" ? "text-[#E67E22]" : "text-admin-teal"}`}>{m.status}</span>
               </div>
             </div>
             {m.status === "pending" && (
               <div className="flex gap-2">
                 <button onClick={() => handleApprove(m.userId)} disabled={processing === m.userId}
-                  className="bg-[#27AE60] text-white px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity disabled:opacity-50 rounded-lg">Approve</button>
+                  className="bg-[#27AE60] text-white px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity disabled:opacity-50 rounded-lg">{t('admin.approve')}</button>
                 <button onClick={() => handleReject(m.userId)} disabled={processing === m.userId}
-                  className="bg-white border border-[#E8E4DF] text-secondary px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:text-red-600 hover:border-red-300 transition-colors disabled:opacity-50 rounded-lg">Reject</button>
+                  className="bg-white border border-[#E8E4DF] text-secondary px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:text-red-600 hover:border-red-300 transition-colors disabled:opacity-50 rounded-lg">{t('admin.reject')}</button>
               </div>
             )}
           </div>

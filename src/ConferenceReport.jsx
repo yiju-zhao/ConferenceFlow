@@ -5,10 +5,12 @@ import { db, storage } from "./firebase";
 import { useAuth } from "./contexts/AuthContext";
 import { ref as sRef, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { useDebouncedSave } from "./hooks/useDebouncedSave";
+import { useTranslation } from "react-i18next";
 
 export default function ConferenceReport() {
   const { confId, reportId } = useParams();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [urlCopied, setUrlCopied] = useState(false);
@@ -83,7 +85,7 @@ export default function ConferenceReport() {
   // ── Upload handler ────────────────────────────────────────────────────────
   const handleFile = useCallback(async (file) => {
     if (!file || !file.name.endsWith(".html")) {
-      setError("请选择 .html 文件");
+      setError(t('report.selectHtmlFile'));
       return;
     }
     setError(null);
@@ -107,7 +109,7 @@ export default function ConferenceReport() {
       );
     } catch (err) {
       console.error("[Upload] Failed:", err);
-      setError(`上传失败：${err.message}`);
+      setError(t('report.uploadFailed', { error: err.message }));
     } finally {
       setUploading(false);
     }
@@ -136,7 +138,7 @@ export default function ConferenceReport() {
       );
     } catch (err) {
       console.error("[Save] Failed:", err);
-      setError(`保存失败：${err.message}`);
+      setError(t('report.saveFailed', { error: err.message }));
     } finally {
       setSaving(false);
     }
@@ -247,7 +249,7 @@ export default function ConferenceReport() {
     return (
       <div className="report-page">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", color: "#888" }}>
-          {loadingExisting ? "加载中..." : shareUrl ? "跳转中..." : "该总结稿尚未上传"}
+          {loadingExisting ? t('common.loading') : shareUrl ? t('report.redirecting') : t('report.notUploadedYet')}
         </div>
       </div>
     );
@@ -289,7 +291,7 @@ export default function ConferenceReport() {
       {/* ── Toolbar ──────────────────────────────────────────── */}
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to={`/conference/${confId}/reports`} className="report-back-btn">&larr; 返回日程</Link>
+          <Link to={`/conference/${confId}/reports`} className="report-back-btn">{t('report.backToReportList')}</Link>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {!editing && (
               <button
@@ -309,12 +311,12 @@ export default function ConferenceReport() {
                   opacity: uploading ? 0.6 : 1,
                 }}
               >
-                {uploading ? "上传中..." : "上传 HTML"}
+                {uploading ? t('report.uploading') : t('report.uploadHtml')}
               </button>
             )}
             {htmlContent && !editing && (
               <button onClick={() => setEditing(true)} style={toolbarBtnStyle}>
-                编辑
+                {t('admin.edit')}
               </button>
             )}
             {editing && (
@@ -336,10 +338,10 @@ export default function ConferenceReport() {
                     opacity: saving ? 0.6 : 1,
                   }}
                 >
-                  {saving ? "保存中..." : "保存"}
+                  {saving ? t('common.saving') : t('common.save')}
                 </button>
                 <button onClick={handleCancelEdit} style={toolbarBtnStyle}>
-                  取消
+                  {t('common.cancel')}
                 </button>
               </>
             )}
@@ -359,7 +361,7 @@ export default function ConferenceReport() {
                   letterSpacing: "0.02em",
                 }}
               >
-                {urlCopied ? "✓ 已复制" : "复制链接"}
+                {urlCopied ? t('report.linkCopied') : t('report.copyLink')}
               </button>
             )}
           </div>
@@ -369,15 +371,15 @@ export default function ConferenceReport() {
       {/* ── Main Content ─────────────────────────────────────── */}
       {loadingExisting ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", color: "#888" }}>
-          检查已有上传...
+          {t('report.checkingExisting')}
         </div>
       ) : !previewUrl && !htmlContent ? (
         /* ── No report yet: Upload zone ────────────────────── */
         <div className="report-container" style={{ marginTop: 24, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>
           <div style={{ marginBottom: 32 }}>
-            <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>GTC 2026 · CONFERENCE REPORT</div>
+            <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>{t('report.conferenceReport')}</div>
             <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>
-              总结稿
+              {t('report.summaryReport')}
               <span style={{ fontWeight: 400, fontSize: 14, color: "#888", marginLeft: 12 }}>{reportId}</span>
             </h2>
           </div>
@@ -399,15 +401,15 @@ export default function ConferenceReport() {
             onClick={() => htmlFileInputRef.current?.click()}
           >
             {uploading ? (
-              <div style={{ color: "#991b1b", fontWeight: 600 }}>上传中...</div>
+              <div style={{ color: "#991b1b", fontWeight: 600 }}>{t('report.uploading')}</div>
             ) : (
               <>
                 <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>📄</div>
                 <div style={{ fontSize: 14, color: "#555", fontWeight: 500 }}>
-                  拖拽 .html 文件到此处，或点击选择文件
+                  {t('report.dragDropHtml')}
                 </div>
                 <div style={{ fontSize: 12, color: "#aaa", marginTop: 8 }}>
-                  上传后将替换已有版本
+                  {t('report.uploadReplacesExisting')}
                 </div>
               </>
             )}
@@ -448,28 +450,28 @@ export default function ConferenceReport() {
               />
             ) : (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100vh - 120px)", color: "#888" }}>
-                加载报告内容中...
+                {t('report.loadingContent')}
               </div>
             )}
           </div>
 
           {/* ── 展会近距离 Photo Section ────────────────────── */}
           <div className="report-container" style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 40px 48px" }}>
-            <h2 className="report-section-title" style={{ marginTop: 0 }}>展会近距离</h2>
+            <h2 className="report-section-title" style={{ marginTop: 0 }}>{t('report.sitePhotos')}</h2>
             <div className="conference-photos-grid">
               {sitePhotos.map((photo, idx) => (
                 <div key={idx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
-                    <img src={photo.image} alt={`展会近距离 ${idx + 1}`} className="site-photo-img" />
+                    <img src={photo.image} alt={t('report.sitePhotoAlt', { index: idx + 1 })} className="site-photo-img" />
                     <button
                       className="site-photo-delete-btn no-print"
                       onClick={() => handleSitePhotoDelete(idx)}
-                      title="删除图片"
+                      title={t('report.deleteImage')}
                     >×</button>
                   </div>
                   <textarea
                     className="site-photo-caption"
-                    placeholder="添加图片说明..."
+                    placeholder={t('report.imageCaption')}
                     defaultValue={photo.caption}
                     onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
                     onChange={e => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
@@ -478,7 +480,7 @@ export default function ConferenceReport() {
                   <input
                     className="site-photo-source"
                     type="text"
-                    placeholder="来源..."
+                    placeholder={t('report.sourcePlaceholder')}
                     defaultValue={photo.source || ""}
                     onBlur={e => saveSitePhotoSource(idx, e.target.value)}
                   />
@@ -487,7 +489,7 @@ export default function ConferenceReport() {
               <div className="site-photo-add-card" onClick={() => sitePhotoInputRef.current?.click()}>
                 <div className="site-photo-add-inner">
                   <span className="site-photo-add-icon">+</span>
-                  <span className="site-photo-add-label">添加图片</span>
+                  <span className="site-photo-add-label">{t('report.addImage')}</span>
                 </div>
               </div>
             </div>

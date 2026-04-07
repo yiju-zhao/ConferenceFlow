@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { useAuth } from "../contexts/AuthContext";
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,6 +11,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { signInWithEmail, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -19,7 +22,7 @@ export default function LoginPage() {
       navigate("/dashboard");
     } catch (err) {
       setError(err.code === "auth/invalid-credential"
-        ? "Invalid email or password"
+        ? t('auth.invalidCredential')
         : err.message);
     } finally {
       setLoading(false);
@@ -40,13 +43,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
+    <div className="min-h-screen bg-surface flex items-center justify-center relative">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher className="bg-surface-container px-3 py-1.5 rounded-md text-secondary hover:text-on-surface" />
+      </div>
       <div className="w-full max-w-md">
         <div className="bg-primary p-6 mb-0">
           <h1 className="font-headline text-on-primary text-2xl font-bold tracking-tight">
             ConferenceFlow
           </h1>
-          <p className="text-on-primary/70 text-sm mt-1">Sign in to your account</p>
+          <p className="text-on-primary/70 text-sm mt-1">{t('auth.signInToAccount')}</p>
         </div>
 
         <div className="bg-surface-container-lowest p-6">
@@ -59,7 +65,7 @@ export default function LoginPage() {
           <form onSubmit={handleEmailLogin}>
             <div className="mb-4">
               <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
-                Email
+                {t('auth.email')}
               </label>
               <input
                 type="email"
@@ -74,7 +80,7 @@ export default function LoginPage() {
 
             <div className="mb-6">
               <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
-                Password
+                {t('auth.password')}
               </label>
               <input
                 type="password"
@@ -82,7 +88,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-surface-container-high p-3 text-on-surface text-sm
                   border-0 border-b-2 border-transparent focus:border-primary focus:outline-none"
-                placeholder="Enter your password"
+                placeholder={t('auth.passwordPlaceholder')}
                 required
               />
             </div>
@@ -94,13 +100,13 @@ export default function LoginPage() {
                 uppercase tracking-wider hover:bg-primary-container transition-colors duration-50
                 disabled:opacity-50"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? t('auth.signingIn') : t('auth.signIn')}
             </button>
           </form>
 
           <div className="my-6 flex items-center gap-4">
             <div className="flex-1 h-px bg-surface-dim"></div>
-            <span className="text-secondary text-xs uppercase tracking-wider">or</span>
+            <span className="text-secondary text-xs uppercase tracking-wider">{t('common.or')}</span>
             <div className="flex-1 h-px bg-surface-dim"></div>
           </div>
 
@@ -117,13 +123,13 @@ export default function LoginPage() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Sign in with Google
+            {t('auth.signInWithGoogle')}
           </button>
 
           <p className="text-center text-secondary text-sm mt-6">
-            Don't have an account?{" "}
+            {t('auth.noAccount')}{" "}
             <Link to="/register" className="text-primary hover:underline">
-              Sign up
+              {t('auth.signUp')}
             </Link>
           </p>
         </div>

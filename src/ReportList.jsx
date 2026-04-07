@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { collection, onSnapshot, updateDoc, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import { DAY_CN } from "./constants";
 import { parseReportId, generateSummaryId } from "./lib/reportUtils";
+import { formatWeekday } from './i18n/dateUtils';
 import { useAuth } from "./contexts/AuthContext";
 
 export default function ReportList() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { confId } = useParams();
   const { user } = useAuth();
@@ -120,15 +122,15 @@ export default function ReportList() {
 
       await setDoc(doc(db, "conferences", confId, "dailyReports", summaryId), {
         type: "summary",
-        title: "GTC 2026 总结稿",
+        title: t('reportList.summaryTitle'),
         status: "draft",
         dateStart,
         dateEnd,
         sections: {
-          "现场声音": { order: 0, blocks: [] },
-          "趋势总结": { order: 1, blocks: [] },
-          "推演分析": { order: 2, blocks: [] },
-          "关键启示": { order: 3, blocks: [] },
+          [t('reportList.sectionVoices')]: { order: 0, blocks: [] },
+          [t('reportList.sectionTrends')]: { order: 1, blocks: [] },
+          [t('reportList.sectionAnalysis')]: { order: 2, blocks: [] },
+          [t('reportList.sectionInsights')]: { order: 3, blocks: [] },
         },
         citations: [],
         sitePhotos: [],
@@ -138,7 +140,7 @@ export default function ReportList() {
       navigate(`/conference/${confId}/report/${summaryId}`);
     } catch (err) {
       console.error("Failed to create summary:", err);
-      alert("创建总结稿失败，请重试");
+      alert(t('reportList.createSummaryFailed'));
     } finally {
       setCreatingSummary(false);
     }
@@ -148,7 +150,7 @@ export default function ReportList() {
     <div className="report-page report-list-page">
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to={`/conference/${confId}`} className="report-back-btn">&larr; 返回日程</Link>
+          <Link to={`/conference/${confId}`} className="report-back-btn">{t('reportList.backToSchedule')}</Link>
         </div>
       </div>
 
@@ -156,14 +158,14 @@ export default function ReportList() {
         <div className="report-list-header">
           <div>
             <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>GTC 2026 · DAILY BRIEFING</div>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>日报管理</h2>
+            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>{t('reportList.reportManagement')}</h2>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button
               className={`report-archived-toggle${showArchived ? " active" : ""}`}
               onClick={() => setShowArchived(!showArchived)}
             >
-              {showArchived ? "隐藏归档" : "显示归档"}
+              {showArchived ? t('reportList.hideArchived') : t('reportList.showArchived')}
             </button>
             <button
               className="btn-accent"
@@ -171,7 +173,7 @@ export default function ReportList() {
               disabled={creatingSummary}
               style={{ fontSize: 13, padding: "8px 16px" }}
             >
-              {creatingSummary ? "创建中..." : "+ 创建总结稿"}
+              {creatingSummary ? t('reportList.creating') : t('reportList.createSummary')}
             </button>
             <div style={{ position: "relative" }}>
               <button
@@ -180,13 +182,13 @@ export default function ReportList() {
                 disabled={allSessionDates.length === 0}
                 style={{ fontSize: 13, padding: "8px 16px", gap: 6, display: "flex", alignItems: "center" }}
               >
-                + 创建日报
+                {t('reportList.createDailyReport')}
               </button>
               {showDatePicker && allSessionDates.length > 0 && (
                 <div className="create-report-dropdown">
-                  <div className="create-report-dropdown-label">选择日期</div>
+                  <div className="create-report-dropdown-label">{t('reportList.selectDate')}</div>
                   {allSessionDates.map(date => {
-                    const weekday = DAY_CN[new Date(date + "T00:00").getDay()];
+                    const weekday = formatWeekday(new Date(date + "T00:00"));
                     const count = allSessions.filter(s => s.date === date).length;
                     const hasReport = reportedDates.has(date);
                     return (
@@ -198,7 +200,7 @@ export default function ReportList() {
                         <span className="font-mono" style={{ fontWeight: 600 }}>{date}</span>
                         <span style={{ color: "#888" }}>{weekday}</span>
                         <span style={{ color: "#aaa", fontSize: 11, marginLeft: "auto" }}>
-                          {hasReport ? "已创建" : `${count} sessions`}
+                          {hasReport ? t('reportList.alreadyCreated') : `${count} sessions`}
                         </span>
                       </button>
                     );
@@ -212,7 +214,7 @@ export default function ReportList() {
         <div className="report-list-cards">
           {displayReports.length === 0 ? (
             <p style={{ color: "#AAAAAA", textAlign: "center", padding: "48px 0" }}>
-              暂无日报，点击「创建日报」开始
+              {t('reportList.noReports')}
             </p>
           ) : displayReports.map(r => {
             const isSummary = r.id.startsWith("summary-");
@@ -223,7 +225,7 @@ export default function ReportList() {
                 <div key={r.id} className="report-card" style={isArchived ? { opacity: 0.6 } : undefined}>
                   <div className="report-card-main">
                     <div className="report-card-date">
-                      <span className="summary-badge">总结稿</span>
+                      <span className="summary-badge">{t('reportList.summaryBadge')}</span>
                     </div>
                     <div className="report-card-meta">
                       <span style={{ fontSize: 12, color: "#888" }}>
@@ -236,28 +238,28 @@ export default function ReportList() {
                       className="report-archive-btn"
                       onClick={() => isArchived ? unarchiveReport(r.id) : archiveReport(r.id)}
                     >
-                      {isArchived ? "取消归档" : "归档"}
+                      {isArchived ? t('reportList.unarchive') : t('reportList.archive')}
                     </button>
                     {isArchived && (
                       deleteConfirmId === r.id ? (
                         <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-                          <span style={{ fontSize: 11, color: "#CF0A2C" }}>确认删除?</span>
-                          <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>删除</button>
-                          <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>取消</button>
+                          <span style={{ fontSize: 11, color: "#CF0A2C" }}>{t('reportList.confirmDelete')}</span>
+                          <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>{t('common.delete')}</button>
+                          <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>{t('common.cancel')}</button>
                         </span>
                       ) : (
-                        <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>删除</button>
+                        <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>{t('common.delete')}</button>
                       )
                     )}
                     <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
-                      管理总结稿 &rarr;
+                      {t('reportList.manageSummary')} &rarr;
                     </Link>
                   </div>
                 </div>
               );
             }
 
-            const weekday = DAY_CN[new Date(r.date + "T00:00").getDay()];
+            const weekday = formatWeekday(new Date(r.date + "T00:00"));
             return (
               <div key={r.id} className="report-card" style={isArchived ? { opacity: 0.6 } : undefined}>
                 <div className="report-card-main">
@@ -275,21 +277,21 @@ export default function ReportList() {
                     className="report-archive-btn"
                     onClick={() => isArchived ? unarchiveReport(r.id) : archiveReport(r.id)}
                   >
-                    {isArchived ? "取消归档" : "归档"}
+                    {isArchived ? t('reportList.unarchive') : t('reportList.archive')}
                   </button>
                   {isArchived && (
                     deleteConfirmId === r.id ? (
                       <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
-                        <span style={{ fontSize: 11, color: "#CF0A2C" }}>确认删除?</span>
-                        <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>删除</button>
-                        <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>取消</button>
+                        <span style={{ fontSize: 11, color: "#CF0A2C" }}>{t('reportList.confirmDelete')}</span>
+                        <button className="report-archive-btn" style={{ color: "#CF0A2C", fontWeight: 700 }} onClick={() => handleDeleteReport(r.id)}>{t('common.delete')}</button>
+                        <button className="report-archive-btn" onClick={() => setDeleteConfirmId(null)}>{t('common.cancel')}</button>
                       </span>
                     ) : (
-                      <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>删除</button>
+                      <button className="report-archive-btn" style={{ color: "#CF0A2C" }} onClick={() => setDeleteConfirmId(r.id)}>{t('common.delete')}</button>
                     )
                   )}
                   <Link to={`/conference/${confId}/report/${r.id}`} className="report-card-view-btn">
-                    查看日报 &rarr;
+                    {t('reportList.viewReport')} &rarr;
                   </Link>
                 </div>
               </div>
@@ -303,24 +305,24 @@ export default function ReportList() {
         <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowSummaryDatePicker(false)}>
           <div style={{ background: "#fff", maxWidth: 400, width: "90vw", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ background: "#CF0A2C", padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontFamily: "Work Sans, sans-serif", fontWeight: 700, fontSize: 14, color: "#fff", letterSpacing: "0.3px" }}>创建总结稿 — 确认日期范围</span>
+              <span style={{ fontFamily: "Work Sans, sans-serif", fontWeight: 700, fontSize: 14, color: "#fff", letterSpacing: "0.3px" }}>{t('reportList.summaryDateRange')}</span>
               <button style={{ background: "rgba(255,255,255,0.18)", border: "none", borderRadius: 4, width: 28, height: 28, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowSummaryDatePicker(false)}>×</button>
             </div>
             <div style={{ padding: "24px 24px 0" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <label style={{ fontFamily: "Work Sans, sans-serif", fontSize: 11, fontWeight: 600, color: "#888", letterSpacing: "1px", textTransform: "uppercase" }}>
-                  起始日期
+                  {t('reportList.startDate')}
                   <input type="date" value={summaryDateStart} onChange={(e) => setSummaryDateStart(e.target.value)} style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "1px solid #E8E4DF", borderRadius: 6, fontSize: 14, background: "#F7F5F2", boxSizing: "border-box" }} />
                 </label>
                 <label style={{ fontFamily: "Work Sans, sans-serif", fontSize: 11, fontWeight: 600, color: "#888", letterSpacing: "1px", textTransform: "uppercase" }}>
-                  结束日期
+                  {t('reportList.endDate')}
                   <input type="date" value={summaryDateEnd} onChange={(e) => setSummaryDateEnd(e.target.value)} style={{ display: "block", width: "100%", marginTop: 6, padding: "10px 12px", border: "1px solid #E8E4DF", borderRadius: 6, fontSize: 14, background: "#F7F5F2", boxSizing: "border-box" }} />
                 </label>
               </div>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "20px 24px 24px" }}>
-              <button style={{ fontFamily: "Work Sans, sans-serif", padding: "8px 18px", fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", background: "none", border: "1px solid #E8E4DF", borderRadius: 6, cursor: "pointer", color: "#888", textTransform: "uppercase" }} onClick={() => setShowSummaryDatePicker(false)}>取消</button>
-              <button className="btn-accent" style={{ padding: "8px 20px", fontSize: 12, fontFamily: "Work Sans, sans-serif", letterSpacing: "0.5px" }} disabled={!summaryDateStart || !summaryDateEnd} onClick={() => handleCreateSummary(summaryDateStart, summaryDateEnd)}>确认创建</button>
+              <button style={{ fontFamily: "Work Sans, sans-serif", padding: "8px 18px", fontSize: 12, fontWeight: 600, letterSpacing: "0.5px", background: "none", border: "1px solid #E8E4DF", borderRadius: 6, cursor: "pointer", color: "#888", textTransform: "uppercase" }} onClick={() => setShowSummaryDatePicker(false)}>{t('common.cancel')}</button>
+              <button className="btn-accent" style={{ padding: "8px 20px", fontSize: 12, fontFamily: "Work Sans, sans-serif", letterSpacing: "0.5px" }} disabled={!summaryDateStart || !summaryDateEnd} onClick={() => handleCreateSummary(summaryDateStart, summaryDateEnd)}>{t('reportList.confirmCreate')}</button>
             </div>
           </div>
         </div>

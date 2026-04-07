@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ref, getDownloadURL } from "firebase/storage";
 import { storage } from "./firebase";
+import { useTranslation } from "react-i18next";
 
 export default function ViewReport() {
   const { date, fileId } = useParams();
+  const { t } = useTranslation();
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -38,14 +40,16 @@ export default function ViewReport() {
         cleaned = cleaned.replace("</head>", fontLink + readOnlyCss + "</head>");
 
         // Inject a floating download + print button (hidden from print)
+        const dlLabel = t('reportList.downloadHtml');
+        const printLabel = t('reportList.print');
         const fab = `
 <script>window.__reportHtml=${JSON.stringify(cleaned)};</script>
 <style>@media print{#dl-fab{display:none!important}}</style>
 <div id="dl-fab" style="position:fixed;top:16px;right:16px;z-index:9999;display:flex;gap:8px">
-  <button onclick="(function(){var b=new Blob([window.__reportHtml],{type:'text/html;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='GTC2026_日报_${date}.html';a.click();URL.revokeObjectURL(a.href)})()"
-    style="padding:8px 16px;background:#C41E3A;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-family:inherit">下载 HTML</button>
+  <button onclick="(function(){var b=new Blob([window.__reportHtml],{type:'text/html;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='ConferenceFlow_Report_${date}.html';a.click();URL.revokeObjectURL(a.href)})()"
+    style="padding:8px 16px;background:#C41E3A;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-family:inherit">${dlLabel}</button>
   <button onclick="window.print()"
-    style="padding:8px 16px;background:#fff;color:#333;border:1px solid #ddd;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-family:inherit">打印</button>
+    style="padding:8px 16px;background:#fff;color:#333;border:1px solid #ddd;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);font-family:inherit">${printLabel}</button>
 </div>`;
         const withFab = cleaned.replace("</body>", fab + "</body>");
 
@@ -59,13 +63,13 @@ export default function ViewReport() {
 
   if (error) return (
     <div style={{ padding: 40, fontFamily: "sans-serif", color: "#555" }}>
-      <h2>报告不存在</h2><p>{error}</p>
+      <h2>{t('report.reportNotFound')}</h2><p>{error}</p>
     </div>
   );
 
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", color: "#888" }}>
-      加载中…
+      {t('common.loading')}
     </div>
   );
 }

@@ -24,6 +24,8 @@ import { useDebouncedSave } from "./hooks/useDebouncedSave";
 import { EditableField, InlineAddButton, BulletEditor } from "./shared";
 import { usePresence } from "./components/report/usePresence";
 import PresenceBar from "./components/report/PresenceBar";
+import { useTranslation } from 'react-i18next';
+import { formatDateTime } from './i18n/dateUtils';
 import huaweiLogo from "./assets/huawei_logo.png";
 const topicSlug = (t) =>
   t.replace(/[^\w\u4e00-\u9fa5]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
@@ -43,6 +45,7 @@ function normaliseSources(block) {
 
 // ── SessionPicker ─────────────────────────────────────────────────────────────
 function SessionPicker({ value, onChange, conferenceSessions = [] }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -96,7 +99,7 @@ function SessionPicker({ value, onChange, conferenceSessions = [] }) {
           {value.id && <span className="session-picker-id-badge">{value.id}</span>}
           {selectedTitle}
         </span>
-        <button className="session-picker-clear" onClick={handleClear} title="清除">×</button>
+        <button className="session-picker-clear" onClick={handleClear} title={t('report.clear')}>×</button>
       </div>
     );
   }
@@ -106,14 +109,14 @@ function SessionPicker({ value, onChange, conferenceSessions = [] }) {
       <input
         className="session-picker-input"
         type="text"
-        placeholder={value?.manual || "搜索 session 或输入自定义文字..."}
+        placeholder={value?.manual || t('report.searchSession')}
         value={query}
         onChange={e => { setQuery(e.target.value); setShowDropdown(true); }}
         onFocus={() => setShowDropdown(true)}
         onBlur={handleBlur}
       />
       {value?.manual && !query && (
-        <button className="session-picker-clear" onClick={handleClear} title="清除">×</button>
+        <button className="session-picker-clear" onClick={handleClear} title={t('report.clear')}>×</button>
       )}
       {showDropdown && results.length > 0 && (
         <div className="session-picker-dropdown">
@@ -130,7 +133,9 @@ function SessionPicker({ value, onChange, conferenceSessions = [] }) {
 }
 
 // ── IntelCard ─────────────────────────────────────────────────────────────────
-function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记录内容...", readOnly = false, currentUid, memberColorMap, isAdmin = false, conferenceSessions = [] }) {
+function IntelCard({ block, onUpdate, onRemove, members = [], placeholder, readOnly = false, currentUid, memberColorMap, isAdmin = false, conferenceSessions = [] }) {
+  const { t, i18n } = useTranslation();
+  const ph = placeholder || t('report.recordContent');
   const sources = normaliseSources(block);
   // Normalise legacy single contributorId → contributorIds array
   const contributorIds = block.contributorIds?.length
@@ -174,32 +179,32 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
         <EditableField
           value={block.content}
           onSave={html => onUpdate({ content: html })}
-          placeholder={placeholder}
+          placeholder={ph}
           minHeight={60}
           readOnly={!isEditable}
         />
       </div>
       {sources.map((src, i) => (
         <div key={i} className="intel-card-section intel-card-meta no-print">
-          <span className="intel-card-label">来源{sources.length > 1 ? ` ${i + 1}` : ''}</span>
+          <span className="intel-card-label">{sources.length > 1 ? t('report.sourceWithIndex', { index: i + 1 }) : t('report.source')}</span>
           <SessionPicker value={src} onChange={v => updateSource(i, v)} conferenceSessions={conferenceSessions} />
           {sources.length > 1 && (
-            <button className="intel-card-source-remove" onClick={() => removeSource(i)} title="移除此来源">×</button>
+            <button className="intel-card-source-remove" onClick={() => removeSource(i)} title={t('report.removeSource')}>×</button>
           )}
         </div>
       ))}
       {sources.length === 0 && (
         <div className="intel-card-section intel-card-meta no-print">
-          <span className="intel-card-label">来源</span>
+          <span className="intel-card-label">{t('report.source')}</span>
           <SessionPicker value={{ id: null, manual: '' }} onChange={v => onUpdate({ sourceSessions: [v], sourceSession: v })} conferenceSessions={conferenceSessions} />
         </div>
       )}
       <div className="intel-card-section intel-card-meta no-print">
-        <button className="intel-card-add-source" onClick={addSource}>+ 添加来源</button>
+        <button className="intel-card-add-source" onClick={addSource}>{t('report.addSource')}</button>
       </div>
       {sources.filter(s => formatOneSource(s)).length > 0 && (
         <div className="intel-card-section intel-card-meta print-only">
-          <span className="intel-card-label">来源</span>
+          <span className="intel-card-label">{t('report.source')}</span>
           <span className="intel-card-static-value">
             {sources.map((s, i) => {
               const text = formatOneSource(s);
@@ -220,7 +225,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
         </div>
       )}
       <div className="intel-card-section intel-card-meta no-print" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span className="intel-card-label">贡献人</span>
+        <span className="intel-card-label">{t('report.contributorLabel')}</span>
         {contributorIds.map(id => {
           const name = members.find(m => m.id === id)?.name || id;
           const colorIdx = memberColorMap?.[id] ?? 0;
@@ -249,7 +254,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
             onUpdate({ contributorIds: next, contributorId: next[0] || "", contributor: members.find(m => m.id === next[0])?.name || "" });
           }}
         >
-          <option value="">{contributorIds.length ? "添加..." : "选择贡献人..."}</option>
+          <option value="">{contributorIds.length ? t('report.addContributor') : t('report.selectContributor')}</option>
           {members.filter(m => !contributorIds.includes(m.id)).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         {editLabel && (
@@ -258,7 +263,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
       </div>
       {contributorText && (
         <div className="intel-card-section intel-card-meta print-only">
-          <span className="intel-card-label">贡献人</span>
+          <span className="intel-card-label">{t('report.contributorLabel')}</span>
           <span className="intel-card-static-value">{contributorText}</span>
         </div>
       )}
@@ -268,6 +273,7 @@ function IntelCard({ block, onUpdate, onRemove, members = [], placeholder = "记
 
 // ── SpeakersEditor ───────────────────────────────────────────────────────────
 function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove, readOnly = false }) {
+  const { t } = useTranslation();
   if (readOnly) {
     return (
       <div>
@@ -289,7 +295,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove, readOnly = false 
           <div className="speaker-fields no-print">
             <SpeakerInput
               value={spk.name}
-              placeholder="演讲者姓名"
+              placeholder={t('report.speakerName')}
               onChange={v => {
                 const updated = speakers.map((s, i) => i === idx ? { ...s, name: v } : s);
                 onUpdate(updated);
@@ -297,7 +303,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove, readOnly = false 
             />
             <SpeakerInput
               value={spk.position}
-              placeholder="职位"
+              placeholder={t('report.speakerTitle')}
               onChange={v => {
                 const updated = speakers.map((s, i) => i === idx ? { ...s, position: v } : s);
                 onUpdate(updated);
@@ -305,7 +311,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove, readOnly = false 
             />
             <SpeakerInput
               value={spk.company}
-              placeholder="公司"
+              placeholder={t('report.speakerCompany')}
               onChange={v => {
                 const updated = speakers.map((s, i) => i === idx ? { ...s, company: v } : s);
                 onUpdate(updated);
@@ -315,7 +321,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove, readOnly = false 
               <button
                 className="no-print"
                 onClick={() => onRemove(idx)}
-                title="删除此演讲者"
+                title={t('report.deleteSpeaker')}
                 style={{
                   background: "none", border: "none", color: "var(--brand)",
                   cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px",
@@ -341,7 +347,7 @@ function SpeakersEditor({ speakers, onUpdate, onAdd, onRemove, readOnly = false 
           borderRadius: 4, marginTop: 4,
         }}
       >
-        + 添加演讲者
+        {t('report.addSpeaker')}
       </button>
     </div>
   );
@@ -396,8 +402,9 @@ function getTextLines(html) {
 }
 
 function DiffList({ oldItems, newItems }) {
+  const { t } = useTranslation();
   const diff = diffArrays((oldItems || []).map(String), (newItems || []).map(String));
-  if (diff.length === 0) return <p className="text-body" style={{ color: "var(--text-muted)" }}>（无内容）</p>;
+  if (diff.length === 0) return <p className="text-body" style={{ color: "var(--text-muted)" }}>{t('report.noContent')}</p>;
   return (
     <ul style={{ margin: 0, padding: "0 0 0 16px" }}>
       {diff.map((item, i) => (
@@ -415,8 +422,9 @@ function DiffList({ oldItems, newItems }) {
 }
 
 function DiffText({ oldText, newText }) {
+  const { t } = useTranslation();
   const diff = diffArrays(getTextLines(oldText), getTextLines(newText));
-  if (diff.length === 0) return <p className="text-body" style={{ color: "var(--text-muted)" }}>（无内容）</p>;
+  if (diff.length === 0) return <p className="text-body" style={{ color: "var(--text-muted)" }}>{t('report.noContent')}</p>;
   return (
     <div className="text-caption" style={{ lineHeight: 1.6 }}>
       {diff.map((item, i) => (
@@ -434,19 +442,20 @@ function DiffText({ oldText, newText }) {
 }
 
 function SnapshotViewer({ snapshot, currentData }) {
+  const { t } = useTranslation();
   const { data } = snapshot;
   const ts = snapshot.createdAt?.toDate
-    ? snapshot.createdAt.toDate().toLocaleString("zh-CN")
-    : "未知时间";
-  const FIELD_LABELS = { onsiteInfo: "现场情报", reflections: "圈内声音", rumors: "深度研判" };
+    ? formatDateTime(snapshot.createdAt.toDate())
+    : t('report.unknownTime');
+  const FIELD_LABELS = { onsiteInfo: t('report.onsiteInfo'), reflections: t('report.reflections'), rumors: t('report.rumors') };
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px" }}>
       <p className="text-caption" style={{ margin: "0 0 20px", color: "var(--text-muted)" }}>
-        快照时间：{ts}　·　绿色 = 快照后新增，红色删除线 = 快照后删除/修改
+        {t('report.snapshotTime', { time: ts })}
       </p>
       {JSON.stringify(currentData?.summaryPoints || []) !== JSON.stringify(data?.summaryPoints || []) && (
       <section style={{ marginBottom: 24 }}>
-        <h4 className="text-body" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-secondary)" }}>核心要点</h4>
+        <h4 className="text-body" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-secondary)" }}>{t('report.corePoints')}</h4>
         <DiffList oldItems={data?.summaryPoints || []} newItems={currentData?.summaryPoints || []} />
       </section>
       )}
@@ -461,13 +470,13 @@ function SnapshotViewer({ snapshot, currentData }) {
             <h4 className="text-caption" style={{ margin: "0 0 8px", fontWeight: 700, color: "var(--text-muted)", fontFamily: "monospace" }}>{code}</h4>
             {hasTakeawaysDiff && (
               <div style={{ marginBottom: 8 }}>
-                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>关键收获</div>
+                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>{t('report.keyTakeaways')}</div>
                 <DiffText oldText={snapshotSd.takeaways} newText={currentSd.takeaways} />
               </div>
             )}
             {hasInsightsDiff && (
               <div>
-                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>启示</div>
+                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>{t('report.insightsLabel')}</div>
                 <DiffText oldText={snapshotSd.insights} newText={currentSd.insights} />
               </div>
             )}
@@ -488,8 +497,8 @@ function SnapshotViewer({ snapshot, currentData }) {
 
       {/* Block-based section diffs */}
       {[
-        { field: "onsiteInfoBlocks", label: "现场情报 (Blocks)" },
-        { field: "reflectionsBlocks", label: "圈内声音 (Blocks)" },
+        { field: "onsiteInfoBlocks", label: t('report.onsiteInfoBlocks') },
+        { field: "reflectionsBlocks", label: t('report.reflectionsBlocks') },
       ].map(({ field, label }) => {
         const snapshotBlocks = data?.[field] || [];
         const currentBlocks = currentData?.[field] || [];
@@ -521,8 +530,8 @@ function SnapshotViewer({ snapshot, currentData }) {
                 // Existed in snapshot, removed in current
                 return (
                   <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(207,10,44,0.06)", borderLeft: "3px solid #CF0A2C" }}>
-                    <div style={{ fontSize: 10, color: "#CF0A2C", fontWeight: 600, marginBottom: 4 }}>删除</div>
-                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through" }}>{snapshotContent || "(空)"}</div>
+                    <div style={{ fontSize: 10, color: "#CF0A2C", fontWeight: 600, marginBottom: 4 }}>{t('report.deleted')}</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through" }}>{snapshotContent || t('common.empty')}</div>
                   </div>
                 );
               }
@@ -530,17 +539,17 @@ function SnapshotViewer({ snapshot, currentData }) {
                 // Not in snapshot, added in current
                 return (
                   <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(39,174,96,0.06)", borderLeft: "3px solid #27AE60" }}>
-                    <div style={{ fontSize: 10, color: "#27AE60", fontWeight: 600, marginBottom: 4 }}>新增</div>
-                    <div style={{ fontSize: 12, color: "#333" }}>{currentContent || "(空)"}</div>
+                    <div style={{ fontSize: 10, color: "#27AE60", fontWeight: 600, marginBottom: 4 }}>{t('report.added')}</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{currentContent || t('common.empty')}</div>
                   </div>
                 );
               }
               if (snapshotContent !== currentContent) {
                 return (
                   <div key={id} style={{ padding: "8px 12px", marginBottom: 6, background: "rgba(41,128,185,0.06)", borderLeft: "3px solid #2980B9" }}>
-                    <div style={{ fontSize: 10, color: "#2980B9", fontWeight: 600, marginBottom: 4 }}>修改</div>
-                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through", marginBottom: 4 }}>{snapshotContent || "(空)"}</div>
-                    <div style={{ fontSize: 12, color: "#333" }}>{currentContent || "(空)"}</div>
+                    <div style={{ fontSize: 10, color: "#2980B9", fontWeight: 600, marginBottom: 4 }}>{t('report.modified')}</div>
+                    <div style={{ fontSize: 12, color: "#888", textDecoration: "line-through", marginBottom: 4 }}>{snapshotContent || t('common.empty')}</div>
+                    <div style={{ fontSize: 12, color: "#333" }}>{currentContent || t('common.empty')}</div>
                   </div>
                 );
               }
@@ -555,6 +564,7 @@ function SnapshotViewer({ snapshot, currentData }) {
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport({ viewMode: viewModeProp = false }) {
+  const { t, i18n } = useTranslation();
   const { confId, reportId } = useParams();
   const { date } = parseReportId(reportId);
   const viewMode = viewModeProp || new URLSearchParams(window.location.search).get('preview') === '1';
@@ -899,7 +909,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     try {
       await addDoc(collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"), {
         type,
-        label: type === "auto" ? "自动保存" : "手动保存",
+        label: type === "auto" ? t('report.autoSave') : t('report.manualSave'),
         createdAt: serverTimestamp(),
         createdBy: user.uid,
         data,
@@ -1204,7 +1214,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         td.addRule('contributors-row', {
           filter: (node) => node.classList?.contains('report-contributors-row'),
           replacement: (_content, node) => {
-            const label = node.querySelector('.report-contributors-label')?.textContent.trim() || '贡献人';
+            const label = node.querySelector('.report-contributors-label')?.textContent.trim() || t('report.contributorLabel');
             const names = node.querySelector('.report-contributors-names')?.textContent.trim() || '';
             return names ? `\n\n${label}: ${names}\n\n` : '';
           },
@@ -1225,10 +1235,10 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
           },
         });
 
-        const frontmatter = `---\ntitle: ${confName || "Conference"} 日报 ${date}\ndate: ${date}\n---\n\n`;
+        const frontmatter = `---\ntitle: ${confName || "Conference"} ${t('report.dailyReportTitle', { date })}\ndate: ${date}\n---\n\n`;
         const md = frontmatter + td.turndown(clone.outerHTML);
         blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
-        filename = `GTC2026_日报_${date}.md`;
+        filename = `GTC2026_report_${date}.md`;
       }
 
       if (!blob) throw new Error(`Unsupported export format: ${format}`);
@@ -1241,7 +1251,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       URL.revokeObjectURL(a.href);
     } catch (err) {
       console.error("[Export] Failed:", err);
-      alert(`导出失败：${err.message}`);
+      alert(t('report.exportFailed', { error: err.message }));
     } finally {
       setCollapsedSessions(prevCollapsed);
       setExporting(false);
@@ -1293,14 +1303,14 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         }
       });
       if (syncedCount === 0) {
-        setSyncMsg("未找到匹配的 catalog 数据");
+        setSyncMsg(t('report.noMatchingCatalog'));
       } else {
         await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sessions: updatedMap }, { merge: true });
-        setSyncMsg(`已同步 ${syncedCount} 个 session`);
+        setSyncMsg(t('report.syncedSessions', { count: syncedCount }));
       }
     } catch (err) {
       console.error("Sync failed:", err);
-      setSyncMsg("同步失败，请重试");
+      setSyncMsg(t('report.syncFailed'));
     } finally {
       setSyncing(false);
       setTimeout(() => setSyncMsg(""), 3000);
@@ -1404,7 +1414,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GTC2026 日报 ${date}</title>
+<title>GTC2026 Report ${date}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -1446,7 +1456,7 @@ ${clone.outerHTML}
       if (silent) return url;
     } catch (err) {
       console.error("[Publish] Failed:", err.message);
-      alert(`发布失败：${err.message}`);
+      alert(t('report.publishFailed', { error: err.message }));
     } finally {
       setCollapsedSessions(prevCollapsed);
       setPublishing(false);
@@ -1466,11 +1476,11 @@ ${clone.outerHTML}
       if (!url) return;
     }
 
-    const title = reportData?.title || `【${date}】日报`;
+    const title = reportData?.title || t('report.dailyReportTitle', { date });
     const points = (reportData?.summaryPoints || []).filter(Boolean);
     const pointsHtml = points.length
       ? points.map(p => `<li style="margin:0 0 8px; color:#333; font-size:15px; line-height:1.6;">${escapeHtml(p)}</li>`).join('')
-      : '<li style="color:#888; font-size:15px;">暂无核心要点</li>';
+      : `<li style="color:#888; font-size:15px;">${escapeHtml(t('report.noKeyPoints'))}</li>`;
 
     const html = `<!DOCTYPE html>
 <html lang="zh">
@@ -1487,7 +1497,7 @@ ${clone.outerHTML}
 </style>
 </head>
 <body style="margin:0;padding:0;background:#f4f5f6;font-family:Arial,'Noto Sans SC',sans-serif;">
-<span style="display:none;max-height:0;overflow:hidden;">GTC2026 ${escapeHtml(title)} — 今日核心要点速览</span>
+<span style="display:none;max-height:0;overflow:hidden;">GTC2026 ${escapeHtml(title)} — ${escapeHtml(t('report.emailSubjectPreview'))}</span>
 <table width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td align="center" style="padding:24px 16px;">
   <table class="email-card" width="600" cellpadding="0" cellspacing="0" border="0"
@@ -1505,7 +1515,7 @@ ${clone.outerHTML}
     <tr><td style="padding:0 28px;"><hr style="border:none;border-top:1px solid #eee;margin:0;"></td></tr>
     <!-- 核心要点 -->
     <tr><td style="padding:20px 28px 8px;">
-      <p style="margin:0 0 14px;font-size:11px;font-weight:bold;letter-spacing:2px;color:#C41E3A;">核心要点</p>
+      <p style="margin:0 0 14px;font-size:11px;font-weight:bold;letter-spacing:2px;color:#C41E3A;">${escapeHtml(t('report.emailCorePoints'))}</p>
       <ul style="margin:0;padding:0 0 0 18px;">${pointsHtml}</ul>
     </td></tr>
     <!-- CTA button -->
@@ -1513,7 +1523,7 @@ ${clone.outerHTML}
       <a class="email-btn" href="${url}"
         style="display:inline-block;background:#C41E3A;color:#ffffff;font-size:15px;font-weight:bold;
                text-decoration:none;padding:14px 36px;border-radius:5px;letter-spacing:0.5px;">
-        查看完整日报 →
+        ${escapeHtml(t('report.viewFullReport'))}
       </a>
     </td></tr>
     <!-- Footer -->
@@ -1529,7 +1539,7 @@ ${clone.outerHTML}
     const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `GTC2026_日报邮件_${date}.html`;
+    a.download = `GTC2026_report_email_${date}.html`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -1586,7 +1596,7 @@ ${clone.outerHTML}
     return (
       <div className="report-page">
         <div className="report-container" style={{ textAlign: "center", padding: "80px 20px" }}>
-          <p style={{ color: "var(--text-muted)" }}>加载中...</p>
+          <p style={{ color: "var(--text-muted)" }}>{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -1605,11 +1615,11 @@ ${clone.outerHTML}
         {/* Left: nav + title + status badge */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link to={`/conference/${confId}/reports`} style={{ color: "#888", fontSize: 12, textDecoration: "none" }}>
-            ← 返回报告列表
+            {t('report.backToReportList')}
           </Link>
           <span style={{ color: "#555" }}>|</span>
           <span style={{ color: "#eee", fontSize: 14, fontWeight: 700, fontFamily: "'Work Sans', sans-serif" }}>
-            {reportData?.title || `【${date}】日报`}
+            {reportData?.title || t('report.dailyReportTitle', { date })}
           </span>
           <span style={{
             fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase",
@@ -1630,15 +1640,15 @@ ${clone.outerHTML}
 
           {/* ① Save status + button */}
           {saveState === "saving" && (
-            <span style={{ fontSize: 11, color: "#666" }}>● 保存中...</span>
+            <span style={{ fontSize: 11, color: "#666" }}>● {t('common.saving')}</span>
           )}
           {saveState === "saved" && (
-            <span style={{ fontSize: 11, color: "#27AE60" }}>✓ 已保存</span>
+            <span style={{ fontSize: 11, color: "#27AE60" }}>✓ {t('admin.saved')}</span>
           )}
-          <button onClick={handleSave} title="保存"
+          <button onClick={handleSave} title={t('report.saveTip')}
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
               background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
-            保存
+            {t('common.save')}
           </button>
 
           {/* ② Preview — primary action, visually distinct */}
@@ -1650,7 +1660,7 @@ ${clone.outerHTML}
               fontFamily: "'Work Sans', sans-serif",
             }}
           >
-            预览
+            {t('report.preview')}
           </button>
 
           {/* ③ Export/Share dropdown */}
@@ -1661,7 +1671,7 @@ ${clone.outerHTML}
                 style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
                   background: "#333", color: "#ccc", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}
               >
-                {exporting ? "生成中..." : "导出 ▾"}
+                {exporting ? t('report.generating') : t('report.export')}
               </button>
               {showExportMenu && (
                 <div className="export-dropdown-menu">
@@ -1669,14 +1679,14 @@ ${clone.outerHTML}
                     <span className="export-menu-icon">
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.4"/><circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.4"/><path d="M6 7l4-2M6 9l4 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
                     </span>
-                    <span className="export-menu-label">{publishing ? "分享中..." : "分享日报"}</span>
+                    <span className="export-menu-label">{publishing ? t('report.sharing') : t('report.shareReport')}</span>
                   </button>
                   <div className="export-menu-divider" />
                   <button className="export-menu-item" onClick={() => handleExport('markdown')}>
                     <span className="export-menu-icon">
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M4 10V6l2 2 2-2v4M11 10V8.5M11 6.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </span>
-                    <span className="export-menu-label">导出 Markdown</span>
+                    <span className="export-menu-label">{t('report.exportMarkdown')}</span>
                   </button>
                   <div className="export-menu-divider" />
                   <button className="export-menu-item" onClick={handleEmailExport}>
@@ -1686,7 +1696,7 @@ ${clone.outerHTML}
                         <path d="M1.5 5.5l6.5 4 6.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                       </svg>
                     </span>
-                    <span className="export-menu-label">导出邮件 HTML</span>
+                    <span className="export-menu-label">{t('report.exportEmailHtml')}</span>
                   </button>
                 </div>
               )}
@@ -1695,25 +1705,25 @@ ${clone.outerHTML}
           <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
 
           {/* ④ Maintenance: history + sync */}
-          <button onClick={() => setShowHistory(true)} title="历史版本"
+          <button onClick={() => setShowHistory(true)} title={t('report.versionHistory')}
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
               background: "transparent", color: "#888", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
-            历史版本
+            {t('report.versionHistory')}
           </button>
-          <button onClick={handleSyncFromCatalog} disabled={syncing} title="更新 Session 信息"
+          <button onClick={handleSyncFromCatalog} disabled={syncing} title={t('report.syncFromCatalog')}
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
               background: "transparent", color: "#888", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif", opacity: syncing ? 0.5 : 1 }}>
-            {syncing ? "更新中..." : "更新 Session 信息"}
+            {syncing ? t('report.syncing') : t('report.syncFromCatalog')}
           </button>
           {syncMsg && <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>{syncMsg}</span>}
 
           <div style={{ width: 1, height: 20, background: "#444", margin: "0 2px" }} />
 
           {/* ⑤ Destructive: delete — far right, red */}
-          <button onClick={() => setShowDeleteSelect(true)} title="删除 Session"
+          <button onClick={() => setShowDeleteSelect(true)} title={t('report.deleteSession')}
             style={{ padding: "5px 14px", fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase",
               background: "transparent", color: "#a20513", border: "none", cursor: "pointer", fontFamily: "'Work Sans', sans-serif" }}>
-            删除 Session
+            {t('report.deleteSession')}
           </button>
         </div>
       </div>}
@@ -1728,17 +1738,17 @@ ${clone.outerHTML}
         }}
           onMouseDown={(e) => e.preventDefault()} /* prevent losing selection */
         >
-          <button onMouseDown={(e) => { e.preventDefault(); execBold(); }} title="加粗"
+          <button onMouseDown={(e) => { e.preventDefault(); execBold(); }} title={t('report.bold')}
             style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
               background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
             B
           </button>
-          <button onMouseDown={(e) => { e.preventDefault(); execCmd("italic"); }} title="斜体"
+          <button onMouseDown={(e) => { e.preventDefault(); execCmd("italic"); }} title={t('report.italic')}
             style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
               background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, fontStyle: "italic" }}>
             I
           </button>
-          <button onMouseDown={(e) => { e.preventDefault(); execCmd("underline"); }} title="下划线"
+          <button onMouseDown={(e) => { e.preventDefault(); execCmd("underline"); }} title={t('report.underline')}
             style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center",
               background: "transparent", border: "none", color: "#ccc", cursor: "pointer", fontSize: 13, textDecoration: "underline" }}>
             U
@@ -1756,7 +1766,7 @@ ${clone.outerHTML}
         <div className="share-modal-overlay" onClick={() => { setShareUrl(null); setUrlCopied(false); }}>
           <div className="share-modal-card" onClick={e => e.stopPropagation()}>
             <div className="share-modal-header">
-              <span className="share-modal-title">可分享的公开链接</span>
+              <span className="share-modal-title">{t('report.shareableLink')}</span>
               <button className="share-modal-close" onClick={() => { setShareUrl(null); setUrlCopied(false); }}>×</button>
             </div>
             <div className="share-modal-url-row">
@@ -1769,10 +1779,10 @@ ${clone.outerHTML}
                   setTimeout(() => setUrlCopied(false), 2000);
                 }}
               >
-                {urlCopied ? "✓ 已复制" : "复制链接"}
+                {urlCopied ? t('report.linkCopied') : t('report.copyLink')}
               </button>
             </div>
-            <p className="share-modal-hint">链接可公开访问，任何人均可查看。</p>
+            <p className="share-modal-hint">{t('report.shareLinkHint')}</p>
           </div>
         </div>
       )}
@@ -1786,13 +1796,13 @@ ${clone.outerHTML}
             <div className="report-title-eyebrow">{confName || "CONFERENCE"} · DAILY BRIEFING</div>
             <h1>
               {viewMode ? (
-                <span>{reportData?.title || `【${date}】日报`}</span>
+                <span>{reportData?.title || t('report.dailyReportTitle', { date })}</span>
               ) : (
                 <span
                   contentEditable
                   suppressContentEditableWarning
                   onBlur={e => saveField("title", e.currentTarget.textContent.trim() || "")}
-                >{reportData?.title || `【${date}】日报`}</span>
+                >{reportData?.title || t('report.dailyReportTitle', { date })}</span>
               )}
             </h1>
           </div>
@@ -1804,11 +1814,11 @@ ${clone.outerHTML}
 
           {/* TOC – organized by topic, drag-to-reorder */}
           <div className="report-toc" id="report-toc">
-            <h2 className="report-section-title">目录</h2>
+            <h2 className="report-section-title">{t('report.toc')}</h2>
             <ul className="report-toc-list">
               <li className="report-toc-section-item">
                 <a href="#section-related" className="report-toc-link report-toc-section-link">
-                  <span className="report-toc-title">相关议题</span>
+                  <span className="report-toc-title">{t('report.relatedTopics')}</span>
                 </a>
                 {orderedTopics.length > 0 && (
                   <ul className="report-toc-sublist">
@@ -1824,7 +1834,7 @@ ${clone.outerHTML}
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-onsite-info" className="report-toc-link report-toc-section-link">
-                  <span className="report-toc-title">现场情报</span>
+                  <span className="report-toc-title">{t('report.onsiteInfo')}</span>
                 </a>
                 {(reportData?.onsiteInfoBlocks || []).filter(b => b.type === 'heading' && b.content).length > 0 && (
                   <ul className="report-toc-sublist">
@@ -1840,7 +1850,7 @@ ${clone.outerHTML}
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-reflections" className="report-toc-link report-toc-section-link">
-                  <span className="report-toc-title">圈内声音</span>
+                  <span className="report-toc-title">{t('report.reflections')}</span>
                 </a>
                 {(reportData?.reflectionsBlocks || []).filter(b => b.type === 'heading' && b.content).length > 0 && (
                   <ul className="report-toc-sublist">
@@ -1856,12 +1866,12 @@ ${clone.outerHTML}
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-rumors" className="report-toc-link report-toc-section-link">
-                  <span className="report-toc-title">深度研判</span>
+                  <span className="report-toc-title">{t('report.rumors')}</span>
                 </a>
               </li>
               <li className="report-toc-section-item">
                 <a href="#section-site-photos" className="report-toc-link report-toc-section-link">
-                  <span className="report-toc-title">现场记录</span>
+                  <span className="report-toc-title">{t('report.siteRecords')}</span>
                 </a>
               </li>
             </ul>
@@ -1869,11 +1879,11 @@ ${clone.outerHTML}
 
           {/* Summary */}
           <div className="report-summary">
-            <h2 className="report-section-title">核心要点</h2>
+            <h2 className="report-section-title">{t('report.corePoints')}</h2>
             <BulletEditor
               points={reportData?.summaryPoints}
               onSave={pts => saveField("summaryPoints", pts)}
-              placeholder="请输入今日核心要点..."
+              placeholder={t('report.coreKeyPoints')}
               readOnly={viewMode}
             />
           </div>
@@ -1881,7 +1891,7 @@ ${clone.outerHTML}
 
         {/* Session Reports – organized by topic */}
         <div id="section-related" className="report-sessions">
-          <h2 className="report-section-title" style={{ marginTop: 32 }}>相关议题</h2>
+          <h2 className="report-section-title" style={{ marginTop: 32 }}>{t('report.relatedTopics')}</h2>
 
           {noTopicSessions.map(session => {
             const sd = sessionData[session.code] || {};
@@ -1943,11 +1953,11 @@ ${clone.outerHTML}
                         <div className="session-illustrations-grid">
                           {illus.map((item, i) => (
                             <div key={i} className="session-illustration-item">
-                              <img src={item.url} className="session-illustration" alt={`插图${i + 1}`} />
+                              <img src={item.url} className="session-illustration" alt={t('report.illustrationAlt', { index: i + 1 })} />
                               <button
                                 className="no-print session-illustration-del"
                                 onClick={() => handleIllustrationDelete(session.code, i)}
-                              >删除</button>
+                              >{t('report.deleteBtn')}</button>
                             </div>
                           ))}
                         </div>
@@ -1962,7 +1972,7 @@ ${clone.outerHTML}
                           marginTop: illus.length > 0 ? 6 : 0,
                         }}
                       >
-                        + 添加插图
+                        {t('report.addIllustration')}
                       </button>
                     </>);
                   })()}
@@ -1976,25 +1986,25 @@ ${clone.outerHTML}
                 </div>
                 <div className="report-session-body">
                   <div className="report-field-block">
-                    <h4 className="report-field-heading report-field-heading--highlight">关键收获</h4>
+                    <h4 className="report-field-heading report-field-heading--highlight">{t('report.keyTakeaways')}</h4>
                     <EditableField
                       value={sd.takeaways}
                       onSave={html => saveSessionField(session.code, "takeaways", html)}
-                      placeholder="记录本场会议的关键收获..."
+                      placeholder={t('report.recordKeyTakeaways')}
                       readOnly={viewMode}
                     />
                   </div>
                   <div className="report-field-block">
-                    <h4 className="report-field-heading report-field-heading--highlight">启示</h4>
+                    <h4 className="report-field-heading report-field-heading--highlight">{t('report.insightsLabel')}</h4>
                     <EditableField
                       value={sd.insights}
                       onSave={html => saveSessionField(session.code, "insights", html)}
-                      placeholder="记录启示与分析..."
+                      placeholder={t('report.recordInsights')}
                       readOnly={viewMode}
                     />
                   </div>
                   <div className="report-contributors-row" style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 8, borderTop: "1px solid #eee", marginTop: 8 }}>
-                    <span style={{ fontSize: 10, color: "#5f5e5e" }}>贡献人</span>
+                    <span style={{ fontSize: 10, color: "#5f5e5e" }}>{t('report.contributorLabel')}</span>
                     {Array.from(session.attendees || []).map(id => {
                       const name = memberMap[id];
                       if (!name) return null;
@@ -2097,11 +2107,11 @@ ${clone.outerHTML}
                             <div className="session-illustrations-grid">
                               {illus.map((item, i) => (
                                 <div key={i} className="session-illustration-item">
-                                  <img src={item.url} className="session-illustration" alt={`插图${i + 1}`} />
+                                  <img src={item.url} className="session-illustration" alt={t('report.illustrationAlt', { index: i + 1 })} />
                                   <button
                                     className="no-print session-illustration-del"
                                     onClick={() => handleIllustrationDelete(session.code, i)}
-                                  >删除</button>
+                                  >{t('report.deleteBtn')}</button>
                                 </div>
                               ))}
                             </div>
@@ -2116,7 +2126,7 @@ ${clone.outerHTML}
                               marginTop: illus.length > 0 ? 6 : 0,
                             }}
                           >
-                            + 添加插图
+                            {t('report.addIllustration')}
                           </button>
                         </>);
                       })()}
@@ -2132,20 +2142,20 @@ ${clone.outerHTML}
                     {/* Body: takeaways & insights */}
                     <div className="report-session-body">
                       <div className="report-field-block">
-                        <h4 className="report-field-heading report-field-heading--highlight">关键收获</h4>
+                        <h4 className="report-field-heading report-field-heading--highlight">{t('report.keyTakeaways')}</h4>
                         <EditableField
                           value={sd.takeaways}
                           onSave={html => saveSessionField(session.code, "takeaways", html)}
-                          placeholder="记录本场会议的关键收获..."
+                          placeholder={t('report.recordKeyTakeaways')}
                           readOnly={viewMode}
                         />
                       </div>
                       <div className="report-field-block">
-                        <h4 className="report-field-heading report-field-heading--highlight">启示</h4>
+                        <h4 className="report-field-heading report-field-heading--highlight">{t('report.insightsLabel')}</h4>
                         <EditableField
                           value={sd.insights}
                           onSave={html => saveSessionField(session.code, "insights", html)}
-                          placeholder="记录启示与分析..."
+                          placeholder={t('report.recordInsights')}
                           readOnly={viewMode}
                         />
                       </div>
@@ -2153,7 +2163,7 @@ ${clone.outerHTML}
                       {/* 贡献人 at the end */}
                       {contributors && (
                         <div className="report-contributors-row">
-                          <span className="report-contributors-label">贡献人</span>
+                          <span className="report-contributors-label">{t('report.contributorLabel')}</span>
                           <span className="report-contributors-names">{contributors}</span>
                         </div>
                       )}
@@ -2169,7 +2179,7 @@ ${clone.outerHTML}
         {/* Onsite Section */}
         <div className="report-onsite">
           {/* 现场情报 */}
-          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>现场情报</h2>
+          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>{t('report.onsiteInfo')}</h2>
           {(() => {
             const blocks = reportData?.onsiteInfoBlocks || [];
             const els = [
@@ -2214,7 +2224,7 @@ ${clone.outerHTML}
           })()}
 
           {/* 圈内声音 */}
-          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>圈内声音</h2>
+          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>{t('report.reflections')}</h2>
           {(() => {
             const blocks = reportData?.reflectionsBlocks || [];
             const els = [
@@ -2240,7 +2250,7 @@ ${clone.outerHTML}
                 els.push(
                   <IntelCard key={block.id} block={block}
                     members={members}
-                    placeholder="记录圈内声音..."
+                    placeholder={t('report.recordVoices')}
                     onUpdate={fields => updateBlockFields("reflectionsBlocks", block.id, fields)}
                     onRemove={() => removeBlock("reflectionsBlocks", block.id)}
                     readOnly={viewMode}
@@ -2260,11 +2270,11 @@ ${clone.outerHTML}
           })()}
 
           {/* 深度研判 */}
-          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>深度研判</h2>
+          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>{t('report.rumors')}</h2>
           <EditableField
             value={reportData?.rumors || ""}
             onSave={html => saveField("rumors", html)}
-            placeholder="深度研判..."
+            placeholder={t('report.deepAnalysis')}
             minHeight={120}
             readOnly={viewMode}
           />
@@ -2272,7 +2282,7 @@ ${clone.outerHTML}
 
         {/* Site Photos Section */}
         <div id="section-site-photos" className="report-site-photos">
-          <h2 className="report-section-title" style={{ marginTop: 32 }}>现场记录</h2>
+          <h2 className="report-section-title" style={{ marginTop: 32 }}>{t('report.siteRecords')}</h2>
           <div className="site-photos-grid">
             {(() => {
               const rawPhotos = reportData?.sitePhotos || [];
@@ -2293,11 +2303,11 @@ ${clone.outerHTML}
               const renderCard = (photo) => (
                 <div key={photo.originalIdx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
-                    <img src={photo.image} alt={`现场记录 ${photo.originalIdx + 1}`} className="site-photo-img" />
+                    <img src={photo.image} alt={t('report.sitePhotoAlt', { index: photo.originalIdx + 1 })} className="site-photo-img" />
                     {!viewMode && <button
                       className="site-photo-delete-btn no-print"
                       onClick={() => handleSitePhotoDelete(photo.originalIdx)}
-                      title="删除图片"
+                      title={t('report.deleteImage')}
                     >×</button>}
                   </div>
                   {viewMode ? (
@@ -2309,7 +2319,7 @@ ${clone.outerHTML}
                     <>
                       <textarea
                         className="site-photo-caption"
-                        placeholder="添加图片说明..."
+                        placeholder={t('report.imageCaption')}
                         defaultValue={photo.caption}
                         onBlur={e => saveSitePhotoCaption(photo.originalIdx, e.target.value)}
                         onInput={e => { const t = e.target; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
@@ -2318,7 +2328,7 @@ ${clone.outerHTML}
                       <input
                         className="site-photo-source"
                         type="text"
-                        placeholder="来源..."
+                        placeholder={t('report.sourcePlaceholder')}
                         defaultValue={photo.source || ""}
                         onBlur={e => saveSitePhotoSource(photo.originalIdx, e.target.value)}
                       />
@@ -2330,7 +2340,7 @@ ${clone.outerHTML}
                 <div key="add" className="site-photo-add-card no-print" onClick={() => sitePhotoInputRef.current?.click()}>
                   <div className="site-photo-add-inner">
                     <span className="site-photo-add-icon">+</span>
-                    <span className="site-photo-add-label">添加图片</span>
+                    <span className="site-photo-add-label">{t('report.addImage')}</span>
                   </div>
                 </div>
               );
@@ -2354,7 +2364,7 @@ ${clone.outerHTML}
         {/* Footer */}
         <div className="report-footer">
           <div className="report-footer-inner">
-            <p>{confName || "Conference"} · {date} · 团队协作生成</p>
+            <p>{confName || "Conference"} · {date} · {t('report.teamGenerated')}</p>
           </div>
         </div>
 
@@ -2362,14 +2372,14 @@ ${clone.outerHTML}
 
       {/* Floating back-to-TOC button — only when TOC is scrolled out of view */}
       {!tocVisible && (
-        <a href="#report-toc" className="toc-float-btn no-print">↑ 目录</a>
+        <a href="#report-toc" className="toc-float-btn no-print">{t('report.backToToc')}</a>
       )}
 
       {/* Delete session — select session modal */}
       {!viewMode && showDeleteSelect && (
         <div className="delete-confirm-overlay" onClick={() => setShowDeleteSelect(false)}>
           <div className="delete-confirm-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: "90%" }}>
-            <h3 className="delete-confirm-title">选择要删除的 Session</h3>
+            <h3 className="delete-confirm-title">{t('report.selectDeleteSession')}</h3>
             <div style={{ maxHeight: 360, overflowY: "auto", margin: "8px 0" }}>
               {activeSessions.map(s => {
                 const names = Array.from(s.attendees).map(id => memberMap[id]).filter(Boolean);
@@ -2393,14 +2403,14 @@ ${clone.outerHTML}
                       {SESSION_CATALOG.get(s.code)?.title || s.title}
                     </span>
                     {names.length > 0 && (
-                      <span className="text-label" style={{ color: "var(--text-muted)" }}>贡献人：{names.join("、")}</span>
+                      <span className="text-label" style={{ color: "var(--text-muted)" }}>{t('report.contributors', { names: names.join(i18n.language.startsWith('zh') ? '、' : ', ') })}</span>
                     )}
                   </button>
                 );
               })}
             </div>
             <div className="delete-confirm-actions">
-              <button className="delete-confirm-cancel" onClick={() => setShowDeleteSelect(false)}>取消</button>
+              <button className="delete-confirm-cancel" onClick={() => setShowDeleteSelect(false)}>{t('common.cancel')}</button>
             </div>
           </div>
         </div>
@@ -2414,13 +2424,13 @@ ${clone.outerHTML}
           const now = Date.now();
           const diff = now - date.getTime();
           const mins = Math.floor(diff / 60000);
-          if (mins < 1) return "刚刚";
-          if (mins < 60) return `${mins} 分钟前`;
+          if (mins < 1) return t('report.justNow');
+          if (mins < 60) return t('report.minutesAgo', { count: mins });
           const hours = Math.floor(mins / 60);
-          if (hours < 24) return `${hours} 小时前`;
+          if (hours < 24) return t('report.hoursAgo', { count: hours });
           const days = Math.floor(hours / 24);
-          if (days < 7) return `${days} 天前`;
-          return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+          if (days < 7) return t('report.daysAgo', { count: days });
+          return formatDateTime(date);
         };
 
         // No grouping — flat list, all versions equal
@@ -2443,13 +2453,13 @@ ${clone.outerHTML}
               {viewingSnapshot && (
                 <button onClick={() => setViewingSnapshot(null)}
                   style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: 12 }}>
-                  ← 返回
+                  {t('common.back')}
                 </button>
               )}
               <h2 style={{ margin: 0, fontWeight: 700, flex: 1, fontSize: 14, fontFamily: "'Work Sans', sans-serif", letterSpacing: 0.5 }}>
-                {viewingSnapshot ? "版本详情" : "版本历史"}
+                {viewingSnapshot ? t('report.versionDetails') : t('report.versionHistory')}
               </h2>
-              <span style={{ fontSize: 10, color: "#666" }}>{snapshots.length} 个版本</span>
+              <span style={{ fontSize: 10, color: "#666" }}>{t('report.versions', { count: snapshots.length })}</span>
               <button onClick={() => { setShowHistory(false); setViewingSnapshot(null); }}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#666", lineHeight: 1 }}>✕</button>
             </div>
@@ -2460,8 +2470,8 @@ ${clone.outerHTML}
                 <div style={{ padding: "14px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 10, height: 10, background: "#27AE60", borderRadius: "50%", flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1c1c" }}>当前版本</div>
-                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>正在编辑中</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1c1c" }}>{t('report.currentVersion')}</div>
+                    <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{t('report.editing')}</div>
                   </div>
                   <span style={{ fontSize: 10, padding: "2px 8px", background: "#27AE60", color: "#fff", fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: "'Work Sans', sans-serif" }}>
                     Current
@@ -2471,8 +2481,8 @@ ${clone.outerHTML}
                 {/* Timeline */}
                 {snapshots.length === 0 ? (
                   <div style={{ padding: "40px 20px", textAlign: "center" }}>
-                    <div style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>暂无历史版本</div>
-                    <div style={{ fontSize: 11, color: "#bbb" }}>每 5 分钟自动保存，或点击「手动保存」创建</div>
+                    <div style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>{t('report.noHistoryVersions')}</div>
+                    <div style={{ fontSize: 11, color: "#bbb" }}>{t('report.autoSaveHint')}</div>
                   </div>
                 ) : (
                   <div style={{ padding: "0 20px" }}>
@@ -2505,16 +2515,16 @@ ${clone.outerHTML}
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: 12, color: "#1a1c1c", fontWeight: 600 }}>{date ? relativeTime(date) : "未知时间"}</div>
-                            {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{date.toLocaleString("zh-CN")}</div>}
+                            <div style={{ fontSize: 12, color: "#1a1c1c", fontWeight: 600 }}>{date ? relativeTime(date) : t('report.unknownTime')}</div>
+                            {date && <div style={{ fontSize: 10, color: "#bbb", marginTop: 2 }}>{formatDateTime(date)}</div>}
                             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                               <button onClick={() => setViewingSnapshot(snap)}
                                 style={{ fontSize: 11, padding: "4px 14px", background: "#f3f3f3", border: "none", cursor: "pointer", color: "#555", fontWeight: 600 }}>
-                                查看变更
+                                {t('report.viewChanges')}
                               </button>
                               <button onClick={() => handleRestore(snap)}
                                 style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
-                                恢复
+                                {t('report.restore')}
                               </button>
                             </div>
                           </div>
@@ -2550,7 +2560,7 @@ ${clone.outerHTML}
                   <div style={{ flex: 1 }} />
                   <button onClick={() => handleRestore(viewingSnapshot)}
                     style={{ fontSize: 11, padding: "4px 14px", background: "none", border: "1px solid rgba(162,5,19,0.2)", cursor: "pointer", color: "#a20513", fontWeight: 600 }}>
-                    恢复此版本
+                    {t('report.restoreThisVersion')}
                   </button>
                 </div>
                 <SnapshotViewer snapshot={viewingSnapshot} currentData={reportDataRef.current} />
@@ -2565,13 +2575,13 @@ ${clone.outerHTML}
       {restoreConfirm && (
         <div className="delete-confirm-overlay" onClick={() => setRestoreConfirm(null)}>
           <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="delete-confirm-title">确认恢复此版本？</h3>
+            <h3 className="delete-confirm-title">{t('report.confirmRestore')}</h3>
             <p className="delete-confirm-desc">
-              当前内容将被覆盖。恢复前会自动保存当前内容为快照，可随时在历史版本中找回。
+              {t('report.restoreDesc')}
             </p>
             <div className="delete-confirm-actions">
-              <button className="delete-confirm-cancel" onClick={() => setRestoreConfirm(null)}>取消</button>
-              <button className="delete-confirm-submit" onClick={confirmRestore}>确认恢复</button>
+              <button className="delete-confirm-cancel" onClick={() => setRestoreConfirm(null)}>{t('common.cancel')}</button>
+              <button className="delete-confirm-submit" onClick={confirmRestore}>{t('report.confirmRestoreBtn')}</button>
             </div>
           </div>
         </div>
@@ -2581,28 +2591,28 @@ ${clone.outerHTML}
       {!viewMode && deleteConfirm.code && (
         <div className="delete-confirm-overlay" onClick={() => setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false })}>
           <div className="delete-confirm-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="delete-confirm-title">从日报移除此 Session</h3>
+            <h3 className="delete-confirm-title">{t('report.removeSessionFromReport')}</h3>
             <p className="delete-confirm-desc">
               {deleteConfirm.contributorNames.length > 0
-                ? <>请输入该 session 的贡献人姓名（{deleteConfirm.contributorNames.join("、")}）以确认删除。</>
-                : <>该 session 无贡献人，请输入任意内容确认删除。</>
+                ? t('report.deleteSessionConfirmWithContributors', { names: deleteConfirm.contributorNames.join(i18n.language.startsWith('zh') ? '、' : ', ') })
+                : t('report.deleteSessionConfirmNoContributors')
               }
             </p>
             <input
               className={`delete-confirm-input${deleteConfirm.error ? " delete-confirm-input--error" : ""}`}
               type="text"
-              placeholder="输入姓名..."
+              placeholder={t('report.enterName')}
               value={deleteConfirm.nameInput}
               autoFocus
               onChange={e => setDeleteConfirm(prev => ({ ...prev, nameInput: e.target.value, error: false }))}
               onKeyDown={e => { if (e.key === "Enter") confirmDeleteSession(); if (e.key === "Escape") setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false }); }}
             />
             {deleteConfirm.error && (
-              <p className="delete-confirm-error">姓名不匹配，无法删除</p>
+              <p className="delete-confirm-error">{t('report.nameNotMatch')}</p>
             )}
             <div className="delete-confirm-actions">
-              <button className="delete-confirm-cancel" onClick={() => setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false })}>取消</button>
-              <button className="delete-confirm-submit" onClick={confirmDeleteSession}>确认删除</button>
+              <button className="delete-confirm-cancel" onClick={() => setDeleteConfirm({ code: null, contributorNames: [], nameInput: "", error: false })}>{t('common.cancel')}</button>
+              <button className="delete-confirm-submit" onClick={confirmDeleteSession}>{t('report.confirmDelete')}</button>
             </div>
           </div>
         </div>

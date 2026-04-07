@@ -1,13 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { collection, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useTranslation } from 'react-i18next';
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import UserAvatar, { FirstTimeNameSetup } from "./UserAvatar";
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function Dashboard() {
   const { user, userProfile, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [conferences, setConferences] = useState(null); // null = not loaded yet
   const [myMemberships, setMyMemberships] = useState({});
   const [membershipsReady, setMembershipsReady] = useState(false);
@@ -130,7 +133,7 @@ export default function Dashboard() {
       (c) => c.visibility === "private" && c.joinCode === code
     );
     if (!match) {
-      setJoinError("Invalid join code");
+      setJoinError(t('dashboard.invalidJoinCode'));
       return;
     }
 
@@ -184,12 +187,12 @@ export default function Dashboard() {
               )}
               {membership?.status === "pending" && (
                 <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#E67E22]/10 text-[#E67E22] font-medium uppercase tracking-wider">
-                  Pending Approval
+                  {t('dashboard.pendingApproval')}
                 </span>
               )}
               {membership?.role === "admin" && (
                 <span className="text-[11px] px-2.5 py-1 rounded-full bg-dash-blue/10 text-dash-blue font-medium uppercase tracking-wider">
-                  Admin
+                  {t('dashboard.admin')}
                 </span>
               )}
             </div>
@@ -201,7 +204,7 @@ export default function Dashboard() {
                 className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
                   uppercase tracking-wider rounded-md hover:bg-dash-blue hover:text-white transition-all duration-200"
               >
-                Apply to Join
+                {t('dashboard.applyToJoin')}
               </button>
             </div>
           )}
@@ -219,6 +222,8 @@ export default function Dashboard() {
           ConferenceFlow
         </h1>
         <div className="flex items-center gap-2.5">
+          <LanguageSwitcher className="text-white/70 hover:text-white px-3 py-1.5 rounded"
+            style={{ background: "rgba(255,255,255,0.12)" }} />
           {isSuperAdmin && (
             <Link
               to="/super-admin"
@@ -227,7 +232,7 @@ export default function Dashboard() {
               onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.3)"}
               onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}
             >
-              Admin Panel
+              {t('dashboard.adminPanel')}
             </Link>
           )}
           <UserAvatar size={28} onSignOut={() => navigate("/login")} />
@@ -275,15 +280,15 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <div className="w-1 h-6 rounded-full bg-dash-blue"></div>
               <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                My Conferences
+                {t('dashboard.myConferences')}
               </h2>
             </div>
             <span className="text-xs font-headline text-secondary tracking-wider">
-              {upcoming.length} {upcoming.length === 1 ? "conference" : "conferences"}
+              {upcoming.length} {t(upcoming.length === 1 ? 'dashboard.conference' : 'dashboard.conferences')}
             </span>
           </div>
           {upcoming.length === 0 && (
-            <p className="text-secondary text-base text-center py-8">No upcoming conferences. Browse the discover section below to join one.</p>
+            <p className="text-secondary text-base text-center py-8">{t('dashboard.noUpcoming')}</p>
           )}
           {upcoming.map((conf) => (
             <ConferenceCard key={conf.id} conf={conf} membership={myMemberships[conf.id]} accentColor="bg-dash-blue" />
@@ -296,11 +301,11 @@ export default function Dashboard() {
               <div className="flex items-center gap-3">
                 <div className="w-1 h-6 rounded-full bg-[#E67E22]"></div>
                 <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                  Pending Applications
+                  {t('dashboard.pendingApplications')}
                 </h2>
               </div>
               <span className="text-xs font-headline text-secondary tracking-wider">
-                {pending.length} pending
+                {pending.length} {t('dashboard.pending')}
               </span>
             </div>
             {pending.map((conf) => (
@@ -315,7 +320,7 @@ export default function Dashboard() {
             className="flex items-center gap-3 text-secondary hover:text-on-surface transition-colors group"
           >
             <div className="w-1 h-6 rounded-full bg-secondary/30"></div>
-            <span className="text-sm font-headline uppercase tracking-wider">Past Conferences</span>
+            <span className="text-sm font-headline uppercase tracking-wider">{t('dashboard.pastConferences')}</span>
             <span className="text-xs text-secondary/60">({past.length})</span>
             <span className="text-xs transition-transform group-hover:translate-x-0.5">{showPast ? "\u25BC" : "\u25B6"}</span>
           </button>
@@ -333,24 +338,24 @@ export default function Dashboard() {
             <div className="flex items-center gap-3">
               <div className="w-1 h-6 rounded-full bg-dash-sand"></div>
               <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                Discover
+                {t('dashboard.discover')}
               </h2>
             </div>
             <span className="text-xs font-headline text-secondary tracking-wider">
-              {discover.length} available
+              {discover.length} {t('dashboard.available')}
             </span>
           </div>
 
           <div className="bg-white border border-[#E8E4DF] rounded-lg p-5 mb-5">
             <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-2">
-              Join Private Conference
+              {t('dashboard.joinPrivate')}
             </label>
             <div className="flex gap-3 items-end">
               <input
                 type="text"
                 value={joinCode}
                 onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="Enter join code"
+                placeholder={t('dashboard.enterJoinCode')}
                 className="flex-1 bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm
                   focus:border-dash-blue focus:outline-none focus:ring-1 focus:ring-dash-blue/20 transition-all"
               />
@@ -359,7 +364,7 @@ export default function Dashboard() {
                 className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
                   uppercase tracking-wider rounded-md hover:bg-dash-blue hover:text-white transition-all duration-200"
               >
-                Join
+                {t('common.join')}
               </button>
             </div>
           </div>
@@ -368,7 +373,7 @@ export default function Dashboard() {
           )}
 
           {discover.length === 0 && (
-            <p className="text-secondary text-base text-center py-8">No public conferences available to join.</p>
+            <p className="text-secondary text-base text-center py-8">{t('dashboard.noPublicConferences')}</p>
           )}
           {discover.map((conf) => (
             <ConferenceCard key={conf.id} conf={conf} showApply accentColor="bg-dash-sand" />
@@ -390,13 +395,13 @@ export default function Dashboard() {
             <div className="h-[3px] bg-dash-blue"></div>
             <div className="p-6">
               <h3 className="font-headline text-on-surface font-bold text-lg mb-1">
-                Apply to Join
+                {t('dashboard.applyToJoin')}
               </h3>
               <p className="text-secondary text-sm mb-6">{applyModal.confName}</p>
 
               <div className="mb-6">
                 <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-3">
-                  Attendance Mode
+                  {t('dashboard.attendanceMode')}
                 </label>
                 <div className="flex gap-3">
                   <button
@@ -407,7 +412,7 @@ export default function Dashboard() {
                         : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
                       }`}
                   >
-                    Onsite
+                    {t('dashboard.onsite')}
                   </button>
                   <button
                     onClick={() => setAttendanceMode("online")}
@@ -417,7 +422,7 @@ export default function Dashboard() {
                         : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
                       }`}
                   >
-                    Online
+                    {t('dashboard.online')}
                   </button>
                 </div>
               </div>
@@ -428,7 +433,7 @@ export default function Dashboard() {
                   className="flex-1 bg-white border border-[#E8E4DF] p-2.5 text-secondary text-sm
                     uppercase tracking-wider hover:text-on-surface hover:border-on-surface/30 rounded-lg transition-all duration-200"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleApply}
@@ -437,7 +442,7 @@ export default function Dashboard() {
                     uppercase tracking-wider hover:bg-dash-blue-deep rounded-lg transition-colors duration-200
                     disabled:opacity-50"
                 >
-                  {applying ? "Applying..." : "Apply"}
+                  {applying ? t('dashboard.applying') : t('common.apply')}
                 </button>
               </div>
             </div>

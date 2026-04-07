@@ -1,12 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import { EditableField, SectionInlineAdd } from "../shared";
 import CitationBadges from "../components/CitationBadges";
 
 const INSIGHT_BG_CYCLE = ["bg-primary", "bg-on-background", "bg-secondary"];
-
-const blockTypes = [
-  { type: "heading", label: "小标题" },
-  { type: "body", label: "正文" },
-];
 
 export default function InsightsSection({
   sectionName,
@@ -19,6 +15,13 @@ export default function InsightsSection({
   openInlineMenu,
   onOpenInlineMenu,
 }) {
+  const { t } = useTranslation();
+
+  const blockTypes = [
+    { type: "heading", label: t('sections.heading') },
+    { type: "body", label: t('sections.body') },
+  ];
+
   // Track body-only index for numbering and color cycling
   let bodyIdx = 0;
 
@@ -39,7 +42,7 @@ export default function InsightsSection({
                   <EditableField
                     value={block.content}
                     onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                    placeholder="输入小标题..."
+                    placeholder={t('sections.enterSubtitle')}
                     minHeight={28}
                   />
                 </div>
@@ -78,7 +81,7 @@ export default function InsightsSection({
                 <EditableField
                   value={block.content}
                   onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                  placeholder="输入关键启示..."
+                  placeholder={t('sections.enterKeyInsights')}
                   minHeight={40}
                 />
               </div>
@@ -92,7 +95,7 @@ export default function InsightsSection({
                 className="citation-add-btn no-print ml-3 text-xs text-white/60 hover:text-white bg-transparent border-none cursor-pointer whitespace-nowrap"
                 onClick={() => onOpenCitationPicker(sectionName, block.id)}
               >
-                + 添加引用
+                {t('sections.addCitationFull')}
               </button>
             </div>
             <SectionInlineAdd

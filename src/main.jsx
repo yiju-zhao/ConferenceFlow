@@ -1,3 +1,4 @@
+import './i18n';
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";

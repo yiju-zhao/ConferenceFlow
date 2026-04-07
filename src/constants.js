@@ -10,6 +10,3 @@ export const COLORS = [
 
 // ── Color presets for rich text formatting ───────────────────────────────────
 export const COLOR_PRESETS = ["#333333", "#CF0A2C", "#E67E22", "#27AE60", "#2980B9", "#8E44AD"];
-
-// ── Chinese day names ───────────────────────────────────────────────────────
-export const DAY_CN = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];

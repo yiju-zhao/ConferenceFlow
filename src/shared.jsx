@@ -7,6 +7,7 @@
  *   - src/sessionCatalog.js
  */
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from 'react-i18next';
 
 // ── EditableField ────────────────────────────────────────────────────────────
 export function EditableField({ value, onSave, placeholder, minHeight = 60, readOnly = false }) {
@@ -45,18 +46,19 @@ export function EditableField({ value, onSave, placeholder, minHeight = 60, read
 
 // ── InlineAddButton ───────────────────────────────────────────────────────────
 export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
+  const { t } = useTranslation();
   const isOpen = openKey === `${field}::${afterId}`;
   return (
     <div className="inline-add-zone no-print">
       <button
         className="inline-add-btn"
         onClick={() => isOpen ? onOpen(null) : onOpen(`${field}::${afterId}`)}
-        title="插入 block"
-      >添加 block</button>
+        title={t('report.insertBlock')}
+      >{t('report.addBlock')}</button>
       {isOpen && (
         <div className="inline-add-popover">
-          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'heading', afterId); onOpen(null); }}>小标题</button>
-          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'body', afterId); onOpen(null); }}>正文</button>
+          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'heading', afterId); onOpen(null); }}>{t('report.subtitle')}</button>
+          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'body', afterId); onOpen(null); }}>{t('report.bodyText')}</button>
         </div>
       )}
     </div>
@@ -65,14 +67,15 @@ export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
 
 // ── SectionInlineAdd ─────────────────────────────────────────────────────────
 export function SectionInlineAdd({ sectionName, afterId, openKey, onOpen, onInsert, blockTypes }) {
+  const { t } = useTranslation();
   const isOpen = openKey === `${sectionName}::${afterId}`;
   return (
     <div className="inline-add-zone no-print">
       <button
         className="inline-add-btn"
         onClick={() => isOpen ? onOpen(null) : onOpen(`${sectionName}::${afterId}`)}
-        title="插入 block"
-      >添加 block</button>
+        title={t('report.insertBlock')}
+      >{t('report.addBlock')}</button>
       {isOpen && (
         <div className="inline-add-popover">
           {blockTypes.map(({ type, label, extraFields }) => (
@@ -88,7 +91,9 @@ export function SectionInlineAdd({ sectionName, afterId, openKey, onOpen, onInse
 }
 
 // ── BulletEditor ──────────────────────────────────────────────────────────────
-export function BulletEditor({ points, onSave, placeholder = "请输入要点...", readOnly = false }) {
+export function BulletEditor({ points, onSave, placeholder, readOnly = false }) {
+  const { t } = useTranslation();
+  const ph = placeholder || t('report.enterKeyPoints');
   const [local, setLocal] = useState(points || []);
   const focused = useRef(false);
   const containerRef = useRef(null);
@@ -169,7 +174,7 @@ export function BulletEditor({ points, onSave, placeholder = "请输入要点...
             <textarea
               className="bullet-input"
               value={point}
-              placeholder={placeholder}
+              placeholder={ph}
               rows={1}
               onChange={(e) => {
                 handleChange(idx, e.target.value);
@@ -187,17 +192,17 @@ export function BulletEditor({ points, onSave, placeholder = "请输入要点...
             <button
               className="bullet-remove-btn no-print"
               onClick={() => handleRemove(idx)}
-              title="删除此要点"
+              title={t('report.deletePoint')}
               tabIndex={-1}
             >−</button>
           </li>
         ))}
       </ul>
       {local.length === 0 && (
-        <p className="bullet-editor-empty no-print">{placeholder}</p>
+        <p className="bullet-editor-empty no-print">{ph}</p>
       )}
       <button className="bullet-add-btn no-print" onClick={handleAdd}>
-        + 添加要点
+        {t('report.addPoint')}
       </button>
     </div>
   );
