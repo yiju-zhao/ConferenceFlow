@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function SessionPool({ sessions, selectedId, onSelect, userAttending }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
 
@@ -52,11 +54,11 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
   return (
     <div className="cal-pool">
       <div className="cal-pool-header">
-        <div className="cal-pool-title">Session Pool</div>
+        <div className="cal-pool-title">{t('calendar.sessionPool')}</div>
         <input
           type="text"
           className="cal-pool-search"
-          placeholder="Search sessions..."
+          placeholder={t('calendar.searchSessions')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -67,7 +69,7 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
           className={`cal-pool-filter ${activeFilter === "ALL" ? "cal-pool-filter--active" : ""}`}
           onClick={() => setActiveFilter("ALL")}
         >
-          All
+          {t('calendar.filterAll')}
         </button>
         {timeFilters.map((f) => (
           <button
@@ -75,7 +77,7 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
             className={`cal-pool-filter ${activeFilter === f ? "cal-pool-filter--active" : ""}`}
             onClick={() => setActiveFilter(activeFilter === f ? "ALL" : f)}
           >
-            {f}
+            {f === "AM" ? t('calendar.am') : t('calendar.pm')}
           </button>
         ))}
         {formatFilters.map((f) => (
@@ -84,7 +86,7 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
             className={`cal-pool-filter ${activeFilter === f ? "cal-pool-filter--active" : ""}`}
             onClick={() => setActiveFilter(activeFilter === f ? "ALL" : f)}
           >
-            {f}
+            {f === "IN-PERSON" ? t('calendar.inPerson') : t('calendar.virtual')}
           </button>
         ))}
         {topics.slice(0, 4).map((t) => (
@@ -115,7 +117,7 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
         ))}
         {filtered.length === 0 && (
           <div style={{ color: "#7A7670", fontSize: 14, textAlign: "center", padding: 20 }}>
-            {search ? "No sessions match" : "No sessions available"}
+            {search ? t('calendar.noSessionsMatch') : t('calendar.noSessionsAvailable')}
           </div>
         )}
       </div>

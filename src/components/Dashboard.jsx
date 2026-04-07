@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import UserAvatar, { FirstTimeNameSetup } from "./UserAvatar";
-import LanguageSwitcher from './LanguageSwitcher';
+
 
 export default function Dashboard() {
   const { user, userProfile, isSuperAdmin } = useAuth();
@@ -222,8 +222,6 @@ export default function Dashboard() {
           ConferenceFlow
         </h1>
         <div className="flex items-center gap-2.5">
-          <LanguageSwitcher className="text-white/70 hover:text-white px-3 py-1.5 rounded"
-            style={{ background: "rgba(255,255,255,0.12)" }} />
           {isSuperAdmin && (
             <Link
               to="/super-admin"

@@ -1,6 +1,8 @@
+import { useTranslation } from "react-i18next";
 import { COLORS } from "../../constants";
 
 export default function PresenceBar({ activeUsers, memberColorMap, currentUid }) {
+  const { t } = useTranslation();
   if (activeUsers.length <= 1) return null;
   const others = activeUsers.filter((u) => u.uid !== currentUid);
   if (others.length === 0) return null;
@@ -27,7 +29,7 @@ export default function PresenceBar({ activeUsers, memberColorMap, currentUid })
         })}
       </div>
       <span style={{ fontSize: 11, color: "var(--text-muted, #999)" }}>
-        {others.length} online
+        {others.length} {t('report.onlineCount')}
       </span>
     </div>
   );

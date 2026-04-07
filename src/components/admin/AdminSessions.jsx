@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { apiFetch } from "../../lib/api";
@@ -79,6 +80,7 @@ function SessionField({ label, field, type = "text", value, onChange }) {
 }
 
 export default function AdminSessions() {
+  const { t } = useTranslation();
   const { confId } = useParams();
   const [sessions, setSessions] = useState([]);
   const [search, setSearch] = useState("");
@@ -145,32 +147,32 @@ export default function AdminSessions() {
     <div>
       <div className="flex items-center gap-2 mb-6">
         <div className="w-1 h-6 rounded-full bg-admin-teal"></div>
-        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">Session Management</h2>
+        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">{t('admin.sessionManagement')}</h2>
       </div>
       <div className="flex gap-3 mb-4 flex-wrap items-center">
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search sessions..."
+        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('calendar.searchSessions')}
           className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm w-64 focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none transition-colors" />
         <button onClick={() => setEditModal({ mode: "add", session: { code: "", title: "", date: "", start: "", end: "", room: "", format: "", mainTopic: "", url: "" } })}
-          className="bg-admin-teal text-white px-4 py-2.5 text-xs font-headline uppercase tracking-wider hover:bg-admin-teal-deep transition-all duration-150 rounded-lg shadow-sm hover:shadow">+ Add Session</button>
+          className="bg-admin-teal text-white px-4 py-2.5 text-xs font-headline uppercase tracking-wider hover:bg-admin-teal-deep transition-all duration-150 rounded-lg shadow-sm hover:shadow">{t('admin.addSession')}</button>
         <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
           className="bg-white border border-[#E8E4DF] text-secondary px-4 py-2.5 text-xs font-headline uppercase tracking-wider hover:border-admin-teal/30 hover:text-on-surface transition-all duration-150 disabled:opacity-50 rounded-lg">
-          {uploading ? "Uploading..." : "Upload JSON"}</button>
+          {uploading ? t('admin.uploadingJson') : t('admin.uploadJson')}</button>
         <input ref={fileInputRef} type="file" accept=".json" onChange={handleBulkUpload} className="hidden" />
         <button onClick={() => setShowFormatGuide(true)}
           className="text-secondary text-xs hover:text-admin-teal transition-colors underline">
-          Format Guide</button>
-        <span className="text-secondary text-xs">{sessions.length} sessions total</span>
+          {t('admin.formatGuide')}</button>
+        <span className="text-secondary text-xs">{sessions.length} {t('admin.sessionsTotal')}</span>
       </div>
       {uploadResult && (
         <div className={`p-3 mb-4 text-sm rounded-lg ${uploadResult.error ? "bg-red-500/10 text-red-600 border border-red-200" : "bg-[#27AE60]/10 text-[#27AE60] border border-[#27AE60]/20"}`}>
-          {uploadResult.error ? `Upload failed: ${uploadResult.error}` : `${uploadResult.message}${uploadResult.errors?.length ? ` (${uploadResult.errors.length} errors)` : ""}`}
+          {uploadResult.error ? `${t('admin.uploadFailed')}${uploadResult.error}` : `${uploadResult.message}${uploadResult.errors?.length ? ` (${uploadResult.errors.length} errors)` : ""}`}
           <button onClick={() => setUploadResult(null)} className="ml-3 opacity-50 hover:opacity-100">×</button>
         </div>
       )}
       <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead><tr className="text-left text-secondary text-xs uppercase tracking-wider bg-[#F7F5F2]">
-            <th className="p-3 border-b border-[#E8E4DF]">Code</th><th className="p-3 border-b border-[#E8E4DF]">Title</th><th className="p-3 border-b border-[#E8E4DF]">Date</th><th className="p-3 border-b border-[#E8E4DF]">Time</th><th className="p-3 border-b border-[#E8E4DF]">Room</th><th className="p-3 w-32 border-b border-[#E8E4DF]">Actions</th>
+            <th className="p-3 border-b border-[#E8E4DF]">{t('admin.code')}</th><th className="p-3 border-b border-[#E8E4DF]">{t('admin.title')}</th><th className="p-3 border-b border-[#E8E4DF]">{t('admin.date')}</th><th className="p-3 border-b border-[#E8E4DF]">{t('admin.time')}</th><th className="p-3 border-b border-[#E8E4DF]">{t('admin.room')}</th><th className="p-3 w-32 border-b border-[#E8E4DF]">{t('admin.actions')}</th>
           </tr></thead>
           <tbody>
             {filtered.map((s) => (
@@ -181,12 +183,12 @@ export default function AdminSessions() {
                 <td className="p-3 text-secondary">{s.start}–{s.end}</td>
                 <td className="p-3 text-secondary">{s.room}</td>
                 <td className="p-3">
-                  <button onClick={() => setEditModal({ mode: "edit", session: { ...s } })} className="text-admin-teal text-xs uppercase tracking-wider mr-3 hover:underline">Edit</button>
-                  <button onClick={() => handleDelete(s.id)} disabled={deleting === s.id} className="text-secondary text-xs uppercase tracking-wider hover:text-red-600 disabled:opacity-50">{deleting === s.id ? "..." : "Delete"}</button>
+                  <button onClick={() => setEditModal({ mode: "edit", session: { ...s } })} className="text-admin-teal text-xs uppercase tracking-wider mr-3 hover:underline">{t('admin.edit')}</button>
+                  <button onClick={() => handleDelete(s.id)} disabled={deleting === s.id} className="text-secondary text-xs uppercase tracking-wider hover:text-red-600 disabled:opacity-50">{deleting === s.id ? "..." : t('common.delete')}</button>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-secondary text-sm">{search ? "No sessions match your search" : "No sessions yet. Add one or upload a JSON file."}</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-secondary text-sm">{search ? t('admin.noSessionsMatchSearch') : t('admin.noSessionsYet')}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -195,18 +197,18 @@ export default function AdminSessions() {
           <div className="bg-white w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-xl shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="bg-admin-teal h-1 rounded-t-xl"></div>
             <div className="p-6">
-              <h3 className="font-headline text-on-surface font-bold text-base mb-4 uppercase">{editModal.mode === "add" ? "Add Session" : "Edit Session"}</h3>
-              <SessionField label="Session Code" field="code" value={editModal?.session?.code} onChange={handleFieldChange} />
-              <SessionField label="Title" field="title" value={editModal?.session?.title} onChange={handleFieldChange} />
-              <SessionField label="Date" field="date" type="date" value={editModal?.session?.date} onChange={handleFieldChange} />
-              <div className="flex gap-3"><div className="flex-1"><SessionField label="Start Time" field="start" type="time" value={editModal?.session?.start} onChange={handleFieldChange} /></div><div className="flex-1"><SessionField label="End Time" field="end" type="time" value={editModal?.session?.end} onChange={handleFieldChange} /></div></div>
-              <SessionField label="Room" field="room" value={editModal?.session?.room} onChange={handleFieldChange} />
-              <SessionField label="Format" field="format" value={editModal?.session?.format} onChange={handleFieldChange} />
-              <SessionField label="Topic" field="mainTopic" value={editModal?.session?.mainTopic} onChange={handleFieldChange} />
-              <SessionField label="URL" field="url" value={editModal?.session?.url} onChange={handleFieldChange} />
+              <h3 className="font-headline text-on-surface font-bold text-base mb-4 uppercase">{editModal.mode === "add" ? t('admin.addSession') : t('admin.editSession')}</h3>
+              <SessionField label={t('admin.sessionCode')} field="code" value={editModal?.session?.code} onChange={handleFieldChange} />
+              <SessionField label={t('admin.title')} field="title" value={editModal?.session?.title} onChange={handleFieldChange} />
+              <SessionField label={t('admin.date')} field="date" type="date" value={editModal?.session?.date} onChange={handleFieldChange} />
+              <div className="flex gap-3"><div className="flex-1"><SessionField label={t('admin.startTime')} field="start" type="time" value={editModal?.session?.start} onChange={handleFieldChange} /></div><div className="flex-1"><SessionField label={t('admin.endTime')} field="end" type="time" value={editModal?.session?.end} onChange={handleFieldChange} /></div></div>
+              <SessionField label={t('admin.room')} field="room" value={editModal?.session?.room} onChange={handleFieldChange} />
+              <SessionField label={t('admin.format')} field="format" value={editModal?.session?.format} onChange={handleFieldChange} />
+              <SessionField label={t('admin.topic')} field="mainTopic" value={editModal?.session?.mainTopic} onChange={handleFieldChange} />
+              <SessionField label={t('admin.url')} field="url" value={editModal?.session?.url} onChange={handleFieldChange} />
               <div className="flex gap-3 mt-4">
-                <button onClick={() => setEditModal(null)} className="flex-1 bg-white border border-[#E8E4DF] p-2.5 text-secondary text-sm uppercase tracking-wider hover:text-on-surface hover:border-admin-teal/30 rounded-lg transition-all">Cancel</button>
-                <button onClick={handleSaveSession} className="flex-1 bg-admin-teal text-white p-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg shadow-sm hover:shadow transition-all">{editModal.mode === "add" ? "Create" : "Save"}</button>
+                <button onClick={() => setEditModal(null)} className="flex-1 bg-white border border-[#E8E4DF] p-2.5 text-secondary text-sm uppercase tracking-wider hover:text-on-surface hover:border-admin-teal/30 rounded-lg transition-all">{t('common.cancel')}</button>
+                <button onClick={handleSaveSession} className="flex-1 bg-admin-teal text-white p-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg shadow-sm hover:shadow transition-all">{editModal.mode === "add" ? t('admin.create') : t('common.save')}</button>
               </div>
             </div>
           </div>
@@ -219,24 +221,24 @@ export default function AdminSessions() {
           <div className="bg-white w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="bg-admin-teal h-1 rounded-t-xl"></div>
             <div className="bg-admin-teal px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-              <h3 className="text-on-primary font-headline font-bold text-base uppercase tracking-wider">JSON Upload Format Guide</h3>
+              <h3 className="text-on-primary font-headline font-bold text-base uppercase tracking-wider">{t('admin.jsonFormatGuide')}</h3>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => { navigator.clipboard.writeText(FORMAT_GUIDE_MD); setMdCopied(true); setTimeout(() => setMdCopied(false), 2000); }}
                   className="text-on-primary/70 hover:text-on-primary text-xs font-headline uppercase tracking-wider bg-white/15 px-3 py-1 rounded-md transition-colors"
                 >
-                  {mdCopied ? "Copied" : "Copy as Markdown"}
+                  {mdCopied ? t('admin.copied') : t('admin.copyAsMarkdown')}
                 </button>
                 <button onClick={() => setShowFormatGuide(false)} className="text-on-primary/60 hover:text-on-primary text-lg">×</button>
               </div>
             </div>
             <div className="px-6 py-5" style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, lineHeight: 1.7, color: "#1a1c1c" }}>
 
-              <p className="text-secondary text-sm mb-4">Upload a <code className="bg-[#F7F5F2] border border-[#E8E4DF] px-1.5 py-0.5 text-xs rounded">.json</code> file containing an array of session objects. Maximum 1000 sessions per upload.</p>
+              <p className="text-secondary text-sm mb-4">{t('admin.formatGuideDesc')}</p>
 
               <div className="mb-5">
                 <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> Required Fields
+                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> {t('admin.requiredFields')}
                 </h4>
                 <div className="border border-[#E8E4DF] rounded-lg overflow-hidden">
                   <table className="w-full text-xs border-collapse">
@@ -259,7 +261,7 @@ export default function AdminSessions() {
 
               <div className="mb-5">
                 <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> Optional Fields
+                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> {t('admin.optionalFields')}
                 </h4>
                 <div className="border border-[#E8E4DF] rounded-lg overflow-hidden">
                   <table className="w-full text-xs border-collapse">
@@ -287,14 +289,14 @@ export default function AdminSessions() {
 
               <div className="mb-5">
                 <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> Speaker Object
+                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> {t('admin.speakerObject')}
                 </h4>
                 <pre className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg p-3 text-xs font-mono overflow-x-auto">{`{ "name": "Dr. Jane Smith", "title": "Chief Scientist", "company": "NVIDIA" }`}</pre>
               </div>
 
               <div className="mb-5">
                 <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> Complete Example
+                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> {t('admin.completeExample')}
                 </h4>
                 <pre className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{`[
   {
@@ -319,7 +321,7 @@ export default function AdminSessions() {
 
               <div className="mb-2">
                 <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> Minimal Example
+                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div> {t('admin.minimalExample')}
                 </h4>
                 <pre className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{`[
   { "title": "Morning Keynote", "date": "2026-03-18", "start": "09:00", "end": "10:00" },
@@ -328,7 +330,7 @@ export default function AdminSessions() {
               </div>
 
               <div className="mt-4 p-3 bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg text-secondary text-xs">
-                <strong>Note:</strong> Sessions missing required fields are skipped. If <code className="font-mono">session_id</code> matches an existing session, it will be overwritten.
+                <strong>{t('admin.note')}:</strong> {t('admin.formatGuideNote')}
               </div>
             </div>
           </div>
