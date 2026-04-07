@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "./contexts/AuthContext";
 import { useMembership } from "./hooks/useMembership";
 import {
@@ -213,6 +214,7 @@ const NoRecordingBadge = () => (
 
 // ── AddSessionModal ────────────────────────────────────────────────────────────
 function AddSessionModal({ sessions, onAdd, onClose }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
 
   const results = useMemo(() => {
@@ -235,14 +237,14 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
         {/* Header */}
         <div className="add-session-header">
           <div className="add-session-header-bar">
-            <span className="add-session-header-title">添加 Session</span>
+            <span className="add-session-header-title">{t('calendar.addSession')}</span>
             <button onClick={onClose} className="add-session-close">×</button>
           </div>
           <input
             autoFocus
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="输入 Session ID 或标题搜索..."
+            placeholder={t('calendar.searchSessionPlaceholder')}
             className="add-session-input"
           />
         </div>
@@ -251,11 +253,11 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
         <div className="add-session-results">
           {!query.trim() ? (
             <div className="add-session-empty">
-              输入 Session ID 或标题搜索
+              {t('calendar.searchSessionPlaceholder')}
             </div>
           ) : results.length === 0 ? (
             <div className="add-session-empty">
-              未找到匹配的 Session
+              {t('calendar.noMatchingSession')}
             </div>
           ) : results.map(s => {
             const alreadyAdded = !!sessions[s.session_id];
@@ -277,7 +279,7 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
                 </div>
                 {alreadyAdded ? (
                   <span className="font-mono schedule-badge" style={{ flexShrink: 0 }}>
-                    已加入
+                    {t('calendar.alreadyAdded')}
                   </span>
                 ) : (
                   <button
@@ -285,7 +287,7 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
                     className="btn-accent"
                     style={{ fontSize: 11, padding: "3px 12px", flexShrink: 0 }}
                   >
-                    添加
+                    {t('common.add')}
                   </button>
                 )}
               </div>
@@ -299,6 +301,7 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { confId } = useParams();
   const { user } = useAuth();
@@ -401,7 +404,7 @@ export default function App() {
       const favoritedIdx = headers.findIndex((h) => h.includes("favorit"));
 
       if (codeIdx === -1 || titleIdx === -1) {
-        alert("无法识别的 CSV 格式。请确保包含 Session Code 和 Session Title 列。");
+        alert(t('calendar.unrecognizedCsvFormat'));
         return;
       }
 
@@ -466,7 +469,7 @@ export default function App() {
 
   const addMember = async () => {
     if (!newMemberName.trim()) return;
-    if (!user) { alert("Firebase 尚未完成登录，请稍候再试。\n错误：" + (authError || "user is null")); return; }
+    if (!user) { alert(t('calendar.firebaseNotReady', { error: authError || "user is null" })); return; }
     try {
       const id = Date.now().toString();
       await setDoc(doc(db, "conferences", confId, "members", id), {
@@ -482,7 +485,7 @@ export default function App() {
       setNewMemberName("");
     } catch (err) {
       console.error("addMember error:", err);
-      alert("写入失败：" + err.message);
+      alert(t('calendar.writeFailed', { error: err.message }));
     }
   };
 
@@ -616,7 +619,7 @@ export default function App() {
 
   const exportToCSV = () => {
     const toExport = sortedSessions.filter((s) => exportDates.has(s.date || "TBD"));
-    if (!toExport.length) { alert("请至少选择一个日期！"); return; }
+    if (!toExport.length) { alert(t('calendar.selectAtLeastOneDate')); return; }
     let csv = "Date,Start,End,Code,Title,Room,主要主题," + onlineMembers.map((m) => m.name).join(",") + "\n";
     toExport.forEach((s) => {
       const safeTitle = s.title.includes(",") ? `"${s.title}"` : s.title;
@@ -660,10 +663,10 @@ export default function App() {
               </div>
               <h1 className="schedule-header-title gtc-header-title">
                 <Zap size={22} color="var(--brand)" strokeWidth={2.5} />
-                GTC 2026 团队日程协作
+                {t('calendar.teamScheduleTitle')}
               </h1>
               <p className="schedule-header-subtitle">
-                合并个人日程 · 统筹团队分工 · 实时多人协作
+                {t('calendar.teamScheduleSubtitle')}
               </p>
             </div>
 
@@ -671,7 +674,7 @@ export default function App() {
             <div className="schedule-header-actions">
             <Link to={`/conference/${confId}/reports`} className="btn-accent schedule-header-report-link">
               <FileText size={14} />
-              日报管理
+              {t('calendar.reportManagement')}
             </Link>
             {isAdmin && (
               <Link to={`/conference/${confId}/admin/settings`} className="btn-accent schedule-header-report-link">
@@ -686,7 +689,7 @@ export default function App() {
                 onClick={() => { setShowExportMenu(!showExportMenu); setShowImportMenu(false); }}
               >
                 <Download size={15} />
-                导出统筹表
+                {t('calendar.exportSchedule')}
                 <ChevronDown
                   size={14}
                   style={{ transition: "transform 0.2s", transform: showExportMenu ? "rotate(180deg)" : "none" }}
@@ -696,11 +699,11 @@ export default function App() {
               {showExportMenu && (
                 <div className="dropdown-panel">
                   <p className="font-mono export-dropdown-label">
-                    选择导出日期
+                    {t('calendar.selectExportDates')}
                   </p>
                   <div className="export-dropdown-dates">
                     {groupedSessions.length === 0 ? (
-                      <span className="export-no-dates">暂无日期</span>
+                      <span className="export-no-dates">{t('calendar.noDates')}</span>
                     ) : (
                       groupedSessions.map((g) => (
                         <label key={g.date} className="export-date-label">
@@ -719,9 +722,9 @@ export default function App() {
                     )}
                   </div>
                   <div className="export-dropdown-footer">
-                    <button className="btn-ghost" onClick={() => setShowExportMenu(false)}>取消</button>
+                    <button className="btn-ghost" onClick={() => setShowExportMenu(false)}>{t('common.cancel')}</button>
                     <button className="btn-accent export-confirm-btn" onClick={exportToCSV}>
-                      确认导出
+                      {t('calendar.confirmExport')}
                     </button>
                   </div>
                 </div>
@@ -736,7 +739,7 @@ export default function App() {
           <div className="schedule-members-header">
             <UserPlus size={15} color="var(--text-muted)" />
             <span className="font-mono schedule-section-label">
-              团队成员
+              {t('calendar.teamMembers')}
             </span>
             <span className="font-mono schedule-members-count">
               / {members.length} members
@@ -765,14 +768,14 @@ export default function App() {
                   <button
                     className="member-card-mode"
                     onClick={() => setDoc(doc(db, "conferences", confId, "members", member.id), { ...member, mode: (member.mode || "onsite") === "online" ? "onsite" : "online" })}
-                    title="切换线上/线下"
+                    title={t('report.toggleOnlineOnsite')}
                   >
-                    {(member.mode || "onsite") === "online" ? "线上" : "线下"}
+                    {(member.mode || "onsite") === "online" ? t('dashboard.online') : t('dashboard.onsite')}
                   </button>
                   <button
                     onClick={() => removeMember(member.id)}
                     className="member-card-remove"
-                    title="移除成员"
+                    title={t('calendar.removeMember')}
                   >
                     <Trash2 size={13} />
                   </button>
@@ -784,7 +787,7 @@ export default function App() {
             <div className="schedule-member-add">
               <input
                 className="gtc-input"
-                placeholder="添加成员..."
+                placeholder={t('calendar.addMember')}
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addMember()}
@@ -794,7 +797,7 @@ export default function App() {
                 onClick={addMember}
                 className="btn-accent"
                 style={{ padding: "6px 10px", fontSize: 12, flexShrink: 0 /* compact button */ }}
-                title="添加"
+                title={t('common.add')}
               >
                 <UserPlus size={13} />
               </button>
@@ -817,7 +820,7 @@ export default function App() {
             <div className="schedule-table-bar-left">
               <FileSpreadsheet size={15} color="var(--text-muted)" />
               <span className="font-mono schedule-section-label">
-                {viewMode === "table" ? "日程矩阵" : "日程日历"}
+                {viewMode === "table" ? t('calendar.scheduleMatrix') : t('calendar.scheduleCalendar')}
               </span>
             </div>
             <div className="schedule-table-bar-right">
@@ -829,11 +832,11 @@ export default function App() {
                   disabled={members.length === 0}
                 >
                   <Upload size={12} />
-                  导入日程
+                  {t('calendar.importSchedule')}
                 </button>
                 {showImportMenu && members.length > 0 && (
                   <div className="import-member-dropdown">
-                    <div className="import-member-dropdown-label">选择成员</div>
+                    <div className="import-member-dropdown-label">{t('calendar.selectMember')}</div>
                     {members.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
@@ -856,24 +859,24 @@ export default function App() {
                 style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
               >
                 <Plus size={13} />
-                添加 Session
+                {t('calendar.addSession')}
               </button>
               {emptySessions.length > 0 && !showCleanupConfirm && (
                 <button
                   onClick={() => setShowCleanupConfirm(true)}
-                  title="删除所有无人参与的 session"
+                  title={t('report.deleteUnattended')}
                   className="font-mono schedule-cleanup-btn"
                 >
-                  清理 · {emptySessions.length}
+                  {t('calendar.cleanup')} · {emptySessions.length}
                 </button>
               )}
               {showCleanupConfirm && (
                 <div className="schedule-cleanup-confirm">
                   <span className="font-mono schedule-cleanup-confirm-text">
-                    删除 {emptySessions.length} 个无人 session？
+                    {t('calendar.confirmCleanup', { count: emptySessions.length })}
                   </span>
-                  <button onClick={cleanupEmptySessions} className="schedule-confirm-yes">确认</button>
-                  <button onClick={() => setShowCleanupConfirm(false)} className="schedule-confirm-no">取消</button>
+                  <button onClick={cleanupEmptySessions} className="schedule-confirm-yes">{t('common.confirm')}</button>
+                  <button onClick={() => setShowCleanupConfirm(false)} className="schedule-confirm-no">{t('common.cancel')}</button>
                 </div>
               )}
               <span className="font-mono schedule-session-count">
@@ -882,14 +885,14 @@ export default function App() {
               <div className="schedule-view-toggle">
                 <button
                   onClick={() => setViewMode("table")}
-                  title="表格视图"
+                  title={t('calendar.tableView')}
                   className={`schedule-view-btn${viewMode === "table" ? " active" : ""}`}
                 >
                   <LayoutList size={13} />
                 </button>
                 <button
                   onClick={() => setViewMode("calendar")}
-                  title="日历视图"
+                  title={t('calendar.calendarView')}
                   className={`schedule-view-btn${viewMode === "calendar" ? " active" : ""}`}
                 >
                   <CalendarRange size={13} />
@@ -913,7 +916,7 @@ export default function App() {
               <table className="schedule-table" style={{ tableLayout: "fixed", width: "100%" }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 180, textAlign: "left" }}>时间 / 地点</th>
+                    <th style={{ width: 180, textAlign: "left" }}>{t('calendar.timeLocation')}</th>
                     <th style={{ textAlign: "left", maxWidth: 420 }}>Session</th>
                     {onlineMembers.map((m) => {
                       const c = COLORS[m.colorIndex];
@@ -1031,7 +1034,7 @@ export default function App() {
                                     "--member-bg":    c.bg,
                                     "--member-glow":  c.glow,
                                   }}
-                                  title={`切换 ${member.name} 参与状态`}
+                                  title={t('calendar.toggleAttendance', { name: member.name })}
                                 >
                                   <span className="attend-dot" />
                                 </button>
@@ -1057,15 +1060,15 @@ export default function App() {
                 </div>
                 <div className="schedule-empty-text">
                   <p className="schedule-empty-title">
-                    暂无日程数据
+                    {t('calendar.noScheduleData')}
                   </p>
                   <p className="schedule-empty-desc">
-                    为团队成员导入 NVIDIA GTC 导出的 CSV 文件以开始协作
+                    {t('calendar.importCsvHint')}
                   </p>
                 </div>
                 <div className="schedule-empty-hint">
                   <Upload size={13} />
-                  <span>点击上方「导入日程」按钮开始</span>
+                  <span>{t('calendar.clickImportToStart')}</span>
                 </div>
               </div>
             ) : null}
