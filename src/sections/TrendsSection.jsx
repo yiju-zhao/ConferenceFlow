@@ -1,12 +1,5 @@
+import { useTranslation } from 'react-i18next';
 import { EditableField, SectionInlineAdd } from "../shared";
-
-const blockTypes = [
-  { type: "trend-title", label: "趋势标题" },
-  { type: "trend-summary", label: "趋势概要" },
-  { type: "evidence-bullet", label: "证据要点" },
-  { type: "heading", label: "小标题" },
-  { type: "body", label: "正文" },
-];
 
 /**
  * Group blocks into trend groups and standalone legacy blocks.
@@ -50,6 +43,16 @@ export default function TrendsSection({
   openInlineMenu,
   onOpenInlineMenu,
 }) {
+  const { t } = useTranslation();
+
+  const blockTypes = [
+    { type: "trend-title", label: t('sections.trendTitle') },
+    { type: "trend-summary", label: t('sections.trendSummary') },
+    { type: "evidence-bullet", label: t('sections.evidenceBullet') },
+    { type: "heading", label: t('sections.heading') },
+    { type: "body", label: t('sections.body') },
+  ];
+
   const groups = groupBlocks(blocks);
 
   return (
@@ -71,7 +74,7 @@ export default function TrendsSection({
                     <EditableField
                       value={block.content}
                       onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                      placeholder="输入小标题..."
+                      placeholder={t('sections.enterSubtitle')}
                       minHeight={28}
                     />
                   </div>
@@ -88,7 +91,7 @@ export default function TrendsSection({
                     <EditableField
                       value={block.content}
                       onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                      placeholder="输入正文..."
+                      placeholder={t('sections.enterBody')}
                       minHeight={40}
                     />
                   </div>
@@ -139,7 +142,7 @@ export default function TrendsSection({
                   <EditableField
                     value={title.content}
                     onSave={(html) => onUpdateBlock(title.id, { content: html })}
-                    placeholder="Trend 标题..."
+                    placeholder={t('sections.trendTitlePlaceholder')}
                     minHeight={20}
                   />
                 </h3>
@@ -158,7 +161,7 @@ export default function TrendsSection({
                     <EditableField
                       value={summary.content}
                       onSave={(html) => onUpdateBlock(summary.id, { content: html })}
-                      placeholder="趋势概要..."
+                      placeholder={t('sections.trendSummaryPlaceholder')}
                       minHeight={28}
                     />
                   </p>
@@ -175,7 +178,7 @@ export default function TrendsSection({
                         <EditableField
                           value={bullet.content}
                           onSave={(html) => onUpdateBlock(bullet.id, { content: html })}
-                          placeholder="证据要点..."
+                          placeholder={t('sections.evidenceBulletPlaceholder')}
                           minHeight={20}
                         />
                       </span>
@@ -184,7 +187,7 @@ export default function TrendsSection({
                           className="text-xs text-secondary hover:text-primary bg-transparent border-none cursor-pointer whitespace-nowrap"
                           onClick={() => onOpenCitationPicker(sectionName, bullet.id)}
                         >
-                          + 添加引用
+                          {t('sections.addCitationFull')}
                         </button>
                         <button
                           className="text-secondary hover:text-primary text-sm"

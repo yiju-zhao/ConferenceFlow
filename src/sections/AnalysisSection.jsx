@@ -1,15 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { EditableField, SectionInlineAdd } from "../shared";
 import CitationBadges from "../components/CitationBadges";
-
-const blockTypes = [
-  { type: "stat-card", label: "数据卡片", extraFields: { label: "", value: "", description: "" } },
-  { type: "tree-root", label: "推演根节点", extraFields: { title: "", content: "" } },
-  { type: "tree-branch", label: "推演分支", extraFields: { title: "", content: "" } },
-  { type: "tree-evidence", label: "证据节点", extraFields: { content: "", source: "" } },
-  { type: "tree-conclusion", label: "结论", extraFields: { content: "" } },
-  { type: "heading", label: "小标题" },
-  { type: "body", label: "正文" },
-];
 
 /**
  * Group blocks into structured segments:
@@ -51,6 +42,18 @@ export default function AnalysisSection({
   openInlineMenu,
   onOpenInlineMenu,
 }) {
+  const { t } = useTranslation();
+
+  const blockTypes = [
+    { type: "stat-card", label: t('sections.statCard'), extraFields: { label: "", value: "", description: "" } },
+    { type: "tree-root", label: t('sections.treeRoot'), extraFields: { title: "", content: "" } },
+    { type: "tree-branch", label: t('sections.treeBranch'), extraFields: { title: "", content: "" } },
+    { type: "tree-evidence", label: t('sections.treeEvidence'), extraFields: { content: "", source: "" } },
+    { type: "tree-conclusion", label: t('sections.treeConclusion'), extraFields: { content: "" } },
+    { type: "heading", label: t('sections.heading') },
+    { type: "body", label: t('sections.body') },
+  ];
+
   const { statCards, treeRoot, branches, treeConclusion, legacyBlocks } = groupBlocks(blocks);
 
   // ── Empty state ───────────────────────────────────────────────────────────
@@ -87,7 +90,7 @@ export default function AnalysisSection({
     <button
       className={`absolute top-1 right-1 text-secondary hover:text-primary text-xs no-print opacity-0 group-hover:opacity-100 transition-opacity ${extraClass}`}
       onClick={() => onRemoveBlock(blockId)}
-      title="删除"
+      title={t('common.delete')}
     >
       ×
     </button>
@@ -117,7 +120,7 @@ export default function AnalysisSection({
                     <EditableField
                       value={card.label}
                       onSave={(html) => onUpdateBlock(card.id, { label: html })}
-                      placeholder="指标名称..."
+                      placeholder={t('sections.metricName')}
                       minHeight={14}
                     />
                   </div>
@@ -125,7 +128,7 @@ export default function AnalysisSection({
                     <EditableField
                       value={card.value}
                       onSave={(html) => onUpdateBlock(card.id, { value: html })}
-                      placeholder="数值..."
+                      placeholder={t('sections.metricValue')}
                       minHeight={24}
                     />
                   </div>
@@ -133,7 +136,7 @@ export default function AnalysisSection({
                     <EditableField
                       value={card.description}
                       onSave={(html) => onUpdateBlock(card.id, { description: html })}
-                      placeholder="说明..."
+                      placeholder={t('sections.metricDesc')}
                       minHeight={14}
                     />
                   </div>
@@ -153,7 +156,7 @@ export default function AnalysisSection({
                 <EditableField
                   value={treeRoot.title}
                   onSave={(html) => onUpdateBlock(treeRoot.id, { title: html })}
-                  placeholder="推演主题..."
+                  placeholder={t('sections.inferenceTheme')}
                   minHeight={18}
                 />
               </h4>
@@ -161,7 +164,7 @@ export default function AnalysisSection({
                 <EditableField
                   value={treeRoot.content}
                   onSave={(html) => onUpdateBlock(treeRoot.id, { content: html })}
-                  placeholder="核心推演描述..."
+                  placeholder={t('sections.coreInference')}
                   minHeight={18}
                 />
               </div>
@@ -185,7 +188,7 @@ export default function AnalysisSection({
                       <EditableField
                         value={branch.title}
                         onSave={(html) => onUpdateBlock(branch.id, { title: html })}
-                        placeholder="分支标题..."
+                        placeholder={t('sections.branchTitle')}
                         minHeight={16}
                       />
                     </h5>
@@ -193,7 +196,7 @@ export default function AnalysisSection({
                       <EditableField
                         value={branch.content}
                         onSave={(html) => onUpdateBlock(branch.id, { content: html })}
-                        placeholder="分支描述..."
+                        placeholder={t('sections.branchDesc')}
                         minHeight={16}
                       />
                     </div>
@@ -204,7 +207,7 @@ export default function AnalysisSection({
                       className="no-print mt-2 text-[10px] text-primary-fixed-dim hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 transition-colors"
                       onClick={() => onOpenCitationPicker(sectionName, branch.id)}
                     >
-                      + 引用
+                      {t('sections.addCitation')}
                     </button>
                   </div>
                   {renderInlineAdd(branch.id)}
@@ -223,7 +226,7 @@ export default function AnalysisSection({
                                 <EditableField
                                   value={ev.content}
                                   onSave={(html) => onUpdateBlock(ev.id, { content: html })}
-                                  placeholder="证据内容..."
+                                  placeholder={t('sections.evidenceContent')}
                                   minHeight={16}
                                 />
                               </div>
@@ -233,7 +236,7 @@ export default function AnalysisSection({
                                   <EditableField
                                     value={ev.source}
                                     onSave={(html) => onUpdateBlock(ev.id, { source: html })}
-                                    placeholder="来源..."
+                                    placeholder={t('sections.sourcePlaceholder')}
                                     minHeight={12}
                                   />
                                 </div>
@@ -260,7 +263,7 @@ export default function AnalysisSection({
                 <EditableField
                   value={treeConclusion.content}
                   onSave={(html) => onUpdateBlock(treeConclusion.id, { content: html })}
-                  placeholder="结论..."
+                  placeholder={t('sections.conclusion')}
                   minHeight={20}
                 />
               </div>
@@ -279,7 +282,7 @@ export default function AnalysisSection({
                   <EditableField
                     value={block.content}
                     onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                    placeholder="数据/指标..."
+                    placeholder={t('report.dataMetrics')}
                     minHeight={28}
                   />
                 </div>
@@ -291,7 +294,7 @@ export default function AnalysisSection({
                   <EditableField
                     value={block.content}
                     onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                    placeholder="输入分析内容..."
+                    placeholder={t('sections.analysisContent')}
                     minHeight={60}
                   />
                 </div>

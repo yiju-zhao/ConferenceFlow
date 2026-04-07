@@ -1,21 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { EditableField, SectionInlineAdd } from "../shared";
 import CitationBadges from "../components/CitationBadges";
-
-// ── Block type definitions for the inline-add popover ────────────────────────
-const BLOCK_TYPES = [
-  {
-    type: "category-header",
-    label: "分类标题",
-    extraFields: { icon: "memory", label: "", count: "" },
-  },
-  {
-    type: "session-card",
-    label: "Session 卡片",
-    extraFields: { sessionCode: "", title: "", speakers: "", quote: "", citations: [] },
-  },
-  { type: "heading", label: "小标题" },
-  { type: "body", label: "正文" },
-];
 
 // ── Border color by category index (1-based): odd = primary-container, even = secondary
 function borderColorForCategory(categoryIndex) {
@@ -64,6 +49,8 @@ function RemoveButton({ onClick }) {
 
 // ── Category Header block ────────────────────────────────────────────────────
 function CategoryHeaderBlock({ block, onUpdateBlock, onRemoveBlock }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-3 mb-5 relative group">
       <RemoveButton onClick={() => onRemoveBlock(block.id)} />
@@ -83,7 +70,7 @@ function CategoryHeaderBlock({ block, onUpdateBlock, onRemoveBlock }) {
         <EditableField
           value={block.label || ""}
           onSave={(html) => onUpdateBlock(block.id, { label: html })}
-          placeholder="分类标题..."
+          placeholder={t('sections.categoryTitle') + '...'}
           minHeight={20}
         />
       </h3>
@@ -109,6 +96,8 @@ function SessionCardBlock({
   sectionName,
   getCitationPreview,
 }) {
+  const { t } = useTranslation();
+
   return (
     <div
       className={`bg-surface-container-lowest p-5 border-l-4 ${borderClass} relative group`}
@@ -121,7 +110,7 @@ function SessionCardBlock({
           <EditableField
             value={block.sessionCode || ""}
             onSave={(html) => onUpdateBlock(block.id, { sessionCode: html })}
-            placeholder="SESSION CODE"
+            placeholder={t('sections.sessionCode')}
             minHeight={16}
           />
         </span>
@@ -132,7 +121,7 @@ function SessionCardBlock({
         <EditableField
           value={block.title || ""}
           onSave={(html) => onUpdateBlock(block.id, { title: html })}
-          placeholder="Session 标题..."
+          placeholder={t('sections.sessionTitle')}
           minHeight={20}
         />
       </h4>
@@ -143,7 +132,7 @@ function SessionCardBlock({
           <EditableField
             value={block.speakers || ""}
             onSave={(html) => onUpdateBlock(block.id, { speakers: html })}
-            placeholder="讲者..."
+            placeholder={t('sections.speaker')}
             minHeight={14}
           />
         </span>
@@ -157,7 +146,7 @@ function SessionCardBlock({
         <EditableField
           value={block.quote || ""}
           onSave={(html) => onUpdateBlock(block.id, { quote: html })}
-          placeholder="引用内容..."
+          placeholder={t('sections.quoteContent')}
           minHeight={20}
         />
       </p>
@@ -172,7 +161,7 @@ function SessionCardBlock({
         className="citation-add-btn no-print mt-2 text-xs text-secondary hover:text-primary bg-transparent border-none cursor-pointer"
         onClick={() => onOpenCitationPicker(sectionName, block.id)}
       >
-        + 添加引用
+        {t('sections.addCitationFull')}
       </button>
     </div>
   );
@@ -180,6 +169,8 @@ function SessionCardBlock({
 
 // ── Legacy block (heading / body) ────────────────────────────────────────────
 function LegacyBlock({ block, onUpdateBlock, onRemoveBlock }) {
+  const { t } = useTranslation();
+
   if (block.type === "heading") {
     return (
       <div className="relative group mb-2">
@@ -188,7 +179,7 @@ function LegacyBlock({ block, onUpdateBlock, onRemoveBlock }) {
           <EditableField
             value={block.content || ""}
             onSave={(html) => onUpdateBlock(block.id, { content: html })}
-            placeholder="输入小标题..."
+            placeholder={t('sections.enterSubtitle')}
             minHeight={28}
           />
         </div>
@@ -204,7 +195,7 @@ function LegacyBlock({ block, onUpdateBlock, onRemoveBlock }) {
         <EditableField
           value={block.content || ""}
           onSave={(html) => onUpdateBlock(block.id, { content: html })}
-          placeholder="输入正文..."
+          placeholder={t('sections.enterBody')}
           minHeight={40}
         />
       </div>
@@ -224,6 +215,23 @@ export default function VoicesSection({
   openInlineMenu,
   onOpenInlineMenu,
 }) {
+  const { t } = useTranslation();
+
+  const BLOCK_TYPES = [
+    {
+      type: "category-header",
+      label: t('sections.categoryTitle'),
+      extraFields: { icon: "memory", label: "", count: "" },
+    },
+    {
+      type: "session-card",
+      label: t('sections.sessionCard'),
+      extraFields: { sessionCode: "", title: "", speakers: "", quote: "", citations: [] },
+    },
+    { type: "heading", label: t('sections.heading') },
+    { type: "body", label: t('sections.body') },
+  ];
+
   const groups = groupBlocks(blocks);
 
   // Category index tracks which category-header we're on (1-based)
