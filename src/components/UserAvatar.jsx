@@ -105,9 +105,11 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
             right: 0,
             background: "#fff",
             boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+            borderRadius: 8,
             minWidth: 240,
             zIndex: 100,
             fontFamily: "'Inter', sans-serif",
+            overflow: "hidden",
           }}
         >
           {/* Profile info */}
@@ -182,27 +184,29 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
             )}
           </div>
 
-          {/* Actions */}
-          <div style={{ padding: 8 }}>
-            <div
-              style={{
-                width: "100%", padding: "8px 12px", fontSize: 12, color: "#5f5e5e",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              <span>{t('avatar.language')}</span>
-              <LanguageSwitcher className="text-xs px-2 py-0.5 rounded bg-[#f3f3f3] text-[#5f5e5e] hover:text-[#1a1c1c]" />
-            </div>
+          {/* Language */}
+          <div style={{
+            padding: "12px 16px",
+            borderTop: "1px solid #eee",
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <span style={{ fontSize: 14, color: "#333", fontFamily: "'Inter', sans-serif" }}>
+              {t('avatar.language')}
+            </span>
+            <LanguageSwitcher variant="badge" />
+          </div>
+
+          {/* Sign Out */}
+          <div style={{ borderTop: "1px solid #eee", padding: "8px 16px" }}>
             <button
               onClick={handleSignOut}
               style={{
-                width: "100%", padding: "8px 12px", fontSize: 12, color: "#5f5e5e",
+                width: "100%", padding: "8px 0", fontSize: 14, color: "#e53e3e",
                 background: "none", border: "none", cursor: "pointer", textAlign: "left",
                 fontFamily: "'Inter', sans-serif",
               }}
-              onMouseEnter={(e) => (e.target.style.background = "#f3f3f3")}
-              onMouseLeave={(e) => (e.target.style.background = "none")}
+              onMouseEnter={(e) => (e.target.style.color = "#c53030")}
+              onMouseLeave={(e) => (e.target.style.color = "#e53e3e")}
             >
               {t('avatar.signOut')}
             </button>
