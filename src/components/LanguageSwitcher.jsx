@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-export default function LanguageSwitcher({ className = "" }) {
+export default function LanguageSwitcher({ className = "", style }) {
   const { i18n } = useTranslation();
 
   const toggle = () => {
@@ -14,6 +14,7 @@ export default function LanguageSwitcher({ className = "" }) {
     <button
       onClick={toggle}
       className={`text-xs font-headline tracking-wider transition-colors ${className}`}
+      style={style}
       title={isZh ? 'Switch to English' : '切换到中文'}
     >
       {isZh ? '中文 / EN' : 'EN / 中文'}
