@@ -71,7 +71,8 @@
     "welcome": "欢迎使用 ConferenceFlow",
     "setupName": "设置您的显示名称",
     "enterYourName": "输入您的名字",
-    "continue": "继续"
+    "continue": "继续",
+    "language": "语言"
   },
   "admin": {
     "settings": "设置",

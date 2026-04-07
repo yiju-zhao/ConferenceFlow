@@ -71,7 +71,8 @@
     "welcome": "Welcome to ConferenceFlow",
     "setupName": "Set up your display name",
     "enterYourName": "Enter your name",
-    "continue": "Continue"
+    "continue": "Continue",
+    "language": "Language"
   },
   "admin": {
     "settings": "Settings",

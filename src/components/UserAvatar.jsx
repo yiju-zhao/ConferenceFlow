@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from 'react-i18next';
 import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants";
+import LanguageSwitcher from './LanguageSwitcher';
 
 function getAvatarColor(name) {
   let hash = 0;
@@ -183,6 +184,16 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
 
           {/* Actions */}
           <div style={{ padding: 8 }}>
+            <div
+              style={{
+                width: "100%", padding: "8px 12px", fontSize: 12, color: "#5f5e5e",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              <span>{t('avatar.language')}</span>
+              <LanguageSwitcher className="text-xs px-2 py-0.5 rounded bg-[#f3f3f3] text-[#5f5e5e] hover:text-[#1a1c1c]" />
+            </div>
             <button
               onClick={handleSignOut}
               style={{
