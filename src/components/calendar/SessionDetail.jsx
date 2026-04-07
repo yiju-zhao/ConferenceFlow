@@ -4,6 +4,25 @@ import { COLORS } from "../../constants";
 
 export default function SessionDetail({ session, members, isAttending, onToggleAttend }) {
   const { t } = useTranslation();
+
+  // Build attendee list with names and attendance mode
+  const attendees = useMemo(() => {
+    if (!session) return [];
+    return (session.attendees || [])
+      .map((uid) => {
+        const member = members.find((m) => (m.userId || m.id) === uid);
+        if (!member) return null;
+        return {
+          userId: uid,
+          name: member.displayName || member.legacyName || uid,
+          mode: member.attendanceMode || member.mode || "onsite",
+          color: COLORS[(member.colorIndex || 0) % COLORS.length].hex,
+          initials: (member.displayName || member.legacyName || uid).slice(0, 1).toUpperCase(),
+        };
+      })
+      .filter(Boolean);
+  }, [session, members]);
+
   if (!session) {
     return (
       <div className="cal-detail">
@@ -21,23 +40,6 @@ export default function SessionDetail({ session, members, isAttending, onToggleA
       </div>
     );
   }
-
-  // Build attendee list with names and attendance mode
-  const attendees = useMemo(() => {
-    return (session.attendees || [])
-      .map((uid) => {
-        const member = members.find((m) => (m.userId || m.id) === uid);
-        if (!member) return null;
-        return {
-          userId: uid,
-          name: member.displayName || member.legacyName || uid,
-          mode: member.attendanceMode || member.mode || "onsite",
-          color: COLORS[(member.colorIndex || 0) % COLORS.length].hex,
-          initials: (member.displayName || member.legacyName || uid).slice(0, 1).toUpperCase(),
-        };
-      })
-      .filter(Boolean);
-  }, [session.attendees, members]);
 
   const speakers = session.speakers || [];
 

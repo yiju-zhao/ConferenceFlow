@@ -6,6 +6,7 @@ import { db } from "./firebase";
 import { parseReportId, generateSummaryId } from "./lib/reportUtils";
 import { formatWeekday } from './i18n/dateUtils';
 import { useAuth } from "./contexts/AuthContext";
+import UserAvatar from "./components/UserAvatar";
 
 export default function ReportList() {
   const { t } = useTranslation();
@@ -149,8 +150,9 @@ export default function ReportList() {
   return (
     <div className="report-page report-list-page">
       <div className="report-toolbar no-print">
-        <div className="report-toolbar-inner">
+        <div className="report-toolbar-inner" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Link to={`/conference/${confId}`} className="report-back-btn">{t('reportList.backToSchedule')}</Link>
+          <UserAvatar size={28} onSignOut={() => navigate("/login")} />
         </div>
       </div>
 
