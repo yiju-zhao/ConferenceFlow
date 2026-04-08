@@ -191,9 +191,9 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
             display: "flex", justifyContent: "space-between", alignItems: "center",
           }}>
             <span style={{ fontSize: 14, color: "#333", fontFamily: "'Inter', sans-serif" }}>
-              {t('avatar.language')}
+              Language / 语言
             </span>
-            <LanguageSwitcher variant="badge" />
+            <LanguageSwitcher variant="dropdown" />
           </div>
 
           {/* Sign Out */}

@@ -3,12 +3,37 @@ import { useTranslation } from 'react-i18next';
 export default function LanguageSwitcher({ className = "", style, variant = "default" }) {
   const { i18n } = useTranslation();
 
+  const isZh = i18n.language.startsWith('zh');
+
+  if (variant === "dropdown") {
+    return (
+      <select
+        value={isZh ? 'zh-CN' : 'en-US'}
+        onChange={(e) => i18n.changeLanguage(e.target.value)}
+        style={{
+          padding: "4px 8px",
+          fontSize: 13,
+          fontWeight: 500,
+          color: "#333",
+          background: "#f3f3f3",
+          border: "1px solid #e5e5e5",
+          borderRadius: 6,
+          cursor: "pointer",
+          fontFamily: "'Inter', sans-serif",
+          outline: "none",
+          ...style,
+        }}
+      >
+        <option value="zh-CN">中文</option>
+        <option value="en-US">English</option>
+      </select>
+    );
+  }
+
   const toggle = () => {
-    const next = i18n.language.startsWith('zh') ? 'en-US' : 'zh-CN';
+    const next = isZh ? 'en-US' : 'zh-CN';
     i18n.changeLanguage(next);
   };
-
-  const isZh = i18n.language.startsWith('zh');
 
   if (variant === "badge") {
     return (
