@@ -114,7 +114,7 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
 
   if (sessions.length === 0) {
     return (
-      <div className="cal-grid">
+      <div className="cal-grid" style={{ padding: 16 }}>
         <div className="cal-grid-label">Your Schedule</div>
         <div className="cal-grid-empty">
           <div>
@@ -135,37 +135,41 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
 
   return (
     <div className="cal-grid">
-      <div className="cal-grid-label">Your Schedule</div>
+      {/* Frozen header: label + day headers */}
+      <div style={{ flexShrink: 0, padding: "16px 16px 0", background: "#171B21", zIndex: 2 }}>
+        <div className="cal-grid-label">Your Schedule</div>
 
-      {/* Day headers with pagination */}
-      <div style={{ display: "flex", marginBottom: 1, alignItems: "center" }}>
-        <div style={{ width: 56, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px" }}>
-          {hasPrev ? (
-            <button onClick={() => setDayPage(dayPage - 1)}
-              style={{ background: "none", border: "none", color: "#E8976B", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: 0 }}>
-              ←
-            </button>
-          ) : <span />}
-          {hasNext ? (
-            <button onClick={() => setDayPage(dayPage + 1)}
-              style={{ background: "none", border: "none", color: "#E8976B", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: 0 }}>
-              →
-            </button>
-          ) : <span />}
+        {/* Day headers with pagination */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ width: 56, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 4px" }}>
+            {hasPrev ? (
+              <button onClick={() => setDayPage(dayPage - 1)}
+                style={{ background: "none", border: "none", color: "#E8976B", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: 0 }}>
+                ←
+              </button>
+            ) : <span />}
+            {hasNext ? (
+              <button onClick={() => setDayPage(dayPage + 1)}
+                style={{ background: "none", border: "none", color: "#E8976B", cursor: "pointer", fontSize: 16, fontWeight: 700, padding: 0 }}>
+                →
+              </button>
+            ) : <span />}
+          </div>
+          {visibleDays.map((day) => {
+            const d = new Date(day + "T00:00:00");
+            const label = formatShortDate(d);
+            return (
+              <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
+                {label}
+              </div>
+            );
+          })}
         </div>
-        {visibleDays.map((day) => {
-          const d = new Date(day + "T00:00:00");
-          const label = formatShortDate(d);
-          return (
-            <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
-              {label}
-            </div>
-          );
-        })}
       </div>
 
-      {/* Time grid */}
-      <div style={{ display: "flex" }}>
+      {/* Scrollable time grid */}
+      <div style={{ flex: 1, minHeight: 0, overflow: "auto", padding: "0 16px 16px" }}>
+      <div style={{ display: "flex", marginTop: 1 }}>
         {/* Hour labels column */}
         <div style={{ width: 56, flexShrink: 0, position: "relative", height: totalHeight }}>
           {hourLabels.map((label) => {
@@ -248,6 +252,7 @@ export default function ScheduleGrid({ sessions, selectedId, onSelect, members }
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
