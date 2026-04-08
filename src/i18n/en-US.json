@@ -162,6 +162,7 @@
     "noPendingApplications": "No pending applications",
     "superAdminRequired": "Super Admin access required",
     "superAdmin": "Super Admin",
+    "adminPanel": "Admin Panel",
     "allConferences": "All Conferences",
     "createConference": "+ Create Conference",
     "newConference": "New Conference",

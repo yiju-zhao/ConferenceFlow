@@ -162,6 +162,7 @@
     "noPendingApplications": "暂无待审核申请",
     "superAdminRequired": "需要超级管理员权限",
     "superAdmin": "超级管理员",
+    "adminPanel": "管理面板",
     "allConferences": "所有会议",
     "createConference": "+ 创建会议",
     "newConference": "新建会议",
