@@ -43,22 +43,13 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-[#F7F5F2]">
       <div className="bg-gradient-to-r from-admin-teal-deep to-admin-teal px-6 py-3.5">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3.5">
-            <Link to={`/conference/${confId}`}
-              className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-              style={{ background: "rgba(255,255,255,0.18)", letterSpacing: "0.8px" }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.3)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}>
-              {t('admin.backBtn')}
-            </Link>
-            <h1 className="font-headline text-white text-lg font-bold" style={{ letterSpacing: "0.3px" }}>{t('admin.conferenceAdmin')}</h1>
-          </div>
-          <Link to="/dashboard"
+          <h1 className="font-headline text-white text-lg font-bold" style={{ letterSpacing: "0.3px" }}>{t('admin.conferenceAdmin')}</h1>
+          <Link to="/super-admin"
             className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
             style={{ background: "rgba(255,255,255,0.18)", letterSpacing: "0.8px" }}
             onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.3)"}
             onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}>
-            {t('dashboard.dashboard')}
+            ← {t('admin.adminPanel')}
           </Link>
         </div>
       </div>
