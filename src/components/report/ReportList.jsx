@@ -10,11 +10,93 @@ import {
   setDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "./firebase";
-import { parseReportId, generateSummaryId } from "./lib/reportUtils";
-import { formatWeekday } from "./i18n/dateUtils";
-import { useAuth } from "./contexts/AuthContext";
-import UserAvatar from "./components/UserAvatar";
+import { db } from "../../firebase";
+import { parseReportId, generateSummaryId } from "../../lib/reportUtils";
+import { formatWeekday } from "../../i18n/dateUtils";
+import { useAuth } from "../../contexts/AuthContext";
+import UserAvatar from "../UserAvatar";
+
+function ReportCard({
+  report,
+  confId,
+  dateContent,
+  metaContent,
+  linkText,
+  deleteConfirmId,
+  onArchive,
+  onUnarchive,
+  onDelete,
+  onDeleteConfirm,
+  onDeleteCancel,
+}) {
+  const { t } = useTranslation();
+  const isArchived = report.status === "archived";
+
+  return (
+    <div
+      className="report-card"
+      style={isArchived ? { opacity: 0.6 } : undefined}
+    >
+      <div className="report-card-main">
+        <div className="report-card-date">{dateContent}</div>
+        <div className="report-card-meta">{metaContent}</div>
+      </div>
+      <div className="report-card-right">
+        <button
+          className="report-archive-btn"
+          onClick={() =>
+            isArchived ? onUnarchive(report.id) : onArchive(report.id)
+          }
+        >
+          {isArchived
+            ? t("reportList.unarchive")
+            : t("reportList.archive")}
+        </button>
+        {isArchived &&
+          (deleteConfirmId === report.id ? (
+            <span
+              style={{
+                display: "inline-flex",
+                gap: 4,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: 11, color: "#CF0A2C" }}>
+                {t("reportList.confirmDelete")}
+              </span>
+              <button
+                className="report-archive-btn"
+                style={{ color: "#CF0A2C", fontWeight: 700 }}
+                onClick={() => onDelete(report.id)}
+              >
+                {t("common.delete")}
+              </button>
+              <button
+                className="report-archive-btn"
+                onClick={onDeleteCancel}
+              >
+                {t("common.cancel")}
+              </button>
+            </span>
+          ) : (
+            <button
+              className="report-archive-btn"
+              style={{ color: "#CF0A2C" }}
+              onClick={() => onDeleteConfirm(report.id)}
+            >
+              {t("common.delete")}
+            </button>
+          ))}
+        <Link
+          to={`/conference/${confId}/report/${report.id}`}
+          className="report-card-view-btn"
+        >
+          {linkText} &rarr;
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 export default function ReportList() {
   const { t } = useTranslation();
@@ -64,7 +146,7 @@ export default function ReportList() {
   }, [reportDocs]);
 
   // Show only the latest version per date, plus summary reports at top
-  const displayReports = (() => {
+  const displayReports = useMemo(() => {
     // Separate summary reports from daily reports
     const summaryReports = reportDocs.filter((r) =>
       r.id.startsWith("summary-"),
@@ -104,7 +186,7 @@ export default function ReportList() {
       ...filteredSummary.sort((a, b) => b.id.localeCompare(a.id)),
       ...filteredDaily,
     ];
-  })();
+  }, [reportDocs, showArchived]);
 
   // Dates that already have reports
   const reportedDates = useMemo(() => {
@@ -311,160 +393,61 @@ export default function ReportList() {
           ) : (
             displayReports.map((r) => {
               const isSummary = r.id.startsWith("summary-");
-              const isArchived = r.status === "archived";
 
               if (isSummary) {
                 return (
-                  <div
+                  <ReportCard
                     key={r.id}
-                    className="report-card"
-                    style={isArchived ? { opacity: 0.6 } : undefined}
-                  >
-                    <div className="report-card-main">
-                      <div className="report-card-date">
-                        <span className="summary-badge">
-                          {t("reportList.summaryBadge")}
-                        </span>
-                      </div>
-                      <div className="report-card-meta">
-                        <span style={{ fontSize: 12, color: "#888" }}>
-                          {(r.sourceReports || []).join(", ")}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="report-card-right">
-                      <button
-                        className="report-archive-btn"
-                        onClick={() =>
-                          isArchived
-                            ? unarchiveReport(r.id)
-                            : archiveReport(r.id)
-                        }
-                      >
-                        {isArchived
-                          ? t("reportList.unarchive")
-                          : t("reportList.archive")}
-                      </button>
-                      {isArchived &&
-                        (deleteConfirmId === r.id ? (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              gap: 4,
-                              alignItems: "center",
-                            }}
-                          >
-                            <span style={{ fontSize: 11, color: "#CF0A2C" }}>
-                              {t("reportList.confirmDelete")}
-                            </span>
-                            <button
-                              className="report-archive-btn"
-                              style={{ color: "#CF0A2C", fontWeight: 700 }}
-                              onClick={() => handleDeleteReport(r.id)}
-                            >
-                              {t("common.delete")}
-                            </button>
-                            <button
-                              className="report-archive-btn"
-                              onClick={() => setDeleteConfirmId(null)}
-                            >
-                              {t("common.cancel")}
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            className="report-archive-btn"
-                            style={{ color: "#CF0A2C" }}
-                            onClick={() => setDeleteConfirmId(r.id)}
-                          >
-                            {t("common.delete")}
-                          </button>
-                        ))}
-                      <Link
-                        to={`/conference/${confId}/report/${r.id}`}
-                        className="report-card-view-btn"
-                      >
-                        {t("reportList.manageSummary")} &rarr;
-                      </Link>
-                    </div>
-                  </div>
+                    report={r}
+                    confId={confId}
+                    dateContent={
+                      <span className="summary-badge">
+                        {t("reportList.summaryBadge")}
+                      </span>
+                    }
+                    metaContent={
+                      <span style={{ fontSize: 12, color: "#888" }}>
+                        {(r.sourceReports || []).join(", ")}
+                      </span>
+                    }
+                    linkText={t("reportList.manageSummary")}
+                    deleteConfirmId={deleteConfirmId}
+                    onArchive={archiveReport}
+                    onUnarchive={unarchiveReport}
+                    onDelete={handleDeleteReport}
+                    onDeleteConfirm={setDeleteConfirmId}
+                    onDeleteCancel={() => setDeleteConfirmId(null)}
+                  />
                 );
               }
 
               const weekday = formatWeekday(new Date(r.date + "T00:00"));
               return (
-                <div
+                <ReportCard
                   key={r.id}
-                  className="report-card"
-                  style={isArchived ? { opacity: 0.6 } : undefined}
-                >
-                  <div className="report-card-main">
-                    <div className="report-card-date">
+                  report={r}
+                  confId={confId}
+                  dateContent={
+                    <>
                       {r.date}{" "}
                       <span style={{ fontWeight: 400, color: "#888" }}>
                         {weekday}
                       </span>
-                    </div>
-                    <div className="report-card-meta">
-                      <span style={{ fontSize: 12, color: "#888" }}>
-                        {Object.keys(r.sessions || {}).length} sessions
-                      </span>
-                    </div>
-                  </div>
-                  <div className="report-card-right">
-                    <button
-                      className="report-archive-btn"
-                      onClick={() =>
-                        isArchived ? unarchiveReport(r.id) : archiveReport(r.id)
-                      }
-                    >
-                      {isArchived
-                        ? t("reportList.unarchive")
-                        : t("reportList.archive")}
-                    </button>
-                    {isArchived &&
-                      (deleteConfirmId === r.id ? (
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            gap: 4,
-                            alignItems: "center",
-                          }}
-                        >
-                          <span style={{ fontSize: 11, color: "#CF0A2C" }}>
-                            {t("reportList.confirmDelete")}
-                          </span>
-                          <button
-                            className="report-archive-btn"
-                            style={{ color: "#CF0A2C", fontWeight: 700 }}
-                            onClick={() => handleDeleteReport(r.id)}
-                          >
-                            {t("common.delete")}
-                          </button>
-                          <button
-                            className="report-archive-btn"
-                            onClick={() => setDeleteConfirmId(null)}
-                          >
-                            {t("common.cancel")}
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          className="report-archive-btn"
-                          style={{ color: "#CF0A2C" }}
-                          onClick={() => setDeleteConfirmId(r.id)}
-                        >
-                          {t("common.delete")}
-                        </button>
-                      ))}
-                    <Link
-                      to={`/conference/${confId}/report/${r.id}`}
-                      className="report-card-view-btn"
-                    >
-                      {t("reportList.viewReport")} &rarr;
-                    </Link>
-                  </div>
-                </div>
+                    </>
+                  }
+                  metaContent={
+                    <span style={{ fontSize: 12, color: "#888" }}>
+                      {Object.keys(r.sessions || {}).length} sessions
+                    </span>
+                  }
+                  linkText={t("reportList.viewReport")}
+                  deleteConfirmId={deleteConfirmId}
+                  onArchive={archiveReport}
+                  onUnarchive={unarchiveReport}
+                  onDelete={handleDeleteReport}
+                  onDeleteConfirm={setDeleteConfirmId}
+                  onDeleteCancel={() => setDeleteConfirmId(null)}
+                />
               );
             })
           )}

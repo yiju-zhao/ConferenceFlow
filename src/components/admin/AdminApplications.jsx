@@ -1,43 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
-import { db } from "../../firebase";
 import { apiFetch } from "../../lib/api";
 import { useTranslation } from "react-i18next";
+import { useConferenceMembers } from "../../hooks/useConferenceMembers";
 
 export default function AdminApplications() {
   const { confId } = useParams();
   const { t } = useTranslation();
-  const [members, setMembers] = useState([]);
-  const [userNames, setUserNames] = useState({});
+  const { members, memberNames } = useConferenceMembers(confId);
   const [processing, setProcessing] = useState(null);
   const [filter, setFilter] = useState("pending");
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(db, "conferences", confId, "members"),
-      async (snap) => {
-        const arr = snap.docs.map((d) => ({ userId: d.id, ...d.data() }));
-        setMembers(arr);
-        const names = {};
-        for (const m of arr) {
-          if (m.legacyName) {
-            names[m.userId] = m.legacyName + " (legacy)";
-          } else {
-            try {
-              const userSnap = await getDoc(doc(db, "users", m.userId));
-              names[m.userId] = userSnap.exists()
-                ? userSnap.data().displayName || userSnap.data().email
-                : m.userId;
-            } catch {
-              names[m.userId] = m.userId;
-            }
-          }
-        }
-        setUserNames(names);
-      },
-    );
-  }, [confId]);
 
   const handleApprove = async (userId) => {
     setProcessing(userId);
@@ -110,12 +82,12 @@ export default function AdminApplications() {
         )}
         {filtered.map((m, index) => (
           <div
-            key={m.userId}
+            key={m.id}
             className={`p-4 flex justify-between items-center hover:bg-[#FAFAF8] transition-colors ${index > 0 ? "border-t border-[#E8E4DF]" : ""}`}
           >
             <div>
               <div className="text-on-surface font-bold text-sm">
-                {userNames[m.userId] || m.userId}
+                {memberNames[m.id] || m.id}
               </div>
               <div className="text-secondary text-xs mt-1 flex gap-3">
                 <span>{m.attendanceMode || "onsite"}</span>
@@ -132,15 +104,15 @@ export default function AdminApplications() {
             {m.status === "pending" && (
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleApprove(m.userId)}
-                  disabled={processing === m.userId}
+                  onClick={() => handleApprove(m.id)}
+                  disabled={processing === m.id}
                   className="bg-[#27AE60] text-white px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity disabled:opacity-50 rounded-lg"
                 >
                   {t("admin.approve")}
                 </button>
                 <button
-                  onClick={() => handleReject(m.userId)}
-                  disabled={processing === m.userId}
+                  onClick={() => handleReject(m.id)}
+                  disabled={processing === m.id}
                   className="bg-white border border-[#E8E4DF] text-secondary px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:text-red-600 hover:border-red-300 transition-colors disabled:opacity-50 rounded-lg"
                 >
                   {t("admin.reject")}
