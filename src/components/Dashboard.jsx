@@ -246,37 +246,39 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#F7F5F2]">
       <FirstTimeNameSetup />
-      <div className="bg-gradient-to-r from-dash-blue-deep to-dash-blue px-6 py-3.5 flex justify-between items-center">
-        <h1
-          className="font-headline text-white text-lg font-bold"
-          style={{ letterSpacing: "0.3px" }}
-        >
-          ConferenceFlow
-        </h1>
-        <div className="flex items-center gap-2.5">
-          {isSuperAdmin && (
-            <Link
-              to="/super-admin"
-              className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                letterSpacing: "0.8px",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
-              }
-            >
-              {t("dashboard.adminPanel")}
-            </Link>
-          )}
-          <UserAvatar size={28} onSignOut={() => navigate("/login")} />
+      <div className="bg-gradient-to-r from-dash-blue-deep to-dash-blue px-6 py-3.5">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <h1
+            className="font-headline text-white text-lg font-bold"
+            style={{ letterSpacing: "0.3px" }}
+          >
+            ConferenceFlow
+          </h1>
+          <div className="flex items-center gap-2.5">
+            {isSuperAdmin && (
+              <Link
+                to="/super-admin"
+                className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
+                style={{
+                  background: "rgba(255,255,255,0.18)",
+                  letterSpacing: "0.8px",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
+                }
+              >
+                {t("dashboard.adminPanel")}
+              </Link>
+            )}
+            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
+          </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto p-8 pt-10">
+      <div className="max-w-6xl mx-auto p-8 pt-10">
         {!membershipsReady ? (
           /* Skeleton loading state */
           <div className="animate-pulse">
