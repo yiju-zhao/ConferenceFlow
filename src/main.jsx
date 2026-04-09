@@ -18,10 +18,10 @@ import Dashboard from "./components/Dashboard";
 
 // Lazy-loaded route components (heavy pages loaded on demand)
 const CalendarPage = lazy(() => import("./components/calendar/CalendarPage"));
-const DailyReport = lazy(() => import("./DailyReport"));
-const ConferenceReport = lazy(() => import("./ConferenceReport"));
-const ReportList = lazy(() => import("./ReportList"));
-const ViewReport = lazy(() => import("./ViewReport"));
+const DailyReport = lazy(() => import("./components/report/DailyReport"));
+const ConferenceReport = lazy(() => import("./components/report/ConferenceReport"));
+const ReportList = lazy(() => import("./components/report/ReportList"));
+const ViewReport = lazy(() => import("./components/report/ViewReport"));
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminSettings = lazy(() => import("./components/admin/AdminSettings"));
 const AdminSessions = lazy(() => import("./components/admin/AdminSessions"));

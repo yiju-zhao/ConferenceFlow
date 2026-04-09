@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { ref, getDownloadURL } from "firebase/storage";
-import { storage } from "./firebase";
+import { storage } from "../../firebase";
 import { useTranslation } from "react-i18next";
 
 export default function ViewReport() {

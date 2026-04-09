@@ -13,9 +13,9 @@ import {
   deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db, storage } from "./firebase";
-import { useAuth } from "./contexts/AuthContext";
-import { useMembership } from "./hooks/useMembership";
+import { db, storage } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
+import { useMembership } from "../../hooks/useMembership";
 import {
   ref,
   uploadString,
@@ -23,24 +23,24 @@ import {
   deleteObject,
   listAll,
 } from "firebase/storage";
-import { COLORS, COLOR_PRESETS } from "./constants";
-import { SESSION_CATALOG } from "./sessionCatalog";
-import { parseReportId, generateId } from "./lib/reportUtils";
-import { useDebouncedSave } from "./hooks/useDebouncedSave";
-import { EditableField, InlineAddButton, BulletEditor } from "./shared";
-import { usePresence } from "./components/report/usePresence";
-import PresenceBar from "./components/report/PresenceBar";
+import { COLORS, COLOR_PRESETS } from "../../constants";
+import { SESSION_CATALOG } from "../../sessionCatalog";
+import { parseReportId, generateId } from "../../lib/reportUtils";
+import { useDebouncedSave } from "../../hooks/useDebouncedSave";
+import { EditableField, InlineAddButton, BulletEditor } from "./SharedEditors";
+import { usePresence } from "./usePresence";
+import PresenceBar from "./PresenceBar";
 import { useTranslation } from "react-i18next";
-import { formatDateTime } from "./i18n/dateUtils";
-import huaweiLogo from "./assets/huawei_logo.png";
+import { formatDateTime } from "../../i18n/dateUtils";
+import huaweiLogo from "../../assets/huawei_logo.png";
 import IntelCard, {
   topicSlug,
   formatOneSource,
   normaliseSources,
-} from "./components/report/IntelCard";
-import SessionPicker from "./components/report/SessionPicker";
-import SpeakersEditor from "./components/report/SpeakersEditor";
-import SnapshotViewer from "./components/report/SnapshotViewer";
+} from "./IntelCard";
+import SessionPicker from "./SessionPicker";
+import SpeakersEditor from "./SpeakersEditor";
+import SnapshotViewer from "./SnapshotViewer";
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
 export default function DailyReport({ viewMode: viewModeProp = false }) {

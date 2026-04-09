@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { COLORS } from "../../constants";
 import { SESSION_CATALOG } from "../../sessionCatalog";
-import { EditableField } from "../../shared";
+import { EditableField } from "./SharedEditors";
 import SessionPicker from "./SessionPicker";
 
 export const topicSlug = (t) =>

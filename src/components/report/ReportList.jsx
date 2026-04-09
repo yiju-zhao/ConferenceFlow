@@ -10,11 +10,11 @@ import {
   setDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { db } from "./firebase";
-import { parseReportId, generateSummaryId } from "./lib/reportUtils";
-import { formatWeekday } from "./i18n/dateUtils";
-import { useAuth } from "./contexts/AuthContext";
-import UserAvatar from "./components/UserAvatar";
+import { db } from "../../firebase";
+import { parseReportId, generateSummaryId } from "../../lib/reportUtils";
+import { formatWeekday } from "../../i18n/dateUtils";
+import { useAuth } from "../../contexts/AuthContext";
+import UserAvatar from "../UserAvatar";
 
 function ReportCard({
   report,

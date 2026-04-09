@@ -6,19 +6,6 @@ export function parseReportId(reportId) {
     : { date: reportId, version: 1, isLegacy: true };
 }
 
-export function latestOrNewVersionId(date, allDocs) {
-  if (allDocs.some((r) => r.id === date)) return date;
-  const vDocs = allDocs.filter((r) => parseReportId(r.id).date === date);
-  if (vDocs.length > 0) {
-    const maxV = vDocs.reduce(
-      (max, r) => Math.max(max, parseReportId(r.id).version),
-      0,
-    );
-    return `${date}-v${maxV}`;
-  }
-  return date;
-}
-
 // ── Summary ID generator ─────────────────────────────────────────────────────
 export function generateSummaryId(existingDocs) {
   const summaryDocs = existingDocs
