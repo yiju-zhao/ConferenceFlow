@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
+import UserAvatar from "../UserAvatar";
 
 function Field({ label, value, onChange, type = "text", placeholder = "" }) {
   return (
@@ -25,6 +26,7 @@ function Field({ label, value, onChange, type = "text", placeholder = "" }) {
 
 export default function SuperAdminPanel() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const [conferences, setConferences] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -88,22 +90,25 @@ export default function SuperAdminPanel() {
           >
             {t("admin.adminPanel")}
           </h1>
-          <Link
-            to="/dashboard"
-            className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-            style={{
-              background: "rgba(255,255,255,0.18)",
-              letterSpacing: "0.8px",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
-            }
-          >
-            {t("dashboard.dashboard")}
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link
+              to="/dashboard"
+              className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
+              style={{
+                background: "rgba(255,255,255,0.18)",
+                letterSpacing: "0.8px",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
+              }
+            >
+              {t("dashboard.dashboard")}
+            </Link>
+            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
+          </div>
         </div>
       </div>
       <div className="max-w-4xl mx-auto p-6">

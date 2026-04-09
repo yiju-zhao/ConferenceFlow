@@ -1,11 +1,13 @@
-import { NavLink, Outlet, useParams, Link } from "react-router-dom";
+import { NavLink, Outlet, useParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMembership } from "../../hooks/useMembership";
+import UserAvatar from "../UserAvatar";
 
 export default function AdminLayout() {
   const { confId } = useParams();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user, isSuperAdmin } = useAuth();
   const { isAdmin, loading } = useMembership(confId);
 
@@ -93,17 +95,18 @@ export default function AdminLayout() {
                 {t("admin.adminPanel")}
               </Link>
             )}
+            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
           </div>
         </div>
       </div>
-      <div className="bg-white border-t border-white/10 border-b border-[#E8E4DF]">
+      <div className="bg-white border-b border-[#E8E4DF]">
         <div className="max-w-6xl mx-auto flex">
           {tabs.map((tab) => (
             <NavLink
               key={tab.path}
               to={`/conference/${confId}/admin/${tab.path}`}
               className={({ isActive }) =>
-                `px-6 py-3 text-sm font-headline uppercase tracking-wider transition-colors duration-50 ${isActive ? "text-admin-teal border-b-[3px] border-admin-teal bg-admin-teal/5" : "text-secondary hover:text-on-surface"}`
+                `px-6 h-11 flex items-center text-sm font-headline uppercase tracking-wider transition-colors duration-50 ${isActive ? "text-admin-teal border-b-[3px] border-admin-teal bg-admin-teal/5" : "text-secondary hover:text-on-surface border-b-[3px] border-transparent"}`
               }
             >
               {tab.label}
