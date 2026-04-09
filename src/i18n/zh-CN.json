@@ -77,9 +77,9 @@
   "admin": {
     "settings": "设置",
     "sessions": "Sessions",
-    "applications": "申请管理",
-    "attendance": "考勤",
-    "reports": "报告",
+    "applications": "参会申请",
+    "attendance": "参会计划",
+    "reports": "报告管理",
     "conferenceAdmin": "会议管理",
     "backToConference": "← 返回会议",
     "backBtn": "← 返回",
