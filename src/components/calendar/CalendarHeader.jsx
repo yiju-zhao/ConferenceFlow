@@ -23,7 +23,7 @@ export default function CalendarHeader({ confName }) {
       <div className="cal-header-actions">
         {isAdmin && (
           <Link to={`/conference/${confId}/admin/settings`} className="cal-header-btn">
-            {t('dashboard.admin')}
+            {t('admin.conferenceAdmin')}
           </Link>
         )}
         <Link to={`/conference/${confId}/reports`} className="cal-header-btn">

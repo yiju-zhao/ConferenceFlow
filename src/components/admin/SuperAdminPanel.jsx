@@ -57,7 +57,7 @@ export default function SuperAdminPanel() {
             style={{ background: "rgba(255,255,255,0.18)", letterSpacing: "0.8px" }}
             onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.3)"}
             onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}>
-            ← {t('dashboard.dashboard')}
+            {t('dashboard.dashboard')}
           </Link>
         </div>
       </div>
