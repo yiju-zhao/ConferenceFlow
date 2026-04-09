@@ -34,18 +34,31 @@ import { COLORS } from "./constants";
 import { SESSION_CATALOG } from "./sessionCatalog";
 import { getInitials } from "./lib/reportUtils";
 function parseCSVLine(text) {
-  let ret = [], inQuote = false, value = "";
+  let ret = [],
+    inQuote = false,
+    value = "";
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (inQuote) {
       if (ch === '"') {
-        if (i + 1 < text.length && text[i + 1] === '"') { value += '"'; i++; }
-        else { inQuote = false; }
-      } else { value += ch; }
+        if (i + 1 < text.length && text[i + 1] === '"') {
+          value += '"';
+          i++;
+        } else {
+          inQuote = false;
+        }
+      } else {
+        value += ch;
+      }
     } else {
-      if (ch === '"') { inQuote = true; }
-      else if (ch === ',') { ret.push(value.trim()); value = ""; }
-      else { value += ch; }
+      if (ch === '"') {
+        inQuote = true;
+      } else if (ch === ",") {
+        ret.push(value.trim());
+        value = "";
+      } else {
+        value += ch;
+      }
     }
   }
   ret.push(value.trim());
@@ -76,23 +89,34 @@ function formatHourBucket(startMinutes) {
 // ── Calendar session card ─────────────────────────────────────────────────────
 function CalendarSessionCard({ session, members, toggleAttendance, user }) {
   return (
-    <div className={`calendar-session-card${session.attendees.size === 0 ? " calendar-card--unassigned" : ""}${session.attendees.size >= 3 ? " calendar-card--popular" : ""}`}>
+    <div
+      className={`calendar-session-card${session.attendees.size === 0 ? " calendar-card--unassigned" : ""}${session.attendees.size >= 3 ? " calendar-card--popular" : ""}`}
+    >
       <div className="calendar-card-top">
         <span className="code-badge">{session.code}</span>
-        {session.session_type && <SessionTypeBadge type={session.session_type} />}
+        {session.session_type && (
+          <SessionTypeBadge type={session.session_type} />
+        )}
         {session.format && <FormatBadge format={session.format} />}
-        {session.recording && session.recording !== "Yes" && <NoRecordingBadge />}
+        {session.recording && session.recording !== "Yes" && (
+          <NoRecordingBadge />
+        )}
         <span className="font-mono calendar-card-time">
           {session.start}–{session.end}
         </span>
       </div>
       <p className="calendar-card-title">
-        {SESSION_CATALOG.get(session.code)?.url
-          ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer">
-              {SESSION_CATALOG.get(session.code)?.title || session.title}
-            </a>
-          : SESSION_CATALOG.get(session.code)?.title || session.title
-        }
+        {SESSION_CATALOG.get(session.code)?.url ? (
+          <a
+            href={SESSION_CATALOG.get(session.code).url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {SESSION_CATALOG.get(session.code)?.title || session.title}
+          </a>
+        ) : (
+          SESSION_CATALOG.get(session.code)?.title || session.title
+        )}
       </p>
       {session.room && (
         <div className="calendar-card-room">
@@ -129,7 +153,14 @@ function CalendarSessionCard({ session, members, toggleAttendance, user }) {
 }
 
 // ── Calendar view ─────────────────────────────────────────────────────────────
-function CalendarView({ groupedSessions, members, toggleAttendance, user, collapsedDates, toggleDateCollapse }) {
+function CalendarView({
+  groupedSessions,
+  members,
+  toggleAttendance,
+  user,
+  collapsedDates,
+  toggleDateCollapse,
+}) {
   return (
     <div className="calendar-view">
       {groupedSessions.map(({ date, sessions: dateSessions }) => {
@@ -140,7 +171,9 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
           if (!buckets[key]) buckets[key] = [];
           buckets[key].push(s);
         });
-        const sortedBuckets = Object.entries(buckets).sort(([a], [b]) => Number(a) - Number(b));
+        const sortedBuckets = Object.entries(buckets).sort(
+          ([a], [b]) => Number(a) - Number(b),
+        );
         const isCollapsed = collapsedDates.has(date);
 
         return (
@@ -153,7 +186,11 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
               <ChevronRight
                 size={13}
                 color="var(--brand)"
-                style={{ transition: "transform 0.2s", transform: isCollapsed ? "none" : "rotate(90deg)", flexShrink: 0 }}
+                style={{
+                  transition: "transform 0.2s",
+                  transform: isCollapsed ? "none" : "rotate(90deg)",
+                  flexShrink: 0,
+                }}
               />
               <CalendarDays size={13} color="var(--brand)" />
               <span className="calendar-date-text">{date}</span>
@@ -163,33 +200,34 @@ function CalendarView({ groupedSessions, members, toggleAttendance, user, collap
             </div>
 
             {/* Hourly time slot groups */}
-            {!isCollapsed && sortedBuckets.map(([bucketKey, slotSessions]) => (
-              <div key={bucketKey} className="calendar-time-slot">
-                {/* Slot header */}
-                <div className="calendar-time-label">
-                  <Clock size={11} color="var(--brand)" />
-                  <span className="font-mono calendar-time-text">
-                    {formatHourBucket(Number(bucketKey))}
-                  </span>
-                  <span className="font-mono calendar-time-count">
-                    {slotSessions.length}
-                  </span>
-                  <div className="calendar-time-divider" />
+            {!isCollapsed &&
+              sortedBuckets.map(([bucketKey, slotSessions]) => (
+                <div key={bucketKey} className="calendar-time-slot">
+                  {/* Slot header */}
+                  <div className="calendar-time-label">
+                    <Clock size={11} color="var(--brand)" />
+                    <span className="font-mono calendar-time-text">
+                      {formatHourBucket(Number(bucketKey))}
+                    </span>
+                    <span className="font-mono calendar-time-count">
+                      {slotSessions.length}
+                    </span>
+                    <div className="calendar-time-divider" />
+                  </div>
+                  {/* Session cards */}
+                  <div className="calendar-session-list">
+                    {slotSessions.map((s) => (
+                      <CalendarSessionCard
+                        key={s.code}
+                        session={s}
+                        members={members}
+                        toggleAttendance={toggleAttendance}
+                        user={user}
+                      />
+                    ))}
+                  </div>
                 </div>
-                {/* Session cards */}
-                <div className="calendar-session-list">
-                  {slotSessions.map((s) => (
-                    <CalendarSessionCard
-                      key={s.code}
-                      session={s}
-                      members={members}
-                      toggleAttendance={toggleAttendance}
-                      user={user}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
         );
       })}
@@ -208,7 +246,8 @@ const FormatBadge = ({ format }) => (
 
 const NoRecordingBadge = () => (
   <span className="schedule-badge schedule-badge--warning">
-    <VideoOff size={9} />No Rec
+    <VideoOff size={9} />
+    No Rec
   </span>
 );
 
@@ -221,30 +260,32 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
     if (!query.trim()) return [];
     const q = query.trim().toUpperCase();
     return catalogData
-      .filter(s => s.session_id.toUpperCase().includes(q) || s.title.toLowerCase().includes(query.trim().toLowerCase()))
+      .filter(
+        (s) =>
+          s.session_id.toUpperCase().includes(q) ||
+          s.title.toLowerCase().includes(query.trim().toLowerCase()),
+      )
       .slice(0, 20);
   }, [query]);
 
   return (
-    <div
-      onClick={onClose}
-      className="add-session-overlay"
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="add-session-modal"
-      >
+    <div onClick={onClose} className="add-session-overlay">
+      <div onClick={(e) => e.stopPropagation()} className="add-session-modal">
         {/* Header */}
         <div className="add-session-header">
           <div className="add-session-header-bar">
-            <span className="add-session-header-title">{t('calendar.addSession')}</span>
-            <button onClick={onClose} className="add-session-close">×</button>
+            <span className="add-session-header-title">
+              {t("calendar.addSession")}
+            </span>
+            <button onClick={onClose} className="add-session-close">
+              ×
+            </button>
           </div>
           <input
             autoFocus
             value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={t('calendar.searchSessionPlaceholder')}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("calendar.searchSessionPlaceholder")}
             className="add-session-input"
           />
         </div>
@@ -253,46 +294,53 @@ function AddSessionModal({ sessions, onAdd, onClose }) {
         <div className="add-session-results">
           {!query.trim() ? (
             <div className="add-session-empty">
-              {t('calendar.searchSessionPlaceholder')}
+              {t("calendar.searchSessionPlaceholder")}
             </div>
           ) : results.length === 0 ? (
             <div className="add-session-empty">
-              {t('calendar.noMatchingSession')}
+              {t("calendar.noMatchingSession")}
             </div>
-          ) : results.map(s => {
-            const alreadyAdded = !!sessions[s.session_id];
-            return (
-              <div
-                key={s.session_id}
-                className="add-session-result"
-              >
-                <span className="font-mono add-session-result-id">
-                  {s.session_id}
-                </span>
-                <div className="add-session-result-info">
-                  <div className="add-session-result-title">
-                    {s.title}
-                  </div>
-                  <div className="add-session-result-meta">
-                    {s.date}{s.time ? ` · ${s.time.replace(/\s*(PDT|PST|EST|EDT)\s*/i, "").trim()}` : ""}
-                  </div>
-                </div>
-                {alreadyAdded ? (
-                  <span className="font-mono schedule-badge" style={{ flexShrink: 0 }}>
-                    {t('calendar.alreadyAdded')}
+          ) : (
+            results.map((s) => {
+              const alreadyAdded = !!sessions[s.session_id];
+              return (
+                <div key={s.session_id} className="add-session-result">
+                  <span className="font-mono add-session-result-id">
+                    {s.session_id}
                   </span>
-                ) : (
-                  <button
-                    onClick={() => onAdd(s.session_id)}
-                    className="btn-accent"
-                    style={{ fontSize: 11, padding: "3px 12px", flexShrink: 0 }}
-                  >
-                    {t('common.add')}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+                  <div className="add-session-result-info">
+                    <div className="add-session-result-title">{s.title}</div>
+                    <div className="add-session-result-meta">
+                      {s.date}
+                      {s.time
+                        ? ` · ${s.time.replace(/\s*(PDT|PST|EST|EDT)\s*/i, "").trim()}`
+                        : ""}
+                    </div>
+                  </div>
+                  {alreadyAdded ? (
+                    <span
+                      className="font-mono schedule-badge"
+                      style={{ flexShrink: 0 }}
+                    >
+                      {t("calendar.alreadyAdded")}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => onAdd(s.session_id)}
+                      className="btn-accent"
+                      style={{
+                        fontSize: 11,
+                        padding: "3px 12px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {t("common.add")}
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
@@ -337,7 +385,7 @@ export default function App() {
         arr.sort((a, b) => Number(a.id) - Number(b.id));
         setMembers(arr);
       },
-      console.error
+      console.error,
     );
   }, [user, confId]);
 
@@ -350,11 +398,14 @@ export default function App() {
         const map = {};
         snap.forEach((d) => {
           const data = d.data();
-          map[data.code] = { ...data, attendees: new Set(data.attendees || []) };
+          map[data.code] = {
+            ...data,
+            attendees: new Set(data.attendees || []),
+          };
         });
         setSessions(map);
       },
-      console.error
+      console.error,
     );
   }, [user, confId]);
 
@@ -363,21 +414,28 @@ export default function App() {
   useEffect(() => {
     if (!user || Object.keys(sessions).length === 0) return;
     const toEnrich = Object.values(sessions).filter(
-      (s) => !s.url && SESSION_CATALOG.has(s.code) && !enrichedRef.current.has(s.code)
+      (s) =>
+        !s.url &&
+        SESSION_CATALOG.has(s.code) &&
+        !enrichedRef.current.has(s.code),
     );
     if (toEnrich.length === 0) return;
     toEnrich.forEach((s) => enrichedRef.current.add(s.code));
     Promise.all(
       toEnrich.map((s) => {
         const info = SESSION_CATALOG.get(s.code);
-        return setDoc(doc(db, "conferences", confId, "sessions", s.code), {
-          url: info.url || "",
-          speakers: info.speakers || [],
-          format: info.format || "",
-          recording: info.recording || "",
-          session_type: info.session_type || "",
-        }, { merge: true });
-      })
+        return setDoc(
+          doc(db, "conferences", confId, "sessions", s.code),
+          {
+            url: info.url || "",
+            speakers: info.speakers || [],
+            format: info.format || "",
+            recording: info.recording || "",
+            session_type: info.session_type || "",
+          },
+          { merge: true },
+        );
+      }),
     ).catch(console.error);
   }, [user, confId, sessions]);
 
@@ -387,24 +445,35 @@ export default function App() {
     if (!file || !activeUploadMember) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      const lines = event.target.result.split("\n").map((l) => l.trim()).filter(Boolean);
+      const lines = event.target.result
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
       let hi = 0;
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes("Session Code") || lines[i].includes("Session Title")) { hi = i; break; }
+        if (
+          lines[i].includes("Session Code") ||
+          lines[i].includes("Session Title")
+        ) {
+          hi = i;
+          break;
+        }
       }
       const headers = parseCSVLine(lines[hi]).map((h) => h.toLowerCase());
-      const titleIdx     = headers.findIndex((h) => h.includes("title"));
-      const codeIdx      = headers.findIndex((h) => h.includes("code"));
-      const dateIdx      = headers.findIndex((h) => h.includes("date"));
-      const startIdx     = headers.findIndex((h) => h.includes("start"));
-      const endIdx       = headers.findIndex((h) => h.includes("end"));
-      const roomIdx      = headers.findIndex((h) => h.includes("room"));
-      const topicIdx     = headers.findIndex((h) => h.includes("topic") || h.includes("主题"));
+      const titleIdx = headers.findIndex((h) => h.includes("title"));
+      const codeIdx = headers.findIndex((h) => h.includes("code"));
+      const dateIdx = headers.findIndex((h) => h.includes("date"));
+      const startIdx = headers.findIndex((h) => h.includes("start"));
+      const endIdx = headers.findIndex((h) => h.includes("end"));
+      const roomIdx = headers.findIndex((h) => h.includes("room"));
+      const topicIdx = headers.findIndex(
+        (h) => h.includes("topic") || h.includes("主题"),
+      );
       const scheduledIdx = headers.findIndex((h) => h.includes("scheduled"));
       const favoritedIdx = headers.findIndex((h) => h.includes("favorit"));
 
       if (codeIdx === -1 || titleIdx === -1) {
-        alert(t('calendar.unrecognizedCsvFormat'));
+        alert(t("calendar.unrecognizedCsvFormat"));
         return;
       }
 
@@ -420,12 +489,12 @@ export default function App() {
         if (!existing) {
           map[code] = {
             code,
-            title:     (row[titleIdx] || "").replace(/^\(Favorited\)\s*/i, ""),
-            date:      dateIdx      !== -1 ? row[dateIdx]      : "",
-            start:     startIdx     !== -1 ? row[startIdx]     : "",
-            end:       endIdx       !== -1 ? row[endIdx]       : "",
-            room:      roomIdx      !== -1 ? row[roomIdx]      : "",
-            mainTopic: topicIdx     !== -1 ? row[topicIdx]     : "",
+            title: (row[titleIdx] || "").replace(/^\(Favorited\)\s*/i, ""),
+            date: dateIdx !== -1 ? row[dateIdx] : "",
+            start: startIdx !== -1 ? row[startIdx] : "",
+            end: endIdx !== -1 ? row[endIdx] : "",
+            room: roomIdx !== -1 ? row[roomIdx] : "",
+            mainTopic: topicIdx !== -1 ? row[topicIdx] : "",
             scheduled: scheduledIdx !== -1 ? row[scheduledIdx] : "",
             favorited: favoritedIdx !== -1 ? row[favoritedIdx] : "",
             attendees: new Set([activeUploadMember]),
@@ -452,8 +521,8 @@ export default function App() {
             setDoc(doc(db, "conferences", confId, "sessions", code), {
               ...map[code],
               attendees: Array.from(map[code].attendees),
-            })
-          )
+            }),
+          ),
         ).catch(console.error);
       }
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -469,7 +538,12 @@ export default function App() {
 
   const addMember = async () => {
     if (!newMemberName.trim()) return;
-    if (!user) { alert(t('calendar.firebaseNotReady', { error: authError || "user is null" })); return; }
+    if (!user) {
+      alert(
+        t("calendar.firebaseNotReady", { error: authError || "user is null" }),
+      );
+      return;
+    }
     try {
       const id = Date.now().toString();
       await setDoc(doc(db, "conferences", confId, "members", id), {
@@ -485,7 +559,7 @@ export default function App() {
       setNewMemberName("");
     } catch (err) {
       console.error("addMember error:", err);
-      alert(t('calendar.writeFailed', { error: err.message }));
+      alert(t("calendar.writeFailed", { error: err.message }));
     }
   };
 
@@ -498,10 +572,16 @@ export default function App() {
         .map((session) => {
           const att = Array.from(session.attendees).filter((x) => x !== id);
           if (att.length === 0) {
-            return deleteDoc(doc(db, "conferences", confId, "sessions", session.code));
+            return deleteDoc(
+              doc(db, "conferences", confId, "sessions", session.code),
+            );
           }
-          return setDoc(doc(db, "conferences", confId, "sessions", session.code), { ...session, attendees: att }, { merge: true });
-        })
+          return setDoc(
+            doc(db, "conferences", confId, "sessions", session.code),
+            { ...session, attendees: att },
+            { merge: true },
+          );
+        }),
     );
   };
 
@@ -510,19 +590,26 @@ export default function App() {
     const session = sessions[code];
     if (!session) return;
     const att = new Set(session.attendees);
-    if (att.has(memberId)) att.delete(memberId); else att.add(memberId);
-    await setDoc(doc(db, "conferences", confId, "sessions", code), { ...session, attendees: Array.from(att) }, { merge: true });
+    if (att.has(memberId)) att.delete(memberId);
+    else att.add(memberId);
+    await setDoc(
+      doc(db, "conferences", confId, "sessions", code),
+      { ...session, attendees: Array.from(att) },
+      { merge: true },
+    );
   };
 
   const emptySessions = useMemo(
-    () => Object.values(sessions).filter(s => s.attendees.size === 0),
-    [sessions]
+    () => Object.values(sessions).filter((s) => s.attendees.size === 0),
+    [sessions],
   );
 
   const cleanupEmptySessions = async () => {
     if (!user) return;
     await Promise.all(
-      emptySessions.map(s => deleteDoc(doc(db, "conferences", confId, "sessions", s.code)))
+      emptySessions.map((s) =>
+        deleteDoc(doc(db, "conferences", confId, "sessions", s.code)),
+      ),
     );
     setShowCleanupConfirm(false);
   };
@@ -536,9 +623,22 @@ export default function App() {
     const parseDate = (str) => {
       const m = (str || "").match(/(\w+)\s+(\d+)/);
       if (!m) return str || "";
-      const months = { January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12 };
+      const months = {
+        January: 1,
+        February: 2,
+        March: 3,
+        April: 4,
+        May: 5,
+        June: 6,
+        July: 7,
+        August: 8,
+        September: 9,
+        October: 10,
+        November: 11,
+        December: 12,
+      };
       const mo = months[m[1]] || 1;
-      return `2026-${String(mo).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`;
+      return `2026-${String(mo).padStart(2, "0")}-${String(m[2]).padStart(2, "0")}`;
     };
 
     // Convert "9:00 a.m." / "1:00 p.m." → "09:00" / "13:00"
@@ -551,7 +651,7 @@ export default function App() {
       const ampm = m[3].toLowerCase().replace(/\./g, "");
       if (ampm === "pm" && h !== 12) h += 12;
       if (ampm === "am" && h === 12) h = 0;
-      return `${String(h).padStart(2,"0")}:${min}`;
+      return `${String(h).padStart(2, "0")}:${min}`;
     };
 
     const timeParts = (info.time || "").split(" - ");
@@ -576,15 +676,18 @@ export default function App() {
   };
 
   const onlineMembers = useMemo(
-    () => members.filter(m => (m.mode || "onsite") === "online"),
-    [members]
+    () => members.filter((m) => (m.mode || "onsite") === "online"),
+    [members],
   );
 
   const sortedSessions = useMemo(
-    () => Object.values(sessions).sort((a, b) =>
-      a.date !== b.date ? a.date.localeCompare(b.date) : a.start.localeCompare(b.start)
-    ),
-    [sessions]
+    () =>
+      Object.values(sessions).sort((a, b) =>
+        a.date !== b.date
+          ? a.date.localeCompare(b.date)
+          : a.start.localeCompare(b.start),
+      ),
+    [sessions],
   );
 
   const groupedSessions = useMemo(() => {
@@ -594,7 +697,10 @@ export default function App() {
       if (!groups[d]) groups[d] = [];
       groups[d].push(s);
     });
-    return Object.entries(groups).map(([date, items]) => ({ date, sessions: items }));
+    return Object.entries(groups).map(([date, items]) => ({
+      date,
+      sessions: items,
+    }));
   }, [sortedSessions]);
 
   useEffect(() => {
@@ -618,17 +724,32 @@ export default function App() {
     });
 
   const exportToCSV = () => {
-    const toExport = sortedSessions.filter((s) => exportDates.has(s.date || "TBD"));
-    if (!toExport.length) { alert(t('calendar.selectAtLeastOneDate')); return; }
-    let csv = "Date,Start,End,Code,Title,Room,主要主题," + onlineMembers.map((m) => m.name).join(",") + "\n";
+    const toExport = sortedSessions.filter((s) =>
+      exportDates.has(s.date || "TBD"),
+    );
+    if (!toExport.length) {
+      alert(t("calendar.selectAtLeastOneDate"));
+      return;
+    }
+    let csv =
+      "Date,Start,End,Code,Title,Room,主要主题," +
+      onlineMembers.map((m) => m.name).join(",") +
+      "\n";
     toExport.forEach((s) => {
       const safeTitle = s.title.includes(",") ? `"${s.title}"` : s.title;
-      const safeRoom  = s.room.includes(",")  ? `"${s.room}"`  : s.room;
-      const safeTopic = (s.mainTopic || "").includes(",") ? `"${s.mainTopic}"` : (s.mainTopic || "");
+      const safeRoom = s.room.includes(",") ? `"${s.room}"` : s.room;
+      const safeTopic = (s.mainTopic || "").includes(",")
+        ? `"${s.mainTopic}"`
+        : s.mainTopic || "";
       csv += `${s.date},${s.start},${s.end},${s.code},${safeTitle},${safeRoom},${safeTopic},`;
-      csv += onlineMembers.map((m) => (s.attendees.has(m.id) ? "是" : "")).join(",") + "\n";
+      csv +=
+        onlineMembers
+          .map((m) => (s.attendees.has(m.id) ? "是" : ""))
+          .join(",") + "\n";
     });
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "GTC2026_Team_Schedule.csv";
@@ -642,7 +763,6 @@ export default function App() {
   return (
     <div className="schedule-page gtc-page-outer">
       <div className="schedule-container">
-
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <header className="card animate-fade-up schedule-header-card">
           {/* decorative GTC watermark – clipped in its own layer so the dropdown can overflow the header */}
@@ -653,83 +773,128 @@ export default function App() {
           <div className="schedule-header">
             <div>
               <div className="schedule-header-status">
-                <div className="status-live" style={{ background: authError ? "var(--error)" : user ? "var(--success)" : "var(--warning)" }} />
+                <div
+                  className="status-live"
+                  style={{
+                    background: authError
+                      ? "var(--error)"
+                      : user
+                        ? "var(--success)"
+                        : "var(--warning)",
+                  }}
+                />
                 <span
                   className="font-mono schedule-status-dot"
-                  style={{ color: authError ? "var(--error)" : user ? "var(--success)" : "var(--warning)" }}
+                  style={{
+                    color: authError
+                      ? "var(--error)"
+                      : user
+                        ? "var(--success)"
+                        : "var(--warning)",
+                  }}
                 >
-                  {authError ? "Auth Failed" : user ? "Live Sync" : "Connecting..."}
+                  {authError
+                    ? "Auth Failed"
+                    : user
+                      ? "Live Sync"
+                      : "Connecting..."}
                 </span>
               </div>
               <h1 className="schedule-header-title gtc-header-title">
                 <Zap size={22} color="var(--brand)" strokeWidth={2.5} />
-                {t('calendar.teamScheduleTitle')}
+                {t("calendar.teamScheduleTitle")}
               </h1>
               <p className="schedule-header-subtitle">
-                {t('calendar.teamScheduleSubtitle')}
+                {t("calendar.teamScheduleSubtitle")}
               </p>
             </div>
 
             {/* Header right actions */}
             <div className="schedule-header-actions">
-            <Link to={`/conference/${confId}/reports`} className="btn-accent schedule-header-report-link">
-              <FileText size={14} />
-              {t('calendar.reportManagement')}
-            </Link>
-            {isAdmin && (
-              <Link to={`/conference/${confId}/admin/settings`} className="btn-accent schedule-header-report-link">
-                Admin
-              </Link>
-            )}
-
-            {/* Export button + dropdown */}
-            <div style={{ position: "relative" /* needed for dropdown positioning */ }}>
-              <button
-                className="btn-ghost"
-                onClick={() => { setShowExportMenu(!showExportMenu); setShowImportMenu(false); }}
+              <Link
+                to={`/conference/${confId}/reports`}
+                className="btn-accent schedule-header-report-link"
               >
-                <Download size={15} />
-                {t('calendar.exportSchedule')}
-                <ChevronDown
-                  size={14}
-                  style={{ transition: "transform 0.2s", transform: showExportMenu ? "rotate(180deg)" : "none" }}
-                />
-              </button>
-
-              {showExportMenu && (
-                <div className="dropdown-panel">
-                  <p className="font-mono export-dropdown-label">
-                    {t('calendar.selectExportDates')}
-                  </p>
-                  <div className="export-dropdown-dates">
-                    {groupedSessions.length === 0 ? (
-                      <span className="export-no-dates">{t('calendar.noDates')}</span>
-                    ) : (
-                      groupedSessions.map((g) => (
-                        <label key={g.date} className="export-date-label">
-                          <input
-                            type="checkbox"
-                            className="gtc-check"
-                            checked={exportDates.has(g.date)}
-                            onChange={() => toggleExportDate(g.date)}
-                          />
-                          <span className="export-date-name">{g.date}</span>
-                          <span className="font-mono export-date-count">
-                            ×{g.sessions.length}
-                          </span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                  <div className="export-dropdown-footer">
-                    <button className="btn-ghost" onClick={() => setShowExportMenu(false)}>{t('common.cancel')}</button>
-                    <button className="btn-accent export-confirm-btn" onClick={exportToCSV}>
-                      {t('calendar.confirmExport')}
-                    </button>
-                  </div>
-                </div>
+                <FileText size={14} />
+                {t("calendar.reportManagement")}
+              </Link>
+              {isAdmin && (
+                <Link
+                  to={`/conference/${confId}/admin/settings`}
+                  className="btn-accent schedule-header-report-link"
+                >
+                  Admin
+                </Link>
               )}
-            </div>
+
+              {/* Export button + dropdown */}
+              <div
+                style={{
+                  position: "relative" /* needed for dropdown positioning */,
+                }}
+              >
+                <button
+                  className="btn-ghost"
+                  onClick={() => {
+                    setShowExportMenu(!showExportMenu);
+                    setShowImportMenu(false);
+                  }}
+                >
+                  <Download size={15} />
+                  {t("calendar.exportSchedule")}
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      transition: "transform 0.2s",
+                      transform: showExportMenu ? "rotate(180deg)" : "none",
+                    }}
+                  />
+                </button>
+
+                {showExportMenu && (
+                  <div className="dropdown-panel">
+                    <p className="font-mono export-dropdown-label">
+                      {t("calendar.selectExportDates")}
+                    </p>
+                    <div className="export-dropdown-dates">
+                      {groupedSessions.length === 0 ? (
+                        <span className="export-no-dates">
+                          {t("calendar.noDates")}
+                        </span>
+                      ) : (
+                        groupedSessions.map((g) => (
+                          <label key={g.date} className="export-date-label">
+                            <input
+                              type="checkbox"
+                              className="gtc-check"
+                              checked={exportDates.has(g.date)}
+                              onChange={() => toggleExportDate(g.date)}
+                            />
+                            <span className="export-date-name">{g.date}</span>
+                            <span className="font-mono export-date-count">
+                              ×{g.sessions.length}
+                            </span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                    <div className="export-dropdown-footer">
+                      <button
+                        className="btn-ghost"
+                        onClick={() => setShowExportMenu(false)}
+                      >
+                        {t("common.cancel")}
+                      </button>
+                      <button
+                        className="btn-accent export-confirm-btn"
+                        onClick={exportToCSV}
+                      >
+                        {t("calendar.confirmExport")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -739,7 +904,7 @@ export default function App() {
           <div className="schedule-members-header">
             <UserPlus size={15} color="var(--text-muted)" />
             <span className="font-mono schedule-section-label">
-              {t('calendar.teamMembers')}
+              {t("calendar.teamMembers")}
             </span>
             <span className="font-mono schedule-members-count">
               / {members.length} members
@@ -760,22 +925,41 @@ export default function App() {
                   }}
                 >
                   <div className="member-card-identity">
-                    <div className="member-card-dot" style={{ background: c.hex, boxShadow: `0 0 6px ${c.hex}` }} />
+                    <div
+                      className="member-card-dot"
+                      style={{
+                        background: c.hex,
+                        boxShadow: `0 0 6px ${c.hex}`,
+                      }}
+                    />
                     <span className="member-card-name" style={{ color: c.hex }}>
                       {member.name}
                     </span>
                   </div>
                   <button
                     className="member-card-mode"
-                    onClick={() => setDoc(doc(db, "conferences", confId, "members", member.id), { ...member, mode: (member.mode || "onsite") === "online" ? "onsite" : "online" })}
-                    title={t('report.toggleOnlineOnsite')}
+                    onClick={() =>
+                      setDoc(
+                        doc(db, "conferences", confId, "members", member.id),
+                        {
+                          ...member,
+                          mode:
+                            (member.mode || "onsite") === "online"
+                              ? "onsite"
+                              : "online",
+                        },
+                      )
+                    }
+                    title={t("report.toggleOnlineOnsite")}
                   >
-                    {(member.mode || "onsite") === "online" ? t('dashboard.online') : t('dashboard.onsite')}
+                    {(member.mode || "onsite") === "online"
+                      ? t("dashboard.online")
+                      : t("dashboard.onsite")}
                   </button>
                   <button
                     onClick={() => removeMember(member.id)}
                     className="member-card-remove"
-                    title={t('calendar.removeMember')}
+                    title={t("calendar.removeMember")}
                   >
                     <Trash2 size={13} />
                   </button>
@@ -787,17 +971,26 @@ export default function App() {
             <div className="schedule-member-add">
               <input
                 className="gtc-input"
-                placeholder={t('calendar.addMember')}
+                placeholder={t("calendar.addMember")}
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addMember()}
-                style={{ padding: "6px 10px", fontSize: 12, flex: 1, minWidth: 0 /* dynamic sizing */ }}
+                style={{
+                  padding: "6px 10px",
+                  fontSize: 12,
+                  flex: 1,
+                  minWidth: 0 /* dynamic sizing */,
+                }}
               />
               <button
                 onClick={addMember}
                 className="btn-accent"
-                style={{ padding: "6px 10px", fontSize: 12, flexShrink: 0 /* compact button */ }}
-                title={t('common.add')}
+                style={{
+                  padding: "6px 10px",
+                  fontSize: 12,
+                  flexShrink: 0 /* compact button */,
+                }}
+                title={t("common.add")}
               >
                 <UserPlus size={13} />
               </button>
@@ -820,33 +1013,54 @@ export default function App() {
             <div className="schedule-table-bar-left">
               <FileSpreadsheet size={15} color="var(--text-muted)" />
               <span className="font-mono schedule-section-label">
-                {viewMode === "table" ? t('calendar.scheduleMatrix') : t('calendar.scheduleCalendar')}
+                {viewMode === "table"
+                  ? t("calendar.scheduleMatrix")
+                  : t("calendar.scheduleCalendar")}
               </span>
             </div>
             <div className="schedule-table-bar-right">
               <div style={{ position: "relative" }}>
                 <button
                   className="btn-accent"
-                  onClick={() => { setShowImportMenu(!showImportMenu); setShowExportMenu(false); }}
+                  onClick={() => {
+                    setShowImportMenu(!showImportMenu);
+                    setShowExportMenu(false);
+                  }}
                   style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
                   disabled={members.length === 0}
                 >
                   <Upload size={12} />
-                  {t('calendar.importSchedule')}
+                  {t("calendar.importSchedule")}
                 </button>
                 {showImportMenu && members.length > 0 && (
                   <div className="import-member-dropdown">
-                    <div className="import-member-dropdown-label">{t('calendar.selectMember')}</div>
+                    <div className="import-member-dropdown-label">
+                      {t("calendar.selectMember")}
+                    </div>
                     {members.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
                         <button
                           key={m.id}
                           className="import-member-dropdown-item"
-                          onClick={() => { setShowImportMenu(false); triggerUpload(m.id); }}
+                          onClick={() => {
+                            setShowImportMenu(false);
+                            triggerUpload(m.id);
+                          }}
                         >
-                          <span className="member-card-dot" style={{ background: c.hex, width: 8, height: 8, borderRadius: "50%", flexShrink: 0 }} />
-                          <span style={{ color: c.hex, fontWeight: 600 }}>{m.name}</span>
+                          <span
+                            className="member-card-dot"
+                            style={{
+                              background: c.hex,
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span style={{ color: c.hex, fontWeight: 600 }}>
+                            {m.name}
+                          </span>
                         </button>
                       );
                     })}
@@ -859,24 +1073,36 @@ export default function App() {
                 style={{ padding: "4px 10px", fontSize: 11, gap: 4 }}
               >
                 <Plus size={13} />
-                {t('calendar.addSession')}
+                {t("calendar.addSession")}
               </button>
               {emptySessions.length > 0 && !showCleanupConfirm && (
                 <button
                   onClick={() => setShowCleanupConfirm(true)}
-                  title={t('report.deleteUnattended')}
+                  title={t("report.deleteUnattended")}
                   className="font-mono schedule-cleanup-btn"
                 >
-                  {t('calendar.cleanup')} · {emptySessions.length}
+                  {t("calendar.cleanup")} · {emptySessions.length}
                 </button>
               )}
               {showCleanupConfirm && (
                 <div className="schedule-cleanup-confirm">
                   <span className="font-mono schedule-cleanup-confirm-text">
-                    {t('calendar.confirmCleanup', { count: emptySessions.length })}
+                    {t("calendar.confirmCleanup", {
+                      count: emptySessions.length,
+                    })}
                   </span>
-                  <button onClick={cleanupEmptySessions} className="schedule-confirm-yes">{t('common.confirm')}</button>
-                  <button onClick={() => setShowCleanupConfirm(false)} className="schedule-confirm-no">{t('common.cancel')}</button>
+                  <button
+                    onClick={cleanupEmptySessions}
+                    className="schedule-confirm-yes"
+                  >
+                    {t("common.confirm")}
+                  </button>
+                  <button
+                    onClick={() => setShowCleanupConfirm(false)}
+                    className="schedule-confirm-no"
+                  >
+                    {t("common.cancel")}
+                  </button>
                 </div>
               )}
               <span className="font-mono schedule-session-count">
@@ -885,14 +1111,14 @@ export default function App() {
               <div className="schedule-view-toggle">
                 <button
                   onClick={() => setViewMode("table")}
-                  title={t('calendar.tableView')}
+                  title={t("calendar.tableView")}
                   className={`schedule-view-btn${viewMode === "table" ? " active" : ""}`}
                 >
                   <LayoutList size={13} />
                 </button>
                 <button
                   onClick={() => setViewMode("calendar")}
-                  title={t('calendar.calendarView')}
+                  title={t("calendar.calendarView")}
                   className={`schedule-view-btn${viewMode === "calendar" ? " active" : ""}`}
                 >
                   <CalendarRange size={13} />
@@ -913,15 +1139,33 @@ export default function App() {
               />
             )}
             {groupedSessions.length > 0 && viewMode === "table" ? (
-              <table className="schedule-table" style={{ tableLayout: "fixed", width: "100%" }}>
+              <table
+                className="schedule-table"
+                style={{ tableLayout: "fixed", width: "100%" }}
+              >
                 <thead>
                   <tr>
-                    <th style={{ width: 180, textAlign: "left" }}>{t('calendar.timeLocation')}</th>
-                    <th style={{ textAlign: "left", maxWidth: 420 }}>Session</th>
+                    <th style={{ width: 180, textAlign: "left" }}>
+                      {t("calendar.timeLocation")}
+                    </th>
+                    <th style={{ textAlign: "left", maxWidth: 420 }}>
+                      Session
+                    </th>
                     {onlineMembers.map((m) => {
                       const c = COLORS[m.colorIndex];
                       return (
-                        <th key={m.id} title={m.name} style={{ width: 48, textAlign: "center", color: c.hex, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
+                        <th
+                          key={m.id}
+                          title={m.name}
+                          style={{
+                            width: 48,
+                            textAlign: "center",
+                            color: c.hex,
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: 1.3,
+                          }}
+                        >
                           {getInitials(m.name)}
                         </th>
                       );
@@ -942,10 +1186,18 @@ export default function App() {
                             <ChevronRight
                               size={13}
                               color="var(--brand)"
-                              style={{ transition: "transform 0.2s", transform: collapsedDates.has(group.date) ? "none" : "rotate(90deg)", flexShrink: 0 }}
+                              style={{
+                                transition: "transform 0.2s",
+                                transform: collapsedDates.has(group.date)
+                                  ? "none"
+                                  : "rotate(90deg)",
+                                flexShrink: 0,
+                              }}
                             />
                             <CalendarDays size={13} color="var(--brand)" />
-                            <span className="table-date-text">{group.date}</span>
+                            <span className="table-date-text">
+                              {group.date}
+                            </span>
                             <span className="font-mono table-date-count">
                               {group.sessions.length} sessions
                             </span>
@@ -954,95 +1206,148 @@ export default function App() {
                       </tr>
 
                       {/* Session rows */}
-                      {!collapsedDates.has(group.date) && group.sessions.map((session) => (
-                        <tr key={session.code} className="session-row">
-                          {/* Time + Room */}
-                          <td className="col-time" style={{ width: 160, maxWidth: 160 }}>
-                            <div className="table-col-time-inner">
-                              <div className="table-time-row">
-                                <Clock size={11} color="var(--brand)" />
-                                <span className="font-mono table-time-text">
-                                  {session.start}–{session.end}
-                                </span>
-                              </div>
-                              {session.room && (
-                                <div className="table-room-row">
-                                  <MapPin size={11} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 1 }} />
-                                  <span className="table-room-text">
-                                    {session.room}
+                      {!collapsedDates.has(group.date) &&
+                        group.sessions.map((session) => (
+                          <tr key={session.code} className="session-row">
+                            {/* Time + Room */}
+                            <td
+                              className="col-time"
+                              style={{ width: 160, maxWidth: 160 }}
+                            >
+                              <div className="table-col-time-inner">
+                                <div className="table-time-row">
+                                  <Clock size={11} color="var(--brand)" />
+                                  <span className="font-mono table-time-text">
+                                    {session.start}–{session.end}
                                   </span>
                                 </div>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Session code + title */}
-                          <td className="col-session" style={{ width: 380, maxWidth: 420 }}>
-                            <div className="table-session-inner">
-                              {/* Code badge + attribute pills on same row */}
-                              <div className="table-session-meta-row">
-                                {session.url
-                                  ? <a href={session.url} target="_blank" rel="noopener noreferrer"
-                                       style={{ textDecoration: "none" }}>
-                                      <span className="code-badge">{session.code}</span>
-                                    </a>
-                                  : <span className="code-badge">{session.code}</span>
-                                }
-                                {(session.session_type || session.format || session.recording === "No") && (
-                                  <div className="table-session-pills">
-                                    {session.session_type && <SessionTypeBadge type={session.session_type} />}
-                                    {session.format && <FormatBadge format={session.format} />}
-                                    {session.recording && session.recording !== "Yes" && <NoRecordingBadge />}
+                                {session.room && (
+                                  <div className="table-room-row">
+                                    <MapPin
+                                      size={11}
+                                      color="var(--text-muted)"
+                                      style={{ flexShrink: 0, marginTop: 1 }}
+                                    />
+                                    <span className="table-room-text">
+                                      {session.room}
+                                    </span>
                                   </div>
                                 )}
                               </div>
+                            </td>
 
-                              {/* Title */}
-                              <p className="table-session-title">
-                                {SESSION_CATALOG.get(session.code)?.url
-                                  ? <a href={SESSION_CATALOG.get(session.code).url} target="_blank" rel="noopener noreferrer">
-                                      {SESSION_CATALOG.get(session.code)?.title || session.title}
+                            {/* Session code + title */}
+                            <td
+                              className="col-session"
+                              style={{ width: 380, maxWidth: 420 }}
+                            >
+                              <div className="table-session-inner">
+                                {/* Code badge + attribute pills on same row */}
+                                <div className="table-session-meta-row">
+                                  {session.url ? (
+                                    <a
+                                      href={session.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ textDecoration: "none" }}
+                                    >
+                                      <span className="code-badge">
+                                        {session.code}
+                                      </span>
                                     </a>
-                                  : SESSION_CATALOG.get(session.code)?.title || session.title
-                                }
-                              </p>
-
-                              {/* Speakers */}
-                              {session.speakers?.length > 0 && (
-                                <div className="table-session-speakers">
-                                  {session.speakers.map((sp, i) => (
-                                    <span key={i} className="table-session-speaker">
-                                      {sp.name}{sp.title ? ` · ${sp.title}` : ""}{sp.company ? `, ${sp.company}` : ""}
+                                  ) : (
+                                    <span className="code-badge">
+                                      {session.code}
                                     </span>
-                                  ))}
+                                  )}
+                                  {(session.session_type ||
+                                    session.format ||
+                                    session.recording === "No") && (
+                                    <div className="table-session-pills">
+                                      {session.session_type && (
+                                        <SessionTypeBadge
+                                          type={session.session_type}
+                                        />
+                                      )}
+                                      {session.format && (
+                                        <FormatBadge format={session.format} />
+                                      )}
+                                      {session.recording &&
+                                        session.recording !== "Yes" && (
+                                          <NoRecordingBadge />
+                                        )}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </td>
 
-                          {/* Attendance toggles */}
-                          {onlineMembers.map((member) => {
-                            const c = COLORS[member.colorIndex];
-                            const isOn = session.attendees.has(member.id);
-                            return (
-                              <td key={member.id} className="col-attend" style={{ textAlign: "center" }}>
-                                <button
-                                  onClick={() => toggleAttendance(session.code, member.id)}
-                                  className={`attend-btn${isOn ? " active" : ""}`}
-                                  style={{
-                                    "--member-color": c.hex,
-                                    "--member-bg":    c.bg,
-                                    "--member-glow":  c.glow,
-                                  }}
-                                  title={t('calendar.toggleAttendance', { name: member.name })}
+                                {/* Title */}
+                                <p className="table-session-title">
+                                  {SESSION_CATALOG.get(session.code)?.url ? (
+                                    <a
+                                      href={
+                                        SESSION_CATALOG.get(session.code).url
+                                      }
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      {SESSION_CATALOG.get(session.code)
+                                        ?.title || session.title}
+                                    </a>
+                                  ) : (
+                                    SESSION_CATALOG.get(session.code)?.title ||
+                                    session.title
+                                  )}
+                                </p>
+
+                                {/* Speakers */}
+                                {session.speakers?.length > 0 && (
+                                  <div className="table-session-speakers">
+                                    {session.speakers.map((sp, i) => (
+                                      <span
+                                        key={i}
+                                        className="table-session-speaker"
+                                      >
+                                        {sp.name}
+                                        {sp.title ? ` · ${sp.title}` : ""}
+                                        {sp.company ? `, ${sp.company}` : ""}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Attendance toggles */}
+                            {onlineMembers.map((member) => {
+                              const c = COLORS[member.colorIndex];
+                              const isOn = session.attendees.has(member.id);
+                              return (
+                                <td
+                                  key={member.id}
+                                  className="col-attend"
+                                  style={{ textAlign: "center" }}
                                 >
-                                  <span className="attend-dot" />
-                                </button>
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
+                                  <button
+                                    onClick={() =>
+                                      toggleAttendance(session.code, member.id)
+                                    }
+                                    className={`attend-btn${isOn ? " active" : ""}`}
+                                    style={{
+                                      "--member-color": c.hex,
+                                      "--member-bg": c.bg,
+                                      "--member-glow": c.glow,
+                                    }}
+                                    title={t("calendar.toggleAttendance", {
+                                      name: member.name,
+                                    })}
+                                  >
+                                    <span className="attend-dot" />
+                                  </button>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
                     </React.Fragment>
                   ))}
                 </tbody>
@@ -1054,21 +1359,25 @@ export default function App() {
                 <div className="schedule-empty-grid-wrap">
                   <div className="empty-grid">
                     {Array.from({ length: 24 }).map((_, i) => (
-                      <div key={i} className="empty-cell" style={{ opacity: Math.random() * 0.5 + 0.05 }} />
+                      <div
+                        key={i}
+                        className="empty-cell"
+                        style={{ opacity: Math.random() * 0.5 + 0.05 }}
+                      />
                     ))}
                   </div>
                 </div>
                 <div className="schedule-empty-text">
                   <p className="schedule-empty-title">
-                    {t('calendar.noScheduleData')}
+                    {t("calendar.noScheduleData")}
                   </p>
                   <p className="schedule-empty-desc">
-                    {t('calendar.importCsvHint')}
+                    {t("calendar.importCsvHint")}
                   </p>
                 </div>
                 <div className="schedule-empty-hint">
                   <Upload size={13} />
-                  <span>{t('calendar.clickImportToStart')}</span>
+                  <span>{t("calendar.clickImportToStart")}</span>
                 </div>
               </div>
             ) : null}
@@ -1081,13 +1390,14 @@ export default function App() {
             GTC 2026 · TEAM SCHEDULE SYNC · REALTIME
           </span>
         </footer>
-
       </div>
 
       {showAddSession && (
         <AddSessionModal
           sessions={sessions}
-          onAdd={async (id) => { await addSessionFromCatalog(id); }}
+          onAdd={async (id) => {
+            await addSessionFromCatalog(id);
+          }}
           onClose={() => setShowAddSession(false)}
           user={user}
         />

@@ -1,7 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { COLORS } from "../../constants";
 
-export default function PresenceBar({ activeUsers, memberColorMap, currentUid }) {
+export default function PresenceBar({
+  activeUsers,
+  memberColorMap,
+  currentUid,
+}) {
   const { t } = useTranslation();
   if (activeUsers.length <= 1) return null;
   const others = activeUsers.filter((u) => u.uid !== currentUid);
@@ -15,21 +19,34 @@ export default function PresenceBar({ activeUsers, memberColorMap, currentUid })
           const color = COLORS[colorIdx]?.hex || "#5f5e5e";
           const initial = (u.displayName || "?").charAt(0).toUpperCase();
           return (
-            <div key={u.uid} title={u.displayName}
+            <div
+              key={u.uid}
+              title={u.displayName}
               style={{
-                width: 26, height: 26, borderRadius: "50%", background: color, color: "#fff",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700, fontFamily: "'Work Sans', sans-serif",
-                marginLeft: i > 0 ? -6 : 0, border: "2px solid #222",
-                zIndex: 5 - i, position: "relative",
-              }}>
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                background: color,
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 11,
+                fontWeight: 700,
+                fontFamily: "'Work Sans', sans-serif",
+                marginLeft: i > 0 ? -6 : 0,
+                border: "2px solid #222",
+                zIndex: 5 - i,
+                position: "relative",
+              }}
+            >
               {initial}
             </div>
           );
         })}
       </div>
       <span style={{ fontSize: 11, color: "var(--text-muted, #999)" }}>
-        {others.length} {t('report.onlineCount')}
+        {others.length} {t("report.onlineCount")}
       </span>
     </div>
   );

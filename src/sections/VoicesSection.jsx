@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { EditableField, SectionInlineAdd } from "../shared";
 import CitationBadges from "../components/CitationBadges";
 
@@ -70,7 +70,7 @@ function CategoryHeaderBlock({ block, onUpdateBlock, onRemoveBlock }) {
         <EditableField
           value={block.label || ""}
           onSave={(html) => onUpdateBlock(block.id, { label: html })}
-          placeholder={t('sections.categoryTitle') + '...'}
+          placeholder={t("sections.categoryTitle") + "..."}
           minHeight={20}
         />
       </h3>
@@ -110,7 +110,7 @@ function SessionCardBlock({
           <EditableField
             value={block.sessionCode || ""}
             onSave={(html) => onUpdateBlock(block.id, { sessionCode: html })}
-            placeholder={t('sections.sessionCode')}
+            placeholder={t("sections.sessionCode")}
             minHeight={16}
           />
         </span>
@@ -121,7 +121,7 @@ function SessionCardBlock({
         <EditableField
           value={block.title || ""}
           onSave={(html) => onUpdateBlock(block.id, { title: html })}
-          placeholder={t('sections.sessionTitle')}
+          placeholder={t("sections.sessionTitle")}
           minHeight={20}
         />
       </h4>
@@ -132,7 +132,7 @@ function SessionCardBlock({
           <EditableField
             value={block.speakers || ""}
             onSave={(html) => onUpdateBlock(block.id, { speakers: html })}
-            placeholder={t('sections.speaker')}
+            placeholder={t("sections.speaker")}
             minHeight={14}
           />
         </span>
@@ -146,7 +146,7 @@ function SessionCardBlock({
         <EditableField
           value={block.quote || ""}
           onSave={(html) => onUpdateBlock(block.id, { quote: html })}
-          placeholder={t('sections.quoteContent')}
+          placeholder={t("sections.quoteContent")}
           minHeight={20}
         />
       </p>
@@ -161,7 +161,7 @@ function SessionCardBlock({
         className="citation-add-btn no-print mt-2 text-xs text-secondary hover:text-primary bg-transparent border-none cursor-pointer"
         onClick={() => onOpenCitationPicker(sectionName, block.id)}
       >
-        {t('sections.addCitationFull')}
+        {t("sections.addCitationFull")}
       </button>
     </div>
   );
@@ -179,7 +179,7 @@ function LegacyBlock({ block, onUpdateBlock, onRemoveBlock }) {
           <EditableField
             value={block.content || ""}
             onSave={(html) => onUpdateBlock(block.id, { content: html })}
-            placeholder={t('sections.enterSubtitle')}
+            placeholder={t("sections.enterSubtitle")}
             minHeight={28}
           />
         </div>
@@ -195,7 +195,7 @@ function LegacyBlock({ block, onUpdateBlock, onRemoveBlock }) {
         <EditableField
           value={block.content || ""}
           onSave={(html) => onUpdateBlock(block.id, { content: html })}
-          placeholder={t('sections.enterBody')}
+          placeholder={t("sections.enterBody")}
           minHeight={40}
         />
       </div>
@@ -220,16 +220,22 @@ export default function VoicesSection({
   const BLOCK_TYPES = [
     {
       type: "category-header",
-      label: t('sections.categoryTitle'),
+      label: t("sections.categoryTitle"),
       extraFields: { icon: "memory", label: "", count: "" },
     },
     {
       type: "session-card",
-      label: t('sections.sessionCard'),
-      extraFields: { sessionCode: "", title: "", speakers: "", quote: "", citations: [] },
+      label: t("sections.sessionCard"),
+      extraFields: {
+        sessionCode: "",
+        title: "",
+        speakers: "",
+        quote: "",
+        citations: [],
+      },
     },
-    { type: "heading", label: t('sections.heading') },
-    { type: "body", label: t('sections.body') },
+    { type: "heading", label: t("sections.heading") },
+    { type: "body", label: t("sections.body") },
   ];
 
   const groups = groupBlocks(blocks);

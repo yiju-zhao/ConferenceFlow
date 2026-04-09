@@ -1,7 +1,12 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
-export default function SessionPool({ sessions, selectedId, onSelect, userAttending }) {
+export default function SessionPool({
+  sessions,
+  selectedId,
+  onSelect,
+  userAttending,
+}) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
@@ -36,8 +41,10 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
       if (activeFilter !== "ALL") {
         if (activeFilter === "AM") return s.start < "12:00";
         if (activeFilter === "PM") return s.start >= "12:00";
-        if (activeFilter === "IN-PERSON") return s.format?.toLowerCase().includes("person");
-        if (activeFilter === "VIRTUAL") return s.format?.toLowerCase().includes("virtual");
+        if (activeFilter === "IN-PERSON")
+          return s.format?.toLowerCase().includes("person");
+        if (activeFilter === "VIRTUAL")
+          return s.format?.toLowerCase().includes("virtual");
         // Topic filter
         const topicMatch =
           s.mainTopic === activeFilter ||
@@ -54,11 +61,11 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
   return (
     <div className="cal-pool">
       <div className="cal-pool-header">
-        <div className="cal-pool-title">{t('calendar.sessionPool')}</div>
+        <div className="cal-pool-title">{t("calendar.sessionPool")}</div>
         <input
           type="text"
           className="cal-pool-search"
-          placeholder={t('calendar.searchSessions')}
+          placeholder={t("calendar.searchSessions")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -69,7 +76,7 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
           className={`cal-pool-filter ${activeFilter === "ALL" ? "cal-pool-filter--active" : ""}`}
           onClick={() => setActiveFilter("ALL")}
         >
-          {t('calendar.filterAll')}
+          {t("calendar.filterAll")}
         </button>
         {timeFilters.map((f) => (
           <button
@@ -77,7 +84,7 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
             className={`cal-pool-filter ${activeFilter === f ? "cal-pool-filter--active" : ""}`}
             onClick={() => setActiveFilter(activeFilter === f ? "ALL" : f)}
           >
-            {f === "AM" ? t('calendar.am') : t('calendar.pm')}
+            {f === "AM" ? t("calendar.am") : t("calendar.pm")}
           </button>
         ))}
         {formatFilters.map((f) => (
@@ -86,14 +93,16 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
             className={`cal-pool-filter ${activeFilter === f ? "cal-pool-filter--active" : ""}`}
             onClick={() => setActiveFilter(activeFilter === f ? "ALL" : f)}
           >
-            {f === "IN-PERSON" ? t('calendar.inPerson') : t('calendar.virtual')}
+            {f === "IN-PERSON" ? t("calendar.inPerson") : t("calendar.virtual")}
           </button>
         ))}
         {topics.slice(0, 4).map((topic) => (
           <button
             key={topic}
             className={`cal-pool-filter ${activeFilter === topic ? "cal-pool-filter--active" : ""}`}
-            onClick={() => setActiveFilter(activeFilter === topic ? "ALL" : topic)}
+            onClick={() =>
+              setActiveFilter(activeFilter === topic ? "ALL" : topic)
+            }
           >
             {topic.length > 12 ? topic.slice(0, 12) + "…" : topic}
           </button>
@@ -116,8 +125,17 @@ export default function SessionPool({ sessions, selectedId, onSelect, userAttend
           </div>
         ))}
         {filtered.length === 0 && (
-          <div style={{ color: "#7A7670", fontSize: 14, textAlign: "center", padding: 20 }}>
-            {search ? t('calendar.noSessionsMatch') : t('calendar.noSessionsAvailable')}
+          <div
+            style={{
+              color: "#7A7670",
+              fontSize: 14,
+              textAlign: "center",
+              padding: 20,
+            }}
+          >
+            {search
+              ? t("calendar.noSessionsMatch")
+              : t("calendar.noSessionsAvailable")}
           </div>
         )}
       </div>

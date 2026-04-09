@@ -3,7 +3,12 @@ import { useParams, Link } from "react-router-dom";
 import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db, storage } from "./firebase";
 import { useAuth } from "./contexts/AuthContext";
-import { ref as sRef, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
+import {
+  ref as sRef,
+  uploadString,
+  getDownloadURL,
+  deleteObject,
+} from "firebase/storage";
 import { useDebouncedSave } from "./hooks/useDebouncedSave";
 import { useTranslation } from "react-i18next";
 
@@ -33,20 +38,24 @@ export default function ConferenceReport() {
   // ── Real-time Firestore listener ────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-    const unsub = onSnapshot(doc(db, "conferences", confId, "dailyReports", reportId), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        setReportData(data);
-        reportDataRef.current = data;
-        if (data.publishedUrl) {
-          setShareUrl(data.publishedUrl);
-          setPreviewUrl(data.publishedUrl);
+    const unsub = onSnapshot(
+      doc(db, "conferences", confId, "dailyReports", reportId),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          setReportData(data);
+          reportDataRef.current = data;
+          if (data.publishedUrl) {
+            setShareUrl(data.publishedUrl);
+            setPreviewUrl(data.publishedUrl);
+          }
         }
-      }
-      setLoadingExisting(false);
-    }, () => {
-      setLoadingExisting(false);
-    });
+        setLoadingExisting(false);
+      },
+      () => {
+        setLoadingExisting(false);
+      },
+    );
     return unsub;
   }, [user, reportId]);
 
@@ -55,15 +64,17 @@ export default function ConferenceReport() {
     if (!previewUrl || editing) return;
     let cancelled = false;
     fetch(previewUrl)
-      .then(r => r.text())
-      .then(html => {
+      .then((r) => r.text())
+      .then((html) => {
         if (!cancelled) {
           setHtmlContent(html);
           savedHtmlRef.current = html;
         }
       })
       .catch(console.error);
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [previewUrl, editing]);
 
   // ── Toggle designMode when editing state changes ──────────────────────
@@ -83,37 +94,40 @@ export default function ConferenceReport() {
   }, [isViewMode, shareUrl, loadingExisting]);
 
   // ── Upload handler ────────────────────────────────────────────────────────
-  const handleFile = useCallback(async (file) => {
-    if (!file || !file.name.endsWith(".html")) {
-      setError(t('report.selectHtmlFile'));
-      return;
-    }
-    setError(null);
-    setUploading(true);
+  const handleFile = useCallback(
+    async (file) => {
+      if (!file || !file.name.endsWith(".html")) {
+        setError(t("report.selectHtmlFile"));
+        return;
+      }
+      setError(null);
+      setUploading(true);
 
-    try {
-      const html = await file.text();
-      setHtmlContent(html);
-      savedHtmlRef.current = html;
+      try {
+        const html = await file.text();
+        setHtmlContent(html);
+        savedHtmlRef.current = html;
 
-      const fileRef = sRef(storage, `public/summary-${reportId}.html`);
-      await uploadString(fileRef, html, "raw", {
-        contentType: "text/html; charset=utf-8",
-      });
-      const url = await getDownloadURL(fileRef);
+        const fileRef = sRef(storage, `public/summary-${reportId}.html`);
+        await uploadString(fileRef, html, "raw", {
+          contentType: "text/html; charset=utf-8",
+        });
+        const url = await getDownloadURL(fileRef);
 
-      await setDoc(
-        doc(db, "conferences", confId, "dailyReports", reportId),
-        { publishedUrl: url, publishedAt: serverTimestamp() },
-        { merge: true }
-      );
-    } catch (err) {
-      console.error("[Upload] Failed:", err);
-      setError(t('report.uploadFailed', { error: err.message }));
-    } finally {
-      setUploading(false);
-    }
-  }, [reportId]);
+        await setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          { publishedUrl: url, publishedAt: serverTimestamp() },
+          { merge: true },
+        );
+      } catch (err) {
+        console.error("[Upload] Failed:", err);
+        setError(t("report.uploadFailed", { error: err.message }));
+      } finally {
+        setUploading(false);
+      }
+    },
+    [reportId],
+  );
 
   // ── Save edited HTML back to Storage ──────────────────────────────────
   const handleSaveEdit = useCallback(async () => {
@@ -134,11 +148,11 @@ export default function ConferenceReport() {
       await setDoc(
         doc(db, "conferences", confId, "dailyReports", reportId),
         { publishedUrl: url, publishedAt: serverTimestamp() },
-        { merge: true }
+        { merge: true },
       );
     } catch (err) {
       console.error("[Save] Failed:", err);
-      setError(t('report.saveFailed', { error: err.message }));
+      setError(t("report.saveFailed", { error: err.message }));
     } finally {
       setSaving(false);
     }
@@ -151,7 +165,10 @@ export default function ConferenceReport() {
   }, []);
 
   // ── Drag & Drop ───────────────────────────────────────────────────────────
-  const onDragOver = (e) => { e.preventDefault(); setDragOver(true); };
+  const onDragOver = (e) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
   const onDragLeave = () => setDragOver(false);
   const onDrop = (e) => {
     e.preventDefault();
@@ -182,7 +199,9 @@ export default function ConferenceReport() {
         const canvas = document.createElement("canvas");
         canvas.width = Math.round(img.width * scale);
         canvas.height = Math.round(img.height * scale);
-        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas
+          .getContext("2d")
+          .drawImage(img, 0, 0, canvas.width, canvas.height);
         resolve(canvas.toDataURL("image/jpeg", quality));
       };
       img.src = url;
@@ -196,60 +215,102 @@ export default function ConferenceReport() {
   }, []);
 
   // ── Site Photo handlers ─────────────────────────────────────────────────
-  const handleSitePhotoAdd = useCallback((e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    e.target.value = "";
-    const objUrl = URL.createObjectURL(file);
-    const imgEl = new window.Image();
-    imgEl.onload = () => {
-      const w = imgEl.naturalWidth;
-      const h = imgEl.naturalHeight;
-      URL.revokeObjectURL(objUrl);
-      const storagePath = `sitePhotos/${reportId}/${Date.now()}`;
-      compressImage(file)
-        .then(compressed => uploadToStorage(compressed, storagePath))
-        .then(url => {
-          const photos = [...(reportDataRef.current?.sitePhotos || []),
-            { image: url, storagePath, caption: "", source: "", w, h }];
-          setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
-        });
-    };
-    imgEl.src = objUrl;
-  }, [compressImage, uploadToStorage, reportId]);
+  const handleSitePhotoAdd = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      e.target.value = "";
+      const objUrl = URL.createObjectURL(file);
+      const imgEl = new window.Image();
+      imgEl.onload = () => {
+        const w = imgEl.naturalWidth;
+        const h = imgEl.naturalHeight;
+        URL.revokeObjectURL(objUrl);
+        const storagePath = `sitePhotos/${reportId}/${Date.now()}`;
+        compressImage(file)
+          .then((compressed) => uploadToStorage(compressed, storagePath))
+          .then((url) => {
+            const photos = [
+              ...(reportDataRef.current?.sitePhotos || []),
+              { image: url, storagePath, caption: "", source: "", w, h },
+            ];
+            setDoc(
+              doc(db, "conferences", confId, "dailyReports", reportId),
+              { sitePhotos: photos },
+              { merge: true },
+            ).catch(console.error);
+          });
+      };
+      imgEl.src = objUrl;
+    },
+    [compressImage, uploadToStorage, reportId],
+  );
 
-  const handleSitePhotoDelete = useCallback((idx) => {
-    const photos = reportDataRef.current?.sitePhotos || [];
-    const photo = photos[idx];
-    if (photo?.storagePath) {
-      deleteObject(sRef(storage, photo.storagePath)).catch(() => {});
-    }
-    const updated = photos.filter((_, i) => i !== idx);
-    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: updated }, { merge: true }).catch(console.error);
-  }, [reportId]);
+  const handleSitePhotoDelete = useCallback(
+    (idx) => {
+      const photos = reportDataRef.current?.sitePhotos || [];
+      const photo = photos[idx];
+      if (photo?.storagePath) {
+        deleteObject(sRef(storage, photo.storagePath)).catch(() => {});
+      }
+      const updated = photos.filter((_, i) => i !== idx);
+      setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        { sitePhotos: updated },
+        { merge: true },
+      ).catch(console.error);
+    },
+    [reportId],
+  );
 
-  const saveSitePhotoCaption = useCallback((idx, caption) => {
-    debouncedSave(`sitePhoto-caption-${idx}`, async () => {
-      const photos = [...(reportDataRef.current?.sitePhotos || [])];
-      if (photos[idx]) photos[idx] = { ...photos[idx], caption };
-      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
-    });
-  }, [reportId, debouncedSave]);
+  const saveSitePhotoCaption = useCallback(
+    (idx, caption) => {
+      debouncedSave(`sitePhoto-caption-${idx}`, async () => {
+        const photos = [...(reportDataRef.current?.sitePhotos || [])];
+        if (photos[idx]) photos[idx] = { ...photos[idx], caption };
+        await setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          { sitePhotos: photos },
+          { merge: true },
+        ).catch(console.error);
+      });
+    },
+    [reportId, debouncedSave],
+  );
 
-  const saveSitePhotoSource = useCallback((idx, source) => {
-    debouncedSave(`sitePhoto-source-${idx}`, async () => {
-      const photos = [...(reportDataRef.current?.sitePhotos || [])];
-      if (photos[idx]) photos[idx] = { ...photos[idx], source };
-      await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), { sitePhotos: photos }, { merge: true }).catch(console.error);
-    });
-  }, [debouncedSave, reportId]);
+  const saveSitePhotoSource = useCallback(
+    (idx, source) => {
+      debouncedSave(`sitePhoto-source-${idx}`, async () => {
+        const photos = [...(reportDataRef.current?.sitePhotos || [])];
+        if (photos[idx]) photos[idx] = { ...photos[idx], source };
+        await setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          { sitePhotos: photos },
+          { merge: true },
+        ).catch(console.error);
+      });
+    },
+    [debouncedSave, reportId],
+  );
 
   // ── View mode ───────────────────────────────────────────────────────────
   if (isViewMode) {
     return (
       <div className="report-page">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", color: "#888" }}>
-          {loadingExisting ? t('common.loading') : shareUrl ? t('report.redirecting') : t('report.notUploadedYet')}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "60vh",
+            color: "#888",
+          }}
+        >
+          {loadingExisting
+            ? t("common.loading")
+            : shareUrl
+              ? t("report.redirecting")
+              : t("report.notUploadedYet")}
         </div>
       </div>
     );
@@ -291,7 +352,12 @@ export default function ConferenceReport() {
       {/* ── Toolbar ──────────────────────────────────────────── */}
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link to={`/conference/${confId}/reports`} className="report-back-btn">{t('report.backToReportList')}</Link>
+          <Link
+            to={`/conference/${confId}/reports`}
+            className="report-back-btn"
+          >
+            {t("report.backToReportList")}
+          </Link>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {!editing && (
               <button
@@ -311,12 +377,12 @@ export default function ConferenceReport() {
                   opacity: uploading ? 0.6 : 1,
                 }}
               >
-                {uploading ? t('report.uploading') : t('report.uploadHtml')}
+                {uploading ? t("report.uploading") : t("report.uploadHtml")}
               </button>
             )}
             {htmlContent && !editing && (
               <button onClick={() => setEditing(true)} style={toolbarBtnStyle}>
-                {t('admin.edit')}
+                {t("admin.edit")}
               </button>
             )}
             {editing && (
@@ -338,10 +404,10 @@ export default function ConferenceReport() {
                     opacity: saving ? 0.6 : 1,
                   }}
                 >
-                  {saving ? t('common.saving') : t('common.save')}
+                  {saving ? t("common.saving") : t("common.save")}
                 </button>
                 <button onClick={handleCancelEdit} style={toolbarBtnStyle}>
-                  {t('common.cancel')}
+                  {t("common.cancel")}
                 </button>
               </>
             )}
@@ -361,7 +427,7 @@ export default function ConferenceReport() {
                   letterSpacing: "0.02em",
                 }}
               >
-                {urlCopied ? t('report.linkCopied') : t('report.copyLink')}
+                {urlCopied ? t("report.linkCopied") : t("report.copyLink")}
               </button>
             )}
           </div>
@@ -370,17 +436,51 @@ export default function ConferenceReport() {
 
       {/* ── Main Content ─────────────────────────────────────── */}
       {loadingExisting ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", color: "#888" }}>
-          {t('report.checkingExisting')}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "60vh",
+            color: "#888",
+          }}
+        >
+          {t("report.checkingExisting")}
         </div>
       ) : !previewUrl && !htmlContent ? (
         /* ── No report yet: Upload zone ────────────────────── */
-        <div className="report-container" style={{ marginTop: 24, maxWidth: 720, marginLeft: "auto", marginRight: "auto" }}>
+        <div
+          className="report-container"
+          style={{
+            marginTop: 24,
+            maxWidth: 720,
+            marginLeft: "auto",
+            marginRight: "auto",
+          }}
+        >
           <div style={{ marginBottom: 32 }}>
-            <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>{t('report.conferenceReport')}</div>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#1A1A1A" }}>
-              {t('report.summaryReport')}
-              <span style={{ fontWeight: 400, fontSize: 14, color: "#888", marginLeft: 12 }}>{reportId}</span>
+            <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>
+              {t("report.conferenceReport")}
+            </div>
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 22,
+                fontWeight: 700,
+                color: "#1A1A1A",
+              }}
+            >
+              {t("report.summaryReport")}
+              <span
+                style={{
+                  fontWeight: 400,
+                  fontSize: 14,
+                  color: "#888",
+                  marginLeft: 12,
+                }}
+              >
+                {reportId}
+              </span>
             </h2>
           </div>
 
@@ -401,22 +501,35 @@ export default function ConferenceReport() {
             onClick={() => htmlFileInputRef.current?.click()}
           >
             {uploading ? (
-              <div style={{ color: "#991b1b", fontWeight: 600 }}>{t('report.uploading')}</div>
+              <div style={{ color: "#991b1b", fontWeight: 600 }}>
+                {t("report.uploading")}
+              </div>
             ) : (
               <>
-                <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>📄</div>
+                <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>
+                  📄
+                </div>
                 <div style={{ fontSize: 14, color: "#555", fontWeight: 500 }}>
-                  {t('report.dragDropHtml')}
+                  {t("report.dragDropHtml")}
                 </div>
                 <div style={{ fontSize: 12, color: "#aaa", marginTop: 8 }}>
-                  {t('report.uploadReplacesExisting')}
+                  {t("report.uploadReplacesExisting")}
                 </div>
               </>
             )}
           </div>
 
           {error && (
-            <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 16, padding: "8px 12px", background: "#fef2f2", borderRadius: 4 }}>
+            <div
+              style={{
+                color: "#dc2626",
+                fontSize: 13,
+                marginBottom: 16,
+                padding: "8px 12px",
+                background: "#fef2f2",
+                borderRadius: 4,
+              }}
+            >
               {error}
             </div>
           )}
@@ -425,7 +538,17 @@ export default function ConferenceReport() {
         /* ── Report exists: Iframe + Photo section ─────────── */
         <>
           {error && (
-            <div style={{ maxWidth: 1100, margin: "8px auto", padding: "8px 12px", color: "#dc2626", fontSize: 13, background: "#fef2f2", borderRadius: 4 }}>
+            <div
+              style={{
+                maxWidth: 1100,
+                margin: "8px auto",
+                padding: "8px 12px",
+                color: "#dc2626",
+                fontSize: 13,
+                background: "#fef2f2",
+                borderRadius: 4,
+              }}
+            >
               {error}
             </div>
           )}
@@ -449,47 +572,83 @@ export default function ConferenceReport() {
                 }}
               />
             ) : (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "calc(100vh - 120px)", color: "#888" }}>
-                {t('report.loadingContent')}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "calc(100vh - 120px)",
+                  color: "#888",
+                }}
+              >
+                {t("report.loadingContent")}
               </div>
             )}
           </div>
 
           {/* ── 展会近距离 Photo Section ────────────────────── */}
-          <div className="report-container" style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 40px 48px" }}>
-            <h2 className="report-section-title" style={{ marginTop: 0 }}>{t('report.sitePhotos')}</h2>
+          <div
+            className="report-container"
+            style={{
+              maxWidth: 1100,
+              margin: "0 auto",
+              padding: "32px 40px 48px",
+            }}
+          >
+            <h2 className="report-section-title" style={{ marginTop: 0 }}>
+              {t("report.sitePhotos")}
+            </h2>
             <div className="conference-photos-grid">
               {sitePhotos.map((photo, idx) => (
                 <div key={idx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
-                    <img src={photo.image} alt={t('report.sitePhotoAlt', { index: idx + 1 })} className="site-photo-img" />
+                    <img
+                      src={photo.image}
+                      alt={t("report.sitePhotoAlt", { index: idx + 1 })}
+                      className="site-photo-img"
+                    />
                     <button
                       className="site-photo-delete-btn no-print"
                       onClick={() => handleSitePhotoDelete(idx)}
-                      title={t('report.deleteImage')}
-                    >×</button>
+                      title={t("report.deleteImage")}
+                    >
+                      ×
+                    </button>
                   </div>
                   <textarea
                     className="site-photo-caption"
-                    placeholder={t('report.imageCaption')}
+                    placeholder={t("report.imageCaption")}
                     defaultValue={photo.caption}
-                    onBlur={e => saveSitePhotoCaption(idx, e.target.value)}
-                    onChange={e => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
-                    ref={el => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                    onBlur={(e) => saveSitePhotoCaption(idx, e.target.value)}
+                    onChange={(e) => {
+                      e.target.style.height = "auto";
+                      e.target.style.height = e.target.scrollHeight + "px";
+                    }}
+                    ref={(el) => {
+                      if (el) {
+                        el.style.height = "auto";
+                        el.style.height = el.scrollHeight + "px";
+                      }
+                    }}
                   />
                   <input
                     className="site-photo-source"
                     type="text"
-                    placeholder={t('report.sourcePlaceholder')}
+                    placeholder={t("report.sourcePlaceholder")}
                     defaultValue={photo.source || ""}
-                    onBlur={e => saveSitePhotoSource(idx, e.target.value)}
+                    onBlur={(e) => saveSitePhotoSource(idx, e.target.value)}
                   />
                 </div>
               ))}
-              <div className="site-photo-add-card" onClick={() => sitePhotoInputRef.current?.click()}>
+              <div
+                className="site-photo-add-card"
+                onClick={() => sitePhotoInputRef.current?.click()}
+              >
                 <div className="site-photo-add-inner">
                   <span className="site-photo-add-icon">+</span>
-                  <span className="site-photo-add-label">{t('report.addImage')}</span>
+                  <span className="site-photo-add-label">
+                    {t("report.addImage")}
+                  </span>
                 </div>
               </div>
             </div>

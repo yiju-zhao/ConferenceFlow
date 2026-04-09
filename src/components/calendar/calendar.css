@@ -18,8 +18,8 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: #171B21;
-  color: #EDEAE5;
+  background: #171b21;
+  color: #edeae5;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
 }
 
@@ -30,7 +30,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #C47A52, #E8976B);
+  background: linear-gradient(135deg, #c47a52, #e8976b);
   color: #fff;
   flex-shrink: 0;
 }
@@ -102,7 +102,7 @@
 .cal-pool {
   width: 300px;
   flex-shrink: 0;
-  background: #1E2229;
+  background: #1e2229;
   border-right: 1px solid #333840;
   display: flex;
   flex-direction: column;
@@ -119,17 +119,17 @@
   font-size: 13px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: #E8976B;
+  color: #e8976b;
   margin-bottom: 12px;
 }
 
 .cal-pool-search {
   width: 100%;
   padding: 10px 12px;
-  background: #272C35;
+  background: #272c35;
   border: 1px solid #333840;
   border-radius: 4px;
-  color: #EDEAE5;
+  color: #edeae5;
   font-size: 14px;
   font-family: "Inter", sans-serif;
   outline: none;
@@ -138,11 +138,11 @@
 }
 
 .cal-pool-search::placeholder {
-  color: #7A7670;
+  color: #7a7670;
 }
 
 .cal-pool-search:focus {
-  border-color: #E8976B;
+  border-color: #e8976b;
 }
 
 .cal-pool-filters {
@@ -159,8 +159,8 @@
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  background: #272C35;
-  color: #A9A5A0;
+  background: #272c35;
+  color: #a9a5a0;
   border: 1px solid #333840;
   border-radius: 3px;
   cursor: pointer;
@@ -168,14 +168,14 @@
 }
 
 .cal-pool-filter--active {
-  background: #E8976B;
+  background: #e8976b;
   color: #fff;
-  border-color: #E8976B;
+  border-color: #e8976b;
 }
 
 .cal-pool-filter:hover:not(.cal-pool-filter--active) {
-  color: #EDEAE5;
-  border-color: #7A7670;
+  color: #edeae5;
+  border-color: #7a7670;
 }
 
 .cal-pool-list {
@@ -185,8 +185,8 @@
 }
 
 .cal-pool-card {
-  background: #272C35;
-  border-left: 3px solid #E8976B;
+  background: #272c35;
+  border-left: 3px solid #e8976b;
   padding: 12px;
   margin-bottom: 8px;
   cursor: pointer;
@@ -195,29 +195,29 @@
 }
 
 .cal-pool-card:hover {
-  background: #2F3541;
+  background: #2f3541;
 }
 
 .cal-pool-card--selected {
-  background: #2F3541;
-  border-left-color: #EDEAE5;
+  background: #2f3541;
+  border-left-color: #edeae5;
 }
 
 .cal-pool-card--scheduled {
-  border-left-color: #6BBBAD;
+  border-left-color: #6bbbad;
 }
 
 .cal-pool-card-title {
   font-size: 14px;
   font-weight: 600;
-  color: #EDEAE5;
+  color: #edeae5;
   line-height: 1.45;
   margin-bottom: 5px;
 }
 
 .cal-pool-card-meta {
   font-size: 12px;
-  color: #A9A5A0;
+  color: #a9a5a0;
 }
 
 /* ── Center Panel: Schedule Grid ───────────────────────────────────────── */
@@ -234,7 +234,7 @@
   font-size: 13px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: #7A7670;
+  color: #7a7670;
   margin-bottom: 12px;
   font-family: "Work Sans", sans-serif;
   font-weight: 600;
@@ -247,13 +247,13 @@
 }
 
 .cal-grid-day-header {
-  background: #272C35;
+  background: #272c35;
   padding: 12px;
   text-align: center;
   font-family: "Work Sans", sans-serif;
   font-weight: 700;
   font-size: 14px;
-  color: #E8976B;
+  color: #e8976b;
   letter-spacing: 0.3px;
   border-radius: 3px 3px 0 0;
 }
@@ -262,12 +262,12 @@
   padding: 10px 8px;
   text-align: right;
   font-size: 12px;
-  color: #7A7670;
+  color: #7a7670;
   font-family: "Inter", sans-serif;
 }
 
 .cal-grid-cell {
-  background: #272C35;
+  background: #272c35;
   min-height: 64px;
   padding: 4px;
 }
@@ -279,7 +279,7 @@
 
 .cal-grid-session {
   flex: 1;
-  background: #E8976B;
+  background: #e8976b;
   padding: 8px 10px;
   cursor: pointer;
   transition: opacity 120ms ease;
@@ -337,7 +337,7 @@
   align-items: center;
   justify-content: center;
   height: 300px;
-  color: #7A7670;
+  color: #7a7670;
   font-size: 15px;
   text-align: center;
 }
@@ -347,7 +347,7 @@
 .cal-detail {
   width: 320px;
   flex-shrink: 0;
-  background: #1E2229;
+  background: #1e2229;
   border-left: 1px solid #333840;
   overflow-y: auto;
   display: flex;
@@ -371,7 +371,7 @@
 }
 
 .cal-detail-empty-text {
-  color: #7A7670;
+  color: #7a7670;
   font-size: 14px;
   text-align: center;
 }
@@ -383,12 +383,12 @@
   top: 0;
   z-index: 5;
   padding: 14px 18px;
-  background: linear-gradient(to bottom, #1E2229 80%, transparent);
+  background: linear-gradient(to bottom, #1e2229 80%, transparent);
 }
 
 .cal-detail-btn-primary {
   width: 100%;
-  background: #E8976B;
+  background: #e8976b;
   color: #fff;
   text-align: center;
   padding: 12px 16px;
@@ -410,8 +410,8 @@
 
 .cal-detail-btn-primary--danger {
   background: transparent;
-  color: #E8976B;
-  border: 1.5px solid #E8976B;
+  color: #e8976b;
+  border: 1.5px solid #e8976b;
 }
 
 .cal-detail-btn-primary--danger:hover {
@@ -432,7 +432,7 @@
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: #E8976B;
+  color: #e8976b;
   background: rgba(232, 151, 107, 0.1);
   padding: 3px 8px;
   border-radius: 3px;
@@ -442,7 +442,7 @@
 .cal-detail-title {
   font-size: 18px;
   font-weight: 700;
-  color: #EDEAE5;
+  color: #edeae5;
   margin: 0;
   line-height: 1.35;
 }
@@ -462,21 +462,21 @@
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: #A9A5A0;
+  color: #a9a5a0;
   line-height: 1.4;
 }
 
 .cal-detail-chip svg {
   flex-shrink: 0;
-  color: #7A7670;
+  color: #7a7670;
 }
 
 .cal-detail-chip--accent {
-  color: #6BBBAD;
+  color: #6bbbad;
 }
 
 .cal-detail-chip--accent svg {
-  color: #6BBBAD;
+  color: #6bbbad;
 }
 
 /* ── Sections ─── */
@@ -494,7 +494,7 @@
   font-family: "Work Sans", sans-serif;
   font-size: 11px;
   font-weight: 700;
-  color: #7A7670;
+  color: #7a7670;
   letter-spacing: 1px;
   text-transform: uppercase;
   margin-bottom: 10px;
@@ -514,8 +514,8 @@
 .cal-detail-tag {
   font-size: 12px;
   font-weight: 500;
-  color: #EDEAE5;
-  background: #272C35;
+  color: #edeae5;
+  background: #272c35;
   padding: 4px 10px;
   border-radius: 12px;
   border: 1px solid #333840;
@@ -527,7 +527,7 @@
 .cal-detail-count {
   font-size: 10px;
   font-weight: 700;
-  color: #E8976B;
+  color: #e8976b;
   background: rgba(232, 151, 107, 0.12);
   padding: 1px 7px;
   border-radius: 10px;
@@ -554,13 +554,13 @@
 .cal-detail-speaker-name {
   font-size: 14px;
   font-weight: 600;
-  color: #EDEAE5;
+  color: #edeae5;
   line-height: 1.3;
 }
 
 .cal-detail-speaker-role {
   font-size: 12px;
-  color: #A9A5A0;
+  color: #a9a5a0;
   line-height: 1.4;
   margin-top: 2px;
 }
@@ -602,7 +602,7 @@
 
 .cal-detail-attendee-name {
   font-size: 13px;
-  color: #EDEAE5;
+  color: #edeae5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -618,13 +618,13 @@
 }
 
 .cal-detail-attendee-badge--onsite {
-  color: #6BBBAD;
+  color: #6bbbad;
   background: rgba(107, 187, 173, 0.1);
   border: 1px solid rgba(107, 187, 173, 0.2);
 }
 
 .cal-detail-attendee-badge--online {
-  color: #7BA4D4;
+  color: #7ba4d4;
   background: rgba(123, 164, 212, 0.1);
   border: 1px solid rgba(123, 164, 212, 0.2);
 }
@@ -636,8 +636,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #272C35;
-  color: #A9A5A0;
+  background: #272c35;
+  color: #a9a5a0;
   text-align: center;
   padding: 10px 14px;
   font-size: 13px;
@@ -649,9 +649,9 @@
 }
 
 .cal-detail-btn-secondary:hover {
-  color: #EDEAE5;
-  border-color: #7A7670;
-  background: #2F3541;
+  color: #edeae5;
+  border-color: #7a7670;
+  background: #2f3541;
 }
 
 /* ── Scrollbar Styling ─────────────────────────────────────────────────── */
