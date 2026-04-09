@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { collection, doc, onSnapshot, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  onSnapshot,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import CalendarHeader from "./CalendarHeader";
@@ -28,36 +35,44 @@ export default function CalendarPage() {
   // Listen to all sessions
   useEffect(() => {
     if (!confId) return;
-    return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
-      const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      arr.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
-      setAllSessions(arr);
-    });
+    return onSnapshot(
+      collection(db, "conferences", confId, "sessions"),
+      (snap) => {
+        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        arr.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+        setAllSessions(arr);
+      },
+    );
   }, [confId]);
 
   // Listen to members
   useEffect(() => {
     if (!confId) return;
-    return onSnapshot(collection(db, "conferences", confId, "members"), async (snap) => {
-      const arr = [];
-      for (const d of snap.docs) {
-        const data = d.data();
-        // Try to get display name from users collection
-        let displayName = data.legacyName || null;
-        if (!displayName) {
-          try {
-            const userSnap = await import("firebase/firestore").then(({ getDoc, doc: docRef }) =>
-              getDoc(docRef(db, "users", d.id))
-            );
-            displayName = userSnap.exists() ? userSnap.data().displayName || userSnap.data().email : d.id;
-          } catch {
-            displayName = d.id;
+    return onSnapshot(
+      collection(db, "conferences", confId, "members"),
+      async (snap) => {
+        const arr = [];
+        for (const d of snap.docs) {
+          const data = d.data();
+          // Try to get display name from users collection
+          let displayName = data.legacyName || null;
+          if (!displayName) {
+            try {
+              const userSnap = await import("firebase/firestore").then(
+                ({ getDoc, doc: docRef }) => getDoc(docRef(db, "users", d.id)),
+              );
+              displayName = userSnap.exists()
+                ? userSnap.data().displayName || userSnap.data().email
+                : d.id;
+            } catch {
+              displayName = d.id;
+            }
           }
+          arr.push({ userId: d.id, ...data, displayName });
         }
-        arr.push({ userId: d.id, ...data, displayName });
-      }
-      setMembers(arr);
-    });
+        setMembers(arr);
+      },
+    );
   }, [confId]);
 
   // IDs of sessions the current user is attending
@@ -85,7 +100,13 @@ export default function CalendarPage() {
   // Toggle attendance
   const handleToggleAttend = useCallback(async () => {
     if (!selectedSession || !user || !confId) return;
-    const sessionRef = doc(db, "conferences", confId, "sessions", selectedSession.id);
+    const sessionRef = doc(
+      db,
+      "conferences",
+      confId,
+      "sessions",
+      selectedSession.id,
+    );
     if (isAttendingSelected) {
       await updateDoc(sessionRef, { attendees: arrayRemove(user.uid) });
     } else {

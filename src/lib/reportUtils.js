@@ -7,10 +7,13 @@ export function parseReportId(reportId) {
 }
 
 export function latestOrNewVersionId(date, allDocs) {
-  if (allDocs.some(r => r.id === date)) return date;
-  const vDocs = allDocs.filter(r => parseReportId(r.id).date === date);
+  if (allDocs.some((r) => r.id === date)) return date;
+  const vDocs = allDocs.filter((r) => parseReportId(r.id).date === date);
   if (vDocs.length > 0) {
-    const maxV = vDocs.reduce((max, r) => Math.max(max, parseReportId(r.id).version), 0);
+    const maxV = vDocs.reduce(
+      (max, r) => Math.max(max, parseReportId(r.id).version),
+      0,
+    );
     return `${date}-v${maxV}`;
   }
   return date;
@@ -19,10 +22,10 @@ export function latestOrNewVersionId(date, allDocs) {
 // ── Summary ID generator ─────────────────────────────────────────────────────
 export function generateSummaryId(existingDocs) {
   const summaryDocs = existingDocs
-    .filter(d => d.id.startsWith("summary-GTC2026"))
+    .filter((d) => d.id.startsWith("summary-GTC2026"))
     .sort((a, b) => a.id.localeCompare(b.id));
   if (summaryDocs.length === 0) return "summary-GTC2026";
-  const versions = summaryDocs.map(d => {
+  const versions = summaryDocs.map((d) => {
     const m = d.id.match(/-v(\d+)$/);
     return m ? parseInt(m[1]) : 1;
   });
@@ -33,7 +36,11 @@ export function generateSummaryId(existingDocs) {
 export function getInitials(name) {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return parts.map(p => p[0]).join("").toUpperCase().substring(0, 3);
+  return parts
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 3);
 }
 
 // ── Shared helper: generate unique ID ────────────────────────────────────────

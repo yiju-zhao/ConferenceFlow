@@ -1,14 +1,18 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
-export default function LanguageSwitcher({ className = "", style, variant = "default" }) {
+export default function LanguageSwitcher({
+  className = "",
+  style,
+  variant = "default",
+}) {
   const { i18n } = useTranslation();
 
-  const isZh = i18n.language.startsWith('zh');
+  const isZh = i18n.language.startsWith("zh");
 
   if (variant === "dropdown") {
     return (
       <select
-        value={isZh ? 'zh-CN' : 'en-US'}
+        value={isZh ? "zh-CN" : "en-US"}
         onChange={(e) => i18n.changeLanguage(e.target.value)}
         style={{
           padding: "4px 8px",
@@ -31,7 +35,7 @@ export default function LanguageSwitcher({ className = "", style, variant = "def
   }
 
   const toggle = () => {
-    const next = isZh ? 'en-US' : 'zh-CN';
+    const next = isZh ? "en-US" : "zh-CN";
     i18n.changeLanguage(next);
   };
 
@@ -51,9 +55,9 @@ export default function LanguageSwitcher({ className = "", style, variant = "def
           fontFamily: "'Inter', sans-serif",
           ...style,
         }}
-        title={isZh ? 'Switch to English' : '切换到中文'}
+        title={isZh ? "Switch to English" : "切换到中文"}
       >
-        {isZh ? '中文 ▾' : 'EN ▾'}
+        {isZh ? "中文 ▾" : "EN ▾"}
       </button>
     );
   }
@@ -63,9 +67,9 @@ export default function LanguageSwitcher({ className = "", style, variant = "def
       onClick={toggle}
       className={`text-xs font-headline tracking-wider transition-colors ${className}`}
       style={style}
-      title={isZh ? 'Switch to English' : '切换到中文'}
+      title={isZh ? "Switch to English" : "切换到中文"}
     >
-      {isZh ? '中文 / EN' : 'EN / 中文'}
+      {isZh ? "中文 / EN" : "EN / 中文"}
     </button>
   );
 }

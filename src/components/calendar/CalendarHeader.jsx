@@ -13,21 +13,28 @@ export default function CalendarHeader({ confName }) {
   return (
     <div className="cal-header">
       <div className="cal-header-left">
-        <Link to="/dashboard" className="cal-header-btn" style={{ padding: "6px 12px", fontSize: 12 }}>
-          {t('calendar.backToDashboard')}
+        <Link
+          to="/dashboard"
+          className="cal-header-btn"
+          style={{ padding: "6px 12px", fontSize: 12 }}
+        >
+          {t("calendar.backToDashboard")}
         </Link>
         <span className="cal-header-title">{confName || "Conference"}</span>
         <span className="cal-header-sep">|</span>
-        <span className="cal-header-label">{t('calendar.schedule')}</span>
+        <span className="cal-header-label">{t("calendar.schedule")}</span>
       </div>
       <div className="cal-header-actions">
         {isAdmin && (
-          <Link to={`/conference/${confId}/admin/settings`} className="cal-header-btn">
-            {t('admin.conferenceAdmin')}
+          <Link
+            to={`/conference/${confId}/admin/settings`}
+            className="cal-header-btn"
+          >
+            {t("admin.conferenceAdmin")}
           </Link>
         )}
         <Link to={`/conference/${confId}/reports`} className="cal-header-btn">
-          {t('admin.reports')}
+          {t("admin.reports")}
         </Link>
         <UserAvatar size={28} onSignOut={() => navigate("/login")} />
       </div>

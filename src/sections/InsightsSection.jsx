@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { EditableField, SectionInlineAdd } from "../shared";
 import CitationBadges from "../components/CitationBadges";
 
@@ -18,8 +18,8 @@ export default function InsightsSection({
   const { t } = useTranslation();
 
   const blockTypes = [
-    { type: "heading", label: t('sections.heading') },
-    { type: "body", label: t('sections.body') },
+    { type: "heading", label: t("sections.heading") },
+    { type: "body", label: t("sections.body") },
   ];
 
   // Track body-only index for numbering and color cycling
@@ -41,8 +41,10 @@ export default function InsightsSection({
                 <div className="text-xl font-bold text-on-background font-headline">
                   <EditableField
                     value={block.content}
-                    onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                    placeholder={t('sections.enterSubtitle')}
+                    onSave={(html) =>
+                      onUpdateBlock(block.id, { content: html })
+                    }
+                    placeholder={t("sections.enterSubtitle")}
                     minHeight={28}
                   />
                 </div>
@@ -62,12 +64,15 @@ export default function InsightsSection({
         // ── Body block (numbered insight card) ────────────────────────────
         const currentBodyIdx = bodyIdx;
         bodyIdx++;
-        const bgClass = INSIGHT_BG_CYCLE[currentBodyIdx % INSIGHT_BG_CYCLE.length];
+        const bgClass =
+          INSIGHT_BG_CYCLE[currentBodyIdx % INSIGHT_BG_CYCLE.length];
         const num = String(currentBodyIdx + 1).padStart(2, "0");
 
         return (
           <div key={block.id}>
-            <div className={`flex items-center ${bgClass} text-white p-6 relative group`}>
+            <div
+              className={`flex items-center ${bgClass} text-white p-6 relative group`}
+            >
               <button
                 className="absolute top-2 right-2 text-white/60 hover:text-white text-sm no-print opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => onRemoveBlock(block.id)}
@@ -81,7 +86,7 @@ export default function InsightsSection({
                 <EditableField
                   value={block.content}
                   onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                  placeholder={t('sections.enterKeyInsights')}
+                  placeholder={t("sections.enterKeyInsights")}
                   minHeight={40}
                 />
               </div>
@@ -95,7 +100,7 @@ export default function InsightsSection({
                 className="citation-add-btn no-print ml-3 text-xs text-white/60 hover:text-white bg-transparent border-none cursor-pointer whitespace-nowrap"
                 onClick={() => onOpenCitationPicker(sectionName, block.id)}
               >
-                {t('sections.addCitationFull')}
+                {t("sections.addCitationFull")}
               </button>
             </div>
             <SectionInlineAdd

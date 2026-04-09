@@ -9,7 +9,9 @@ export default function AuthGuard({ children, requireSuperAdmin = false }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="text-secondary text-sm uppercase tracking-wider">{t('common.loading')}</div>
+        <div className="text-secondary text-sm uppercase tracking-wider">
+          {t("common.loading")}
+        </div>
       </div>
     );
   }

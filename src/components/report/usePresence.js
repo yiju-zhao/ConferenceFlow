@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { doc, setDoc, deleteDoc, collection, onSnapshot, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  deleteDoc,
+  collection,
+  onSnapshot,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -12,13 +19,26 @@ export function usePresence(confId, reportId) {
 
   useEffect(() => {
     if (!user || !confId || !reportId) return;
-    const presenceRef = doc(db, "conferences", confId, "dailyReports", reportId, "presence", user.uid);
+    const presenceRef = doc(
+      db,
+      "conferences",
+      confId,
+      "dailyReports",
+      reportId,
+      "presence",
+      user.uid,
+    );
     const writeHeartbeat = () => {
-      setDoc(presenceRef, {
-        displayName: userProfile?.displayName || user.displayName || "Anonymous",
-        email: userProfile?.email || user.email || "",
-        lastSeen: serverTimestamp(),
-      }, { merge: true }).catch(() => {});
+      setDoc(
+        presenceRef,
+        {
+          displayName:
+            userProfile?.displayName || user.displayName || "Anonymous",
+          email: userProfile?.email || user.email || "",
+          lastSeen: serverTimestamp(),
+        },
+        { merge: true },
+      ).catch(() => {});
     };
     writeHeartbeat();
     const interval = setInterval(writeHeartbeat, HEARTBEAT_INTERVAL);
@@ -31,7 +51,14 @@ export function usePresence(confId, reportId) {
   useEffect(() => {
     if (!confId || !reportId) return;
     return onSnapshot(
-      collection(db, "conferences", confId, "dailyReports", reportId, "presence"),
+      collection(
+        db,
+        "conferences",
+        confId,
+        "dailyReports",
+        reportId,
+        "presence",
+      ),
       (snap) => {
         const now = Date.now();
         const users = [];
@@ -39,11 +66,16 @@ export function usePresence(confId, reportId) {
           const data = d.data();
           const lastSeen = data.lastSeen?.toMillis?.() || 0;
           if (now - lastSeen < OFFLINE_THRESHOLD) {
-            users.push({ uid: d.id, displayName: data.displayName || d.id, email: data.email || "", lastSeen });
+            users.push({
+              uid: d.id,
+              displayName: data.displayName || d.id,
+              email: data.email || "",
+              lastSeen,
+            });
           }
         });
         setActiveUsers(users);
-      }
+      },
     );
   }, [confId, reportId]);
 

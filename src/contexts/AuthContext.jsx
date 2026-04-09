@@ -25,7 +25,11 @@ export function AuthProvider({ children }) {
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
           setUserProfile(profileSnap.data());
-          setDoc(profileRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+          setDoc(
+            profileRef,
+            { lastLoginAt: serverTimestamp() },
+            { merge: true },
+          );
         }
       } else {
         setUser(null);
@@ -74,7 +78,11 @@ export function AuthProvider({ children }) {
         lastLoginAt: serverTimestamp(),
       });
     } else {
-      await setDoc(profileRef, { lastLoginAt: serverTimestamp() }, { merge: true });
+      await setDoc(
+        profileRef,
+        { lastLoginAt: serverTimestamp() },
+        { merge: true },
+      );
     }
     const updatedSnap = await getDoc(profileRef);
     setUserProfile(updatedSnap.data());

@@ -1,11 +1,16 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { collection, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useTranslation } from 'react-i18next';
+import {
+  collection,
+  onSnapshot,
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { useTranslation } from "react-i18next";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import UserAvatar, { FirstTimeNameSetup } from "./UserAvatar";
-
 
 export default function Dashboard() {
   const { user, userProfile, isSuperAdmin } = useAuth();
@@ -87,7 +92,10 @@ export default function Dashboard() {
       } else if (membership?.status === "approved") {
         if (isPast) past.push(conf);
         else upcoming.push(conf);
-      } else if (!membership && (conf.visibility === "public" || isSuperAdmin)) {
+      } else if (
+        !membership &&
+        (conf.visibility === "public" || isSuperAdmin)
+      ) {
         // Super admins can see all conferences in discover (including private)
         discover.push(conf);
       }
@@ -113,7 +121,7 @@ export default function Dashboard() {
           attendanceMode,
           colorIndex: nextColorIndex,
           appliedAt: serverTimestamp(),
-        }
+        },
       );
       setApplyModal(null);
       setAttendanceMode("onsite");
@@ -130,10 +138,10 @@ export default function Dashboard() {
     if (!code) return;
 
     const match = conferences.find(
-      (c) => c.visibility === "private" && c.joinCode === code
+      (c) => c.visibility === "private" && c.joinCode === code,
     );
     if (!match) {
-      setJoinError(t('dashboard.invalidJoinCode'));
+      setJoinError(t("dashboard.invalidJoinCode"));
       return;
     }
 
@@ -142,7 +150,17 @@ export default function Dashboard() {
   };
 
   const CalendarIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-secondary/60">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0 text-secondary/60"
+    >
       <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
@@ -150,67 +168,76 @@ export default function Dashboard() {
     </svg>
   );
 
-  const ConferenceCard = ({ conf, membership, showApply = false, accentColor = "bg-dash-blue" }) => {
+  const ConferenceCard = ({
+    conf,
+    membership,
+    showApply = false,
+    accentColor = "bg-dash-blue",
+  }) => {
     return (
-    <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 mb-3">
-      <div className="flex items-stretch">
-        {/* Left accent bar */}
-        <div className={`w-1.5 ${accentColor} flex-shrink-0`}></div>
-        <div className="flex-1 p-5">
-          <div className="flex justify-between items-start">
-            <div className="min-w-0 flex-1">
-              <h3 className="font-headline text-on-surface font-bold text-base leading-snug">
-                {membership?.status === "approved" ? (
-                  <Link
-                    to={`/conference/${conf.id}`}
-                    className="text-on-surface hover:text-dash-blue transition-colors"
-                  >
-                    {conf.name}
-                  </Link>
-                ) : (
-                  conf.name
+      <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 mb-3">
+        <div className="flex items-stretch">
+          {/* Left accent bar */}
+          <div className={`w-1.5 ${accentColor} flex-shrink-0`}></div>
+          <div className="flex-1 p-5">
+            <div className="flex justify-between items-start">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-headline text-on-surface font-bold text-base leading-snug">
+                  {membership?.status === "approved" ? (
+                    <Link
+                      to={`/conference/${conf.id}`}
+                      className="text-on-surface hover:text-dash-blue transition-colors"
+                    >
+                      {conf.name}
+                    </Link>
+                  ) : (
+                    conf.name
+                  )}
+                </h3>
+                <p className="text-secondary text-sm mt-1.5 flex items-center gap-2">
+                  <CalendarIcon />
+                  {conf.startDate} — {conf.endDate}
+                </p>
+                {conf.description && (
+                  <p className="text-secondary/80 text-sm mt-2 line-clamp-2 leading-relaxed">
+                    {conf.description}
+                  </p>
                 )}
-              </h3>
-              <p className="text-secondary text-sm mt-1.5 flex items-center gap-2">
-                <CalendarIcon />
-                {conf.startDate} — {conf.endDate}
-              </p>
-              {conf.description && (
-                <p className="text-secondary/80 text-sm mt-2 line-clamp-2 leading-relaxed">{conf.description}</p>
-              )}
+              </div>
+              <div className="flex flex-col items-end gap-1.5 ml-4">
+                {membership?.status === "approved" && (
+                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#27AE60]/10 text-[#27AE60] font-medium uppercase tracking-wider">
+                    {membership.attendanceMode}
+                  </span>
+                )}
+                {membership?.status === "pending" && (
+                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#E67E22]/10 text-[#E67E22] font-medium uppercase tracking-wider">
+                    {t("dashboard.pendingApproval")}
+                  </span>
+                )}
+                {membership?.role === "admin" && (
+                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-dash-blue/10 text-dash-blue font-medium uppercase tracking-wider">
+                    {t("dashboard.admin")}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex flex-col items-end gap-1.5 ml-4">
-              {membership?.status === "approved" && (
-                <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#27AE60]/10 text-[#27AE60] font-medium uppercase tracking-wider">
-                  {membership.attendanceMode}
-                </span>
-              )}
-              {membership?.status === "pending" && (
-                <span className="text-[11px] px-2.5 py-1 rounded-full bg-[#E67E22]/10 text-[#E67E22] font-medium uppercase tracking-wider">
-                  {t('dashboard.pendingApproval')}
-                </span>
-              )}
-              {membership?.role === "admin" && (
-                <span className="text-[11px] px-2.5 py-1 rounded-full bg-dash-blue/10 text-dash-blue font-medium uppercase tracking-wider">
-                  {t('dashboard.admin')}
-                </span>
-              )}
-            </div>
-          </div>
-          {showApply && !membership && (
-            <div className="mt-4 pt-4 border-t border-[#E8E4DF]">
-              <button
-                onClick={() => setApplyModal({ confId: conf.id, confName: conf.name })}
-                className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
+            {showApply && !membership && (
+              <div className="mt-4 pt-4 border-t border-[#E8E4DF]">
+                <button
+                  onClick={() =>
+                    setApplyModal({ confId: conf.id, confName: conf.name })
+                  }
+                  className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
                   uppercase tracking-wider rounded-md hover:bg-dash-blue hover:text-white transition-all duration-200"
-              >
-                {t('dashboard.applyToJoin')}
-              </button>
-            </div>
-          )}
+                >
+                  {t("dashboard.applyToJoin")}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     );
   };
 
@@ -218,7 +245,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#F7F5F2]">
       <FirstTimeNameSetup />
       <div className="bg-gradient-to-r from-dash-blue-deep to-dash-blue px-6 py-3.5 flex justify-between items-center">
-        <h1 className="font-headline text-white text-lg font-bold" style={{ letterSpacing: "0.3px" }}>
+        <h1
+          className="font-headline text-white text-lg font-bold"
+          style={{ letterSpacing: "0.3px" }}
+        >
           ConferenceFlow
         </h1>
         <div className="flex items-center gap-2.5">
@@ -226,11 +256,18 @@ export default function Dashboard() {
             <Link
               to="/super-admin"
               className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-              style={{ background: "rgba(255,255,255,0.18)", letterSpacing: "0.8px" }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.3)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}
+              style={{
+                background: "rgba(255,255,255,0.18)",
+                letterSpacing: "0.8px",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
+              }
             >
-              {t('dashboard.adminPanel')}
+              {t("dashboard.adminPanel")}
             </Link>
           )}
           <UserAvatar size={28} onSignOut={() => navigate("/login")} />
@@ -246,7 +283,10 @@ export default function Dashboard() {
               <div className="h-5 w-48 bg-surface-container rounded"></div>
             </div>
             {[1, 2].map((i) => (
-              <div key={i} className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3">
+              <div
+                key={i}
+                className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3"
+              >
                 <div className="flex items-stretch">
                   <div className="w-1 bg-surface-dim flex-shrink-0"></div>
                   <div className="flex-1 p-5">
@@ -261,7 +301,10 @@ export default function Dashboard() {
               <div className="h-5 w-32 bg-surface-container rounded"></div>
             </div>
             {[1].map((i) => (
-              <div key={i} className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3">
+              <div
+                key={i}
+                className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3"
+              >
                 <div className="flex items-stretch">
                   <div className="w-1 bg-surface-dim flex-shrink-0"></div>
                   <div className="flex-1 p-5">
@@ -272,112 +315,151 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-        ) : (<>
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-6 rounded-full bg-dash-blue"></div>
-              <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                {t('dashboard.myConferences')}
-              </h2>
-            </div>
-            <span className="text-xs font-headline text-secondary tracking-wider">
-              {upcoming.length} {t(upcoming.length === 1 ? 'dashboard.conference' : 'dashboard.conferences')}
-            </span>
-          </div>
-          {upcoming.length === 0 && (
-            <p className="text-secondary text-base text-center py-8">{t('dashboard.noUpcoming')}</p>
-          )}
-          {upcoming.map((conf) => (
-            <ConferenceCard key={conf.id} conf={conf} membership={myMemberships[conf.id]} accentColor="bg-dash-blue" />
-          ))}
-        </section>
-
-        {pending.length > 0 && (
-          <section className="mb-10">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-1 h-6 rounded-full bg-[#E67E22]"></div>
-                <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                  {t('dashboard.pendingApplications')}
-                </h2>
+        ) : (
+          <>
+            <section className="mb-10">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-6 rounded-full bg-dash-blue"></div>
+                  <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
+                    {t("dashboard.myConferences")}
+                  </h2>
+                </div>
+                <span className="text-xs font-headline text-secondary tracking-wider">
+                  {upcoming.length}{" "}
+                  {t(
+                    upcoming.length === 1
+                      ? "dashboard.conference"
+                      : "dashboard.conferences",
+                  )}
+                </span>
               </div>
-              <span className="text-xs font-headline text-secondary tracking-wider">
-                {pending.length} {t('dashboard.pending')}
-              </span>
-            </div>
-            {pending.map((conf) => (
-              <ConferenceCard key={conf.id} conf={conf} membership={myMemberships[conf.id]} accentColor="bg-[#E67E22]" />
-            ))}
-          </section>
-        )}
-
-        <section className="mb-10">
-          <button
-            onClick={() => setShowPast(!showPast)}
-            className="flex items-center gap-3 text-secondary hover:text-on-surface transition-colors group"
-          >
-            <div className="w-1 h-6 rounded-full bg-secondary/30"></div>
-            <span className="text-sm font-headline uppercase tracking-wider">{t('dashboard.pastConferences')}</span>
-            <span className="text-xs text-secondary/60">({past.length})</span>
-            <span className="text-xs transition-transform group-hover:translate-x-0.5">{showPast ? "\u25BC" : "\u25B6"}</span>
-          </button>
-          {showPast && past.length > 0 && (
-            <div className="mt-4">
-              {past.map((conf) => (
-                <ConferenceCard key={conf.id} conf={conf} membership={myMemberships[conf.id]} accentColor="bg-secondary/40" />
+              {upcoming.length === 0 && (
+                <p className="text-secondary text-base text-center py-8">
+                  {t("dashboard.noUpcoming")}
+                </p>
+              )}
+              {upcoming.map((conf) => (
+                <ConferenceCard
+                  key={conf.id}
+                  conf={conf}
+                  membership={myMemberships[conf.id]}
+                  accentColor="bg-dash-blue"
+                />
               ))}
-            </div>
-          )}
-        </section>
+            </section>
 
-        <section className="mb-10">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-6 rounded-full bg-dash-sand"></div>
-              <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                {t('dashboard.discover')}
-              </h2>
-            </div>
-            <span className="text-xs font-headline text-secondary tracking-wider">
-              {discover.length} {t('dashboard.available')}
-            </span>
-          </div>
+            {pending.length > 0 && (
+              <section className="mb-10">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1 h-6 rounded-full bg-[#E67E22]"></div>
+                    <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
+                      {t("dashboard.pendingApplications")}
+                    </h2>
+                  </div>
+                  <span className="text-xs font-headline text-secondary tracking-wider">
+                    {pending.length} {t("dashboard.pending")}
+                  </span>
+                </div>
+                {pending.map((conf) => (
+                  <ConferenceCard
+                    key={conf.id}
+                    conf={conf}
+                    membership={myMemberships[conf.id]}
+                    accentColor="bg-[#E67E22]"
+                  />
+                ))}
+              </section>
+            )}
 
-          <div className="bg-white border border-[#E8E4DF] rounded-lg p-5 mb-5">
-            <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-2">
-              {t('dashboard.joinPrivate')}
-            </label>
-            <div className="flex gap-3 items-end">
-              <input
-                type="text"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder={t('dashboard.enterJoinCode')}
-                className="flex-1 bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm
-                  focus:border-dash-blue focus:outline-none focus:ring-1 focus:ring-dash-blue/20 transition-all"
-              />
+            <section className="mb-10">
               <button
-                onClick={handleJoinByCode}
-                className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
-                  uppercase tracking-wider rounded-md hover:bg-dash-blue hover:text-white transition-all duration-200"
+                onClick={() => setShowPast(!showPast)}
+                className="flex items-center gap-3 text-secondary hover:text-on-surface transition-colors group"
               >
-                {t('common.join')}
+                <div className="w-1 h-6 rounded-full bg-secondary/30"></div>
+                <span className="text-sm font-headline uppercase tracking-wider">
+                  {t("dashboard.pastConferences")}
+                </span>
+                <span className="text-xs text-secondary/60">
+                  ({past.length})
+                </span>
+                <span className="text-xs transition-transform group-hover:translate-x-0.5">
+                  {showPast ? "\u25BC" : "\u25B6"}
+                </span>
               </button>
-            </div>
-          </div>
-          {joinError && (
-            <div className="bg-red-500/10 text-red-600 text-sm p-3 mb-4 rounded-md border border-red-200">{joinError}</div>
-          )}
+              {showPast && past.length > 0 && (
+                <div className="mt-4">
+                  {past.map((conf) => (
+                    <ConferenceCard
+                      key={conf.id}
+                      conf={conf}
+                      membership={myMemberships[conf.id]}
+                      accentColor="bg-secondary/40"
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
 
-          {discover.length === 0 && (
-            <p className="text-secondary text-base text-center py-8">{t('dashboard.noPublicConferences')}</p>
-          )}
-          {discover.map((conf) => (
-            <ConferenceCard key={conf.id} conf={conf} showApply accentColor="bg-dash-sand" />
-          ))}
-        </section>
-        </>)}
+            <section className="mb-10">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-6 rounded-full bg-dash-sand"></div>
+                  <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
+                    {t("dashboard.discover")}
+                  </h2>
+                </div>
+                <span className="text-xs font-headline text-secondary tracking-wider">
+                  {discover.length} {t("dashboard.available")}
+                </span>
+              </div>
+
+              <div className="bg-white border border-[#E8E4DF] rounded-lg p-5 mb-5">
+                <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-2">
+                  {t("dashboard.joinPrivate")}
+                </label>
+                <div className="flex gap-3 items-end">
+                  <input
+                    type="text"
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value)}
+                    placeholder={t("dashboard.enterJoinCode")}
+                    className="flex-1 bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm
+                  focus:border-dash-blue focus:outline-none focus:ring-1 focus:ring-dash-blue/20 transition-all"
+                  />
+                  <button
+                    onClick={handleJoinByCode}
+                    className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
+                  uppercase tracking-wider rounded-md hover:bg-dash-blue hover:text-white transition-all duration-200"
+                  >
+                    {t("common.join")}
+                  </button>
+                </div>
+              </div>
+              {joinError && (
+                <div className="bg-red-500/10 text-red-600 text-sm p-3 mb-4 rounded-md border border-red-200">
+                  {joinError}
+                </div>
+              )}
+
+              {discover.length === 0 && (
+                <p className="text-secondary text-base text-center py-8">
+                  {t("dashboard.noPublicConferences")}
+                </p>
+              )}
+              {discover.map((conf) => (
+                <ConferenceCard
+                  key={conf.id}
+                  conf={conf}
+                  showApply
+                  accentColor="bg-dash-sand"
+                />
+              ))}
+            </section>
+          </>
+        )}
       </div>
 
       {applyModal && (
@@ -393,34 +475,38 @@ export default function Dashboard() {
             <div className="h-[3px] bg-dash-blue"></div>
             <div className="p-6">
               <h3 className="font-headline text-on-surface font-bold text-lg mb-1">
-                {t('dashboard.applyToJoin')}
+                {t("dashboard.applyToJoin")}
               </h3>
-              <p className="text-secondary text-sm mb-6">{applyModal.confName}</p>
+              <p className="text-secondary text-sm mb-6">
+                {applyModal.confName}
+              </p>
 
               <div className="mb-6">
                 <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-3">
-                  {t('dashboard.attendanceMode')}
+                  {t("dashboard.attendanceMode")}
                 </label>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setAttendanceMode("onsite")}
                     className={`flex-1 p-3 text-sm font-headline uppercase tracking-wider rounded-lg transition-all duration-200
-                      ${attendanceMode === "onsite"
-                        ? "bg-dash-blue text-white shadow-sm"
-                        : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
+                      ${
+                        attendanceMode === "onsite"
+                          ? "bg-dash-blue text-white shadow-sm"
+                          : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
                       }`}
                   >
-                    {t('dashboard.onsite')}
+                    {t("dashboard.onsite")}
                   </button>
                   <button
                     onClick={() => setAttendanceMode("online")}
                     className={`flex-1 p-3 text-sm font-headline uppercase tracking-wider rounded-lg transition-all duration-200
-                      ${attendanceMode === "online"
-                        ? "bg-dash-blue text-white shadow-sm"
-                        : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
+                      ${
+                        attendanceMode === "online"
+                          ? "bg-dash-blue text-white shadow-sm"
+                          : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
                       }`}
                   >
-                    {t('dashboard.online')}
+                    {t("dashboard.online")}
                   </button>
                 </div>
               </div>
@@ -431,7 +517,7 @@ export default function Dashboard() {
                   className="flex-1 bg-white border border-[#E8E4DF] p-2.5 text-secondary text-sm
                     uppercase tracking-wider hover:text-on-surface hover:border-on-surface/30 rounded-lg transition-all duration-200"
                 >
-                  {t('common.cancel')}
+                  {t("common.cancel")}
                 </button>
                 <button
                   onClick={handleApply}
@@ -440,7 +526,7 @@ export default function Dashboard() {
                     uppercase tracking-wider hover:bg-dash-blue-deep rounded-lg transition-colors duration-200
                     disabled:opacity-50"
                 >
-                  {applying ? t('dashboard.applying') : t('common.apply')}
+                  {applying ? t("dashboard.applying") : t("common.apply")}
                 </button>
               </div>
             </div>

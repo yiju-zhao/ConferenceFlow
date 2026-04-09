@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { EditableField, SectionInlineAdd } from "../shared";
 import CitationBadges from "../components/CitationBadges";
 
@@ -13,8 +13,11 @@ import CitationBadges from "../components/CitationBadges";
 function groupBlocks(blocks) {
   const statCards = blocks.filter((b) => b.type === "stat-card");
   const treeRoot = blocks.find((b) => b.type === "tree-root") || null;
-  const treeConclusion = blocks.find((b) => b.type === "tree-conclusion") || null;
-  const legacyBlocks = blocks.filter((b) => b.type === "heading" || b.type === "body");
+  const treeConclusion =
+    blocks.find((b) => b.type === "tree-conclusion") || null;
+  const legacyBlocks = blocks.filter(
+    (b) => b.type === "heading" || b.type === "body",
+  );
 
   // Build branch groups: tree-branch starts a new group, subsequent tree-evidence go into it
   const branches = [];
@@ -45,16 +48,37 @@ export default function AnalysisSection({
   const { t } = useTranslation();
 
   const blockTypes = [
-    { type: "stat-card", label: t('sections.statCard'), extraFields: { label: "", value: "", description: "" } },
-    { type: "tree-root", label: t('sections.treeRoot'), extraFields: { title: "", content: "" } },
-    { type: "tree-branch", label: t('sections.treeBranch'), extraFields: { title: "", content: "" } },
-    { type: "tree-evidence", label: t('sections.treeEvidence'), extraFields: { content: "", source: "" } },
-    { type: "tree-conclusion", label: t('sections.treeConclusion'), extraFields: { content: "" } },
-    { type: "heading", label: t('sections.heading') },
-    { type: "body", label: t('sections.body') },
+    {
+      type: "stat-card",
+      label: t("sections.statCard"),
+      extraFields: { label: "", value: "", description: "" },
+    },
+    {
+      type: "tree-root",
+      label: t("sections.treeRoot"),
+      extraFields: { title: "", content: "" },
+    },
+    {
+      type: "tree-branch",
+      label: t("sections.treeBranch"),
+      extraFields: { title: "", content: "" },
+    },
+    {
+      type: "tree-evidence",
+      label: t("sections.treeEvidence"),
+      extraFields: { content: "", source: "" },
+    },
+    {
+      type: "tree-conclusion",
+      label: t("sections.treeConclusion"),
+      extraFields: { content: "" },
+    },
+    { type: "heading", label: t("sections.heading") },
+    { type: "body", label: t("sections.body") },
   ];
 
-  const { statCards, treeRoot, branches, treeConclusion, legacyBlocks } = groupBlocks(blocks);
+  const { statCards, treeRoot, branches, treeConclusion, legacyBlocks } =
+    groupBlocks(blocks);
 
   // ── Empty state ───────────────────────────────────────────────────────────
   if (blocks.length === 0) {
@@ -90,7 +114,7 @@ export default function AnalysisSection({
     <button
       className={`absolute top-1 right-1 text-secondary hover:text-primary text-xs no-print opacity-0 group-hover:opacity-100 transition-opacity ${extraClass}`}
       onClick={() => onRemoveBlock(blockId)}
-      title={t('common.delete')}
+      title={t("common.delete")}
     >
       ×
     </button>
@@ -108,7 +132,6 @@ export default function AnalysisSection({
   return (
     <div className="bg-surface-dim p-1 px-1">
       <div className="bg-white p-6 md:p-10 space-y-6">
-
         {/* ── Stat Cards Grid ──────────────────────────────────────────── */}
         {statCards.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
@@ -120,7 +143,7 @@ export default function AnalysisSection({
                     <EditableField
                       value={card.label}
                       onSave={(html) => onUpdateBlock(card.id, { label: html })}
-                      placeholder={t('sections.metricName')}
+                      placeholder={t("sections.metricName")}
                       minHeight={14}
                     />
                   </div>
@@ -128,15 +151,17 @@ export default function AnalysisSection({
                     <EditableField
                       value={card.value}
                       onSave={(html) => onUpdateBlock(card.id, { value: html })}
-                      placeholder={t('sections.metricValue')}
+                      placeholder={t("sections.metricValue")}
                       minHeight={24}
                     />
                   </div>
                   <div className="text-[10px] text-secondary">
                     <EditableField
                       value={card.description}
-                      onSave={(html) => onUpdateBlock(card.id, { description: html })}
-                      placeholder={t('sections.metricDesc')}
+                      onSave={(html) =>
+                        onUpdateBlock(card.id, { description: html })
+                      }
+                      placeholder={t("sections.metricDesc")}
                       minHeight={14}
                     />
                   </div>
@@ -151,20 +176,25 @@ export default function AnalysisSection({
         {treeRoot && (
           <div>
             <div className="bg-primary text-on-primary p-4 relative group">
-              {removeBtn(treeRoot.id, "text-on-primary/60 hover:text-on-primary")}
+              {removeBtn(
+                treeRoot.id,
+                "text-on-primary/60 hover:text-on-primary",
+              )}
               <h4 className="text-sm font-black uppercase tracking-tight">
                 <EditableField
                   value={treeRoot.title}
                   onSave={(html) => onUpdateBlock(treeRoot.id, { title: html })}
-                  placeholder={t('sections.inferenceTheme')}
+                  placeholder={t("sections.inferenceTheme")}
                   minHeight={18}
                 />
               </h4>
               <div className="text-xs mt-1 opacity-90">
                 <EditableField
                   value={treeRoot.content}
-                  onSave={(html) => onUpdateBlock(treeRoot.id, { content: html })}
-                  placeholder={t('sections.coreInference')}
+                  onSave={(html) =>
+                    onUpdateBlock(treeRoot.id, { content: html })
+                  }
+                  placeholder={t("sections.coreInference")}
                   minHeight={18}
                 />
               </div>
@@ -187,16 +217,20 @@ export default function AnalysisSection({
                     <h5 className="text-xs font-black uppercase tracking-tight">
                       <EditableField
                         value={branch.title}
-                        onSave={(html) => onUpdateBlock(branch.id, { title: html })}
-                        placeholder={t('sections.branchTitle')}
+                        onSave={(html) =>
+                          onUpdateBlock(branch.id, { title: html })
+                        }
+                        placeholder={t("sections.branchTitle")}
                         minHeight={16}
                       />
                     </h5>
                     <div className="text-[11px] mt-1 opacity-80">
                       <EditableField
                         value={branch.content}
-                        onSave={(html) => onUpdateBlock(branch.id, { content: html })}
-                        placeholder={t('sections.branchDesc')}
+                        onSave={(html) =>
+                          onUpdateBlock(branch.id, { content: html })
+                        }
+                        placeholder={t("sections.branchDesc")}
                         minHeight={16}
                       />
                     </div>
@@ -205,9 +239,11 @@ export default function AnalysisSection({
                     {/* Add citation button */}
                     <button
                       className="no-print mt-2 text-[10px] text-primary-fixed-dim hover:text-white bg-white/10 hover:bg-white/20 px-2 py-0.5 transition-colors"
-                      onClick={() => onOpenCitationPicker(sectionName, branch.id)}
+                      onClick={() =>
+                        onOpenCitationPicker(sectionName, branch.id)
+                      }
                     >
-                      {t('sections.addCitation')}
+                      {t("sections.addCitation")}
                     </button>
                   </div>
                   {renderInlineAdd(branch.id)}
@@ -225,8 +261,10 @@ export default function AnalysisSection({
                               <div className="text-[11px] leading-snug text-on-surface">
                                 <EditableField
                                   value={ev.content}
-                                  onSave={(html) => onUpdateBlock(ev.id, { content: html })}
-                                  placeholder={t('sections.evidenceContent')}
+                                  onSave={(html) =>
+                                    onUpdateBlock(ev.id, { content: html })
+                                  }
+                                  placeholder={t("sections.evidenceContent")}
                                   minHeight={16}
                                 />
                               </div>
@@ -235,8 +273,12 @@ export default function AnalysisSection({
                                   <span>— </span>
                                   <EditableField
                                     value={ev.source}
-                                    onSave={(html) => onUpdateBlock(ev.id, { source: html })}
-                                    placeholder={t('sections.sourcePlaceholder')}
+                                    onSave={(html) =>
+                                      onUpdateBlock(ev.id, { source: html })
+                                    }
+                                    placeholder={t(
+                                      "sections.sourcePlaceholder",
+                                    )}
                                     minHeight={12}
                                   />
                                 </div>
@@ -262,8 +304,10 @@ export default function AnalysisSection({
               <div className="text-xs font-bold text-on-surface leading-relaxed">
                 <EditableField
                   value={treeConclusion.content}
-                  onSave={(html) => onUpdateBlock(treeConclusion.id, { content: html })}
-                  placeholder={t('sections.conclusion')}
+                  onSave={(html) =>
+                    onUpdateBlock(treeConclusion.id, { content: html })
+                  }
+                  placeholder={t("sections.conclusion")}
                   minHeight={20}
                 />
               </div>
@@ -281,8 +325,10 @@ export default function AnalysisSection({
                 <div className="text-3xl font-black text-primary mb-2 font-headline">
                   <EditableField
                     value={block.content}
-                    onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                    placeholder={t('report.dataMetrics')}
+                    onSave={(html) =>
+                      onUpdateBlock(block.id, { content: html })
+                    }
+                    placeholder={t("report.dataMetrics")}
                     minHeight={28}
                   />
                 </div>
@@ -293,8 +339,10 @@ export default function AnalysisSection({
                 <div className="text-lg leading-relaxed font-medium text-on-surface">
                   <EditableField
                     value={block.content}
-                    onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                    placeholder={t('sections.analysisContent')}
+                    onSave={(html) =>
+                      onUpdateBlock(block.id, { content: html })
+                    }
+                    placeholder={t("sections.analysisContent")}
                     minHeight={60}
                   />
                 </div>
@@ -303,7 +351,6 @@ export default function AnalysisSection({
             {renderInlineAdd(block.id)}
           </div>
         ))}
-
       </div>
     </div>
   );

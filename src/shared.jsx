@@ -7,15 +7,22 @@
  *   - src/sessionCatalog.js
  */
 import { useState, useEffect, useRef } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 // ── EditableField ────────────────────────────────────────────────────────────
-export function EditableField({ value, onSave, placeholder, minHeight = 60, readOnly = false }) {
+export function EditableField({
+  value,
+  onSave,
+  placeholder,
+  minHeight = 60,
+  readOnly = false,
+}) {
   const ref = useRef(null);
   const focused = useRef(false);
   useEffect(() => {
     if (ref.current && !focused.current && value !== undefined) {
-      if (ref.current.innerHTML !== (value || "")) ref.current.innerHTML = value || "";
+      if (ref.current.innerHTML !== (value || ""))
+        ref.current.innerHTML = value || "";
     }
   }, [value]);
 
@@ -37,9 +44,15 @@ export function EditableField({ value, onSave, placeholder, minHeight = 60, read
       suppressContentEditableWarning
       data-placeholder={placeholder}
       style={{ minHeight }}
-      onFocus={() => { focused.current = true; }}
-      onBlur={() => { focused.current = false; }}
-      onInput={() => { if (ref.current) onSave(ref.current.innerHTML); }}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onBlur={() => {
+        focused.current = false;
+      }}
+      onInput={() => {
+        if (ref.current) onSave(ref.current.innerHTML);
+      }}
     />
   );
 }
@@ -52,13 +65,31 @@ export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
     <div className="inline-add-zone no-print">
       <button
         className="inline-add-btn"
-        onClick={() => isOpen ? onOpen(null) : onOpen(`${field}::${afterId}`)}
-        title={t('report.insertBlock')}
-      >{t('report.addBlock')}</button>
+        onClick={() => (isOpen ? onOpen(null) : onOpen(`${field}::${afterId}`))}
+        title={t("report.insertBlock")}
+      >
+        {t("report.addBlock")}
+      </button>
       {isOpen && (
         <div className="inline-add-popover">
-          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'heading', afterId); onOpen(null); }}>{t('report.subtitle')}</button>
-          <button className="inline-add-popover-item" onClick={() => { onInsert(field, 'body', afterId); onOpen(null); }}>{t('report.bodyText')}</button>
+          <button
+            className="inline-add-popover-item"
+            onClick={() => {
+              onInsert(field, "heading", afterId);
+              onOpen(null);
+            }}
+          >
+            {t("report.subtitle")}
+          </button>
+          <button
+            className="inline-add-popover-item"
+            onClick={() => {
+              onInsert(field, "body", afterId);
+              onOpen(null);
+            }}
+          >
+            {t("report.bodyText")}
+          </button>
         </div>
       )}
     </div>
@@ -66,23 +97,40 @@ export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
 }
 
 // ── SectionInlineAdd ─────────────────────────────────────────────────────────
-export function SectionInlineAdd({ sectionName, afterId, openKey, onOpen, onInsert, blockTypes }) {
+export function SectionInlineAdd({
+  sectionName,
+  afterId,
+  openKey,
+  onOpen,
+  onInsert,
+  blockTypes,
+}) {
   const { t } = useTranslation();
   const isOpen = openKey === `${sectionName}::${afterId}`;
   return (
     <div className="inline-add-zone no-print">
       <button
         className="inline-add-btn"
-        onClick={() => isOpen ? onOpen(null) : onOpen(`${sectionName}::${afterId}`)}
-        title={t('report.insertBlock')}
-      >{t('report.addBlock')}</button>
+        onClick={() =>
+          isOpen ? onOpen(null) : onOpen(`${sectionName}::${afterId}`)
+        }
+        title={t("report.insertBlock")}
+      >
+        {t("report.addBlock")}
+      </button>
       {isOpen && (
         <div className="inline-add-popover">
           {blockTypes.map(({ type, label, extraFields }) => (
-            <button key={type} className="inline-add-popover-item" onClick={() => {
-              onInsert(sectionName, type, afterId, extraFields);
-              onOpen(null);
-            }}>{label}</button>
+            <button
+              key={type}
+              className="inline-add-popover-item"
+              onClick={() => {
+                onInsert(sectionName, type, afterId, extraFields);
+                onOpen(null);
+              }}
+            >
+              {label}
+            </button>
           ))}
         </div>
       )}
@@ -91,9 +139,14 @@ export function SectionInlineAdd({ sectionName, afterId, openKey, onOpen, onInse
 }
 
 // ── BulletEditor ──────────────────────────────────────────────────────────────
-export function BulletEditor({ points, onSave, placeholder, readOnly = false }) {
+export function BulletEditor({
+  points,
+  onSave,
+  placeholder,
+  readOnly = false,
+}) {
   const { t } = useTranslation();
-  const ph = placeholder || t('report.enterKeyPoints');
+  const ph = placeholder || t("report.enterKeyPoints");
   const [local, setLocal] = useState(points || []);
   const focused = useRef(false);
   const containerRef = useRef(null);
@@ -104,7 +157,7 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
 
   useEffect(() => {
     if (!readOnly) {
-      containerRef.current?.querySelectorAll(".bullet-input").forEach(el => {
+      containerRef.current?.querySelectorAll(".bullet-input").forEach((el) => {
         el.style.height = "auto";
         el.style.height = el.scrollHeight + "px";
       });
@@ -119,7 +172,9 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
         <ul className="bullet-editor-list">
           {items.map((point, idx) => (
             <li key={idx} className="bullet-editor-item">
-              <span className="bullet-dot" aria-hidden="true">•</span>
+              <span className="bullet-dot" aria-hidden="true">
+                •
+              </span>
               <span className="bullet-readonly-text">{point}</span>
             </li>
           ))}
@@ -128,7 +183,10 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
     );
   }
 
-  const commit = (next) => { setLocal(next); onSave(next); };
+  const commit = (next) => {
+    setLocal(next);
+    onSave(next);
+  };
 
   const handleChange = (idx, value) =>
     commit(local.map((p, i) => (i === idx ? value : p)));
@@ -143,7 +201,8 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
       const next = [...local.slice(0, idx + 1), "", ...local.slice(idx + 1)];
       commit(next);
       setTimeout(() => {
-        const inputs = e.target.closest(".bullet-editor-list")
+        const inputs = e.target
+          .closest(".bullet-editor-list")
           ?.querySelectorAll(".bullet-input");
         if (inputs?.[idx + 1]) inputs[idx + 1].focus();
       }, 0);
@@ -153,9 +212,11 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
       const next = local.filter((_, i) => i !== idx);
       commit(next);
       setTimeout(() => {
-        const inputs = e.target.closest(".bullet-editor-list")
+        const inputs = e.target
+          .closest(".bullet-editor-list")
           ?.querySelectorAll(".bullet-input");
-        if (inputs?.[Math.max(0, idx - 1)]) inputs[Math.max(0, idx - 1)].focus();
+        if (inputs?.[Math.max(0, idx - 1)])
+          inputs[Math.max(0, idx - 1)].focus();
       }, 0);
     }
   };
@@ -164,13 +225,19 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
     <div
       ref={containerRef}
       className="bullet-editor"
-      onFocus={() => { focused.current = true; }}
-      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) focused.current = false; }}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) focused.current = false;
+      }}
     >
       <ul className="bullet-editor-list">
         {local.map((point, idx) => (
           <li key={idx} className="bullet-editor-item">
-            <span className="bullet-dot" aria-hidden="true">•</span>
+            <span className="bullet-dot" aria-hidden="true">
+              •
+            </span>
             <textarea
               className="bullet-input"
               value={point}
@@ -192,9 +259,11 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
             <button
               className="bullet-remove-btn no-print"
               onClick={() => handleRemove(idx)}
-              title={t('report.deletePoint')}
+              title={t("report.deletePoint")}
               tabIndex={-1}
-            >−</button>
+            >
+              −
+            </button>
           </li>
         ))}
       </ul>
@@ -202,7 +271,7 @@ export function BulletEditor({ points, onSave, placeholder, readOnly = false }) 
         <p className="bullet-editor-empty no-print">{ph}</p>
       )}
       <button className="bullet-add-btn no-print" onClick={handleAdd}>
-        {t('report.addPoint')}
+        {t("report.addPoint")}
       </button>
     </div>
   );

@@ -1,7 +1,13 @@
-import './i18n';
+import "./i18n";
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useParams,
+  Navigate,
+} from "react-router-dom";
 import { inject } from "@vercel/analytics";
 import "./index.css";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -19,17 +25,35 @@ const ViewReport = lazy(() => import("./ViewReport"));
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminSettings = lazy(() => import("./components/admin/AdminSettings"));
 const AdminSessions = lazy(() => import("./components/admin/AdminSessions"));
-const AdminApplications = lazy(() => import("./components/admin/AdminApplications"));
+const AdminApplications = lazy(
+  () => import("./components/admin/AdminApplications"),
+);
 const AdminReports = lazy(() => import("./components/admin/AdminReports"));
-const AdminAttendance = lazy(() => import("./components/admin/AdminAttendance"));
-const SuperAdminPanel = lazy(() => import("./components/admin/SuperAdminPanel"));
+const AdminAttendance = lazy(
+  () => import("./components/admin/AdminAttendance"),
+);
+const SuperAdminPanel = lazy(
+  () => import("./components/admin/SuperAdminPanel"),
+);
 
 inject();
 
 function LoadingFallback() {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-      <span className="font-mono" style={{ color: "var(--text-muted)", fontSize: 13 }}>Loading...</span>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "60vh",
+      }}
+    >
+      <span
+        className="font-mono"
+        style={{ color: "var(--text-muted)", fontSize: 13 }}
+      >
+        Loading...
+      </span>
     </div>
   );
 }
@@ -52,28 +76,56 @@ ReactDOM.createRoot(document.getElementById("root")).render(
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/view/:date/:fileId" element={<ViewReport />} />
-            <Route path="/view/report/:reportId" element={<ReportRouter viewMode />} />
+            <Route
+              path="/view/report/:reportId"
+              element={<ReportRouter viewMode />}
+            />
 
             {/* Authenticated routes */}
-            <Route path="/dashboard" element={
-              <AuthGuard><Dashboard /></AuthGuard>
-            } />
+            <Route
+              path="/dashboard"
+              element={
+                <AuthGuard>
+                  <Dashboard />
+                </AuthGuard>
+              }
+            />
 
             {/* Conference-scoped routes */}
-            <Route path="/conference/:confId" element={
-              <AuthGuard><CalendarPage /></AuthGuard>
-            } />
-            <Route path="/conference/:confId/reports" element={
-              <AuthGuard><ReportList /></AuthGuard>
-            } />
-            <Route path="/conference/:confId/report/:reportId" element={
-              <AuthGuard><ReportRouter /></AuthGuard>
-            } />
+            <Route
+              path="/conference/:confId"
+              element={
+                <AuthGuard>
+                  <CalendarPage />
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="/conference/:confId/reports"
+              element={
+                <AuthGuard>
+                  <ReportList />
+                </AuthGuard>
+              }
+            />
+            <Route
+              path="/conference/:confId/report/:reportId"
+              element={
+                <AuthGuard>
+                  <ReportRouter />
+                </AuthGuard>
+              }
+            />
 
             {/* Admin routes */}
-            <Route path="/conference/:confId/admin" element={
-              <AuthGuard><AdminLayout /></AuthGuard>
-            }>
+            <Route
+              path="/conference/:confId/admin"
+              element={
+                <AuthGuard>
+                  <AdminLayout />
+                </AuthGuard>
+              }
+            >
               <Route index element={<AdminSettings />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="sessions" element={<AdminSessions />} />
@@ -82,17 +134,28 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               <Route path="attendance" element={<AdminAttendance />} />
             </Route>
 
-            <Route path="/super-admin" element={
-              <AuthGuard requireSuperAdmin><SuperAdminPanel /></AuthGuard>
-            } />
+            <Route
+              path="/super-admin"
+              element={
+                <AuthGuard requireSuperAdmin>
+                  <SuperAdminPanel />
+                </AuthGuard>
+              }
+            />
 
             {/* Legacy routes redirect to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/report/:reportId" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/reports"
+              element={<Navigate to="/dashboard" replace />}
+            />
+            <Route
+              path="/report/:reportId"
+              element={<Navigate to="/dashboard" replace />}
+            />
           </Routes>
         </Suspense>
       </AuthProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

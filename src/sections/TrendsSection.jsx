@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import { EditableField, SectionInlineAdd } from "../shared";
 
 /**
@@ -14,12 +14,26 @@ function groupBlocks(blocks) {
   for (const block of blocks) {
     if (block.type === "trend-title") {
       // Start a new trend group
-      current = { kind: "trend", title: block, summary: null, bullets: [], allBlocks: [block] };
+      current = {
+        kind: "trend",
+        title: block,
+        summary: null,
+        bullets: [],
+        allBlocks: [block],
+      };
       groups.push(current);
-    } else if (block.type === "trend-summary" && current && current.kind === "trend") {
+    } else if (
+      block.type === "trend-summary" &&
+      current &&
+      current.kind === "trend"
+    ) {
       current.summary = block;
       current.allBlocks.push(block);
-    } else if (block.type === "evidence-bullet" && current && current.kind === "trend") {
+    } else if (
+      block.type === "evidence-bullet" &&
+      current &&
+      current.kind === "trend"
+    ) {
       current.bullets.push(block);
       current.allBlocks.push(block);
     } else {
@@ -46,11 +60,11 @@ export default function TrendsSection({
   const { t } = useTranslation();
 
   const blockTypes = [
-    { type: "trend-title", label: t('sections.trendTitle') },
-    { type: "trend-summary", label: t('sections.trendSummary') },
-    { type: "evidence-bullet", label: t('sections.evidenceBullet') },
-    { type: "heading", label: t('sections.heading') },
-    { type: "body", label: t('sections.body') },
+    { type: "trend-title", label: t("sections.trendTitle") },
+    { type: "trend-summary", label: t("sections.trendSummary") },
+    { type: "evidence-bullet", label: t("sections.evidenceBullet") },
+    { type: "heading", label: t("sections.heading") },
+    { type: "body", label: t("sections.body") },
   ];
 
   const groups = groupBlocks(blocks);
@@ -73,8 +87,10 @@ export default function TrendsSection({
                   <div className="text-xl font-bold text-on-background font-headline">
                     <EditableField
                       value={block.content}
-                      onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                      placeholder={t('sections.enterSubtitle')}
+                      onSave={(html) =>
+                        onUpdateBlock(block.id, { content: html })
+                      }
+                      placeholder={t("sections.enterSubtitle")}
                       minHeight={28}
                     />
                   </div>
@@ -90,8 +106,10 @@ export default function TrendsSection({
                   <div className="text-on-surface leading-relaxed">
                     <EditableField
                       value={block.content}
-                      onSave={(html) => onUpdateBlock(block.id, { content: html })}
-                      placeholder={t('sections.enterBody')}
+                      onSave={(html) =>
+                        onUpdateBlock(block.id, { content: html })
+                      }
+                      placeholder={t("sections.enterBody")}
                       minHeight={40}
                     />
                   </div>
@@ -141,8 +159,10 @@ export default function TrendsSection({
                 <h3 className="text-sm font-bold text-primary uppercase mb-2">
                   <EditableField
                     value={title.content}
-                    onSave={(html) => onUpdateBlock(title.id, { content: html })}
-                    placeholder={t('sections.trendTitlePlaceholder')}
+                    onSave={(html) =>
+                      onUpdateBlock(title.id, { content: html })
+                    }
+                    placeholder={t("sections.trendTitlePlaceholder")}
                     minHeight={20}
                   />
                 </h3>
@@ -160,8 +180,10 @@ export default function TrendsSection({
                   <p className="text-xl font-bold mb-4">
                     <EditableField
                       value={summary.content}
-                      onSave={(html) => onUpdateBlock(summary.id, { content: html })}
-                      placeholder={t('sections.trendSummaryPlaceholder')}
+                      onSave={(html) =>
+                        onUpdateBlock(summary.id, { content: html })
+                      }
+                      placeholder={t("sections.trendSummaryPlaceholder")}
                       minHeight={28}
                     />
                   </p>
@@ -172,22 +194,29 @@ export default function TrendsSection({
               {bullets.length > 0 && (
                 <ul className="space-y-3">
                   {bullets.map((bullet) => (
-                    <li key={bullet.id} className="flex items-start gap-3 text-sm leading-relaxed relative group/bullet">
+                    <li
+                      key={bullet.id}
+                      className="flex items-start gap-3 text-sm leading-relaxed relative group/bullet"
+                    >
                       <span className="text-primary font-bold mt-1">—</span>
                       <span className="flex-1">
                         <EditableField
                           value={bullet.content}
-                          onSave={(html) => onUpdateBlock(bullet.id, { content: html })}
-                          placeholder={t('sections.evidenceBulletPlaceholder')}
+                          onSave={(html) =>
+                            onUpdateBlock(bullet.id, { content: html })
+                          }
+                          placeholder={t("sections.evidenceBulletPlaceholder")}
                           minHeight={20}
                         />
                       </span>
                       <div className="flex items-center gap-1 no-print opacity-0 group-hover/bullet:opacity-100 transition-opacity">
                         <button
                           className="text-xs text-secondary hover:text-primary bg-transparent border-none cursor-pointer whitespace-nowrap"
-                          onClick={() => onOpenCitationPicker(sectionName, bullet.id)}
+                          onClick={() =>
+                            onOpenCitationPicker(sectionName, bullet.id)
+                          }
                         >
-                          {t('sections.addCitationFull')}
+                          {t("sections.addCitationFull")}
                         </button>
                         <button
                           className="text-secondary hover:text-primary text-sm"
