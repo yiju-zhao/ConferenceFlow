@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase";
 import { apiFetch } from "../../lib/api";
+import { useConferenceSessions } from "../../hooks/useConferenceSessions";
 
 const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 
@@ -87,7 +86,7 @@ function SessionField({ label, field, type = "text", value, onChange }) {
 export default function AdminSessions() {
   const { t } = useTranslation();
   const { confId } = useParams();
-  const [sessions, setSessions] = useState([]);
+  const { sessions } = useConferenceSessions(confId);
   const [search, setSearch] = useState("");
   const [editModal, setEditModal] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -96,17 +95,6 @@ export default function AdminSessions() {
   const [showFormatGuide, setShowFormatGuide] = useState(false);
   const [mdCopied, setMdCopied] = useState(false);
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(db, "conferences", confId, "sessions"),
-      (snap) => {
-        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        arr.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
-        setSessions(arr);
-      },
-    );
-  }, [confId]);
 
   const filtered = sessions.filter((s) => {
     if (!search) return true;

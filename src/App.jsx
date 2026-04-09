@@ -18,7 +18,6 @@ import {
   FileText,
   LayoutList,
   CalendarRange,
-  VideoOff,
   Plus,
 } from "lucide-react";
 
@@ -33,319 +32,14 @@ import { auth, db } from "./firebase";
 import { COLORS } from "./constants";
 import { SESSION_CATALOG } from "./sessionCatalog";
 import { getInitials } from "./lib/reportUtils";
-function parseCSVLine(text) {
-  let ret = [],
-    inQuote = false,
-    value = "";
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuote) {
-      if (ch === '"') {
-        if (i + 1 < text.length && text[i + 1] === '"') {
-          value += '"';
-          i++;
-        } else {
-          inQuote = false;
-        }
-      } else {
-        value += ch;
-      }
-    } else {
-      if (ch === '"') {
-        inQuote = true;
-      } else if (ch === ",") {
-        ret.push(value.trim());
-        value = "";
-      } else {
-        value += ch;
-      }
-    }
-  }
-  ret.push(value.trim());
-  return ret;
-}
-
-// ── Calendar view helpers ─────────────────────────────────────────────────────
-function parseTimeToMinutes(timeStr) {
-  if (!timeStr) return 0;
-  const s = timeStr.trim().toUpperCase();
-  const isPM = s.includes("PM");
-  const isAM = s.includes("AM");
-  const clean = s.replace(/[^0-9:]/g, "");
-  const [hStr = "0", mStr = "0"] = clean.split(":");
-  let h = parseInt(hStr, 10) || 0;
-  const m = parseInt(mStr, 10) || 0;
-  if (isPM && h !== 12) h += 12;
-  if (isAM && h === 12) h = 0;
-  return h * 60 + m;
-}
-
-function formatHourBucket(startMinutes) {
-  const h = Math.floor(startMinutes / 60);
-  const fmt = (hr) => `${hr % 12 || 12}:00 ${hr < 12 ? "AM" : "PM"}`;
-  return `${fmt(h)} – ${fmt(h + 1)}`;
-}
-
-// ── Calendar session card ─────────────────────────────────────────────────────
-function CalendarSessionCard({ session, members, toggleAttendance, user }) {
-  return (
-    <div
-      className={`calendar-session-card${session.attendees.size === 0 ? " calendar-card--unassigned" : ""}${session.attendees.size >= 3 ? " calendar-card--popular" : ""}`}
-    >
-      <div className="calendar-card-top">
-        <span className="code-badge">{session.code}</span>
-        {session.session_type && (
-          <SessionTypeBadge type={session.session_type} />
-        )}
-        {session.format && <FormatBadge format={session.format} />}
-        {session.recording && session.recording !== "Yes" && (
-          <NoRecordingBadge />
-        )}
-        <span className="font-mono calendar-card-time">
-          {session.start}–{session.end}
-        </span>
-      </div>
-      <p className="calendar-card-title">
-        {SESSION_CATALOG.get(session.code)?.url ? (
-          <a
-            href={SESSION_CATALOG.get(session.code).url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {SESSION_CATALOG.get(session.code)?.title || session.title}
-          </a>
-        ) : (
-          SESSION_CATALOG.get(session.code)?.title || session.title
-        )}
-      </p>
-      {session.room && (
-        <div className="calendar-card-room">
-          <MapPin size={10} color="var(--text-dim)" />
-          <span className="calendar-card-room-text">{session.room}</span>
-        </div>
-      )}
-      {members.length > 0 && (
-        <div className="calendar-card-pills">
-          {members.map((m) => {
-            const c = COLORS[m.colorIndex];
-            const isOn = session.attendees.has(m.id);
-            return (
-              <button
-                key={m.id}
-                onClick={() => user && toggleAttendance(session.code, m.id)}
-                className={`calendar-member-pill${isOn ? " active" : ""}`}
-                style={{
-                  cursor: user ? "pointer" : "default",
-                  background: isOn ? c.bg : undefined,
-                  color: isOn ? c.hex : undefined,
-                  borderColor: isOn ? c.hex + "50" : undefined,
-                }}
-                title={m.name}
-              >
-                {getInitials(m.name)}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Calendar view ─────────────────────────────────────────────────────────────
-function CalendarView({
-  groupedSessions,
-  members,
-  toggleAttendance,
-  user,
-  collapsedDates,
-  toggleDateCollapse,
-}) {
-  return (
-    <div className="calendar-view">
-      {groupedSessions.map(({ date, sessions: dateSessions }) => {
-        // Group sessions into hourly buckets by start time
-        const buckets = {};
-        dateSessions.forEach((s) => {
-          const key = Math.floor(parseTimeToMinutes(s.start) / 60) * 60;
-          if (!buckets[key]) buckets[key] = [];
-          buckets[key].push(s);
-        });
-        const sortedBuckets = Object.entries(buckets).sort(
-          ([a], [b]) => Number(a) - Number(b),
-        );
-        const isCollapsed = collapsedDates.has(date);
-
-        return (
-          <div key={date}>
-            {/* Date header */}
-            <div
-              onClick={() => toggleDateCollapse(date)}
-              className="calendar-date-header"
-            >
-              <ChevronRight
-                size={13}
-                color="var(--brand)"
-                style={{
-                  transition: "transform 0.2s",
-                  transform: isCollapsed ? "none" : "rotate(90deg)",
-                  flexShrink: 0,
-                }}
-              />
-              <CalendarDays size={13} color="var(--brand)" />
-              <span className="calendar-date-text">{date}</span>
-              <span className="font-mono calendar-date-count">
-                {dateSessions.length} sessions
-              </span>
-            </div>
-
-            {/* Hourly time slot groups */}
-            {!isCollapsed &&
-              sortedBuckets.map(([bucketKey, slotSessions]) => (
-                <div key={bucketKey} className="calendar-time-slot">
-                  {/* Slot header */}
-                  <div className="calendar-time-label">
-                    <Clock size={11} color="var(--brand)" />
-                    <span className="font-mono calendar-time-text">
-                      {formatHourBucket(Number(bucketKey))}
-                    </span>
-                    <span className="font-mono calendar-time-count">
-                      {slotSessions.length}
-                    </span>
-                    <div className="calendar-time-divider" />
-                  </div>
-                  {/* Session cards */}
-                  <div className="calendar-session-list">
-                    {slotSessions.map((s) => (
-                      <CalendarSessionCard
-                        key={s.code}
-                        session={s}
-                        members={members}
-                        toggleAttendance={toggleAttendance}
-                        user={user}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Catalog badges ────────────────────────────────────────────────────────────
-const SessionTypeBadge = ({ type }) => (
-  <span className="schedule-badge">{type}</span>
-);
-
-const FormatBadge = ({ format }) => (
-  <span className="schedule-badge">{format}</span>
-);
-
-const NoRecordingBadge = () => (
-  <span className="schedule-badge schedule-badge--warning">
-    <VideoOff size={9} />
-    No Rec
-  </span>
-);
-
-// ── AddSessionModal ────────────────────────────────────────────────────────────
-function AddSessionModal({ sessions, onAdd, onClose }) {
-  const { t } = useTranslation();
-  const [query, setQuery] = useState("");
-
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.trim().toUpperCase();
-    return catalogData
-      .filter(
-        (s) =>
-          s.session_id.toUpperCase().includes(q) ||
-          s.title.toLowerCase().includes(query.trim().toLowerCase()),
-      )
-      .slice(0, 20);
-  }, [query]);
-
-  return (
-    <div onClick={onClose} className="add-session-overlay">
-      <div onClick={(e) => e.stopPropagation()} className="add-session-modal">
-        {/* Header */}
-        <div className="add-session-header">
-          <div className="add-session-header-bar">
-            <span className="add-session-header-title">
-              {t("calendar.addSession")}
-            </span>
-            <button onClick={onClose} className="add-session-close">
-              ×
-            </button>
-          </div>
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("calendar.searchSessionPlaceholder")}
-            className="add-session-input"
-          />
-        </div>
-
-        {/* Results */}
-        <div className="add-session-results">
-          {!query.trim() ? (
-            <div className="add-session-empty">
-              {t("calendar.searchSessionPlaceholder")}
-            </div>
-          ) : results.length === 0 ? (
-            <div className="add-session-empty">
-              {t("calendar.noMatchingSession")}
-            </div>
-          ) : (
-            results.map((s) => {
-              const alreadyAdded = !!sessions[s.session_id];
-              return (
-                <div key={s.session_id} className="add-session-result">
-                  <span className="font-mono add-session-result-id">
-                    {s.session_id}
-                  </span>
-                  <div className="add-session-result-info">
-                    <div className="add-session-result-title">{s.title}</div>
-                    <div className="add-session-result-meta">
-                      {s.date}
-                      {s.time
-                        ? ` · ${s.time.replace(/\s*(PDT|PST|EST|EDT)\s*/i, "").trim()}`
-                        : ""}
-                    </div>
-                  </div>
-                  {alreadyAdded ? (
-                    <span
-                      className="font-mono schedule-badge"
-                      style={{ flexShrink: 0 }}
-                    >
-                      {t("calendar.alreadyAdded")}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => onAdd(s.session_id)}
-                      className="btn-accent"
-                      style={{
-                        fontSize: 11,
-                        padding: "3px 12px",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {t("common.add")}
-                    </button>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { parseCSVLine } from "./lib/csvUtils";
+import {
+  SessionTypeBadge,
+  FormatBadge,
+  NoRecordingBadge,
+} from "./components/schedule/Badges";
+import CalendarView from "./components/schedule/CalendarView";
+import AddSessionModal from "./components/schedule/AddSessionModal";
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
@@ -354,7 +48,6 @@ export default function App() {
   const { confId } = useParams();
   const { user } = useAuth();
   const { isAdmin } = useMembership(confId);
-  const [authError] = useState(null);
   const [members, setMembers] = useState([]);
   const [sessions, setSessions] = useState({});
   const [newMemberName, setNewMemberName] = useState("");
@@ -540,7 +233,7 @@ export default function App() {
     if (!newMemberName.trim()) return;
     if (!user) {
       alert(
-        t("calendar.firebaseNotReady", { error: authError || "user is null" }),
+        t("calendar.firebaseNotReady", { error: "user is null" }),
       );
       return;
     }
@@ -776,28 +469,20 @@ export default function App() {
                 <div
                   className="status-live"
                   style={{
-                    background: authError
-                      ? "var(--error)"
-                      : user
-                        ? "var(--success)"
-                        : "var(--warning)",
+                    background: user
+                      ? "var(--success)"
+                      : "var(--warning)",
                   }}
                 />
                 <span
                   className="font-mono schedule-status-dot"
                   style={{
-                    color: authError
-                      ? "var(--error)"
-                      : user
-                        ? "var(--success)"
-                        : "var(--warning)",
+                    color: user
+                      ? "var(--success)"
+                      : "var(--warning)",
                   }}
                 >
-                  {authError
-                    ? "Auth Failed"
-                    : user
-                      ? "Live Sync"
-                      : "Connecting..."}
+                  {user ? "Live Sync" : "Connecting..."}
                 </span>
               </div>
               <h1 className="schedule-header-title gtc-header-title">
@@ -830,7 +515,7 @@ export default function App() {
               {/* Export button + dropdown */}
               <div
                 style={{
-                  position: "relative" /* needed for dropdown positioning */,
+                  position: "relative",
                 }}
               >
                 <button
@@ -979,7 +664,7 @@ export default function App() {
                   padding: "6px 10px",
                   fontSize: 12,
                   flex: 1,
-                  minWidth: 0 /* dynamic sizing */,
+                  minWidth: 0,
                 }}
               />
               <button
@@ -988,7 +673,7 @@ export default function App() {
                 style={{
                   padding: "6px 10px",
                   fontSize: 12,
-                  flexShrink: 0 /* compact button */,
+                  flexShrink: 0,
                 }}
                 title={t("common.add")}
               >
@@ -1127,7 +812,7 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ overflowX: "auto" /* needed for wide tables */ }}>
+          <div style={{ overflowX: "auto" }}>
             {groupedSessions.length > 0 && viewMode === "calendar" && (
               <CalendarView
                 groupedSessions={groupedSessions}

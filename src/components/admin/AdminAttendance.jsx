@@ -1,10 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
-  collection,
   doc,
-  onSnapshot,
-  getDoc,
   setDoc,
   deleteDoc,
   updateDoc,
@@ -18,6 +15,8 @@ import { COLORS } from "../../constants";
 import { generateId } from "../../lib/reportUtils";
 import { useTranslation } from "react-i18next";
 import { formatShortDate, formatLongDate } from "../../i18n/dateUtils";
+import { useConferenceMembers } from "../../hooks/useConferenceMembers";
+import { useConferenceSessions } from "../../hooks/useConferenceSessions";
 
 const COLOR_INDICES = [0, 1, 2, 3, 4, 5, 6, 7];
 
@@ -98,9 +97,8 @@ export default function AdminAttendance() {
   const { user, isSuperAdmin } = useAuth();
   const { t } = useTranslation();
 
-  const [members, setMembers] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [userNames, setUserNames] = useState({});
+  const { members, memberNames } = useConferenceMembers(confId);
+  const { sessions } = useConferenceSessions(confId);
 
   // Section 2 view mode: "byMember" | "bySession"
   const [assignView, setAssignView] = useState("bySession");
@@ -133,48 +131,7 @@ export default function AdminAttendance() {
   // By-session: dropdown open for a session
   const [bySessionDropdown, setBySessionDropdown] = useState(null);
 
-  // ── Real-time listeners ────────────────────────────────────────────────────
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(db, "conferences", confId, "members"),
-      async (snap) => {
-        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setMembers(arr);
-
-        const names = {};
-        for (const m of arr) {
-          if (m.managedByAdmin) {
-            names[m.id] = m.displayName || "Unnamed";
-          } else if (m.legacyName) {
-            names[m.id] = m.legacyName + " (legacy)";
-          } else {
-            try {
-              const userSnap = await getDoc(doc(db, "users", m.id));
-              names[m.id] = userSnap.exists()
-                ? userSnap.data().displayName || userSnap.data().email || m.id
-                : m.id;
-            } catch {
-              names[m.id] = m.id;
-            }
-          }
-        }
-        setUserNames(names);
-      },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confId]);
-
-  useEffect(() => {
-    return onSnapshot(
-      collection(db, "conferences", confId, "sessions"),
-      (snap) => {
-        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        arr.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
-        setSessions(arr);
-      },
-    );
-  }, [confId]);
+  // ── Real-time data from shared hooks ────────────────────────────────────────
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -258,11 +215,6 @@ export default function AdminAttendance() {
           attendanceMode: editState.mode,
         },
       );
-      // Update local name cache immediately
-      setUserNames((prev) => ({
-        ...prev,
-        [editState.memberId]: editState.name.trim(),
-      }));
       setEditState(null);
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -324,7 +276,7 @@ export default function AdminAttendance() {
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
-  const getMemberName = (m) => userNames[m.id] || m.displayName || m.id;
+  const getMemberName = (m) => memberNames[m.id] || m.displayName || m.id;
 
   const ModeBadge = ({ mode }) =>
     mode === "online" ? (

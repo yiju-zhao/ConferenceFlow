@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "../../constants";
+import { getInitials } from "../../lib/reportUtils";
 
 export default function SessionDetail({
   session,
@@ -22,9 +23,7 @@ export default function SessionDetail({
           name: member.displayName || member.legacyName || uid,
           mode: member.attendanceMode || member.mode || "onsite",
           color: COLORS[(member.colorIndex || 0) % COLORS.length].hex,
-          initials: (member.displayName || member.legacyName || uid)
-            .slice(0, 1)
-            .toUpperCase(),
+          initials: getInitials(member.displayName || member.legacyName || uid),
         };
       })
       .filter(Boolean);

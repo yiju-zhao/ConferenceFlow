@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { COLORS } from "../../constants";
 import { formatShortDate } from "../../i18n/dateUtils";
+import { getInitials } from "../../lib/reportUtils";
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
 const DAYS_PER_PAGE = 3;
@@ -120,9 +121,7 @@ export default function ScheduleGrid({
     members.forEach((m) => {
       map[m.userId || m.id] = {
         color: COLORS[(m.colorIndex || 0) % COLORS.length].hex,
-        initials: (m.displayName || m.legacyName || m.userId || "?")
-          .slice(0, 1)
-          .toUpperCase(),
+        initials: getInitials(m.displayName || m.legacyName || m.userId || "?"),
       };
     });
     return map;
