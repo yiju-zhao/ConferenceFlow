@@ -270,115 +270,112 @@ export default function ReportList() {
   };
 
   return (
-    <div className="report-page report-list-page">
-      <div className="report-toolbar no-print">
-        <div
-          className="report-toolbar-inner"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Link to={`/conference/${confId}`} className="report-back-btn">
-            {t("reportList.backToSchedule")}
-          </Link>
-          <UserAvatar size={28} onSignOut={() => navigate("/login")} />
-        </div>
-      </div>
-
-      <div className="report-container" style={{ marginTop: 24 }}>
-        <div className="report-list-header">
-          <div>
-            <div className="report-title-eyebrow" style={{ marginBottom: 4 }}>
-              GTC 2026 · DAILY BRIEFING
-            </div>
-            <h2
+    <div className="min-h-screen bg-[#F7F5F2]">
+      {/* Header bar */}
+      <div className="bg-gradient-to-r from-[#1a1a1a] to-[#333] px-6 py-3.5">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Link
+              to={`/conference/${confId}`}
+              className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
               style={{
-                margin: 0,
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#1A1A1A",
+                background: "rgba(255,255,255,0.18)",
+                letterSpacing: "0.8px",
               }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
+              }
+            >
+              {t("reportList.backToSchedule")}
+            </Link>
+            <h1
+              className="font-headline text-white text-lg font-bold"
+              style={{ letterSpacing: "0.3px" }}
             >
               {t("reportList.reportManagement")}
-            </h2>
+            </h1>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="flex items-center gap-2.5">
             <button
-              className={`report-archived-toggle${showArchived ? " active" : ""}`}
+              className={`font-headline text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors ${showArchived ? "bg-white/30 text-white" : "text-white/70 hover:text-white"}`}
+              style={{ letterSpacing: "0.8px" }}
               onClick={() => setShowArchived(!showArchived)}
             >
               {showArchived
                 ? t("reportList.hideArchived")
                 : t("reportList.showArchived")}
             </button>
-            <button
-              className="btn-accent"
-              onClick={openSummaryDatePicker}
-              disabled={creatingSummary}
-              style={{ fontSize: 13, padding: "8px 16px" }}
-            >
-              {creatingSummary
-                ? t("reportList.creating")
-                : t("reportList.createSummary")}
-            </button>
-            <div style={{ position: "relative" }}>
-              <button
-                className="btn-accent"
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                disabled={allSessionDates.length === 0}
-                style={{
-                  fontSize: 13,
-                  padding: "8px 16px",
-                  gap: 6,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
-                {t("reportList.createDailyReport")}
-              </button>
-              {showDatePicker && allSessionDates.length > 0 && (
-                <div className="create-report-dropdown">
-                  <div className="create-report-dropdown-label">
-                    {t("reportList.selectDate")}
-                  </div>
-                  {allSessionDates.map((date) => {
-                    const weekday = formatWeekday(new Date(date + "T00:00"));
-                    const count = allSessions.filter(
-                      (s) => s.date === date,
-                    ).length;
-                    const hasReport = reportedDates.has(date);
-                    return (
-                      <button
-                        key={date}
-                        className="create-report-dropdown-item"
-                        onClick={() => handleCreateReport(date)}
-                      >
-                        <span className="font-mono" style={{ fontWeight: 600 }}>
-                          {date}
-                        </span>
-                        <span style={{ color: "#888" }}>{weekday}</span>
-                        <span
-                          style={{
-                            color: "#aaa",
-                            fontSize: 11,
-                            marginLeft: "auto",
-                          }}
-                        >
-                          {hasReport
-                            ? t("reportList.alreadyCreated")
-                            : `${count} sessions`}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
           </div>
         </div>
+      </div>
 
+      {/* Action bar */}
+      <div className="bg-white border-b border-[#E8E4DF]">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex justify-end items-center gap-2">
+          <button
+            className="bg-[#1a1a1a]/10 text-[#1a1a1a] px-4 py-2 text-xs font-headline uppercase tracking-wider rounded-md hover:bg-[#1a1a1a] hover:text-white transition-all duration-200"
+            onClick={openSummaryDatePicker}
+            disabled={creatingSummary}
+          >
+            {creatingSummary
+              ? t("reportList.creating")
+              : t("reportList.createSummary")}
+          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              className="bg-[#1a1a1a] text-white px-4 py-2 text-xs font-headline uppercase tracking-wider rounded-md hover:opacity-80 transition-opacity"
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              disabled={allSessionDates.length === 0}
+            >
+              {t("reportList.createDailyReport")}
+            </button>
+            {showDatePicker && allSessionDates.length > 0 && (
+              <div className="create-report-dropdown">
+                <div className="create-report-dropdown-label">
+                  {t("reportList.selectDate")}
+                </div>
+                {allSessionDates.map((date) => {
+                  const weekday = formatWeekday(new Date(date + "T00:00"));
+                  const count = allSessions.filter(
+                    (s) => s.date === date,
+                  ).length;
+                  const hasReport = reportedDates.has(date);
+                  return (
+                    <button
+                      key={date}
+                      className="create-report-dropdown-item"
+                      onClick={() => handleCreateReport(date)}
+                    >
+                      <span className="font-mono" style={{ fontWeight: 600 }}>
+                        {date}
+                      </span>
+                      <span style={{ color: "#888" }}>{weekday}</span>
+                      <span
+                        style={{
+                          color: "#aaa",
+                          fontSize: 11,
+                          marginLeft: "auto",
+                        }}
+                      >
+                        {hasReport
+                          ? t("reportList.alreadyCreated")
+                          : `${count} sessions`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-6xl mx-auto p-8">
         <div className="report-list-cards">
           {displayReports.length === 0 ? (
             <p
@@ -482,7 +479,7 @@ export default function ReportList() {
           >
             <div
               style={{
-                background: "#CF0A2C",
+                background: "#1a1a1a",
                 padding: "14px 24px",
                 display: "flex",
                 justifyContent: "space-between",

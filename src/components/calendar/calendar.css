@@ -26,18 +26,13 @@
 /* ── Header ────────────────────────────────────────────────────────────── */
 
 .cal-header {
-  padding: 0 24px;
-  background: linear-gradient(135deg, #c47a52, #e8976b);
-  color: #fff;
-  flex-shrink: 0;
-}
-.cal-header-inner {
-  max-width: 1152px;
-  margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 0;
+  padding: 14px 24px;
+  background: linear-gradient(135deg, #c47a52, #e8976b);
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .cal-header-left {
