@@ -1424,6 +1424,8 @@ input[type="checkbox"].gtc-check:checked::after {
   box-shadow: var(--shadow-sm);
 }
 .report-toolbar-inner {
+  max-width: 1152px;
+  margin: 0 auto;
   padding: 9px 24px;
   display: flex;
   align-items: center;
@@ -1588,7 +1590,7 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* ── Container ─────────────────────────────────── */
 .report-container {
-  max-width: 920px;
+  max-width: 1152px;
   margin: 20px auto 48px;
   background: var(--surface);
   border-radius: 4px;
@@ -2281,6 +2283,8 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .report-list-page .report-toolbar-inner {
   padding: 12px 24px;
+  max-width: 1152px;
+  margin: 0 auto;
 }
 .report-list-page .report-back-btn {
   color: #fff;

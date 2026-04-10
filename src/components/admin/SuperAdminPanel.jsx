@@ -83,7 +83,7 @@ export default function SuperAdminPanel() {
   return (
     <div className="min-h-screen bg-[#F7F5F2]">
       <div className="bg-gradient-to-r from-admin-teal-deep to-admin-teal px-6 py-3.5">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1
             className="font-headline text-white text-lg font-bold"
             style={{ letterSpacing: "0.3px" }}
@@ -111,7 +111,7 @@ export default function SuperAdminPanel() {
           </div>
         </div>
       </div>
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-8">
         {message && (
           <div
             className={`p-3 mb-4 text-sm rounded-lg ${message.startsWith("Error") ? "bg-red-500/10 text-red-600 border border-red-200" : "bg-[#27AE60]/10 text-[#27AE60] border border-[#27AE60]/20"}`}
