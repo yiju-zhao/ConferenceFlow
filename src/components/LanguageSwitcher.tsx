@@ -1,10 +1,17 @@
 import { useTranslation } from "react-i18next";
+import type { CSSProperties } from "react";
+
+interface LanguageSwitcherProps {
+  className?: string;
+  style?: CSSProperties;
+  variant?: "default" | "dropdown" | "badge";
+}
 
 export default function LanguageSwitcher({
   className = "",
   style = {},
   variant = "default",
-}) {
+}: LanguageSwitcherProps) {
   const { i18n } = useTranslation();
 
   const isZh = i18n.language.startsWith("zh");

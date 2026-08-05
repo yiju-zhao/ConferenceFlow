@@ -1,17 +1,17 @@
 import i18n from "./index";
 
-function getLocale() {
+function getLocale(): string {
   return i18n.language || "zh-CN";
 }
 
-export function formatWeekday(date, locale) {
+export function formatWeekday(date: Date | string, locale?: string): string {
   const loc = locale || getLocale();
   return new Intl.DateTimeFormat(loc, { weekday: "short" }).format(
     date instanceof Date ? date : new Date(date),
   );
 }
 
-export function formatDateTime(date, locale) {
+export function formatDateTime(date: Date | string, locale?: string): string {
   const loc = locale || getLocale();
   return new Intl.DateTimeFormat(loc, {
     year: "numeric",
@@ -22,7 +22,7 @@ export function formatDateTime(date, locale) {
   }).format(date instanceof Date ? date : new Date(date));
 }
 
-export function formatShortDate(date, locale) {
+export function formatShortDate(date: Date | string, locale?: string): string {
   const loc = locale || getLocale();
   return new Intl.DateTimeFormat(loc, {
     weekday: "short",
@@ -31,7 +31,7 @@ export function formatShortDate(date, locale) {
   }).format(date instanceof Date ? date : new Date(date));
 }
 
-export function formatLongDate(date, locale) {
+export function formatLongDate(date: Date | string, locale?: string): string {
   const loc = locale || getLocale();
   return new Intl.DateTimeFormat(loc, {
     weekday: "long",

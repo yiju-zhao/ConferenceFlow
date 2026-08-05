@@ -5,6 +5,7 @@ export type AuthProvider = "email" | "google";
 export type MemberRole = "admin" | "member";
 export type MemberStatus = "approved" | "pending";
 export type AttendanceMode = "onsite" | "online";
+export type ConferenceVisibility = "public" | "private";
 
 export interface UserProfile {
   email: string;
@@ -40,3 +41,21 @@ export interface Member {
 
 /** The recurring `{ id: snap.id, ...snap.data() }` shape. */
 export type WithId<T> = T & { id: string };
+
+/**
+ * A conference document. Field set derived from the writer
+ * `api/conferences/index.js` (POST) and the editable fields in
+ * `api/conferences/[confId]/index.js` (PUT).
+ */
+export interface Conference {
+  id: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  visibility: ConferenceVisibility;
+  joinCode: string;
+  createdBy?: string;
+  createdAt?: Timestamp | null;
+  updatedAt?: Timestamp | null;
+}

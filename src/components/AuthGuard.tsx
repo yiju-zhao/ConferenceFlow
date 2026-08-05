@@ -1,8 +1,14 @@
 import { Navigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import type { ReactNode } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
-export default function AuthGuard({ children, requireSuperAdmin = false }) {
+interface AuthGuardProps {
+  children: ReactNode;
+  requireSuperAdmin?: boolean;
+}
+
+export default function AuthGuard({ children, requireSuperAdmin = false }: AuthGuardProps) {
   const { t } = useTranslation();
   const { user, userProfile, loading } = useAuth();
 

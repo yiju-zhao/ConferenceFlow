@@ -1,44 +1,65 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { FirebaseError } from "firebase/app";
 import { useAuth } from "../contexts/AuthContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 
-export default function LoginPage() {
+export default function RegisterPage() {
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const { signUpWithEmail, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const handleEmailLogin = async (e) => {
+  const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError(t("auth.passwordMismatch"));
+      return;
+    }
+    if (password.length < 6) {
+      setError(t("auth.passwordTooShort"));
+      return;
+    }
+    if (!displayName.trim()) {
+      setError(t("auth.nameRequired"));
+      return;
+    }
+
     setLoading(true);
     try {
-      await signInWithEmail(email, password);
+      await signUpWithEmail(email, password, displayName.trim());
       navigate("/dashboard");
     } catch (err) {
-      setError(
-        err.code === "auth/invalid-credential"
-          ? t("auth.invalidCredential")
-          : err.message,
-      );
+      if (err instanceof FirebaseError) {
+        setError(
+          err.code === "auth/email-already-in-use"
+            ? t("auth.emailInUse")
+            : err.message,
+        );
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignUp = async () => {
     setError("");
     setLoading(true);
     try {
       await signInWithGoogle();
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -55,7 +76,7 @@ export default function LoginPage() {
             ConferenceFlow
           </h1>
           <p className="text-on-primary/70 text-sm mt-1">
-            {t("auth.signInToAccount")}
+            {t("auth.createAccount")}
           </p>
         </div>
 
@@ -66,7 +87,22 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleEmailLogin}>
+          <form onSubmit={handleRegister}>
+            <div className="mb-4">
+              <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
+                {t("auth.displayName")}
+              </label>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="w-full bg-surface-container-high p-3 text-on-surface text-sm
+                  border-0 border-b-2 border-transparent focus:border-primary focus:outline-none"
+                placeholder={t("auth.displayNamePlaceholder")}
+                required
+              />
+            </div>
+
             <div className="mb-4">
               <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
                 {t("auth.email")}
@@ -82,7 +118,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <div className="mb-6">
+            <div className="mb-4">
               <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
                 {t("auth.password")}
               </label>
@@ -92,7 +128,22 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-surface-container-high p-3 text-on-surface text-sm
                   border-0 border-b-2 border-transparent focus:border-primary focus:outline-none"
-                placeholder={t("auth.passwordPlaceholder")}
+                placeholder={t("auth.passwordHint")}
+                required
+              />
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
+                {t("auth.confirmPassword")}
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-surface-container-high p-3 text-on-surface text-sm
+                  border-0 border-b-2 border-transparent focus:border-primary focus:outline-none"
+                placeholder={t("auth.confirmPasswordPlaceholder")}
                 required
               />
             </div>
@@ -104,7 +155,7 @@ export default function LoginPage() {
                 uppercase tracking-wider hover:bg-primary-container transition-colors duration-50
                 disabled:opacity-50"
             >
-              {loading ? t("auth.signingIn") : t("auth.signIn")}
+              {loading ? t("auth.creatingAccount") : t("auth.createAccount")}
             </button>
           </form>
 
@@ -117,7 +168,7 @@ export default function LoginPage() {
           </div>
 
           <button
-            onClick={handleGoogleLogin}
+            onClick={handleGoogleSignUp}
             disabled={loading}
             className="w-full bg-surface-container p-3 text-on-surface text-sm font-body
               hover:bg-surface-container-high transition-colors duration-50
@@ -141,13 +192,13 @@ export default function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            {t("auth.signInWithGoogle")}
+            {t("auth.signUpWithGoogle")}
           </button>
 
           <p className="text-center text-secondary text-sm mt-6">
-            {t("auth.noAccount")}{" "}
-            <Link to="/register" className="text-primary hover:underline">
-              {t("auth.signUp")}
+            {t("auth.hasAccount")}{" "}
+            <Link to="/login" className="text-primary hover:underline">
+              {t("auth.signIn")}
             </Link>
           </p>
         </div>

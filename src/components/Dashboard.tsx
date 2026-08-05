@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import UserAvatar, { FirstTimeNameSetup } from "./UserAvatar";
+import type { AttendanceMode, Conference, Member, WithId } from "../types";
 
 const CalendarIcon = () => (
   <svg
@@ -31,13 +32,26 @@ const CalendarIcon = () => (
   </svg>
 );
 
+interface ApplyModal {
+  confId: string;
+  confName: string;
+}
+
+interface ConferenceCardProps {
+  conf: WithId<Conference>;
+  membership?: Member | null;
+  showApply?: boolean;
+  accentColor?: string;
+  onApply?: (modal: ApplyModal) => void;
+}
+
 const ConferenceCard = ({
   conf,
   membership,
   showApply = false,
   accentColor = "bg-dash-blue",
   onApply,
-}) => {
+}: ConferenceCardProps) => {
   const { t } = useTranslation();
   return (
     <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 mb-3">
@@ -107,17 +121,17 @@ const ConferenceCard = ({
 };
 
 export default function Dashboard() {
-  const { user, userProfile, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [conferences, setConferences] = useState(null); // null = not loaded yet
-  const [myMemberships, setMyMemberships] = useState({});
+  const [conferences, setConferences] = useState<WithId<Conference>[] | null>(null); // null = not loaded yet
+  const [myMemberships, setMyMemberships] = useState<Record<string, Member | null>>({});
   const [membershipsReady, setMembershipsReady] = useState(false);
   const [showPast, setShowPast] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
-  const [applyModal, setApplyModal] = useState(null);
-  const [attendanceMode, setAttendanceMode] = useState("onsite");
+  const [applyModal, setApplyModal] = useState<ApplyModal | null>(null);
+  const [attendanceMode, setAttendanceMode] = useState<AttendanceMode>("onsite");
   const [applying, setApplying] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -125,13 +139,13 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "conferences"), (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Conference, "id">) }));
       setConferences(list);
       if (list.length === 0) setMembershipsReady(true);
     });
   }, [user]);
 
-  const pendingMemberships = useRef({});
+  const pendingMemberships = useRef<Record<string, Member | null>>({});
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -139,14 +153,14 @@ export default function Dashboard() {
     setMembershipsReady(false);
     initialLoadDone.current = false;
     pendingMemberships.current = {};
-    const unsubscribes = [];
+    const unsubscribes: Array<() => void> = [];
     let loaded = 0;
     const total = conferences.length;
 
     conferences.forEach((conf) => {
       const memberRef = doc(db, "conferences", conf.id, "members", user.uid);
       const unsub = onSnapshot(memberRef, (snap) => {
-        const data = snap.exists() ? snap.data() : null;
+        const data: Member | null = snap.exists() ? (snap.data() as Member) : null;
         if (!initialLoadDone.current) {
           // Batch initial loads — collect in ref, flush once all done
           pendingMemberships.current[conf.id] = data;
@@ -172,10 +186,10 @@ export default function Dashboard() {
       return { upcoming: [], past: [], pending: [], discover: [] };
     }
 
-    const upcoming = [];
-    const past = [];
-    const pending = [];
-    const discover = [];
+    const upcoming: WithId<Conference>[] = [];
+    const past: WithId<Conference>[] = [];
+    const pending: WithId<Conference>[] = [];
+    const discover: WithId<Conference>[] = [];
 
     conferences.forEach((conf) => {
       const membership = myMemberships[conf.id];
@@ -203,7 +217,7 @@ export default function Dashboard() {
   }, [conferences, myMemberships, today, isSuperAdmin, membershipsReady]);
 
   const handleApply = async () => {
-    if (!applyModal) return;
+    if (!applyModal || !user) return;
     setApplying(true);
     try {
       const nextColorIndex = Object.keys(myMemberships).length % 6;
@@ -220,13 +234,14 @@ export default function Dashboard() {
       setApplyModal(null);
       setAttendanceMode("onsite");
     } catch (err) {
-      setJoinError(err.message);
+      setJoinError(err instanceof Error ? err.message : String(err));
     } finally {
       setApplying(false);
     }
   };
 
   const handleJoinByCode = async () => {
+    if (!conferences) return;
     setJoinError("");
     const code = joinCode.trim().toUpperCase();
     if (!code) return;
