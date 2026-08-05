@@ -3,7 +3,8 @@ import type { Timestamp } from "firebase/firestore";
 export type GlobalRole = "user" | "super_admin";
 export type AuthProvider = "email" | "google";
 export type MemberRole = "admin" | "member";
-export type MemberStatus = "approved" | "pending";
+// "rejected" is set by the approve/reject API (api/conferences/[confId]/members/[action]).
+export type MemberStatus = "approved" | "pending" | "rejected";
 export type AttendanceMode = "onsite" | "online";
 export type ConferenceVisibility = "public" | "private";
 

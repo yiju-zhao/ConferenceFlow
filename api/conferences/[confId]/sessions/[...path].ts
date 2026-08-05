@@ -51,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.json({ message: `Uploaded ${results.created} sessions`, ...results } satisfies BulkSessionsResponse);
     }
     if (segments.length === 1 && segments[0] !== "bulk") {
-      const sessionId = segments[0] as string;
+      const sessionId = segments[0];
       await requireConfAdmin(req, confId);
       const ref = col.doc(sessionId);
       const snap = await ref.get();
