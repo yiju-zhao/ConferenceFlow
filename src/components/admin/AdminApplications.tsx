@@ -8,10 +8,10 @@ export default function AdminApplications() {
   const { confId } = useParams();
   const { t } = useTranslation();
   const { members, memberNames } = useConferenceMembers(confId);
-  const [processing, setProcessing] = useState(null);
-  const [filter, setFilter] = useState("pending");
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("pending");
 
-  const handleApprove = async (userId) => {
+  const handleApprove = async (userId: string) => {
     setProcessing(userId);
     try {
       await apiFetch(`/api/conferences/${confId}/members/approve`, {
@@ -19,13 +19,13 @@ export default function AdminApplications() {
         body: JSON.stringify({ userId }),
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setProcessing(null);
     }
   };
 
-  const handleReject = async (userId) => {
+  const handleReject = async (userId: string) => {
     setProcessing(userId);
     try {
       await apiFetch(`/api/conferences/${confId}/members/reject`, {
@@ -33,7 +33,7 @@ export default function AdminApplications() {
         body: JSON.stringify({ userId }),
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setProcessing(null);
     }

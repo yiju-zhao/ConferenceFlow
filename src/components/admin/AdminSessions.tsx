@@ -3,6 +3,39 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { apiFetch } from "../../lib/api";
 import { useConferenceSessions } from "../../hooks/useConferenceSessions";
+import type { ChangeEvent } from "react";
+
+interface SessionForm {
+  id?: string;
+  code?: string;
+  title: string;
+  date: string;
+  start: string;
+  end: string;
+  room?: string;
+  format?: string;
+  mainTopic?: string;
+  url?: string;
+}
+
+interface SessionEditModal {
+  mode: "add" | "edit";
+  session: SessionForm;
+}
+
+interface SessionUploadResult {
+  error?: string;
+  message?: string;
+  errors?: { index: number; error: string; session: string }[];
+}
+
+interface SessionFieldProps {
+  label: string;
+  field: string;
+  type?: string;
+  value: string | undefined;
+  onChange: (field: string, value: string) => void;
+}
 
 const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 
@@ -67,7 +100,13 @@ const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 - If session_id matches an existing session, it will be overwritten
 `;
 
-function SessionField({ label, field, type = "text", value, onChange }) {
+function SessionField({
+  label,
+  field,
+  type = "text",
+  value,
+  onChange,
+}: SessionFieldProps) {
   return (
     <div className="mb-3">
       <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
@@ -88,13 +127,15 @@ export default function AdminSessions() {
   const { confId } = useParams();
   const { sessions } = useConferenceSessions(confId);
   const [search, setSearch] = useState("");
-  const [editModal, setEditModal] = useState(null);
+  const [editModal, setEditModal] = useState<SessionEditModal | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState(null);
-  const [deleting, setDeleting] = useState(null);
+  const [uploadResult, setUploadResult] = useState<SessionUploadResult | null>(
+    null,
+  );
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [showFormatGuide, setShowFormatGuide] = useState(false);
   const [mdCopied, setMdCopied] = useState(false);
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = sessions.filter((s) => {
     if (!search) return true;
@@ -106,8 +147,8 @@ export default function AdminSessions() {
     );
   });
 
-  const handleBulkUpload = async (e) => {
-    const file = e.target.files[0];
+  const handleBulkUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
     setUploading(true);
@@ -116,13 +157,15 @@ export default function AdminSessions() {
       const text = await file.text();
       const json = JSON.parse(text);
       const sessionsArr = Array.isArray(json) ? json : json.sessions || [json];
-      const result = await apiFetch(
+      const result = await apiFetch<SessionUploadResult>(
         `/api/conferences/${confId}/sessions/bulk`,
         { method: "POST", body: JSON.stringify({ sessions: sessionsArr }) },
       );
       setUploadResult(result);
     } catch (err) {
-      setUploadResult({ error: err.message });
+      setUploadResult({
+        error: err instanceof Error ? err.message : String(err),
+      });
     } finally {
       setUploading(false);
     }
@@ -145,28 +188,31 @@ export default function AdminSessions() {
       }
       setEditModal(null);
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
-  const handleDelete = async (sessionId) => {
+  const handleDelete = async (sessionId: string) => {
     setDeleting(sessionId);
     try {
       await apiFetch(`/api/conferences/${confId}/sessions/${sessionId}`, {
         method: "DELETE",
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setDeleting(null);
     }
   };
 
-  const handleFieldChange = (field, value) => {
-    setEditModal((prev) => ({
-      ...prev,
-      session: { ...prev.session, [field]: value },
-    }));
+  const handleFieldChange = (field: string, value: string) => {
+    setEditModal((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        session: { ...prev.session, [field]: value },
+      };
+    });
   };
 
   return (

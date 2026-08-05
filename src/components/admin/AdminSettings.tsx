@@ -5,6 +5,25 @@ import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
 import { useTranslation } from "react-i18next";
+import type { Conference, ConferenceVisibility } from "../../types";
+
+interface ConferenceSettingsForm {
+  name?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  visibility?: ConferenceVisibility;
+  joinCode?: string;
+}
+
+interface SettingsFieldProps {
+  label: string;
+  field: string;
+  type?: string;
+  placeholder?: string;
+  value: string | undefined;
+  onChange: (field: string, value: string) => void;
+}
 
 function SettingsField({
   label,
@@ -13,7 +32,7 @@ function SettingsField({
   placeholder = "",
   value,
   onChange,
-}) {
+}: SettingsFieldProps) {
   return (
     <div className="mb-4">
       <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
@@ -45,17 +64,18 @@ export default function AdminSettings() {
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const { t } = useTranslation();
-  const [conf, setConf] = useState(null);
-  const [form, setForm] = useState({});
+  const [conf, setConf] = useState<Conference | null>(null);
+  const [form, setForm] = useState<ConferenceSettingsForm>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
+    if (!confId) return;
     return onSnapshot(doc(db, "conferences", confId), (snap) => {
       if (snap.exists()) {
-        const data = snap.data();
+        const data = snap.data() as Conference;
         setConf(data);
         setForm({
           name: data.name || "",
@@ -80,7 +100,7 @@ export default function AdminSettings() {
       setMessage(t("admin.saved"));
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
-      setMessage(`Error: ${err.message}`);
+      setMessage(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setSaving(false);
     }
@@ -89,7 +109,7 @@ export default function AdminSettings() {
   if (!conf)
     return <div className="text-secondary text-sm">{t("common.loading")}</div>;
 
-  const handleFieldChange = (field, value) => {
+  const handleFieldChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -136,7 +156,7 @@ export default function AdminSettings() {
             {t("admin.visibility")}
           </label>
           <div className="flex gap-3">
-            {["public", "private"].map((v) => (
+            {(["public", "private"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setForm({ ...form, visibility: v })}
@@ -215,7 +235,9 @@ export default function AdminSettings() {
                       });
                       navigate("/dashboard");
                     } catch (err) {
-                      setMessage(`Error: ${err.message}`);
+                      setMessage(
+                        `Error: ${err instanceof Error ? err.message : String(err)}`,
+                      );
                       setDeleting(false);
                       setDeleteConfirm(false);
                     }

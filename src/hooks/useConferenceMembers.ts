@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants";
 import type { Member, WithId } from "../types";
 
-type ResolvedMember = WithId<Member> & { name: string };
+export type ResolvedMember = WithId<Member> & { name: string };
 
 export function useConferenceMembers(confId: string | undefined) {
   const { user } = useAuth();

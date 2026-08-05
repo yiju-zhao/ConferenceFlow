@@ -6,51 +6,55 @@ import { apiFetch } from "../../lib/api";
 import { parseReportId } from "../../lib/reportUtils";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "../../i18n/dateUtils";
+import type { Report } from "../../types";
 
 export default function AdminReports() {
   const { confId } = useParams();
   const { t } = useTranslation();
-  const [reports, setReports] = useState([]);
-  const [publishing, setPublishing] = useState(null);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [publishing, setPublishing] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!confId) return;
     return onSnapshot(
       collection(db, "conferences", confId, "dailyReports"),
       (snap) => {
-        const arr = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const arr = snap.docs.map(
+          (d) => ({ id: d.id, ...(d.data() as Omit<Report, "id">) }),
+        );
         arr.sort((a, b) => b.id.localeCompare(a.id));
         setReports(arr);
       },
     );
   }, [confId]);
 
-  const handlePublish = async (reportId) => {
+  const handlePublish = async (reportId: string) => {
     setPublishing(reportId);
     try {
       await apiFetch(`/api/conferences/${confId}/reports/${reportId}`, {
         method: "POST",
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setPublishing(null);
     }
   };
 
-  const handleUnpublish = async (reportId) => {
+  const handleUnpublish = async (reportId: string) => {
     setPublishing(reportId);
     try {
       await apiFetch(`/api/conferences/${confId}/reports/${reportId}`, {
         method: "DELETE",
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setPublishing(null);
     }
   };
 
-  const statusColor = (status) => {
+  const statusColor = (status: string | undefined) => {
     switch (status) {
       case "published":
         return "text-[#27AE60]";

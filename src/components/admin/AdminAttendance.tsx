@@ -16,11 +16,20 @@ import { generateId } from "../../lib/reportUtils";
 import { useTranslation } from "react-i18next";
 import { formatShortDate, formatLongDate } from "../../i18n/dateUtils";
 import { useConferenceMembers } from "../../hooks/useConferenceMembers";
+import type { ResolvedMember } from "../../hooks/useConferenceMembers";
 import { useConferenceSessions } from "../../hooks/useConferenceSessions";
+import type { AttendanceMode, Session } from "../../types";
+import type { TFunction } from "i18next";
 
 const COLOR_INDICES = [0, 1, 2, 3, 4, 5, 6, 7];
 
-function SessionAssignSearch({ sessions, onAssign, t }) {
+interface SessionAssignSearchProps {
+  sessions: Session[];
+  onAssign: (sessionId: string) => void;
+  t: TFunction;
+}
+
+function SessionAssignSearch({ sessions, onAssign, t }: SessionAssignSearchProps) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
@@ -37,7 +46,7 @@ function SessionAssignSearch({ sessions, onAssign, t }) {
       .slice(0, 8);
   }, [sessions, query]);
 
-  const handleSelect = (sessionId) => {
+  const handleSelect = (sessionId: string) => {
     onAssign(sessionId);
     setQuery("");
     setFocused(false);
@@ -101,42 +110,56 @@ export default function AdminAttendance() {
   const { sessions } = useConferenceSessions(confId);
 
   // Section 2 view mode: "byMember" | "bySession"
-  const [assignView, setAssignView] = useState("bySession");
+  const [assignView, setAssignView] = useState<"byMember" | "bySession">(
+    "bySession",
+  );
   // Expanded member in "byMember" view
-  const [expandedMemberId, setExpandedMemberId] = useState(null);
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   // Expanded session in "bySession" view
-  const [expandedSessionId, setExpandedSessionId] = useState(null);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(
+    null,
+  );
   // Selected day for "bySession" calendar view
-  const [selectedDay, setSelectedDay] = useState(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   // Add attendee form
   const [showAddForm, setShowAddForm] = useState(false);
   const [addName, setAddName] = useState("");
-  const [addMode, setAddMode] = useState("onsite");
+  const [addMode, setAddMode] = useState<AttendanceMode>("onsite");
   const [addLoading, setAddLoading] = useState(false);
 
   // Inline edit state: { memberId, name, mode }
-  const [editState, setEditState] = useState(null);
+  const [editState, setEditState] = useState<{
+    memberId: string;
+    name: string;
+    mode: AttendanceMode;
+  } | null>(null);
   const [editLoading, setEditLoading] = useState(false);
 
   // Remove confirmation: memberId string or null
-  const [removeConfirm, setRemoveConfirm] = useState(null);
+  const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
 
   // Session detail modal: session object or null
-  const [sessionDetailModal, setSessionDetailModal] = useState(null);
+  const [sessionDetailModal, setSessionDetailModal] = useState<Session | null>(
+    null,
+  );
 
   // Mode filter for By Member view: "all" | "onsite" | "online"
-  const [modeFilter, setModeFilter] = useState("all");
+  const [modeFilter, setModeFilter] = useState<"all" | "onsite" | "online">(
+    "all",
+  );
 
   // By-session: dropdown open for a session
-  const [bySessionDropdown, setBySessionDropdown] = useState(null);
+  const [bySessionDropdown, setBySessionDropdown] = useState<string | null>(
+    null,
+  );
 
   // ── Real-time data from shared hooks ────────────────────────────────────────
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const sessionCountForMember = useCallback(
-    (memberId) =>
+    (memberId: string) =>
       sessions.filter((s) => (s.attendees || []).includes(memberId)).length,
     [sessions],
   );
@@ -150,6 +173,7 @@ export default function AdminAttendance() {
 
   const handleAddAttendee = async () => {
     if (!addName.trim()) return;
+    if (!confId || !user) return;
     setAddLoading(true);
     try {
       const id = generateId();
@@ -173,13 +197,14 @@ export default function AdminAttendance() {
       setAddMode("onsite");
       setShowAddForm(false);
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setAddLoading(false);
     }
   };
 
-  const handleRemoveAttendee = async (memberId) => {
+  const handleRemoveAttendee = async (memberId: string) => {
+    if (!confId) return;
     if (
       !window.confirm(
         "Remove this attendee? This will also unassign them from all sessions.",
@@ -200,12 +225,13 @@ export default function AdminAttendance() {
       );
       await deleteDoc(doc(db, "conferences", confId, "members", memberId));
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   const handleSaveEdit = async () => {
     if (!editState || !editState.name.trim()) return;
+    if (!confId) return;
     setEditLoading(true);
     try {
       await updateDoc(
@@ -217,7 +243,7 @@ export default function AdminAttendance() {
       );
       setEditState(null);
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setEditLoading(false);
     }
@@ -226,10 +252,11 @@ export default function AdminAttendance() {
   // ── Session Assignment ─────────────────────────────────────────────────────
 
   const handleToggleSession = async (
-    memberId,
-    sessionId,
-    currentlyAssigned,
+    memberId: string,
+    sessionId: string,
+    currentlyAssigned: boolean,
   ) => {
+    if (!confId) return;
     try {
       await updateDoc(doc(db, "conferences", confId, "sessions", sessionId), {
         attendees: currentlyAssigned
@@ -237,48 +264,55 @@ export default function AdminAttendance() {
           : arrayUnion(memberId),
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
-  const handleAssignToSession = async (memberId, sessionId) => {
+  const handleAssignToSession = async (
+    memberId: string,
+    sessionId: string,
+  ) => {
+    if (!confId) return;
     try {
       await updateDoc(doc(db, "conferences", confId, "sessions", sessionId), {
         attendees: arrayUnion(memberId),
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
     setBySessionDropdown(null);
   };
 
   // ── Role management ────────────────────────────────────────────────────────
 
-  const handleSetAdmin = async (memberId) => {
+  const handleSetAdmin = async (memberId: string) => {
+    if (!confId) return;
     try {
       await updateDoc(doc(db, "conferences", confId, "members", memberId), {
         role: "admin",
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
-  const handleRemoveAdmin = async (memberId) => {
+  const handleRemoveAdmin = async (memberId: string) => {
+    if (!confId) return;
     try {
       await updateDoc(doc(db, "conferences", confId, "members", memberId), {
         role: "member",
       });
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
-  const getMemberName = (m) => memberNames[m.id] || m.displayName || m.id;
+  const getMemberName = (m: ResolvedMember) =>
+    memberNames[m.id] || m.displayName || m.id;
 
-  const ModeBadge = ({ mode }) =>
+  const ModeBadge = ({ mode }: { mode: AttendanceMode }) =>
     mode === "online" ? (
       <span className="inline-flex items-center gap-1.5 bg-[#2980B9]/10 text-[#2980B9] text-xs px-2.5 py-1 uppercase tracking-wider font-headline">
         <svg
@@ -364,7 +398,7 @@ export default function AdminAttendance() {
               {t("admin.mode")}
             </label>
             <div className="flex gap-1">
-              {["onsite", "online"].map((m) => (
+              {(["onsite", "online"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setAddMode(m)}
@@ -436,7 +470,7 @@ export default function AdminAttendance() {
                       type="text"
                       value={editState.name}
                       onChange={(e) =>
-                        setEditState({ ...editState, name: e.target.value })
+                        setEditState({ ...editState!, name: e.target.value })
                       }
                       onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
                       className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-admin-teal focus:outline-none"
@@ -447,11 +481,11 @@ export default function AdminAttendance() {
                       {t("admin.mode")}
                     </label>
                     <div className="flex gap-1">
-                      {["onsite", "online"].map((mo) => (
+                      {(["onsite", "online"] as const).map((mo) => (
                         <button
                           key={mo}
                           onClick={() =>
-                            setEditState({ ...editState, mode: mo })
+                            setEditState({ ...editState!, mode: mo })
                           }
                           className={`px-3 py-1.5 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
                             editState.mode === mo
@@ -524,7 +558,7 @@ export default function AdminAttendance() {
                         !m.legacyName &&
                         m.role === "admin" &&
                         isSuperAdmin &&
-                        m.id !== user.uid ? (
+                        m.id !== user?.uid ? (
                         <button
                           onClick={() => handleRemoveAdmin(m.id)}
                           className="text-secondary text-xs hover:text-admin-teal hover:underline"
@@ -548,7 +582,7 @@ export default function AdminAttendance() {
                     </span>
                     {/* Slot 2: Remove — fixed width */}
                     <span className="w-20 text-center">
-                      {m.role !== "admin" && m.id !== user.uid ? (
+                      {m.role !== "admin" && m.id !== user?.uid ? (
                         removeConfirm === m.id ? (
                           <span className="flex gap-1 items-center justify-center">
                             <button
@@ -595,10 +629,10 @@ export default function AdminAttendance() {
 
       {/* View toggle */}
       <div className="flex gap-1 mb-6">
-        {[
+        {([
           { key: "bySession", label: t("admin.bySession") },
           { key: "byMember", label: t("admin.byMember") },
-        ].map((v) => (
+        ] as const).map((v) => (
           <button
             key={v.key}
             onClick={() => {
@@ -628,11 +662,11 @@ export default function AdminAttendance() {
             <div>
               {/* Mode filter */}
               <div className="flex gap-1 mb-3">
-                {[
+                {([
                   { key: "all", label: t("admin.filterAll") },
                   { key: "onsite", label: t("dashboard.onsite") },
                   { key: "online", label: t("dashboard.online") },
-                ].map((f) => (
+                ] as const).map((f) => (
                   <button
                     key={f.key}
                     onClick={() => setModeFilter(f.key)}
@@ -705,7 +739,7 @@ export default function AdminAttendance() {
                             (s.attendees || []).includes(m.id),
                           );
                           // Group by date
-                          const byDate = {};
+                          const byDate: Record<string, Session[]> = {};
                           memberSessions.forEach((s) => {
                             const d = s.date || "Unknown";
                             if (!byDate[d]) byDate[d] = [];
@@ -835,7 +869,7 @@ export default function AdminAttendance() {
           const daySessions = sessions.filter((s) => s.date === activeDay);
 
           const PX_PER_MIN = 2.5; // 150px per hour
-          const toMin = (t) => {
+          const toMin = (t: string) => {
             if (!t) return 0;
             const [h, m] = t.split(":").map(Number);
             return h * 60 + (m || 0);
@@ -853,7 +887,7 @@ export default function AdminAttendance() {
           const dayStartMin = minH * 60;
           const dayEndMin = maxH * 60;
           const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MIN;
-          const hourLabels = [];
+          const hourLabels: string[] = [];
           for (let h = minH; h <= maxH; h++)
             hourLabels.push(`${String(h).padStart(2, "0")}:00`);
 
@@ -861,7 +895,7 @@ export default function AdminAttendance() {
           const sorted = [...daySessions].sort(
             (a, b) => toMin(a.start) - toMin(b.start),
           );
-          const groups = [];
+          const groups: { sessions: Session[]; groupEnd: number }[] = [];
           for (const s of sorted) {
             const sStart = toMin(s.start),
               sEnd = toMin(s.end);
@@ -873,10 +907,10 @@ export default function AdminAttendance() {
               groups.push({ sessions: [s], groupEnd: sEnd });
             }
           }
-          const placements = [];
+          const placements: { session: Session; colIndex: number; totalCols: number }[] = [];
           for (const g of groups) {
-            const cols = [];
-            const gp = [];
+            const cols: number[] = [];
+            const gp: { session: Session; colIndex: number }[] = [];
             for (const s of g.sessions) {
               const sStart = toMin(s.start),
                 sEnd = toMin(s.end);
@@ -1385,7 +1419,7 @@ export default function AdminAttendance() {
                       {t("admin.topics")}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {s.keyThemes.map((t, i) => (
+                      {(s.keyThemes || []).map((t, i) => (
                         <span
                           key={i}
                           style={{
@@ -1426,11 +1460,11 @@ export default function AdminAttendance() {
                     >
                       {t("admin.speakers")}
                     </div>
-                    {s.speakers.map((sp, i) => (
+                    {(s.speakers || []).map((sp, i) => (
                       <div
                         key={i}
                         style={{
-                          marginBottom: i < s.speakers.length - 1 ? 8 : 0,
+                          marginBottom: i < (s.speakers || []).length - 1 ? 8 : 0,
                         }}
                       >
                         <div

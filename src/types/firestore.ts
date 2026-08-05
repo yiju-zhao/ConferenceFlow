@@ -86,3 +86,26 @@ export interface Conference {
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
 }
+
+/**
+ * Status of a `dailyReports` document. Values verified against the writers:
+ * `api/conferences/[confId]/reports/[reportId].js` ("published"/"draft"),
+ * `src/components/report/ReportList.jsx` ("archived"/"draft"), and
+ * `src/components/report/DailyReport.jsx` ("draft").
+ */
+export type ReportStatus = "draft" | "published" | "archived";
+
+/**
+ * A `dailyReports` document. Field set verified against the writers above and
+ * the readers in `AdminReports`. Content fields (sessions, summaryPoints,
+ * sections, …) are added in the report-components batch (9d) — only the fields
+ * the admin tooling reads/sets are declared here.
+ */
+export interface Report {
+  id: string;
+  type?: string; // "summary" on summary reports
+  title?: string;
+  status?: ReportStatus;
+  publishedAt?: Timestamp | null;
+  publishedUrl?: string;
+}

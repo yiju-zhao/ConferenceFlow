@@ -6,8 +6,31 @@ import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
 import UserAvatar from "../UserAvatar";
+import type { Conference, ConferenceVisibility } from "../../types";
 
-function Field({ label, value, onChange, type = "text", placeholder = "" }) {
+interface ConferenceCreateForm {
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  visibility: ConferenceVisibility;
+}
+
+interface FieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  placeholder?: string;
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+}: FieldProps) {
   return (
     <div className="mb-3">
       <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
@@ -28,9 +51,9 @@ export default function SuperAdminPanel() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
-  const [conferences, setConferences] = useState([]);
+  const [conferences, setConferences] = useState<Conference[]>([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({
+  const [createForm, setCreateForm] = useState<ConferenceCreateForm>({
     name: "",
     description: "",
     startDate: "",
@@ -42,7 +65,11 @@ export default function SuperAdminPanel() {
 
   useEffect(() => {
     return onSnapshot(collection(db, "conferences"), (snap) => {
-      setConferences(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setConferences(
+        snap.docs.map(
+          (d) => ({ id: d.id, ...(d.data() as Omit<Conference, "id">) }),
+        ),
+      );
     });
   }, []);
 
@@ -50,7 +77,7 @@ export default function SuperAdminPanel() {
     setCreating(true);
     setMessage("");
     try {
-      const result = await apiFetch("/api/conferences", {
+      const result = await apiFetch<Conference>("/api/conferences", {
         method: "POST",
         body: JSON.stringify(createForm),
       });
@@ -64,7 +91,7 @@ export default function SuperAdminPanel() {
         visibility: "public",
       });
     } catch (err) {
-      setMessage(`Error: ${err.message}`);
+      setMessage(`Error: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setCreating(false);
     }
@@ -186,7 +213,7 @@ export default function SuperAdminPanel() {
                   {t("admin.visibility")}
                 </label>
                 <div className="flex gap-3">
-                  {["public", "private"].map((v) => (
+                  {(["public", "private"] as const).map((v) => (
                     <button
                       key={v}
                       onClick={() =>
