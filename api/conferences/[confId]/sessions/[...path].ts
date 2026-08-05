@@ -1,30 +1,42 @@
-import { db, FieldValue } from "../../../lib/firebase-admin.js";
-import { requireConfAdmin, AuthError } from "../../../lib/auth-middleware.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { db, FieldValue } from "../../../lib/firebase-admin";
+import { requireConfAdmin, AuthError } from "../../../lib/auth-middleware";
+import type {
+  CreateSessionBody,
+  CreateSessionResponse,
+  SessionWriteData,
+  BulkSessionsBody,
+  BulkSessionError,
+  BulkSessionsResponse,
+  UpdateSessionBody,
+} from "@/types/api";
+import type { Session } from "@/types/firestore";
 
-export default async function handler(req, res) {
-  const { confId, path } = req.query;
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const confId = req.query.confId as string;
+  const path = req.query.path;
   const segments = Array.isArray(path) ? path : path ? [path] : [];
   const col = db.collection("conferences").doc(confId).collection("sessions");
   try {
     if (req.method === "GET" && segments.length === 0) {
       const snap = await col.get();
-      return res.json(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      return res.json(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Session, "id">) })));
     }
     if (req.method === "POST" && segments.length === 0) {
       await requireConfAdmin(req, confId);
-      const { code, title, date, start, end, room, speakers, format, recording, sessionType, mainTopic, url, keyThemes } = req.body;
+      const { code, title, date, start, end, room, speakers, format, recording, sessionType, mainTopic, url, keyThemes } = req.body as CreateSessionBody;
       if (!title || !date || !start || !end) return res.status(400).json({ error: "title, date, start, and end are required" });
       const ref = col.doc();
-      const data = { code: code || "", title, date, start, end, room: room || "", speakers: speakers || [], format: format || "", recording: recording || "", sessionType: sessionType || "", mainTopic: mainTopic || "", url: url || "", keyThemes: keyThemes || [], attendees: [], createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
+      const data: SessionWriteData = { code: code || "", title, date, start, end, room: room || "", speakers: speakers || [], format: format || "", recording: recording || "", sessionType: sessionType || "", mainTopic: mainTopic || "", url: url || "", keyThemes: keyThemes || [], attendees: [], createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() };
       await ref.set(data);
-      return res.status(201).json({ id: ref.id, ...data });
+      return res.status(201).json({ id: ref.id, ...data } satisfies CreateSessionResponse);
     }
     if (req.method === "POST" && segments[0] === "bulk") {
       await requireConfAdmin(req, confId);
-      const { sessions } = req.body;
+      const { sessions } = req.body as BulkSessionsBody;
       if (!Array.isArray(sessions) || !sessions.length) return res.status(400).json({ error: "sessions array is required" });
       if (sessions.length > 1000) return res.status(400).json({ error: "Maximum 1000 sessions" });
-      const results = { created: 0, errors: [] };
+      const results = { created: 0, errors: [] as BulkSessionError[] };
       for (let i = 0; i < sessions.length; i += 500) {
         const chunk = sessions.slice(i, i + 500);
         const batch = db.batch();
@@ -36,18 +48,19 @@ export default async function handler(req, res) {
         }
         await batch.commit();
       }
-      return res.json({ message: `Uploaded ${results.created} sessions`, ...results });
+      return res.json({ message: `Uploaded ${results.created} sessions`, ...results } satisfies BulkSessionsResponse);
     }
     if (segments.length === 1 && segments[0] !== "bulk") {
-      const sessionId = segments[0];
+      const sessionId = segments[0] as string;
       await requireConfAdmin(req, confId);
       const ref = col.doc(sessionId);
       const snap = await ref.get();
       if (!snap.exists) return res.status(404).json({ error: "Session not found" });
       if (req.method === "PUT") {
-        const allowed = ["code", "title", "date", "start", "end", "room", "speakers", "format", "recording", "sessionType", "mainTopic", "url", "keyThemes"];
-        const updates = {};
-        for (const f of allowed) { if (req.body[f] !== undefined) updates[f] = req.body[f]; }
+        const allowed = ["code", "title", "date", "start", "end", "room", "speakers", "format", "recording", "sessionType", "mainTopic", "url", "keyThemes"] as const;
+        const body = req.body as UpdateSessionBody;
+        const updates: Record<string, unknown> = {};
+        for (const f of allowed) { if (body[f] !== undefined) updates[f] = body[f]; }
         updates.updatedAt = FieldValue.serverTimestamp();
         await ref.update(updates);
         return res.json({ id: sessionId, ...updates });
@@ -57,6 +70,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: "Method not allowed" });
   } catch (error) {
     if (error instanceof AuthError) return res.status(error.status).json({ error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
   }
 }

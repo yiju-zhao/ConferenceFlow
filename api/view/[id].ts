@@ -1,5 +1,7 @@
-export default async function handler(req, res) {
-  const { id } = req.query;
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const id = req.query.id as string;
   const bucket = "gtc-2026-session-daal.firebasestorage.app";
   const path = encodeURIComponent(`published-reports/${id}.html`);
   const storageUrl = `https://storage.googleapis.com/${bucket}/${path}`;
