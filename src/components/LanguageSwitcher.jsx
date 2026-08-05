@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 
 export default function LanguageSwitcher({
   className = "",
-  style,
+  style = {},
   variant = "default",
 }) {
   const { i18n } = useTranslation();

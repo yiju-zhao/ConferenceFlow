@@ -4,14 +4,20 @@ import { useAuth } from "../contexts/AuthContext";
 import { COLORS } from "../constants";
 import LanguageSwitcher from "./LanguageSwitcher";
 
-function getAvatarColor(name) {
+interface UserAvatarProps {
+  size?: number;
+  onSignOut?: () => void;
+  light?: boolean;
+}
+
+function getAvatarColor(name: string): string {
   let hash = 0;
   for (let i = 0; i < (name || "").length; i++)
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return COLORS[Math.abs(hash) % COLORS.length].hex;
 }
 
-function getInitial(name) {
+function getInitial(name: string): string {
   return (name || "?").charAt(0).toUpperCase();
 }
 
@@ -23,14 +29,14 @@ function getInitial(name) {
  *   onSignOut: function (optional, called after sign out)
  *   light: boolean (for dark backgrounds, default false)
  */
-export default function UserAvatar({ size = 32, onSignOut, light = false }) {
+export default function UserAvatar({ size = 32, onSignOut, light = false }: UserAvatarProps) {
   const { userProfile, updateDisplayName, signOut } = useAuth();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   const displayName = userProfile?.displayName || "";
   const initial = getInitial(displayName);
@@ -38,8 +44,8 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
 
   useEffect(() => {
     if (!open) return;
-    const close = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
@@ -58,7 +64,7 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
       setEditing(false);
       setOpen(false);
     } catch (err) {
-      alert(err.message);
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -276,8 +282,8 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }) {
                 textAlign: "left",
                 fontFamily: "'Inter', sans-serif",
               }}
-              onMouseEnter={(e) => (e.target.style.color = "#c53030")}
-              onMouseLeave={(e) => (e.target.style.color = "#e53e3e")}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#c53030")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#e53e3e")}
             >
               {t("avatar.signOut")}
             </button>
@@ -307,7 +313,7 @@ export function FirstTimeNameSetup() {
     try {
       await updateDisplayName(name.trim());
     } catch (err) {
-      alert(err.message);
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -374,8 +380,8 @@ export function FirstTimeNameSetup() {
               fontFamily: "'Inter', sans-serif",
               boxSizing: "border-box",
             }}
-            onFocus={(e) => (e.target.style.borderBottomColor = "#a20513")}
-            onBlur={(e) => (e.target.style.borderBottomColor = "transparent")}
+            onFocus={(e) => (e.currentTarget.style.borderBottomColor = "#a20513")}
+            onBlur={(e) => (e.currentTarget.style.borderBottomColor = "transparent")}
           />
           <button
             onClick={handleSave}
