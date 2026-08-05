@@ -1,8 +1,12 @@
 import { auth } from "../firebase";
+import type { ApiFetchOptions } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
-export async function apiFetch(path, options = {}) {
+export async function apiFetch<T = unknown>(
+  path: string,
+  options: ApiFetchOptions = {},
+): Promise<T> {
   const user = auth.currentUser;
   if (!user) {
     throw new Error("Not authenticated");
@@ -25,5 +29,5 @@ export async function apiFetch(path, options = {}) {
     throw new Error(error.error || `API error: ${response.status}`);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
