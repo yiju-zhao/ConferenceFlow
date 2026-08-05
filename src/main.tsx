@@ -58,15 +58,19 @@ function LoadingFallback() {
   );
 }
 
-function ReportRouter({ viewMode = false }) {
-  const { reportId } = useParams();
+interface ReportRouterProps {
+  viewMode?: boolean;
+}
+
+function ReportRouter({ viewMode = false }: ReportRouterProps) {
+  const { reportId } = useParams() as { reportId: string };
   if (reportId.startsWith("summary-")) {
     return <ConferenceReport />;
   }
   return <DailyReport viewMode={viewMode} />;
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
