@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeurIPS 2025 · Day 2 参会日报 — 样例</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Work+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --brand:#CF0A2C; --brand-dark:#a20513; --brand-soft:rgba(207,10,44,.08);
+    --text:#1a1c1c; --text-sec:#5f5e5e; --text-muted:#888; --line:#ececec;
+    --fs-label:11px; --fs-caption:13px; --fs-body:15px; --fs-heading:17px; --fs-title:20px; --fs-display:30px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#fff;color:var(--text);
+    font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:var(--fs-body);line-height:1.7;}
+  .work{font-family:"Work Sans",sans-serif;}
+  .container{max-width:900px;margin:0 auto;padding:32px 40px 64px;}
+
+  /* title bar */
+  .title-bar{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid var(--line);}
+  .eyebrow{font-family:"Work Sans",sans-serif;font-size:var(--fs-label);font-weight:700;letter-spacing:3px;
+    text-transform:uppercase;color:var(--brand);margin-bottom:8px;}
+  .title-bar h1{margin:0;font-size:var(--fs-display);font-weight:700;line-height:1.2;}
+  .badge{font-family:"Work Sans",sans-serif;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+    padding:4px 10px;background:#1a1c1c;color:#fff;}
+
+  /* section title */
+  .sec-title{font-size:var(--fs-heading);font-weight:700;margin:40px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--text);}
+  .sec-title .en{font-family:"Work Sans",sans-serif;font-size:var(--fs-caption);font-weight:600;color:var(--text-muted);
+    letter-spacing:1px;margin-left:8px;text-transform:uppercase;}
+
+  /* today highlights */
+  .highlights{background:var(--brand-soft);border-left:3px solid var(--brand);padding:16px 20px;}
+  .highlights ul{margin:0;padding-left:20px;}
+  .highlights li{margin:6px 0;}
+  .highlights li b{color:var(--brand-dark);}
+
+  /* topic divider */
+  .topic{display:flex;align-items:center;gap:12px;margin:28px 0 4px;}
+  .topic .bar{width:4px;height:18px;background:var(--brand);}
+  .topic .name{font-size:var(--fs-heading);font-weight:700;}
+  .topic .line{flex:1;height:1px;background:var(--line);}
+
+  /* session card */
+  .session{border:1px solid var(--line);border-radius:6px;padding:18px 22px;margin:12px 0;background:#fff;}
+  .session-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .session-code{font-family:"Work Sans",sans-serif;font-size:var(--fs-caption);font-weight:700;color:var(--brand);
+    background:var(--brand-soft);padding:2px 8px;border-radius:3px;}
+  .session-title{font-size:var(--fs-title);font-weight:700;margin:0;flex:1;min-width:260px;line-height:1.35;}
+  .type-tag{font-family:"Work Sans",sans-serif;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+    padding:3px 9px;border-radius:3px;}
+  .type-oral{background:#1a1c1c;color:#fff;}
+  .type-spotlight{background:var(--brand);color:#fff;}
+  .type-poster{background:#eef1f3;color:#5f5e5e;}
+  .type-workshop{background:#f0e6d6;color:#8a6d1f;}
+  .meta{font-size:var(--fs-caption);color:var(--text-muted);margin:4px 0 0;}
+  .authors{font-size:var(--fs-caption);color:var(--text-sec);margin:10px 0 0;}
+  .authors b{color:var(--text);}
+
+  .field{margin-top:14px;}
+  .field-h{font-family:"Noto Sans SC",sans-serif;font-size:var(--fs-body);font-weight:700;color:var(--brand-dark);margin:0 0 4px;}
+  .field-h .en{font-family:"Work Sans",sans-serif;font-size:11px;color:var(--text-muted);font-weight:600;margin-left:6px;}
+  .field-b{font-size:var(--fs-body);color:var(--text);}
+  .field-b .res{background:#f7f8f8;border:1px solid var(--line);border-radius:4px;padding:8px 12px;margin-top:6px;
+    font-family:"Work Sans",sans-serif;font-size:var(--fs-caption);}
+  .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+  .links a{font-family:"Work Sans",sans-serif;font-size:var(--fs-caption);color:var(--brand);text-decoration:none;
+    border:1px solid var(--brand-soft);padding:3px 9px;border-radius:3px;}
+  .links a:hover{background:var(--brand-soft);}
+  .contributors{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);
+    font-size:var(--fs-caption);color:var(--text-muted);}
+  .chip{background:var(--brand);color:#fff;font-size:10px;font-weight:600;padding:2px 9px;border-radius:10px;}
+
+  /* trend / notes blocks */
+  .prose{font-size:var(--fs-body);}
+  .prose p{margin:0 0 10px;}
+  .prose b{color:var(--brand-dark);}
+  .notes{background:#fafafa;border:1px solid var(--line);border-radius:6px;padding:14px 18px;font-size:var(--fs-caption);color:var(--text-sec);}
+  .notes ul{margin:6px 0 0;padding-left:20px;}
+
+  /* followup */
+  table.fu{width:100%;border-collapse:collapse;font-size:var(--fs-caption);margin-top:6px;}
+  table.fu th{text-align:left;font-family:"Work Sans",sans-serif;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--text-muted);border-bottom:1px solid var(--line);padding:8px 10px;}
+  table.fu td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top;}
+  table.fu td.owner{font-weight:600;color:var(--brand-dark);}
+  table.fu td.due{font-family:"Work Sans",sans-serif;color:var(--text-muted);white-space:nowrap;}
+
+  .footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);font-size:var(--fs-caption);color:var(--text-muted);
+    text-align:center;}
+  .hint{font-size:var(--fs-caption);color:var(--text-muted);font-style:italic;}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Title bar -->
+  <div class="title-bar">
+    <div>
+      <div class="eyebrow">NeurIPS 2025 · 参会日报 / DAILY BRIEFING</div>
+      <h1>Day 2：效率为王——MoE、量化与去参考模型的偏好优化</h1>
+    </div>
+    <span class="badge">Day 2 · Dec 3</span>
+  </div>
+
+  <!-- 今日要点 -->
+  <h2 class="sec-title">今日要点 <span class="en">Daily Highlights</span></h2>
+  <div class="highlights">
+    <ul>
+      <li><b>效率是今日主旋律</b>：MoE 专家卸载、训练后量化、推测解码三路并进，目标一致——在有限 GPU 预算下训 / 推更大模型。</li>
+      <li><b>RLHF 一侧"去 reference model"已成新基线</b>：至少 4 篇 spotlight 不再依赖 SFT 参考模型，省一半显存。</li>
+      <li><b>对我们</b>：MoE 卸载方案若可复现，可把内部 100B+ 模型的训练成本降一个档；偏好优化新基线值得本周内接入对齐 pipeline 评估。</li>
+    </ul>
+  </div>
+
+  <!-- 论文与议程 -->
+  <h2 class="sec-title">论文与议程 <span class="en">Papers &amp; Sessions</span></h2>
+
+  <!-- Topic 1 -->
+  <div class="topic"><span class="bar"></span><span class="name">高效训练与稀疏专家</span><span class="line"></span></div>
+
+  <div class="session">
+    <div class="session-head">
+      <span class="session-code">Oral-3A-01</span>
+      <h3 class="session-title">Sparse Routing at Trillion Scale: Memory-Efficient MoE via Expert Offloading</h3>
+      <span class="type-tag type-oral">Oral</span>
+    </div>
+    <div class="meta">Dec 3 · 10:30–10:50 · Hall B</div>
+    <div class="authors"><b>作者与机构：</b>Wei Chen, Maria Rodriguez, Hiroshi Tanaka · MIT CSAIL；Aisha Khan · Google DeepMind；Liu Bo · 清华大学</div>
+
+    <div class="field">
+      <p class="field-h">研究方法与核心贡献 <span class="en">Method &amp; Contribution</span></p>
+      <div class="field-b">提出动态专家卸载（dynamic expert offloading）：仅在 GPU 上保留 top-k 激活专家，其余按调用频率分层缓存到 CPU 内存 / NVMe。配套一个轻量路由预测器提前预取，掩盖 I/O 延迟。核心新点是<b>按路由热度的分层缓存策略</b>，而非简单 LRU。</div>
+    </div>
+
+    <div class="field">
+      <p class="field-h">实验结果 / 基准 <span class="en">Results &amp; Benchmarks</span></p>
+      <div class="field-b">在 256×A100 上训练 1.8T 参数 MoE，相对 dense baseline：
+        <div class="res">throughput 2.3× ↑ &nbsp;|&nbsp; 峰值显存 −41% &nbsp;|&nbsp; 下游 8 项基准质量持平（Δ &lt; 0.4pt）</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <p class="field-h">局限与对我们的启示 <span class="en">Limitations &amp; Implications</span></p>
+      <div class="field-b">仅在 ≤1.8T 验证；极端规模下路由稳定性下降。对我们：基础设施团队应优先评估此方案能否把内部 100B+ 模型训练成本降一档；路由预测器思路也可借鉴到我们的推理服务。</div>
+    </div>
+
+    <div class="field">
+      <p class="field-h">资源链接 <span class="en">Resources</span></p>
+      <div class="links">
+        <a href="#">arXiv:2512.04881</a>
+        <a href="#">GitHub（代码已开源）</a>
+        <a href="#">项目主页</a>
+      </div>
+    </div>
+
+    <div class="contributors">
+      <span>贡献人</span>
+      <span class="chip">张三</span>
+      <span style="margin-left:auto;">edited 12m ago by 张三</span>
+    </div>
+  </div>
+
+  <div class="session">
+    <div class="session-head">
+      <span class="session-code">Spotlight-3A-04</span>
+      <h3 class="session-title">QMoE-Lite: 2-bit 量化下保持推理质量的鲁棒校准</h3>
+      <span class="type-tag type-spotlight">Spotlight</span>
+    </div>
+    <div class="meta">Dec 3 · 11:20–11:35 · Hall B</div>
+    <div class="authors"><b>作者与机构：</b>Elena Petrova, Sanjay Gupta · ETH Zürich；Meta FAIR</div>
+    <div class="field">
+      <p class="field-h">研究方法与核心贡献 <span class="en">Method &amp; Contribution</span></p>
+      <div class="field-b">提出分层敏感度感知的 2-bit 校准，对 outlier 通道做混合精度保留。在 2-bit 下首次把 70B 模型推理质量损失压到 &lt;1pt。</div>
+    </div>
+    <div class="field">
+      <p class="field-h">局限与对我们的启示 <span class="en">Limitations &amp; Implications</span></p>
+      <div class="field-b">校准需 8GPU·小时，离线成本不低。对我们：边缘 / 低成本推理场景可评估；与我们现有 INT8 方案做 AB。</div>
+    </div>
+    <div class="field">
+      <p class="field-h">资源链接 <span class="en">Resources</span></p>
+      <div class="links"><a href="#">arXiv:2512.05210</a><a href="#">GitHub</a></div>
+    </div>
+    <div class="contributors"><span>贡献人</span><span class="chip">李四</span></div>
+  </div>
+
+  <!-- Topic 2 -->
+  <div class="topic"><span class="bar"></span><span class="name">对齐与偏好优化</span><span class="line"></span></div>
+
+  <div class="session">
+    <div class="session-head">
+      <span class="session-code">Spotlight-5C-02</span>
+      <h3 class="session-title">Self-Play Preference Optimization without a Reference Model</h3>
+      <span class="type-tag type-spotlight">Spotlight</span>
+    </div>
+    <div class="meta">Dec 3 · 14:00–14:15 · Room 204</div>
+    <div class="authors"><b>作者与机构：</b>Daniel Kim, Priya Nair · Stanford；Anthropic</div>
+    <div class="field">
+      <p class="field-h">研究方法与核心贡献 <span class="en">Method &amp; Contribution</span></p>
+      <div class="field-b">用自博弈生成对比对 + 长度归一化的无参考损失，去掉 DPO 中的 SFT 参考模型。显存减半、训练快 1.4×。</div>
+    </div>
+    <div class="field">
+      <p class="field-h">实验结果 / 基准 <span class="en">Results &amp; Benchmarks</span></p>
+      <div class="field-b">
+        <div class="res">MT-Bench +0.31 &nbsp;|&nbsp; AlpacaEval 2.0 +2.8% &nbsp;|&nbsp; 显存 −48%</div>
+      </div>
+    </div>
+    <div class="field">
+      <p class="field-h">局限与对我们的启示 <span class="en">Limitations &amp; Implications</span></p>
+      <div class="field-b">自博弈早期易模式坍缩，需 KL 正则。对我们：本周接入对齐 pipeline 做 A/B，有望直接省掉一份参考模型副本。</div>
+    </div>
+    <div class="field">
+      <p class="field-h">资源链接 <span class="en">Resources</span></p>
+      <div class="links"><a href="#">arXiv:2512.06055</a><a href="#">GitHub</a><a href="#">数据集</a></div>
+    </div>
+    <div class="contributors"><span>贡献人</span><span class="chip">王五</span></div>
+  </div>
+
+  <!-- 趋势研判 -->
+  <h2 class="sec-title">趋势研判 <span class="en">Trend Analysis</span></h2>
+  <div class="prose">
+    <p><b>1. "效率"取代"规模"成为叙事中心。</b>今日 6 篇 oral 中 4 篇直接关乎"用更少算力做同等或更大模型"。这与去年"大力出奇迹"的主基调明显转向——社区在认真对待训练 / 推理的边际成本。</p>
+    <p><b>2. 对齐方法正在"去参考模型化"。</b>DPO 系的多篇工作都在砍掉 SFT 参考模型，这是一条可观测的方法论 shift，直接降低对齐的工程门槛与显存。</p>
+    <p><b>对我们的意义：</b>两条线索都指向"降本"。建议本周内组织一次内部评测：①MoE 卸载能否压低我们大模型训练成本；②无参考偏好优化能否简化对齐 pipeline。两者若成立，都是可向领导汇报的硬收益。</p>
+  </div>
+
+  <!-- 现场速记 -->
+  <h2 class="sec-title">现场速记 <span class="en">Onsite Notes（轻量）</span></h2>
+  <div class="notes">
+    <b>软信息（可选记录）：</b>
+    <ul>
+      <li>海报区听说 DeepMind / Meta 今年大量招 inference infra 方向的人，开价偏高。</li>
+      <li>评审复现性争议：一篇 4-bit 量化论文被多位参会者指出代码未完全开源，现场讨论较多。</li>
+      <li>（海报区 / 会场照片可附在此处，不再单列大版块。）</li>
+    </ul>
+  </div>
+
+  <!-- 待跟进 -->
+  <h2 class="sec-title">待跟进 <span class="en">Follow-ups（可选）</span></h2>
+  <table class="fu">
+    <thead><tr><th>事项</th><th>类型</th><th>负责人</th><th>截止</th></tr></thead>
+    <tbody>
+      <tr><td>复现 MoE 专家卸载开源代码，评估接入内部 100B+ 训练</td><td>复现实验</td><td class="owner">张三</td><td class="due">Dec 15</td></tr>
+      <tr><td>把无参考偏好优化接入对齐 pipeline 做 A/B</td><td>工程接入</td><td class="owner">王五</td><td class="due">Dec 20</td></tr>
+      <tr><td>联系 Stanford Daniel Kim，请教自博弈早期坍缩的 KL 正则细节</td><td>外部联系</td><td class="owner">李四</td><td class="due">Dec 10</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">NeurIPS 2025 · Dec 3 · 参会团队出品 &nbsp;|&nbsp; <span class="hint">本文件为设计样例，内容为虚构示例</span></div>
+</div>
+</body>
+</html>
