@@ -1,4 +1,6 @@
 // Session catalog — populated at runtime from Firestore.
-// Typed loosely here; tightened to Map<string, Session> in the calendar batch
-// when the populating component is converted.
-export const SESSION_CATALOG = new Map<string, unknown>();
+// Entry shape verified against the report-component readers; see
+// `SessionCatalogEntry` in `@/types`.
+import type { SessionCatalogEntry } from "./types/firestore";
+
+export const SESSION_CATALOG = new Map<string, SessionCatalogEntry>();

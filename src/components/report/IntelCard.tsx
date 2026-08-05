@@ -3,26 +3,45 @@ import { COLORS } from "../../constants";
 import { SESSION_CATALOG } from "../../sessionCatalog";
 import { EditableField } from "./SharedEditors";
 import SessionPicker from "./SessionPicker";
+import type {
+  Member,
+  ReportBlock,
+  ReportSourceSession,
+  Session,
+} from "../../types";
 
-export const topicSlug = (t) =>
+export const topicSlug = (t: string) =>
   t
     .replace(/[^\w\u4e00-\u9fa5]+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
 
-export function formatOneSource(s) {
+export function formatOneSource(s: ReportSourceSession): string {
   if (s?.manual) return s.manual.trim();
   if (!s?.id) return "";
   const title = SESSION_CATALOG.get(s.id)?.title?.trim();
   return title ? `${s.id} · ${title}` : s.id;
 }
 
-export function normaliseSources(block) {
+export function normaliseSources(block: ReportBlock): ReportSourceSession[] {
   if (Array.isArray(block.sourceSessions) && block.sourceSessions.length)
     return block.sourceSessions;
   if (block.sourceSession?.id || block.sourceSession?.manual)
     return [block.sourceSession];
   return [];
+}
+
+interface IntelCardProps {
+  block: ReportBlock;
+  onUpdate: (fields: Partial<ReportBlock>) => void;
+  onRemove: () => void;
+  members?: Member[];
+  placeholder?: string;
+  readOnly?: boolean;
+  currentUid?: string;
+  memberColorMap: Record<string, number>;
+  isAdmin?: boolean;
+  conferenceSessions?: Session[];
 }
 
 export default function IntelCard({
@@ -36,7 +55,7 @@ export default function IntelCard({
   memberColorMap,
   isAdmin = false,
   conferenceSessions = [],
-}) {
+}: IntelCardProps) {
   const { t } = useTranslation();
   const ph = placeholder || t("report.recordContent");
   const sources = normaliseSources(block);
@@ -52,7 +71,7 @@ export default function IntelCard({
   const contributorText =
     contributorNames.join("\u3001") || (block.contributor || "").trim();
 
-  const ownerColorIdx = memberColorMap?.[block.ownerId] ?? null;
+  const ownerColorIdx = block.ownerId ? (memberColorMap[block.ownerId] ?? null) : null;
   const ownerColor =
     ownerColorIdx !== null ? COLORS[ownerColorIdx]?.hex || "#5f5e5e" : null;
   const isOwner = currentUid && block.ownerId === currentUid;
@@ -73,12 +92,12 @@ export default function IntelCard({
       : lastEditor
     : null;
 
-  const updateSource = (idx, v) => {
+  const updateSource = (idx: number, v: ReportSourceSession) => {
     const next = [...sources];
     next[idx] = v;
     onUpdate({ sourceSessions: next, sourceSession: next[0] || null });
   };
-  const removeSource = (idx) => {
+  const removeSource = (idx: number) => {
     const next = sources.filter((_, i) => i !== idx);
     onUpdate({ sourceSessions: next, sourceSession: next[0] || null });
   };

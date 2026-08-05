@@ -2,14 +2,20 @@ import { useTranslation } from "react-i18next";
 import { DiffList, DiffText } from "./DiffViews";
 import { stripHtml } from "../../lib/diffUtils";
 import { formatDateTime } from "../../i18n/dateUtils";
+import type { Report, ReportSnapshot } from "../../types";
 
-export default function SnapshotViewer({ snapshot, currentData }) {
+interface SnapshotViewerProps {
+  snapshot: ReportSnapshot;
+  currentData: Report | null;
+}
+
+export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewerProps) {
   const { t } = useTranslation();
   const { data } = snapshot;
   const ts = snapshot.createdAt?.toDate
     ? formatDateTime(snapshot.createdAt.toDate())
     : t("report.unknownTime");
-  const FIELD_LABELS = {
+  const FIELD_LABELS: Record<"onsiteInfo" | "reflections" | "rumors", string> = {
     onsiteInfo: t("report.onsiteInfo"),
     reflections: t("report.reflections"),
     rumors: t("report.rumors"),
@@ -104,7 +110,7 @@ export default function SnapshotViewer({ snapshot, currentData }) {
           );
         },
       )}
-      {["onsiteInfo", "reflections", "rumors"].map((field) => {
+      {(["onsiteInfo", "reflections", "rumors"] as const).map((field) => {
         const snapshotVal = data?.[field];
         const currentVal = currentData?.[field];
         if (stripHtml(snapshotVal) === stripHtml(currentVal)) return null;
@@ -126,10 +132,10 @@ export default function SnapshotViewer({ snapshot, currentData }) {
       })}
 
       {/* Block-based section diffs */}
-      {[
+      {([
         { field: "onsiteInfoBlocks", label: t("report.onsiteInfoBlocks") },
         { field: "reflectionsBlocks", label: t("report.reflectionsBlocks") },
-      ].map(({ field, label }) => {
+      ] as { field: "onsiteInfoBlocks" | "reflectionsBlocks"; label: string }[]).map(({ field, label }) => {
         const snapshotBlocks = data?.[field] || [];
         const currentBlocks = currentData?.[field] || [];
 

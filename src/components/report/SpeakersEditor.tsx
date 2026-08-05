@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import type { ReportSpeaker } from "../../types";
 
-export function SpeakerInput({ value, placeholder, onChange }) {
+interface SpeakerInputProps {
+  value?: string;
+  placeholder?: string;
+  onChange: (v: string) => void;
+}
+
+export function SpeakerInput({ value, placeholder, onChange }: SpeakerInputProps) {
   const [local, setLocal] = useState(value || "");
   const focused = useRef(false);
   useEffect(() => {
@@ -26,13 +33,22 @@ export function SpeakerInput({ value, placeholder, onChange }) {
   );
 }
 
+interface SpeakersEditorProps {
+  code?: string; // accepted for caller compatibility; not read
+  speakers: ReportSpeaker[];
+  onUpdate: (speakers: ReportSpeaker[]) => void;
+  onAdd: () => void;
+  onRemove: (idx: number) => void;
+  readOnly?: boolean;
+}
+
 export default function SpeakersEditor({
   speakers,
   onUpdate,
   onAdd,
   onRemove,
   readOnly = false,
-}) {
+}: SpeakersEditorProps) {
   const { t } = useTranslation();
   if (readOnly) {
     return (

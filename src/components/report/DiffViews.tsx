@@ -1,7 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { diffArrays, getTextLines } from "../../lib/diffUtils";
 
-export function DiffList({ oldItems, newItems }) {
+interface DiffListProps {
+  oldItems?: string[];
+  newItems?: string[];
+}
+
+export function DiffList({ oldItems, newItems }: DiffListProps) {
   const { t } = useTranslation();
   const diff = diffArrays(
     (oldItems || []).map(String),
@@ -46,7 +51,12 @@ export function DiffList({ oldItems, newItems }) {
   );
 }
 
-export function DiffText({ oldText, newText }) {
+interface DiffTextProps {
+  oldText?: string;
+  newText?: string;
+}
+
+export function DiffText({ oldText, newText }: DiffTextProps) {
   const { t } = useTranslation();
   const diff = diffArrays(getTextLines(oldText), getTextLines(newText));
   if (diff.length === 0)

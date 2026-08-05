@@ -35,7 +35,7 @@ export function diffArrays(oldArr: string[], newArr: string[]): DiffEntry[] {
 }
 
 /** Strip HTML tags and normalize whitespace. */
-export function stripHtml(html: string): string {
+export function stripHtml(html: string | undefined | null): string {
   return (html || "")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
@@ -44,7 +44,7 @@ export function stripHtml(html: string): string {
 }
 
 /** Extract text lines from HTML content. */
-export function getTextLines(html: string): string[] {
+export function getTextLines(html: string | undefined | null): string[] {
   return stripHtml(html)
     .split(/\n/)
     .map((s) => s.trim())

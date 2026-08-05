@@ -11,28 +11,32 @@ import {
 } from "firebase/storage";
 import { useDebouncedSave } from "../../hooks/useDebouncedSave";
 import { useTranslation } from "react-i18next";
+import type { Report, SitePhoto } from "../../types";
 
 export default function ConferenceReport() {
-  const { confId, reportId } = useParams();
+  const { confId, reportId } = useParams() as {
+    confId: string;
+    reportId: string;
+  };
   const { user } = useAuth();
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
-  const [shareUrl, setShareUrl] = useState(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [urlCopied, setUrlCopied] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(true);
-  const [reportData, setReportData] = useState(null);
-  const [htmlContent, setHtmlContent] = useState(null);
+  const [reportData, setReportData] = useState<Report | null>(null);
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const reportDataRef = useRef(null);
-  const savedHtmlRef = useRef(null);
-  const iframeRef = useRef(null);
-  const sitePhotoInputRef = useRef(null);
-  const htmlFileInputRef = useRef(null);
+  const reportDataRef = useRef<Report | null>(null);
+  const savedHtmlRef = useRef<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const sitePhotoInputRef = useRef<HTMLInputElement>(null);
+  const htmlFileInputRef = useRef<HTMLInputElement>(null);
   const { debouncedSave } = useDebouncedSave();
 
   // ── Real-time Firestore listener ────────────────────────────────────────
@@ -42,7 +46,7 @@ export default function ConferenceReport() {
       doc(db, "conferences", confId, "dailyReports", reportId),
       (snap) => {
         if (snap.exists()) {
-          const data = snap.data();
+          const data = snap.data() as Report;
           setReportData(data);
           reportDataRef.current = data;
           if (data.publishedUrl) {
@@ -95,7 +99,7 @@ export default function ConferenceReport() {
 
   // ── Upload handler ────────────────────────────────────────────────────────
   const handleFile = useCallback(
-    async (file) => {
+    async (file: File | undefined) => {
       if (!file || !file.name.endsWith(".html")) {
         setError(t("report.selectHtmlFile"));
         return;
@@ -121,7 +125,11 @@ export default function ConferenceReport() {
         );
       } catch (err) {
         console.error("[Upload] Failed:", err);
-        setError(t("report.uploadFailed", { error: err.message }));
+        setError(
+          t("report.uploadFailed", {
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
       } finally {
         setUploading(false);
       }
@@ -152,7 +160,11 @@ export default function ConferenceReport() {
       );
     } catch (err) {
       console.error("[Save] Failed:", err);
-      setError(t("report.saveFailed", { error: err.message }));
+      setError(
+        t("report.saveFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     } finally {
       setSaving(false);
     }
@@ -165,19 +177,19 @@ export default function ConferenceReport() {
   }, []);
 
   // ── Drag & Drop ───────────────────────────────────────────────────────────
-  const onDragOver = (e) => {
+  const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(true);
   };
   const onDragLeave = () => setDragOver(false);
-  const onDrop = (e) => {
+  const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     handleFile(e.dataTransfer.files[0]);
   };
 
-  const onFileSelect = (e) => {
-    const file = e.target.files[0];
+  const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) handleFile(file);
   };
 
@@ -189,35 +201,41 @@ export default function ConferenceReport() {
   };
 
   // ── Image compression & upload ──────────────────────────────────────────
-  const compressImage = useCallback((file, maxPx = 1200, quality = 0.75) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas
-          .getContext("2d")
-          .drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = url;
-    });
-  }, []);
+  const compressImage = useCallback(
+    (file: File, maxPx = 1200, quality = 0.75): Promise<string> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas
+            .getContext("2d")!
+            .drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = url;
+      });
+    },
+    [],
+  );
 
-  const uploadToStorage = useCallback(async (base64DataUrl, path) => {
-    const fileRef = sRef(storage, path);
-    await uploadString(fileRef, base64DataUrl, "data_url");
-    return getDownloadURL(fileRef);
-  }, []);
+  const uploadToStorage = useCallback(
+    async (base64DataUrl: string, path: string): Promise<string> => {
+      const fileRef = sRef(storage, path);
+      await uploadString(fileRef, base64DataUrl, "data_url");
+      return getDownloadURL(fileRef);
+    },
+    [],
+  );
 
   // ── Site Photo handlers ─────────────────────────────────────────────────
   const handleSitePhotoAdd = useCallback(
-    (e) => {
-      const file = e.target.files[0];
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
       if (!file) return;
       e.target.value = "";
       const objUrl = URL.createObjectURL(file);
@@ -230,7 +248,7 @@ export default function ConferenceReport() {
         compressImage(file)
           .then((compressed) => uploadToStorage(compressed, storagePath))
           .then((url) => {
-            const photos = [
+            const photos: SitePhoto[] = [
               ...(reportDataRef.current?.sitePhotos || []),
               { image: url, storagePath, caption: "", source: "", w, h },
             ];
@@ -247,8 +265,8 @@ export default function ConferenceReport() {
   );
 
   const handleSitePhotoDelete = useCallback(
-    (idx) => {
-      const photos = reportDataRef.current?.sitePhotos || [];
+    (idx: number) => {
+      const photos: SitePhoto[] = reportDataRef.current?.sitePhotos || [];
       const photo = photos[idx];
       if (photo?.storagePath) {
         deleteObject(sRef(storage, photo.storagePath)).catch(() => {});
@@ -264,9 +282,11 @@ export default function ConferenceReport() {
   );
 
   const saveSitePhotoCaption = useCallback(
-    (idx, caption) => {
+    (idx: number, caption: string) => {
       debouncedSave(`sitePhoto-caption-${idx}`, async () => {
-        const photos = [...(reportDataRef.current?.sitePhotos || [])];
+        const photos: SitePhoto[] = [
+          ...(reportDataRef.current?.sitePhotos || []),
+        ];
         if (photos[idx]) photos[idx] = { ...photos[idx], caption };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
@@ -279,9 +299,11 @@ export default function ConferenceReport() {
   );
 
   const saveSitePhotoSource = useCallback(
-    (idx, source) => {
+    (idx: number, source: string) => {
       debouncedSave(`sitePhoto-source-${idx}`, async () => {
-        const photos = [...(reportDataRef.current?.sitePhotos || [])];
+        const photos: SitePhoto[] = [
+          ...(reportDataRef.current?.sitePhotos || []),
+        ];
         if (photos[idx]) photos[idx] = { ...photos[idx], source };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),

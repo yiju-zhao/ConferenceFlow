@@ -41,11 +41,46 @@ import IntelCard, {
 import SessionPicker from "./SessionPicker";
 import SpeakersEditor from "./SpeakersEditor";
 import SnapshotViewer from "./SnapshotViewer";
+import type {
+  BlockField,
+  Member,
+  Report,
+  ReportBlock,
+  ReportBlockType,
+  ReportIllustration,
+  ReportSessionData,
+  ReportSnapshot,
+  ReportSnapshotData,
+  ReportSpeaker,
+  Session,
+  SitePhoto,
+} from "../../types";
+
+// A conference session scoped to a single day's report. `attendees` is
+// normalized to a Set for membership lookups (source Session.attendees is an
+// array); `code` is required — the report subsystem keys everything on it.
+type DailySession = Omit<Session, "attendees" | "code"> & {
+  attendees: Set<string>;
+  code: string;
+};
+
+// A member doc with its display name resolved (members effect always sets
+// `name` to a non-empty string).
+type ResolvedMember = Member & { name: string };
+
+type SnapshotType = "auto" | "manual";
+
+interface DailyReportProps {
+  viewMode?: boolean;
+}
 
 // ── DailyReport ──────────────────────────────────────────────────────────────
-export default function DailyReport({ viewMode: viewModeProp = false }) {
+export default function DailyReport({ viewMode: viewModeProp = false }: DailyReportProps) {
   const { t, i18n } = useTranslation();
-  const { confId, reportId } = useParams();
+  const { confId, reportId } = useParams() as {
+    confId: string;
+    reportId: string;
+  };
   const { date } = parseReportId(reportId);
   const viewMode =
     viewModeProp ||
@@ -53,26 +88,31 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   const { user } = useAuth();
   const { isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
-  const [sessions, setSessions] = useState([]);
-  const [allConferenceSessions, setAllConferenceSessions] = useState([]);
-  const [members, setMembers] = useState([]);
-  const [reportData, setReportData] = useState(null);
+  const [sessions, setSessions] = useState<DailySession[]>([]);
+  const [allConferenceSessions, setAllConferenceSessions] = useState<Session[]>([]);
+  const [members, setMembers] = useState<ResolvedMember[]>([]);
+  const [reportData, setReportData] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [floatingToolbar, setFloatingToolbar] = useState(null); // { top, left } or null
+  const [floatingToolbar, setFloatingToolbar] = useState<{ top: number; left: number } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [shareUrl, setShareUrl] = useState(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [urlCopied, setUrlCopied] = useState(false);
-  const [snapshots, setSnapshots] = useState([]);
+  const [snapshots, setSnapshots] = useState<ReportSnapshot[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [viewingSnapshot, setViewingSnapshot] = useState(null);
-  const [restoreConfirm, setRestoreConfirm] = useState(null);
-  const [collapsedSessions, setCollapsedSessions] = useState(new Set());
+  const [viewingSnapshot, setViewingSnapshot] = useState<ReportSnapshot | null>(null);
+  const [restoreConfirm, setRestoreConfirm] = useState<ReportSnapshot | null>(null);
+  const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(new Set());
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState({
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    code: string | null;
+    contributorNames: string[];
+    nameInput: string;
+    error: boolean;
+  }>({
     code: null,
     contributorNames: [],
     nameInput: "",
@@ -81,7 +121,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
 
   const [tocVisible, setTocVisible] = useState(true);
-  const [openInlineMenu, setOpenInlineMenu] = useState(null); // { field, afterId } | null
+  const [openInlineMenu, setOpenInlineMenu] = useState<string | null>(null);
 
   useEffect(() => {
     const el = document.getElementById("report-toc");
@@ -94,13 +134,13 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     return () => obs.disconnect();
   }, []);
 
-  const illustInputRefs = useRef({});
-  const sessionDataRef = useRef({});
-  const reportDataRef = useRef(null);
-  const createSnapshotRef = useRef(null);
-  const lastSnapshotHashRef = useRef(null);
-  const sitePhotoInputRef = useRef(null);
-  const reportContainerRef = useRef(null);
+  const illustInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const sessionDataRef = useRef<Record<string, ReportSessionData>>({});
+  const reportDataRef = useRef<Report | null>(null);
+  const createSnapshotRef = useRef<((type: SnapshotType) => Promise<void>) | null>(null);
+  const lastSnapshotHashRef = useRef<string | null>(null);
+  const sitePhotoInputRef = useRef<HTMLInputElement>(null);
+  const reportContainerRef = useRef<HTMLDivElement>(null);
   const initDone = useRef(false);
   const collapsedInit = useRef(false);
   const { debouncedSave, saveState } = useDebouncedSave(600);
@@ -118,11 +158,11 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   // Close export dropdown on outside click or Escape
   useEffect(() => {
     if (!showExportMenu) return;
-    const close = (e) => {
-      if (!e.target.closest(".export-dropdown-wrapper"))
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".export-dropdown-wrapper"))
         setShowExportMenu(false);
     };
-    const onEsc = (e) => {
+    const onEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setShowExportMenu(false);
     };
     document.addEventListener("mousedown", close);
@@ -136,10 +176,10 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   // Close inline add menu on outside click or Escape
   useEffect(() => {
     if (!openInlineMenu) return;
-    const close = (e) => {
-      if (!e.target.closest(".inline-add-zone")) setOpenInlineMenu(null);
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".inline-add-zone")) setOpenInlineMenu(null);
     };
-    const onEsc = (e) => {
+    const onEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpenInlineMenu(null);
     };
     document.addEventListener("mousedown", close);
@@ -165,7 +205,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       orderBy("createdAt", "desc"),
     );
     return onSnapshot(q, (snap) => {
-      setSnapshots(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setSnapshots(
+        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ReportSnapshot, "id">) })),
+      );
     });
   }, [user, reportId]);
 
@@ -208,14 +250,13 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         const { getDoc: gd, doc: dc } = await import("firebase/firestore");
         const arr = await Promise.all(
           snap.docs.map(async (d) => {
-            const data = d.data();
-            let name = data.legacyName || data.displayName || null;
+            const data = d.data() as Omit<Member, "id">;
+            let name: string | null = data.legacyName || data.displayName || null;
             if (!name && !data.managedByAdmin) {
               try {
                 const userSnap = await gd(dc(db, "users", d.id));
-                name = userSnap.exists()
-                  ? userSnap.data().displayName || userSnap.data().email
-                  : d.id;
+                const ud = userSnap.data() as { displayName?: string; email?: string };
+                name = userSnap.exists() ? ud.displayName || ud.email || null : d.id;
               } catch {
                 name = d.id;
               }
@@ -234,16 +275,17 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     return onSnapshot(
       collection(db, "conferences", confId, "sessions"),
       (snap) => {
-        const all = [];
-        const filtered = [];
+        const all: Session[] = [];
+        const filtered: DailySession[] = [];
         snap.forEach((d) => {
-          const data = d.data();
+          const data = d.data() as Session;
           all.push({ ...data, id: d.id });
           if (data.date === date)
             filtered.push({
-              ...data,
+              ...(data as Omit<Session, "attendees">),
+              id: d.id,
               attendees: new Set(data.attendees || []),
-            });
+            } as DailySession);
         });
         filtered.sort((a, b) => a.start.localeCompare(b.start));
         setSessions(filtered);
@@ -258,7 +300,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     return onSnapshot(
       doc(db, "conferences", confId, "dailyReports", reportId),
       (snap) => {
-        setReportData(snap.exists() ? snap.data() : null);
+        setReportData(snap.exists() ? (snap.data() as Report) : null);
         setLoading(false);
       },
     );
@@ -275,11 +317,11 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     )
       return;
     initDone.current = true;
-    const sessionMap = {};
+    const sessionMap: Record<string, ReportSessionData> = {};
     sessions.forEach((s) => {
       sessionMap[s.code] = {
         speakers:
-          s.speakers?.length > 0
+          s.speakers && s.speakers.length > 0
             ? s.speakers.map((sp) => ({
                 name: sp.name || "",
                 position: sp.title || "",
@@ -312,7 +354,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const memberMap = useMemo(() => {
-    const map = {};
+    const map: Record<string, string> = {};
     members.forEach((m) => {
       map[m.id] = m.name;
     });
@@ -320,9 +362,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   }, [members]);
 
   const memberColorMap = useMemo(() => {
-    const map = {};
+    const map: Record<string, number> = {};
     members.forEach((m) => {
-      map[m.id || m.userId] = m.colorIndex ?? 0;
+      map[m.id || m.userId || ""] = m.colorIndex ?? 0;
     });
     return map;
   }, [members]);
@@ -340,7 +382,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const topicsMap = useMemo(() => {
-    const map = {};
+    const map: Record<string, DailySession[]> = {};
     activeSessions.forEach((s) => {
       const cat = SESSION_CATALOG.get(s.code);
       const rawTopic = cat?.topic
@@ -384,12 +426,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
 
   // ── Save helpers ────────────────────────────────────────────────────────────
   const saveField = useCallback(
-    (field, html) => {
+    (field: string, value: unknown) => {
       if (!user || viewMode) return;
       debouncedSave(field, () => {
         setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
-          { [field]: html },
+          { [field]: value },
           { merge: true },
         ).catch(console.error);
       });
@@ -399,8 +441,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
   const addBlock = useCallback(
-    (field, type) => {
-      const newBlock = {
+    (field: BlockField, type: ReportBlockType) => {
+      const newBlock: ReportBlock = {
         id: generateId(),
         type,
         content: "",
@@ -414,7 +456,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     [saveField, user],
   );
   const updateBlock = useCallback(
-    (field, id, content) => {
+    (field: BlockField, id: string, content: string) => {
       saveField(
         field,
         (reportDataRef.current?.[field] || []).map((b) =>
@@ -425,7 +467,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     [saveField],
   );
   const removeBlock = useCallback(
-    (field, id) => {
+    (field: BlockField, id: string) => {
       saveField(
         field,
         (reportDataRef.current?.[field] || []).filter((b) => b.id !== id),
@@ -434,8 +476,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     [saveField],
   );
   const insertBlock = useCallback(
-    (field, type, afterId) => {
-      const newBlock = {
+    (field: BlockField, type: ReportBlockType, afterId: string | null) => {
+      const newBlock: ReportBlock = {
         id: generateId(),
         type,
         content: "",
@@ -453,7 +495,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     [saveField, user],
   );
   const updateBlockFields = useCallback(
-    (field, id, fields) => {
+    (field: BlockField, id: string, fields: Partial<ReportBlock>) => {
       saveField(
         field,
         (reportDataRef.current?.[field] || []).map((b) => {
@@ -491,10 +533,10 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   }, [reportId]);
 
   const createSnapshot = useCallback(
-    async (type) => {
+    async (type: SnapshotType) => {
       if (!user || !reportDataRef.current) return;
       const rd = reportDataRef.current;
-      const data = {
+      const data: ReportSnapshotData = {
         title: rd.title || "",
         summaryPoints: rd.summaryPoints || [],
         sessions: sessionDataRef.current || {},
@@ -533,8 +575,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       } catch (err) {
         console.error(
           "[Snapshot] Failed to save snapshot:",
-          err.code,
-          err.message,
+          (err as { code?: string }).code,
+          err instanceof Error ? err.message : String(err),
         );
       }
     },
@@ -548,7 +590,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     await createSnapshot("manual");
   };
 
-  const handleRestore = (snapshot) => {
+  const handleRestore = (snapshot: ReportSnapshot) => {
     setRestoreConfirm(snapshot);
   };
 
@@ -559,7 +601,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     await createSnapshot("manual");
     await setDoc(
       doc(db, "conferences", confId, "dailyReports", reportId),
-      snapshot.data,
+      snapshot.data!,
       { merge: true },
     );
     setShowHistory(false);
@@ -567,7 +609,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   };
 
   const saveSessionField = useCallback(
-    (code, field, value) => {
+    (code: string, field: string, value: unknown) => {
       if (!user) return;
       debouncedSave(`${code}.${field}`, () => {
         setDoc(
@@ -590,7 +632,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
 
   // Speakers: save whole array debounced
   const saveSpeakers = useCallback(
-    (code, speakers) => {
+    (code: string, speakers: ReportSpeaker[]) => {
       if (!user) return;
       debouncedSave(`${code}.speakers`, () => {
         setDoc(
@@ -606,10 +648,10 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const addSpeaker = useCallback(
-    (code) => {
+    (code: string) => {
       if (!user) return;
       const sd = sessionDataRef.current[code] || {};
-      const speakers = [
+      const speakers: ReportSpeaker[] = [
         ...(sd.speakers || []),
         { name: "", position: "", company: "" },
       ];
@@ -625,7 +667,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const removeSpeaker = useCallback(
-    (code, idx) => {
+    (code: string, idx: number) => {
       if (!user) return;
       const sd = sessionDataRef.current[code] || {};
       const speakers = (sd.speakers || []).filter((_, i) => i !== idx);
@@ -646,7 +688,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     [user, reportId],
   );
 
-  const openDeleteConfirm = useCallback((code, contributorNames) => {
+  const openDeleteConfirm = useCallback((code: string, contributorNames: string[]) => {
     setShowDeleteSelect(false);
     setDeleteConfirm({ code, contributorNames, nameInput: "", error: false });
   }, []);
@@ -678,34 +720,40 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     });
   }, [deleteConfirm, reportId]);
 
-  const compressImage = useCallback((file, maxPx = 1200, quality = 0.75) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        canvas
-          .getContext("2d")
-          .drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.src = url;
-    });
-  }, []);
+  const compressImage = useCallback(
+    (file: File, maxPx = 1200, quality = 0.75): Promise<string> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas
+            .getContext("2d")!
+            .drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = url;
+      });
+    },
+    [],
+  );
 
-  const uploadToStorage = useCallback(async (base64DataUrl, path) => {
-    const storageRef = ref(storage, path);
-    await uploadString(storageRef, base64DataUrl, "data_url");
-    return getDownloadURL(storageRef);
-  }, []);
+  const uploadToStorage = useCallback(
+    async (base64DataUrl: string, path: string): Promise<string> => {
+      const storageRef = ref(storage, path);
+      await uploadString(storageRef, base64DataUrl, "data_url");
+      return getDownloadURL(storageRef);
+    },
+    [],
+  );
 
   // Normalize illustrations: supports old single string + new array format
   const getIllustrations = useCallback(
-    (sd) => {
+    (sd: ReportSessionData & { _code?: string }): ReportIllustration[] => {
       if (Array.isArray(sd.illustrations)) return sd.illustrations;
       if (sd.illustration)
         return [
@@ -720,8 +768,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const handleIllustration = useCallback(
-    (code, e) => {
-      const file = e.target.files[0];
+    (code: string, e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
       if (!file) return;
       e.target.value = "";
       const storagePath = `illustrations/${reportId}/${code}_${Date.now()}`;
@@ -729,7 +777,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         .then((compressed) => uploadToStorage(compressed, storagePath))
         .then((url) => {
           const current = sessionDataRef.current[code] || {};
-          const existing = Array.isArray(current.illustrations)
+          const existing: ReportIllustration[] = Array.isArray(current.illustrations)
             ? current.illustrations
             : current.illustration
               ? [
@@ -749,9 +797,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const handleIllustrationDelete = useCallback(
-    (code, idx) => {
+    (code: string, idx: number) => {
       const current = sessionDataRef.current[code] || {};
-      const existing = Array.isArray(current.illustrations)
+      const existing: ReportIllustration[] = Array.isArray(current.illustrations)
         ? current.illustrations
         : current.illustration
           ? [
@@ -774,8 +822,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
 
   // ── Site Photos handlers ─────────────────────────────────────────────────
   const handleSitePhotoAdd = useCallback(
-    (e) => {
-      const file = e.target.files[0];
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
       if (!file) return;
       e.target.value = "";
       const objUrl = URL.createObjectURL(file);
@@ -788,7 +836,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         compressImage(file)
           .then((compressed) => uploadToStorage(compressed, storagePath))
           .then((url) => {
-            const photos = [
+            const photos: SitePhoto[] = [
               ...(reportDataRef.current?.sitePhotos || []),
               { image: url, storagePath, caption: "", source: "", w, h },
             ];
@@ -805,8 +853,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const handleSitePhotoDelete = useCallback(
-    (idx) => {
-      const photos = reportDataRef.current?.sitePhotos || [];
+    (idx: number) => {
+      const photos: SitePhoto[] = reportDataRef.current?.sitePhotos || [];
       const photo = photos[idx];
       if (photo?.storagePath) {
         deleteObject(ref(storage, photo.storagePath)).catch(() => {});
@@ -822,9 +870,11 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const saveSitePhotoCaption = useCallback(
-    (idx, caption) => {
+    (idx: number, caption: string) => {
       debouncedSave(`sitePhoto-caption-${idx}`, async () => {
-        const photos = [...(reportDataRef.current?.sitePhotos || [])];
+        const photos: SitePhoto[] = [
+          ...(reportDataRef.current?.sitePhotos || []),
+        ];
         if (photos[idx]) photos[idx] = { ...photos[idx], caption };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
@@ -837,9 +887,11 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   );
 
   const saveSitePhotoSource = useCallback(
-    (idx, source) => {
+    (idx: number, source: string) => {
       debouncedSave(`sitePhoto-source-${idx}`, async () => {
-        const photos = [...(reportDataRef.current?.sitePhotos || [])];
+        const photos: SitePhoto[] = [
+          ...(reportDataRef.current?.sitePhotos || []),
+        ];
         if (photos[idx]) photos[idx] = { ...photos[idx], source };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
@@ -853,7 +905,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
 
   // Extract all CSS text via CSSOM — skips cross-origin sheets silently
   // Export handler for markdown format
-  const handleExport = async (format) => {
+  const handleExport = async (format: string) => {
     setExporting(true);
     setShowExportMenu(false);
 
@@ -866,17 +918,17 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       if (!container) throw new Error("Report container not found");
 
       // Clone report DOM and strip interactive / UI-only elements
-      const clone = container.cloneNode(true);
+      const clone = container.cloneNode(true) as HTMLElement;
       clone
         .querySelectorAll(
           ".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn",
         )
         .forEach((el) => el.remove());
-      clone.querySelectorAll(".print-only").forEach((el) => {
+      clone.querySelectorAll<HTMLElement>(".print-only").forEach((el) => {
         el.style.display = "block";
       });
 
-      let blob, filename;
+      let blob: Blob | undefined, filename: string | undefined;
 
       if (format === "markdown") {
         const { default: TurndownService } = await import("turndown");
@@ -999,12 +1051,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         td.addRule("intel-card-meta-row", {
           filter: (node) =>
             node.nodeName === "DIV" &&
-            node.classList?.contains("intel-card-section") &&
-            node.querySelector?.(".intel-card-label"),
+            node.classList.contains("intel-card-section") &&
+            !!node.querySelector(".intel-card-label"),
           replacement: (_content, node) => {
             const label = node
               .querySelector(".intel-card-label")
-              ?.textContent.trim();
+              ?.textContent?.trim();
             if (!label) return _content;
             // _content contains label text + Turndown-processed value (with markdown links)
             const valueMarkdown = _content.replace(label, "").trim();
@@ -1018,7 +1070,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         filename = `GTC2026_report_${date}.md`;
       }
 
-      if (!blob) throw new Error(`Unsupported export format: ${format}`);
+      if (!blob || !filename) throw new Error(`Unsupported export format: ${format}`);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = filename;
@@ -1028,7 +1080,11 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       URL.revokeObjectURL(a.href);
     } catch (err) {
       console.error("[Export] Failed:", err);
-      alert(t("report.exportFailed", { error: err.message }));
+      alert(
+        t("report.exportFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     } finally {
       setCollapsedSessions(prevCollapsed);
       setExporting(false);
@@ -1050,7 +1106,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     setCollapsedSessions(initial);
   }, [reportData, sessions]);
 
-  const toggleCollapse = useCallback((code) => {
+  const toggleCollapse = useCallback((code: string) => {
     setCollapsedSessions((prev) => {
       const next = new Set(prev);
       next.has(code) ? next.delete(code) : next.add(code);
@@ -1063,12 +1119,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
     setSyncing(true);
     setSyncMsg("");
     try {
-      const updatedMap = {};
+      const updatedMap: Record<string, ReportSessionData> = {};
       let syncedCount = 0;
       sessions.forEach((s) => {
         const existing = sessionDataRef.current[s.code] || {};
         const info = SESSION_CATALOG.get(s.code);
-        if (info?.speakers?.length > 0) {
+        if (info && info.speakers && info.speakers.length > 0) {
           updatedMap[s.code] = {
             ...existing,
             speakers: info.speakers.map((sp) => ({
@@ -1100,7 +1156,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
   };
 
   // Publish: generate full HTML, upload to Firebase Storage, return share URL
-  const handlePublish = async ({ silent = false } = {}) => {
+  const handlePublish = async ({ silent = false }: { silent?: boolean } = {}): Promise<string | undefined> => {
     setPublishing(true);
     setShowExportMenu(false);
 
@@ -1112,13 +1168,13 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       const container = reportContainerRef.current;
       if (!container) throw new Error("Report container not found");
 
-      const clone = container.cloneNode(true);
+      const clone = container.cloneNode(true) as HTMLElement;
       clone
         .querySelectorAll(
           ".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn, .subtitle-toggle-btn",
         )
         .forEach((el) => el.remove());
-      clone.querySelectorAll(".print-only").forEach((el) => {
+      clone.querySelectorAll<HTMLElement>(".print-only").forEach((el) => {
         el.classList.remove("print-only");
         // Use flex for meta rows (label + value inline), block for everything else
         el.style.display = el.classList.contains("intel-card-meta")
@@ -1136,8 +1192,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       clone.querySelectorAll(".report-field-block").forEach((block) => {
         const heading = block.querySelector(".report-field-heading");
         if (!heading) return;
-        const bodyText = block.textContent
-          .replace(heading.textContent, "")
+        const bodyText = (block.textContent ?? "")
+          .replace(heading.textContent ?? "", "")
           .trim();
         if (!bodyText) block.remove();
       });
@@ -1148,38 +1204,38 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
         }
       });
       // Convert form fields to static text (before removing interactive elements)
-      const origCaptions = container.querySelectorAll(".site-photo-caption");
-      const clonedCaptions = clone.querySelectorAll(".site-photo-caption");
+      const origCaptions = container.querySelectorAll<HTMLTextAreaElement>(".site-photo-caption");
+      const clonedCaptions = clone.querySelectorAll<HTMLTextAreaElement>(".site-photo-caption");
       origCaptions.forEach((orig, i) => {
         const cloned = clonedCaptions[i];
         if (!cloned) return;
         const p = document.createElement("p");
         p.className = cloned.className;
         p.textContent = orig.value;
-        cloned.parentNode.replaceChild(p, cloned);
+        cloned.parentNode!.replaceChild(p, cloned);
       });
 
-      const origSources = container.querySelectorAll(".site-photo-source");
-      const clonedSources = clone.querySelectorAll(".site-photo-source");
+      const origSources = container.querySelectorAll<HTMLInputElement>(".site-photo-source");
+      const clonedSources = clone.querySelectorAll<HTMLInputElement>(".site-photo-source");
       origSources.forEach((orig, i) => {
         const cloned = clonedSources[i];
         if (!cloned) return;
         const p = document.createElement("p");
         p.className = cloned.className;
         p.textContent = orig.value;
-        cloned.parentNode.replaceChild(p, cloned);
+        cloned.parentNode!.replaceChild(p, cloned);
       });
 
       // Convert bullet-editor textareas to static text
-      const origBullets = container.querySelectorAll(".bullet-input");
-      const clonedBullets = clone.querySelectorAll(".bullet-input");
+      const origBullets = container.querySelectorAll<HTMLTextAreaElement>(".bullet-input");
+      const clonedBullets = clone.querySelectorAll<HTMLTextAreaElement>(".bullet-input");
       origBullets.forEach((orig, i) => {
         const cloned = clonedBullets[i];
         if (!cloned) return;
         const span = document.createElement("span");
         span.className = cloned.className;
         span.textContent = orig.value;
-        cloned.parentNode.replaceChild(span, cloned);
+        cloned.parentNode!.replaceChild(span, cloned);
       });
 
       // Remove any remaining interactive elements
@@ -1190,12 +1246,14 @@ export default function DailyReport({ viewMode: viewModeProp = false }) {
       const styleTagsHtml = (
         await Promise.all(
           Array.from(
-            document.head.querySelectorAll('link[rel="stylesheet"], style'),
+            document.head.querySelectorAll<HTMLLinkElement | HTMLStyleElement>(
+              'link[rel="stylesheet"], style',
+            ),
           ).map(async (el) => {
             if (el.tagName === "LINK") {
               try {
                 const href = new URL(
-                  el.getAttribute("href"),
+                  el.getAttribute("href") || "",
                   window.location.href,
                 ).href;
                 const css = await fetch(href).then((r) => r.text());
@@ -1260,15 +1318,16 @@ ${clone.outerHTML}
       setShareUrl(url);
       if (silent) return url;
     } catch (err) {
-      console.error("[Publish] Failed:", err.message);
-      alert(t("report.publishFailed", { error: err.message }));
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Publish] Failed:", msg);
+      alert(t("report.publishFailed", { error: msg }));
     } finally {
       setCollapsedSessions(prevCollapsed);
       setPublishing(false);
     }
   };
 
-  function escapeHtml(str) {
+  function escapeHtml(str: string | null | undefined): string {
     return String(str ?? "")
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -1279,7 +1338,7 @@ ${clone.outerHTML}
   const handleEmailExport = async () => {
     setShowExportMenu(false);
 
-    let url = shareUrl;
+    let url: string | undefined = shareUrl ?? undefined;
     if (!url) {
       url = await handlePublish({ silent: true });
       if (!url) return;
@@ -1360,10 +1419,10 @@ ${clone.outerHTML}
 
   // Toolbar — execCommand has no modern replacement for contenteditable rich-text
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  const execCmd = (cmd, val) =>
-    /** @type {any} */ (document).execCommand(cmd, false, val ?? undefined);
+  const execCmd = (cmd: string, val?: string) =>
+    document.execCommand(cmd, false, val);
   const execBold = () => execCmd("bold");
-  const execColor = (color) => {
+  const execColor = (color: string) => {
     execCmd("foreColor", color);
     setShowColorPicker(false);
   };
@@ -1386,12 +1445,12 @@ ${clone.outerHTML}
         return;
       }
       // Check if selection is within a contenteditable element
-      let node = range.commonAncestorContainer;
+      let node: Node | null = range.commonAncestorContainer;
       let inEditable = false;
       while (node && node !== container) {
         if (
           node.nodeType === 1 &&
-          node.getAttribute("contenteditable") === "true"
+          (node as Element).getAttribute("contenteditable") === "true"
         ) {
           inEditable = true;
           break;
@@ -1570,7 +1629,7 @@ ${clone.outerHTML}
                 <div className="export-dropdown-menu">
                   <button
                     className="export-menu-item export-menu-item--publish"
-                    onClick={handlePublish}
+                    onClick={() => handlePublish()}
                   >
                     <span className="export-menu-icon">
                       <svg
@@ -2170,7 +2229,7 @@ ${clone.outerHTML}
                       >
                         {SESSION_CATALOG.get(session.code)?.url ? (
                           <a
-                            href={SESSION_CATALOG.get(session.code).url}
+                            href={SESSION_CATALOG.get(session.code)?.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ color: "inherit", textDecoration: "none" }}
@@ -2450,7 +2509,7 @@ ${clone.outerHTML}
                           >
                             {SESSION_CATALOG.get(session.code)?.url ? (
                               <a
-                                href={SESSION_CATALOG.get(session.code).url}
+                                href={SESSION_CATALOG.get(session.code)?.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{
@@ -2859,7 +2918,7 @@ ${clone.outerHTML}
               const sortedPhotos = rawPhotos
                 .map((photo, originalIdx) => ({ ...photo, originalIdx }))
                 .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
-              const cols = [[], []];
+              const cols: (SitePhoto & { originalIdx: number })[][] = [[], []];
               const colH = [0, 0];
               for (const photo of sortedPhotos) {
                 const col = colH[0] <= colH[1] ? 0 : 1;
@@ -2873,7 +2932,7 @@ ${clone.outerHTML}
                 colH[col] += imgRatio + captionLen / 50;
               }
               const addCol = colH[0] <= colH[1] ? 0 : 1;
-              const renderCard = (photo) => (
+              const renderCard = (photo: SitePhoto & { originalIdx: number }) => (
                 <div key={photo.originalIdx} className="site-photo-card">
                   <div className="site-photo-img-wrapper">
                     <img
@@ -2928,7 +2987,7 @@ ${clone.outerHTML}
                           )
                         }
                         onInput={(e) => {
-                          const t = e.target;
+                          const t = e.currentTarget;
                           t.style.height = "auto";
                           t.style.height = t.scrollHeight + "px";
                         }}
@@ -3095,7 +3154,7 @@ ${clone.outerHTML}
         showHistory &&
         (() => {
           // Relative time helper
-          const relativeTime = (date) => {
+          const relativeTime = (date: Date | null | undefined) => {
             if (!date) return "";
             const now = Date.now();
             const diff = now - date.getTime();

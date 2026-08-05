@@ -9,13 +9,17 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
+import type { ActiveUser, Presence } from "../../types";
 
 const HEARTBEAT_INTERVAL = 30000;
 const OFFLINE_THRESHOLD = 60000;
 
-export function usePresence(confId, reportId) {
+export function usePresence(
+  confId: string | undefined,
+  reportId: string | undefined,
+) {
   const { user, userProfile } = useAuth();
-  const [activeUsers, setActiveUsers] = useState([]);
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
 
   useEffect(() => {
     if (!user || !confId || !reportId) return;
@@ -61,9 +65,9 @@ export function usePresence(confId, reportId) {
       ),
       (snap) => {
         const now = Date.now();
-        const users = [];
+        const users: ActiveUser[] = [];
         snap.docs.forEach((d) => {
-          const data = d.data();
+          const data = d.data() as Presence;
           const lastSeen = data.lastSeen?.toMillis?.() || 0;
           if (now - lastSeen < OFFLINE_THRESHOLD) {
             users.push({

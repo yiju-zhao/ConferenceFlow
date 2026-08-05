@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 export default function ViewReport() {
   const { date, fileId } = useParams();
   const { t } = useTranslation();
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const storageRef = ref(storage, `published-reports/${date}/${fileId}.html`);
@@ -32,7 +32,11 @@ export default function ViewReport() {
 
         // Inject current app CSS from SPA's document.head (survives rebuilds)
         const currentCss = await Promise.all(
-          Array.from(document.head.querySelectorAll('link[rel="stylesheet"]'))
+          Array.from(
+            document.head.querySelectorAll<HTMLLinkElement>(
+              'link[rel="stylesheet"]',
+            ),
+          )
             .filter((el) => !el.href.includes("fonts.googleapis.com"))
             .map((el) =>
               fetch(el.href)
@@ -74,7 +78,9 @@ export default function ViewReport() {
         document.write(withFab);
         document.close();
       })
-      .catch((e) => setError(e.message));
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : String(e)),
+      );
   }, [date, fileId]);
 
   if (error)

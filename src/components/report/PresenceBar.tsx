@@ -1,11 +1,18 @@
 import { useTranslation } from "react-i18next";
 import { COLORS } from "../../constants";
+import type { ActiveUser } from "../../types";
+
+interface PresenceBarProps {
+  activeUsers: ActiveUser[];
+  memberColorMap: Record<string, number>;
+  currentUid?: string;
+}
 
 export default function PresenceBar({
   activeUsers,
   memberColorMap,
   currentUid,
-}) {
+}: PresenceBarProps) {
   const { t } = useTranslation();
   if (activeUsers.length <= 1) return null;
   const others = activeUsers.filter((u) => u.uid !== currentUid);

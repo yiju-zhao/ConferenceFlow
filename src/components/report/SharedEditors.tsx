@@ -8,16 +8,25 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import type { BlockField, ReportBlockType } from "../../types";
 
 // ── EditableField ────────────────────────────────────────────────────────────
+interface EditableFieldProps {
+  value?: string;
+  onSave: (html: string) => void;
+  placeholder?: string;
+  minHeight?: number;
+  readOnly?: boolean;
+}
+
 export function EditableField({
   value,
   onSave,
   placeholder,
   minHeight = 60,
   readOnly = false,
-}) {
-  const ref = useRef(null);
+}: EditableFieldProps) {
+  const ref = useRef<HTMLDivElement>(null);
   const focused = useRef(false);
   useEffect(() => {
     if (ref.current && !focused.current && value !== undefined) {
@@ -58,7 +67,15 @@ export function EditableField({
 }
 
 // ── InlineAddButton ───────────────────────────────────────────────────────────
-export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
+interface InlineAddButtonProps {
+  field: BlockField;
+  afterId: string | null;
+  openKey: string | null;
+  onOpen: (key: string | null) => void;
+  onInsert: (field: BlockField, type: ReportBlockType, afterId: string | null) => void;
+}
+
+export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }: InlineAddButtonProps) {
   const { t } = useTranslation();
   const isOpen = openKey === `${field}::${afterId}`;
   return (
@@ -97,17 +114,24 @@ export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }) {
 }
 
 // ── BulletEditor ──────────────────────────────────────────────────────────────
+interface BulletEditorProps {
+  points?: string[];
+  onSave: (points: string[]) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+}
+
 export function BulletEditor({
   points,
   onSave,
   placeholder,
   readOnly = false,
-}) {
+}: BulletEditorProps) {
   const { t } = useTranslation();
   const ph = placeholder || t("report.enterKeyPoints");
-  const [local, setLocal] = useState(points || []);
+  const [local, setLocal] = useState<string[]>(points || []);
   const focused = useRef(false);
-  const containerRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!focused.current) setLocal(points || []);
@@ -115,10 +139,12 @@ export function BulletEditor({
 
   useEffect(() => {
     if (!readOnly) {
-      containerRef.current?.querySelectorAll(".bullet-input").forEach((el) => {
-        el.style.height = "auto";
-        el.style.height = el.scrollHeight + "px";
-      });
+      containerRef.current
+        ?.querySelectorAll<HTMLTextAreaElement>(".bullet-input")
+        .forEach((el) => {
+          el.style.height = "auto";
+          el.style.height = el.scrollHeight + "px";
+        });
     }
   }, [local.length, readOnly]);
 
@@ -141,27 +167,27 @@ export function BulletEditor({
     );
   }
 
-  const commit = (next) => {
+  const commit = (next: string[]) => {
     setLocal(next);
     onSave(next);
   };
 
-  const handleChange = (idx, value) =>
+  const handleChange = (idx: number, value: string) =>
     commit(local.map((p, i) => (i === idx ? value : p)));
 
   const handleAdd = () => commit([...local, ""]);
 
-  const handleRemove = (idx) => commit(local.filter((_, i) => i !== idx));
+  const handleRemove = (idx: number) => commit(local.filter((_, i) => i !== idx));
 
-  const handleKeyDown = (e, idx) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, idx: number) => {
     if (e.key === "Enter") {
       e.preventDefault();
       const next = [...local.slice(0, idx + 1), "", ...local.slice(idx + 1)];
       commit(next);
       setTimeout(() => {
-        const inputs = e.target
+        const inputs = (e.target as HTMLElement)
           .closest(".bullet-editor-list")
-          ?.querySelectorAll(".bullet-input");
+          ?.querySelectorAll<HTMLTextAreaElement>(".bullet-input");
         if (inputs?.[idx + 1]) inputs[idx + 1].focus();
       }, 0);
     }
@@ -170,9 +196,9 @@ export function BulletEditor({
       const next = local.filter((_, i) => i !== idx);
       commit(next);
       setTimeout(() => {
-        const inputs = e.target
+        const inputs = (e.target as HTMLElement)
           .closest(".bullet-editor-list")
-          ?.querySelectorAll(".bullet-input");
+          ?.querySelectorAll<HTMLTextAreaElement>(".bullet-input");
         if (inputs?.[Math.max(0, idx - 1)])
           inputs[Math.max(0, idx - 1)].focus();
       }, 0);
@@ -187,7 +213,7 @@ export function BulletEditor({
         focused.current = true;
       }}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) focused.current = false;
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) focused.current = false;
       }}
     >
       <ul className="bullet-editor-list">

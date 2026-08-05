@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import type { ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -12,9 +13,32 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { parseReportId, generateSummaryId } from "../../lib/reportUtils";
+import type { ParsedReportId } from "../../lib/reportUtils";
 import { formatWeekday } from "../../i18n/dateUtils";
 import { useAuth } from "../../contexts/AuthContext";
 import UserAvatar from "../UserAvatar";
+import type { Report, Session } from "../../types";
+
+type ListReport = Report & ParsedReportId;
+type ReducedReport = ListReport & {
+  _date: string;
+  _version: number;
+  _isPlain: boolean;
+};
+
+interface ReportCardProps {
+  report: ListReport;
+  confId: string;
+  dateContent: ReactNode;
+  metaContent: ReactNode;
+  linkText: string;
+  deleteConfirmId: string | null;
+  onArchive: (id: string) => void;
+  onUnarchive: (id: string) => void;
+  onDelete: (id: string) => void | Promise<void>;
+  onDeleteConfirm: (id: string) => void;
+  onDeleteCancel: () => void;
+}
 
 function ReportCard({
   report,
@@ -28,7 +52,7 @@ function ReportCard({
   onDelete,
   onDeleteConfirm,
   onDeleteCancel,
-}) {
+}: ReportCardProps) {
   const { t } = useTranslation();
   const isArchived = report.status === "archived";
 
@@ -101,13 +125,13 @@ function ReportCard({
 export default function ReportList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { confId } = useParams();
+  const { confId } = useParams() as { confId: string };
   const { user } = useAuth();
-  const [reportDocs, setReportDocs] = useState([]);
-  const [allSessions, setAllSessions] = useState([]);
+  const [reportDocs, setReportDocs] = useState<ListReport[]>([]);
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [creatingSummary, setCreatingSummary] = useState(false);
   const [showSummaryDatePicker, setShowSummaryDatePicker] = useState(false);
   const [summaryDateStart, setSummaryDateStart] = useState("");
@@ -119,8 +143,12 @@ export default function ReportList() {
       collection(db, "conferences", confId, "dailyReports"),
       (snap) => {
         const docs = snap.docs
-          .map((d) => ({ id: d.id, ...d.data(), ...parseReportId(d.id) }))
-          .sort((a, b) => b.id.localeCompare(a.id));
+          .map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<Report, "id">),
+            ...parseReportId(d.id),
+          }))
+          .sort((a, b) => b.id.localeCompare(a.id)) as ListReport[];
         setReportDocs(docs);
       },
     );
@@ -131,7 +159,7 @@ export default function ReportList() {
     return onSnapshot(
       collection(db, "conferences", confId, "sessions"),
       (snap) => {
-        setAllSessions(snap.docs.map((d) => d.data()));
+        setAllSessions(snap.docs.map((d) => d.data() as Session));
       },
     );
   }, [user, confId]);
@@ -153,31 +181,34 @@ export default function ReportList() {
     );
     const dailyDocs = reportDocs.filter((r) => !r.id.startsWith("summary-"));
 
-    const latestByDate = dailyDocs.reduce((acc, doc) => {
-      const { date, version } = parseReportId(doc.id);
-      const isPlain = doc.id === date;
-      const existing = acc[date];
-      if (
-        !existing ||
-        isPlain ||
-        (!existing._isPlain && version > existing._version)
-      ) {
-        acc[date] = {
-          ...doc,
-          _date: date,
-          _version: version,
-          _isPlain: isPlain,
-        };
-      }
-      return acc;
-    }, {});
-    const dailyList = Object.values(latestByDate).sort((a, b) =>
+    const latestByDate = dailyDocs.reduce<Record<string, ReducedReport>>(
+      (acc, doc) => {
+        const { date, version } = parseReportId(doc.id);
+        const isPlain = doc.id === date;
+        const existing = acc[date];
+        if (
+          !existing ||
+          isPlain ||
+          (!existing._isPlain && version > existing._version)
+        ) {
+          acc[date] = {
+            ...doc,
+            _date: date,
+            _version: version,
+            _isPlain: isPlain,
+          };
+        }
+        return acc;
+      },
+      {},
+    );
+    const dailyList: ReducedReport[] = Object.values(latestByDate).sort((a, b) =>
       b._date.localeCompare(a._date),
     );
-    const filteredDaily = showArchived
+    const filteredDaily: ListReport[] = showArchived
       ? dailyList.filter((r) => r.status === "archived")
       : dailyList.filter((r) => r.status !== "archived");
-    const filteredSummary = showArchived
+    const filteredSummary: ListReport[] = showArchived
       ? summaryReports.filter((r) => r.status === "archived")
       : summaryReports.filter((r) => r.status !== "archived");
 
@@ -190,7 +221,7 @@ export default function ReportList() {
 
   // Dates that already have reports
   const reportedDates = useMemo(() => {
-    const dates = new Set();
+    const dates = new Set<string>();
     reportDocs.forEach((r) => {
       if (!r.id.startsWith("summary-")) dates.add(parseReportId(r.id).date);
     });
@@ -200,27 +231,27 @@ export default function ReportList() {
   // All session dates for the create dropdown
   const allSessionDates = useMemo(() => {
     const sessionDates = new Set(
-      allSessions.map((s) => s.date).filter(Boolean),
+      allSessions.map((s) => s.date).filter(Boolean) as string[],
     );
     return [...sessionDates].sort();
   }, [allSessions]);
 
-  const handleCreateReport = (date) => {
+  const handleCreateReport = (date: string) => {
     setShowDatePicker(false);
     // If report already exists, navigate to the existing one
     const existing = reportDocs.find((r) => parseReportId(r.id).date === date);
     navigate(`/conference/${confId}/report/${existing ? existing.id : date}`);
   };
 
-  const archiveReport = (id) =>
+  const archiveReport = (id: string) =>
     updateDoc(doc(db, "conferences", confId, "dailyReports", id), {
       status: "archived",
     });
-  const unarchiveReport = (id) =>
+  const unarchiveReport = (id: string) =>
     updateDoc(doc(db, "conferences", confId, "dailyReports", id), {
       status: "draft",
     });
-  const handleDeleteReport = async (id) => {
+  const handleDeleteReport = async (id: string) => {
     await deleteDoc(doc(db, "conferences", confId, "dailyReports", id));
     setDeleteConfirmId(null);
   };
@@ -233,14 +264,14 @@ export default function ReportList() {
     setShowSummaryDatePicker(true);
   };
 
-  const handleCreateSummary = async (dateStart, dateEnd) => {
+  const handleCreateSummary = async (dateStart: string, dateEnd: string) => {
     setShowSummaryDatePicker(false);
     setCreatingSummary(true);
     try {
       const snap = await getDocs(
         collection(db, "conferences", confId, "dailyReports"),
       );
-      const allDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const allDocs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Report, "id">) }));
       const summaryId = generateSummaryId(allDocs);
 
       await setDoc(doc(db, "conferences", confId, "dailyReports", summaryId), {

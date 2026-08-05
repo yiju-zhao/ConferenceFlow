@@ -1,12 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
 import { SESSION_CATALOG } from "../../sessionCatalog";
 import { useTranslation } from "react-i18next";
+import type { ReportSourceSession, Session } from "../../types";
+
+interface SessionPickerProps {
+  value: ReportSourceSession | null;
+  onChange: (v: ReportSourceSession) => void;
+  conferenceSessions?: Session[];
+}
 
 export default function SessionPicker({
   value,
   onChange,
   conferenceSessions = [],
-}) {
+}: SessionPickerProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -16,7 +23,7 @@ export default function SessionPicker({
     return () => clearTimeout(t);
   }, [query]);
   // Look up title from conference sessions first, then fall back to SESSION_CATALOG
-  const findSession = (id) =>
+  const findSession = (id: string) =>
     conferenceSessions.find((s) => s.code === id || s.id === id) ||
     SESSION_CATALOG.get(id);
   const selectedTitle = value?.id
@@ -27,7 +34,7 @@ export default function SessionPicker({
     const q = debouncedQuery.trim();
     if (!q) return [];
     const ql = q.toLowerCase();
-    const source =
+    const source: { session_id?: string; title?: string }[] =
       conferenceSessions.length > 0
         ? conferenceSessions.map((s) => ({
             session_id: s.code || s.id,
@@ -43,8 +50,8 @@ export default function SessionPicker({
       .slice(0, 20);
   }, [debouncedQuery, conferenceSessions]);
 
-  const handleSelect = (s) => {
-    onChange({ id: s.session_id, manual: "" });
+  const handleSelect = (s: { session_id?: string; title?: string }) => {
+    onChange({ id: s.session_id ?? null, manual: "" });
     setQuery("");
     setShowDropdown(false);
   };
@@ -55,7 +62,7 @@ export default function SessionPicker({
     setShowDropdown(false);
   };
 
-  const handleBlur = (e) => {
+  const handleBlur = () => {
     // Delay so click on results fires first
     setTimeout(() => setShowDropdown(false), 150);
     if (query.trim() && !value?.id) {
@@ -67,7 +74,7 @@ export default function SessionPicker({
     return (
       <div className="session-picker">
         <span className="session-picker-selected">
-          {value.id && (
+          {value?.id && (
             <span className="session-picker-id-badge">{value.id}</span>
           )}
           {selectedTitle}
