@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { auth, db, googleProvider } from "../firebase";
 import {
   signInWithEmailAndPassword,
@@ -7,14 +7,28 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updateProfile,
+  type User,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import type { UserProfile } from "../types";
 
-const AuthContext = createContext(null);
+interface AuthContextValue {
+  user: User | null;
+  userProfile: UserProfile | null;
+  loading: boolean;
+  signInWithEmail: (email: string, password: string) => Promise<User>;
+  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<User>;
+  signInWithGoogle: () => Promise<User>;
+  signOut: () => Promise<void>;
+  updateDisplayName: (newName: string) => Promise<void>;
+  isSuperAdmin: boolean;
+}
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,12 +38,8 @@ export function AuthProvider({ children }) {
         const profileRef = doc(db, "users", firebaseUser.uid);
         const profileSnap = await getDoc(profileRef);
         if (profileSnap.exists()) {
-          setUserProfile(profileSnap.data());
-          setDoc(
-            profileRef,
-            { lastLoginAt: serverTimestamp() },
-            { merge: true },
-          );
+          setUserProfile(profileSnap.data() as UserProfile);
+          setDoc(profileRef, { lastLoginAt: serverTimestamp() }, { merge: true });
         }
       } else {
         setUser(null);
@@ -40,12 +50,12 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  const signInWithEmail = async (email, password) => {
+  const signInWithEmail = async (email: string, password: string) => {
     const result = await signInWithEmailAndPassword(auth, email, password);
     return result.user;
   };
 
-  const signUpWithEmail = async (email, password, displayName) => {
+  const signUpWithEmail = async (email: string, password: string, displayName: string) => {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(result.user, { displayName });
     await setDoc(doc(db, "users", result.user.uid), {
@@ -58,7 +68,7 @@ export function AuthProvider({ children }) {
       lastLoginAt: serverTimestamp(),
     });
     const profileSnap = await getDoc(doc(db, "users", result.user.uid));
-    setUserProfile(profileSnap.data());
+    setUserProfile(profileSnap.data() as UserProfile);
     return result.user;
   };
 
@@ -69,7 +79,7 @@ export function AuthProvider({ children }) {
     const profileSnap = await getDoc(profileRef);
     if (!profileSnap.exists()) {
       await setDoc(profileRef, {
-        email: u.email,
+        email: u.email ?? "",
         displayName: u.displayName || "",
         avatarUrl: u.photoURL || "",
         provider: "google",
@@ -78,14 +88,10 @@ export function AuthProvider({ children }) {
         lastLoginAt: serverTimestamp(),
       });
     } else {
-      await setDoc(
-        profileRef,
-        { lastLoginAt: serverTimestamp() },
-        { merge: true },
-      );
+      await setDoc(profileRef, { lastLoginAt: serverTimestamp() }, { merge: true });
     }
     const updatedSnap = await getDoc(profileRef);
-    setUserProfile(updatedSnap.data());
+    setUserProfile(updatedSnap.data() as UserProfile);
     return u;
   };
 
@@ -93,15 +99,15 @@ export function AuthProvider({ children }) {
     await firebaseSignOut(auth);
   };
 
-  const updateDisplayName = async (newName) => {
+  const updateDisplayName = async (newName: string) => {
     if (!user) throw new Error("Not authenticated");
     await updateProfile(user, { displayName: newName });
     const profileRef = doc(db, "users", user.uid);
     await setDoc(profileRef, { displayName: newName }, { merge: true });
-    setUserProfile((prev) => ({ ...prev, displayName: newName }));
+    setUserProfile((prev) => (prev ? { ...prev, displayName: newName } : prev));
   };
 
-  const value = {
+  const value: AuthContextValue = {
     user,
     userProfile,
     loading,
@@ -116,7 +122,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
