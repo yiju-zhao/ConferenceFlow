@@ -2,20 +2,36 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { COLORS } from "../../constants";
 import { getInitials } from "../../lib/reportUtils";
+import type { AttendanceMode, Member, Session } from "../../types";
+
+interface AttendeeInfo {
+  userId: string;
+  name: string;
+  mode: AttendanceMode;
+  color: string;
+  initials: string;
+}
+
+interface SessionDetailProps {
+  session: Session | null;
+  members: Member[];
+  isAttending: boolean;
+  onToggleAttend: () => void;
+}
 
 export default function SessionDetail({
   session,
   members,
   isAttending,
   onToggleAttend,
-}) {
+}: SessionDetailProps) {
   const { t } = useTranslation();
 
   // Build attendee list with names and attendance mode
-  const attendees = useMemo(() => {
+  const attendees = useMemo<AttendeeInfo[]>(() => {
     if (!session) return [];
     return (session.attendees || [])
-      .map((uid) => {
+      .map((uid): AttendeeInfo | null => {
         const member = members.find((m) => (m.userId || m.id) === uid);
         if (!member) return null;
         return {
@@ -26,7 +42,7 @@ export default function SessionDetail({
           initials: getInitials(member.displayName || member.legacyName || uid),
         };
       })
-      .filter(Boolean);
+      .filter((a): a is AttendeeInfo => a !== null);
   }, [session, members]);
 
   if (!session) {
@@ -59,6 +75,7 @@ export default function SessionDetail({
   }
 
   const speakers = session.speakers || [];
+  const keyThemes = session.keyThemes || [];
 
   return (
     <div className="cal-detail">
@@ -164,11 +181,11 @@ export default function SessionDetail({
       </div>
 
       {/* ── Themes / Topics ────────────────────────────────── */}
-      {session.keyThemes?.length > 0 && (
+      {keyThemes.length > 0 && (
         <div className="cal-detail-section">
           <div className="cal-detail-section-label">{t("calendar.topics")}</div>
           <div className="cal-detail-tags">
-            {session.keyThemes.map((theme, i) => (
+            {keyThemes.map((theme, i) => (
               <span key={i} className="cal-detail-tag">
                 {theme}
               </span>

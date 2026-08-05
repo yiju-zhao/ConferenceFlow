@@ -18,7 +18,7 @@ export default function CalendarPage() {
   const { conference } = useConferenceDoc(confId);
   const { members } = useConferenceMembers(confId);
   const { allSessions } = useConferenceSessions(confId);
-  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   // IDs of sessions the current user is attending
   const userAttendingIds = useMemo(() => {
@@ -30,7 +30,9 @@ export default function CalendarPage() {
 
   // Sessions the user is attending (for the grid)
   const mySchedule = useMemo(() => {
-    return allSessions.filter((s) => (s.attendees || []).includes(user?.uid));
+    return allSessions.filter((s) =>
+      (s.attendees || []).includes(user?.uid ?? ""),
+    );
   }, [allSessions, user]);
 
   // Selected session object
@@ -39,7 +41,7 @@ export default function CalendarPage() {
   }, [allSessions, selectedSessionId]);
 
   const isAttendingSelected = selectedSession
-    ? (selectedSession.attendees || []).includes(user?.uid)
+    ? (selectedSession.attendees || []).includes(user?.uid ?? "")
     : false;
 
   // Toggle attendance

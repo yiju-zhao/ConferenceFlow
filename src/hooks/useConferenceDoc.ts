@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import type { WithId } from "../types";
+import type { Conference, WithId } from "../types";
 
-// `conference` is loosely typed until the Conference interface is introduced
-// in the calendar batch; JS consumers are unaffected.
 export function useConferenceDoc(confId: string | undefined) {
-  const [conference, setConference] = useState<WithId<Record<string, unknown>> | null>(null);
+  const [conference, setConference] = useState<WithId<Conference> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,7 +13,7 @@ export function useConferenceDoc(confId: string | undefined) {
       return;
     }
     return onSnapshot(doc(db, "conferences", confId), (snap) => {
-      setConference(snap.exists() ? { id: snap.id, ...(snap.data() as Record<string, unknown>) } : null);
+      setConference(snap.exists() ? { id: snap.id, ...(snap.data() as Omit<Conference, "id">) } : null);
       setLoading(false);
     });
   }, [confId]);

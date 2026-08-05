@@ -4,7 +4,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useMembership } from "../../hooks/useMembership";
 import UserAvatar from "../UserAvatar";
 
-export default function CalendarHeader({ confName }) {
+interface CalendarHeaderProps {
+  confName?: string;
+}
+
+export default function CalendarHeader({ confName }: CalendarHeaderProps) {
   const { t } = useTranslation();
   const { confId } = useParams();
   const navigate = useNavigate();

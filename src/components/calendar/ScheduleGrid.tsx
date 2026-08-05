@@ -2,14 +2,21 @@ import { useMemo, useState } from "react";
 import { COLORS } from "../../constants";
 import { formatShortDate } from "../../i18n/dateUtils";
 import { getInitials } from "../../lib/reportUtils";
+import type { Member, Session } from "../../types";
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
 const DAYS_PER_PAGE = 3;
 
-function timeToMinutes(t) {
+function timeToMinutes(t: string): number {
   if (!t) return 0;
   const [h, m] = t.split(":").map(Number);
   return h * 60 + (m || 0);
+}
+
+interface ColumnPlacement {
+  session: Session;
+  colIndex: number;
+  totalCols: number;
 }
 
 /**
@@ -17,14 +24,14 @@ function timeToMinutes(t) {
  * Groups overlapping sessions together, assigns columns per group.
  * Returns sessions annotated with { colIndex, totalCols }.
  */
-function computeColumns(sessions) {
+function computeColumns(sessions: Session[]): ColumnPlacement[] {
   if (sessions.length === 0) return [];
   const sorted = [...sessions].sort(
     (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start),
   );
 
   // Step 1: Find overlap groups
-  const groups = []; // array of { sessions: [], groupEnd: number }
+  const groups: { sessions: Session[]; groupEnd: number }[] = [];
   for (const s of sorted) {
     const sStart = timeToMinutes(s.start);
     const sEnd = timeToMinutes(s.end);
@@ -40,10 +47,10 @@ function computeColumns(sessions) {
   }
 
   // Step 2: Assign columns within each group
-  const result = [];
+  const result: ColumnPlacement[] = [];
   for (const group of groups) {
-    const cols = []; // array of lastEnd per column
-    const placements = [];
+    const cols: number[] = []; // array of lastEnd per column
+    const placements: { session: Session; colIndex: number }[] = [];
     for (const s of group.sessions) {
       const sStart = timeToMinutes(s.start);
       const sEnd = timeToMinutes(s.end);
@@ -68,21 +75,28 @@ function computeColumns(sessions) {
   return result;
 }
 
+interface ScheduleGridProps {
+  sessions: Session[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  members: Member[];
+}
+
 export default function ScheduleGrid({
   sessions,
   selectedId,
   onSelect,
   members,
-}) {
+}: ScheduleGridProps) {
   const { days, hourLabels, dayStartMin, dayEndMin, daySessionMap } =
     useMemo(() => {
       if (sessions.length === 0)
         return {
-          days: [],
-          hourLabels: [],
+          days: [] as string[],
+          hourLabels: [] as string[],
           dayStartMin: 0,
           dayEndMin: 0,
-          daySessionMap: {},
+          daySessionMap: {} as Record<string, Session[]>,
         };
 
       const daySet = new Set(sessions.map((s) => s.date));
@@ -102,13 +116,13 @@ export default function ScheduleGrid({
       const dayEndMin = globalMaxH * 60;
 
       // Hour labels
-      const hourLabels = [];
+      const hourLabels: string[] = [];
       for (let h = globalMinH; h <= globalMaxH; h++) {
         hourLabels.push(`${String(h).padStart(2, "0")}:00`);
       }
 
       // Group sessions by day
-      const daySessionMap = {};
+      const daySessionMap: Record<string, Session[]> = {};
       days.forEach((d) => {
         daySessionMap[d] = sessions.filter((s) => s.date === d);
       });
@@ -117,7 +131,7 @@ export default function ScheduleGrid({
     }, [sessions]);
 
   const memberColors = useMemo(() => {
-    const map = {};
+    const map: Record<string, { color: string; initials: string }> = {};
     members.forEach((m) => {
       map[m.userId || m.id] = {
         color: COLORS[(m.colorIndex || 0) % COLORS.length].hex,

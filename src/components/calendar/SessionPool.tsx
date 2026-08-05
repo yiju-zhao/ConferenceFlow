@@ -1,19 +1,27 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import type { Session } from "../../types";
+
+interface SessionPoolProps {
+  sessions: Session[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  userAttending: string[];
+}
 
 export default function SessionPool({
   sessions,
   selectedId,
   onSelect,
   userAttending,
-}) {
+}: SessionPoolProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
 
   // Extract unique topics for filter buttons
   const topics = useMemo(() => {
-    const set = new Set();
+    const set = new Set<string>();
     sessions.forEach((s) => {
       if (s.mainTopic) set.add(s.mainTopic);
       (s.keyThemes || []).forEach((t) => set.add(t));
