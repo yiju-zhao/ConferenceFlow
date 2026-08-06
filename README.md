@@ -7,8 +7,7 @@ time — managing the live schedule and co-authoring each day's report during th
 event.
 
 ConferenceFlow is conference-agnostic: spin up any number of independent
-conferences in one deployment. (The canonical deployment is _GTC 2026_, which is
-also the package name — but the app itself is not specific to it.)
+conferences in one deployment.
 
 ## What it does
 
