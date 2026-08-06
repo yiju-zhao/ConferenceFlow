@@ -22,6 +22,7 @@
   "auth": {
     "signIn": "Sign In",
     "signInToAccount": "Sign in to your account",
+    "tagline": "Conference schedule collaboration & daily briefing",
     "signingIn": "Signing in...",
     "email": "Email",
     "emailPlaceholder": "you@example.com",

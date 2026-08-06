@@ -22,6 +22,7 @@
   "auth": {
     "signIn": "登录",
     "signInToAccount": "登录您的账户",
+    "tagline": "会议日程协作与日报生产",
     "signingIn": "登录中...",
     "email": "邮箱",
     "emailPlaceholder": "you@example.com",
