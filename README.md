@@ -1,8 +1,34 @@
-# ConferenceFlow — GTC 2026
+# ConferenceFlow
 
-Real-time conference operations platform for **GTC 2026**. It runs the event
-floor: schedule management, member coordination, and collaborative daily
-reporting — designed for onsite/online hybrid conferences.
+A general-purpose platform for **running conferences and collaboratively writing
+daily reports**. An operator creates a conference; participants discover it (or
+join a private one with a code), get approved, and then work together in real
+time — managing the live schedule and co-authoring each day's report during the
+event.
+
+ConferenceFlow is conference-agnostic: spin up any number of independent
+conferences in one deployment. (The canonical deployment is _GTC 2026_, which is
+also the package name — but the app itself is not specific to it.)
+
+## What it does
+
+- **Multi-conference platform**
+  - A _super admin_ creates conferences — either **public** (discoverable) or
+    **private** (with an auto-generated join code).
+  - Participants discover public conferences, or join a private one with its code.
+  - A membership **application workflow**: apply (onsite/online) → `pending` →
+    approved or rejected by that conference's admin.
+- **Per-conference workspace**
+  - **Schedule** — calendar view, session pool, session detail, assign members to
+    sessions.
+  - **Members & roles** — `admin` / `member`, attendance mode (`onsite`/`online`),
+    per-member color identity.
+  - **Collaborative daily reports** — real-time co-editing with presence
+    (who's editing what), snapshots & restore, diff view, intel cards, and
+    PDF export.
+  - **Admin console** — applications, attendance, sessions, reports, settings.
+- **Bilingual UI** (English / 中文).
+- **Global super-admin** role for cross-conference administration.
 
 ## Tech Stack
 
@@ -12,15 +38,15 @@ reporting — designed for onsite/online hybrid conferences.
 - **Styling:** Tailwind CSS
 - **i18n:** i18next (English / 中文)
 
-## Features
+## Data Model
 
-- **Schedule** — calendar view, session pool, session detail, member assignment.
-- **Membership & access control** — roles (`admin` / `member`), approval statuses
-  (`approved` / `pending` / `rejected`), plus a global `super_admin`.
-- **Collaborative daily reports** — real-time co-editing, snapshots & restore,
-  diff view, presence indicators, and PDF export.
-- **Admin console** — applications, attendance, sessions, reports, settings.
-- **Bilingual UI** (English / Chinese).
+```
+users/{uid}                              profile + globalRole (user | super_admin)
+conferences/{confId}                     name, dates, visibility, joinCode, …
+conferences/{confId}/members/{uid}       role, status, attendanceMode, colorIndex
+conferences/{confId}/sessions/{id}       schedule entries
+conferences/{confId}/reports/{id}        daily reports (+ snapshots / presence)
+```
 
 ## Getting Started
 
@@ -29,7 +55,7 @@ reporting — designed for onsite/online hybrid conferences.
 - Node.js 18+
 - A [Firebase](https://firebase.google.com/) project with **Authentication**,
   **Cloud Firestore**, and **Storage** enabled.
-- A [Vercel](https://vercel.com/) account (for hosting + the serverless API).
+- A [Vercel](https://vercel.com/) account (hosting + the serverless API).
 
 ### Install
 
@@ -41,9 +67,9 @@ npm install
 
 The **client-side** Firebase config lives in [`src/firebase.ts`](src/firebase.ts).
 
-The **serverless functions** (`api/`) authenticate as the Firebase Admin SDK and
-read credentials from environment variables (set them in `.env.local` for local
-dev with `vercel dev`, or in the Vercel project settings):
+The **serverless functions** (`api/`) use the Firebase Admin SDK and read
+credentials from environment variables (`.env.local` for `vercel dev`, or the
+Vercel project settings):
 
 ```
 FIREBASE_PROJECT_ID=...
@@ -51,14 +77,18 @@ FIREBASE_CLIENT_EMAIL=...
 FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n
 ```
 
-> Keep the `\n` escapes in `FIREBASE_PRIVATE_KEY` as-is — the app converts them
-> to real newlines at runtime.
+> Keep the `\n` escapes in `FIREBASE_PRIVATE_KEY` — the app converts them to real
+> newlines at runtime.
 
 Optional:
 
 ```
 VITE_API_URL=...   # API base URL; defaults to same-origin ("")
 ```
+
+To make a user a **super admin** (so they can create conferences), set
+`globalRole: "super_admin"` on their `users/{uid}` document (the app exposes a
+super-admin set-role endpoint for this).
 
 ### Scripts
 
@@ -96,14 +126,14 @@ src/
 ## Deployment
 
 The app deploys on **Vercel**: the frontend is built by Vite and the `api/`
-functions are compiled by Vercel at deploy time. Route rewrites are configured
-in [`vercel.json`](vercel.json).
+functions are compiled by Vercel at deploy time. Route rewrites are configured in
+[`vercel.json`](vercel.json).
 
-Firebase Storage rules live in [`storage.rules`](storage.rules); deploy them
-with the Firebase CLI (`firebase deploy --only storage`).
+Firebase Storage rules live in [`storage.rules`](storage.rules); deploy them with
+the Firebase CLI (`firebase deploy --only storage`).
 
 ## Notes
 
 - The codebase is fully TypeScript under `strict` mode, with
-  `noUnusedLocals` / `noUnusedParameters` enabled — run
-  `npm run typecheck` before submitting changes.
+  `noUnusedLocals` / `noUnusedParameters` enabled — run `npm run typecheck`
+  before submitting changes.
