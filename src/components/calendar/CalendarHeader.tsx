@@ -1,6 +1,5 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../contexts/AuthContext";
 import { useMembership } from "../../hooks/useMembership";
 import UserAvatar from "../UserAvatar";
 

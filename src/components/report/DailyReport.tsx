@@ -33,12 +33,7 @@ import PresenceBar from "./PresenceBar";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "../../i18n/dateUtils";
 import huaweiLogo from "../../assets/huawei_logo.png";
-import IntelCard, {
-  topicSlug,
-  formatOneSource,
-  normaliseSources,
-} from "./IntelCard";
-import SessionPicker from "./SessionPicker";
+import IntelCard, { topicSlug } from "./IntelCard";
 import SpeakersEditor from "./SpeakersEditor";
 import SnapshotViewer from "./SnapshotViewer";
 import type {
@@ -93,7 +88,6 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const [members, setMembers] = useState<ResolvedMember[]>([]);
   const [reportData, setReportData] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [floatingToolbar, setFloatingToolbar] = useState<{ top: number; left: number } | null>(null);
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -440,21 +434,6 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   );
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
-  const addBlock = useCallback(
-    (field: BlockField, type: ReportBlockType) => {
-      const newBlock: ReportBlock = {
-        id: generateId(),
-        type,
-        content: "",
-        ownerId: user?.uid || "",
-        contributorIds: user?.uid ? [user.uid] : [],
-        lastEditedBy: user?.uid || "",
-        lastEditedAt: Date.now(),
-      };
-      saveField(field, [...(reportDataRef.current?.[field] || []), newBlock]);
-    },
-    [saveField, user],
-  );
   const updateBlock = useCallback(
     (field: BlockField, id: string, content: string) => {
       saveField(
@@ -1424,7 +1403,6 @@ ${clone.outerHTML}
   const execBold = () => execCmd("bold");
   const execColor = (color: string) => {
     execCmd("foreColor", color);
-    setShowColorPicker(false);
   };
 
   // Floating formatting toolbar on text selection
@@ -1434,7 +1412,6 @@ ${clone.outerHTML}
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || !sel.rangeCount) {
         setFloatingToolbar(null);
-        setShowColorPicker(false);
         return;
       }
       // Only show if selection is inside an editable element
@@ -2187,10 +2164,6 @@ ${clone.outerHTML}
                     },
                   ]
                 : [{ name: "", position: "", company: "" }]);
-            const contributorNames = Array.from(session.attendees)
-              .map((id) => memberMap[id])
-              .filter(Boolean);
-            const contributors = contributorNames.join("、");
             const isCollapsed = collapsedSessions.has(session.code);
             return (
               <div

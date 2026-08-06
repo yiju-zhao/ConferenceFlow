@@ -115,10 +115,6 @@ export default function AdminAttendance() {
   );
   // Expanded member in "byMember" view
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
-  // Expanded session in "bySession" view
-  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(
-    null,
-  );
   // Selected day for "bySession" calendar view
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
@@ -147,11 +143,6 @@ export default function AdminAttendance() {
   // Mode filter for By Member view: "all" | "onsite" | "online"
   const [modeFilter, setModeFilter] = useState<"all" | "onsite" | "online">(
     "all",
-  );
-
-  // By-session: dropdown open for a session
-  const [bySessionDropdown, setBySessionDropdown] = useState<string | null>(
-    null,
   );
 
   // ── Real-time data from shared hooks ────────────────────────────────────────
@@ -266,21 +257,6 @@ export default function AdminAttendance() {
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
-  };
-
-  const handleAssignToSession = async (
-    memberId: string,
-    sessionId: string,
-  ) => {
-    if (!confId) return;
-    try {
-      await updateDoc(doc(db, "conferences", confId, "sessions", sessionId), {
-        attendees: arrayUnion(memberId),
-      });
-    } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
-    }
-    setBySessionDropdown(null);
   };
 
   // ── Role management ────────────────────────────────────────────────────────
@@ -638,7 +614,6 @@ export default function AdminAttendance() {
             onClick={() => {
               setAssignView(v.key);
               setExpandedMemberId(null);
-              setExpandedSessionId(null);
             }}
             className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
               assignView === v.key

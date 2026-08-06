@@ -7,7 +7,6 @@ import LanguageSwitcher from "./LanguageSwitcher";
 interface UserAvatarProps {
   size?: number;
   onSignOut?: () => void;
-  light?: boolean;
 }
 
 function getAvatarColor(name: string): string {
@@ -27,9 +26,8 @@ function getInitial(name: string): string {
  * Props:
  *   size: number (default 32)
  *   onSignOut: function (optional, called after sign out)
- *   light: boolean (for dark backgrounds, default false)
  */
-export default function UserAvatar({ size = 32, onSignOut, light = false }: UserAvatarProps) {
+export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
   const { userProfile, updateDisplayName, signOut } = useAuth();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);

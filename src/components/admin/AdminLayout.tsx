@@ -8,7 +8,7 @@ export default function AdminLayout() {
   const { confId } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, isSuperAdmin } = useAuth();
+  const { isSuperAdmin } = useAuth();
   const { isAdmin, loading } = useMembership(confId);
 
   const tabs = [
