@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { collection, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useTranslation } from "react-i18next";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
-import UserAvatar, { FirstTimeNameSetup } from "./UserAvatar";
+import { FirstTimeNameSetup } from "./UserAvatar";
+import AppNavbar from "./shell/AppNavbar";
+import { SectionAccentProvider } from "./shell/SectionAccent";
 import type { AttendanceMode, Conference, Member, WithId } from "../types";
 
 const CalendarIcon = () => (
@@ -114,7 +116,6 @@ const ConferenceCard = ({
 
 export default function Dashboard() {
   const { user, isSuperAdmin } = useAuth();
-  const navigate = useNavigate();
   const { t } = useTranslation();
   const [conferences, setConferences] = useState<WithId<Conference>[] | null>(null); // null = not loaded yet
   const [myMemberships, setMyMemberships] = useState<Record<string, Member | null>>({});
@@ -243,288 +244,263 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F5F2]">
-      <FirstTimeNameSetup />
-      <div className="bg-gradient-to-r from-dash-blue-deep to-dash-blue px-6 py-3.5">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1
-            className="font-headline text-white text-lg font-bold"
-            style={{ letterSpacing: "0.3px" }}
-          >
-            ConferenceFlow
-          </h1>
-          <div className="flex items-center gap-2.5">
-            {isSuperAdmin && (
-              <Link
-                to="/super-admin"
-                className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.18)",
-                  letterSpacing: "0.8px",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
-              >
-                {t("dashboard.adminPanel")}
-              </Link>
-            )}
-            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto p-8 pt-10">
-        {!membershipsReady ? (
-          /* Skeleton loading state */
-          <div className="animate-pulse">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-1 h-6 bg-surface-dim rounded-full"></div>
-              <div className="h-5 w-48 bg-surface-container rounded"></div>
-            </div>
-            {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3"
-              >
-                <div className="flex items-stretch">
-                  <div className="w-1 bg-surface-dim flex-shrink-0"></div>
-                  <div className="flex-1 p-5">
-                    <div className="h-4 w-64 bg-surface-container rounded mb-3"></div>
-                    <div className="h-3 w-40 bg-surface-dim rounded"></div>
+    <SectionAccentProvider accent="dash">
+      <div className="min-h-screen bg-[#F7F5F2]">
+        <FirstTimeNameSetup />
+        <AppNavbar />
+        <div className="max-w-6xl mx-auto p-8 pt-10">
+          {!membershipsReady ? (
+            /* Skeleton loading state */
+            <div className="animate-pulse">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-1 h-6 bg-surface-dim rounded-full"></div>
+                <div className="h-5 w-48 bg-surface-container rounded"></div>
+              </div>
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3"
+                >
+                  <div className="flex items-stretch">
+                    <div className="w-1 bg-surface-dim flex-shrink-0"></div>
+                    <div className="flex-1 p-5">
+                      <div className="h-4 w-64 bg-surface-container rounded mb-3"></div>
+                      <div className="h-3 w-40 bg-surface-dim rounded"></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            <div className="flex items-center gap-3 mb-5 mt-10">
-              <div className="w-1 h-6 bg-surface-dim rounded-full"></div>
-              <div className="h-5 w-32 bg-surface-container rounded"></div>
-            </div>
-            {[1].map((i) => (
-              <div
-                key={i}
-                className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3"
-              >
-                <div className="flex items-stretch">
-                  <div className="w-1 bg-surface-dim flex-shrink-0"></div>
-                  <div className="flex-1 p-5">
-                    <div className="h-4 w-56 bg-surface-container rounded mb-3"></div>
-                    <div className="h-3 w-36 bg-surface-dim rounded"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <>
-            <section className="mb-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-6 rounded-full bg-dash-blue"></div>
-                  <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                    {t("dashboard.myConferences")}
-                  </h2>
-                </div>
-                <span className="text-xs font-headline text-secondary tracking-wider">
-                  {upcoming.length}{" "}
-                  {t(upcoming.length === 1 ? "dashboard.conference" : "dashboard.conferences")}
-                </span>
-              </div>
-              {upcoming.length === 0 && (
-                <p className="text-secondary text-base text-center py-8">
-                  {t("dashboard.noUpcoming")}
-                </p>
-              )}
-              {upcoming.map((conf) => (
-                <ConferenceCard
-                  key={conf.id}
-                  conf={conf}
-                  membership={myMemberships[conf.id]}
-                  accentColor="bg-dash-blue"
-                />
               ))}
-            </section>
-
-            {pending.length > 0 && (
+              <div className="flex items-center gap-3 mb-5 mt-10">
+                <div className="w-1 h-6 bg-surface-dim rounded-full"></div>
+                <div className="h-5 w-32 bg-surface-container rounded"></div>
+              </div>
+              {[1].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3"
+                >
+                  <div className="flex items-stretch">
+                    <div className="w-1 bg-surface-dim flex-shrink-0"></div>
+                    <div className="flex-1 p-5">
+                      <div className="h-4 w-56 bg-surface-container rounded mb-3"></div>
+                      <div className="h-3 w-36 bg-surface-dim rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
               <section className="mb-10">
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-1 h-6 rounded-full bg-[#E67E22]"></div>
+                    <div className="w-1 h-6 rounded-full bg-dash-blue"></div>
                     <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                      {t("dashboard.pendingApplications")}
+                      {t("dashboard.myConferences")}
                     </h2>
                   </div>
                   <span className="text-xs font-headline text-secondary tracking-wider">
-                    {pending.length} {t("dashboard.pending")}
+                    {upcoming.length}{" "}
+                    {t(upcoming.length === 1 ? "dashboard.conference" : "dashboard.conferences")}
                   </span>
                 </div>
-                {pending.map((conf) => (
+                {upcoming.length === 0 && (
+                  <p className="text-secondary text-base text-center py-8">
+                    {t("dashboard.noUpcoming")}
+                  </p>
+                )}
+                {upcoming.map((conf) => (
                   <ConferenceCard
                     key={conf.id}
                     conf={conf}
                     membership={myMemberships[conf.id]}
-                    accentColor="bg-[#E67E22]"
+                    accentColor="bg-dash-blue"
                   />
                 ))}
               </section>
-            )}
 
-            <section className="mb-10">
-              <button
-                onClick={() => setShowPast(!showPast)}
-                className="flex items-center gap-3 text-secondary hover:text-on-surface transition-colors group"
-              >
-                <div className="w-1 h-6 rounded-full bg-secondary/30"></div>
-                <span className="text-sm font-headline uppercase tracking-wider">
-                  {t("dashboard.pastConferences")}
-                </span>
-                <span className="text-xs text-secondary/60">({past.length})</span>
-                <span className="text-xs transition-transform group-hover:translate-x-0.5">
-                  {showPast ? "\u25BC" : "\u25B6"}
-                </span>
-              </button>
-              {showPast && past.length > 0 && (
-                <div className="mt-4">
-                  {past.map((conf) => (
+              {pending.length > 0 && (
+                <section className="mb-10">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-1 h-6 rounded-full bg-[#E67E22]"></div>
+                      <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
+                        {t("dashboard.pendingApplications")}
+                      </h2>
+                    </div>
+                    <span className="text-xs font-headline text-secondary tracking-wider">
+                      {pending.length} {t("dashboard.pending")}
+                    </span>
+                  </div>
+                  {pending.map((conf) => (
                     <ConferenceCard
                       key={conf.id}
                       conf={conf}
                       membership={myMemberships[conf.id]}
-                      accentColor="bg-secondary/40"
+                      accentColor="bg-[#E67E22]"
                     />
                   ))}
-                </div>
+                </section>
               )}
-            </section>
 
-            <section className="mb-10">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-1 h-6 rounded-full bg-dash-sand"></div>
-                  <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
-                    {t("dashboard.discover")}
-                  </h2>
+              <section className="mb-10">
+                <button
+                  onClick={() => setShowPast(!showPast)}
+                  className="flex items-center gap-3 text-secondary hover:text-on-surface transition-colors group"
+                >
+                  <div className="w-1 h-6 rounded-full bg-secondary/30"></div>
+                  <span className="text-sm font-headline uppercase tracking-wider">
+                    {t("dashboard.pastConferences")}
+                  </span>
+                  <span className="text-xs text-secondary/60">({past.length})</span>
+                  <span className="text-xs transition-transform group-hover:translate-x-0.5">
+                    {showPast ? "\u25BC" : "\u25B6"}
+                  </span>
+                </button>
+                {showPast && past.length > 0 && (
+                  <div className="mt-4">
+                    {past.map((conf) => (
+                      <ConferenceCard
+                        key={conf.id}
+                        conf={conf}
+                        membership={myMemberships[conf.id]}
+                        accentColor="bg-secondary/40"
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="mb-10">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1 h-6 rounded-full bg-dash-sand"></div>
+                    <h2 className="font-headline text-on-surface text-lg font-bold tracking-wide uppercase">
+                      {t("dashboard.discover")}
+                    </h2>
+                  </div>
+                  <span className="text-xs font-headline text-secondary tracking-wider">
+                    {discover.length} {t("dashboard.available")}
+                  </span>
                 </div>
-                <span className="text-xs font-headline text-secondary tracking-wider">
-                  {discover.length} {t("dashboard.available")}
-                </span>
-              </div>
 
-              <div className="bg-white border border-[#E8E4DF] rounded-lg p-5 mb-5">
-                <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-2">
-                  {t("dashboard.joinPrivate")}
-                </label>
-                <div className="flex gap-3 items-end">
-                  <input
-                    type="text"
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    placeholder={t("dashboard.enterJoinCode")}
-                    className="flex-1 bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm
+                <div className="bg-white border border-[#E8E4DF] rounded-lg p-5 mb-5">
+                  <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-2">
+                    {t("dashboard.joinPrivate")}
+                  </label>
+                  <div className="flex gap-3 items-end">
+                    <input
+                      type="text"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value)}
+                      placeholder={t("dashboard.enterJoinCode")}
+                      className="flex-1 bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm
                   focus:border-dash-blue focus:outline-none focus:ring-1 focus:ring-dash-blue/20 transition-all"
-                  />
-                  <button
-                    onClick={handleJoinByCode}
-                    className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
+                    />
+                    <button
+                      onClick={handleJoinByCode}
+                      className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
                   uppercase tracking-wider rounded-md hover:bg-dash-blue hover:text-white transition-all duration-200"
-                  >
-                    {t("common.join")}
-                  </button>
+                    >
+                      {t("common.join")}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              {joinError && (
-                <div className="bg-red-500/10 text-red-600 text-sm p-3 mb-4 rounded-md border border-red-200">
-                  {joinError}
-                </div>
-              )}
+                {joinError && (
+                  <div className="bg-red-500/10 text-red-600 text-sm p-3 mb-4 rounded-md border border-red-200">
+                    {joinError}
+                  </div>
+                )}
 
-              {discover.length === 0 && (
-                <p className="text-secondary text-base text-center py-8">
-                  {t("dashboard.noPublicConferences")}
-                </p>
-              )}
-              {discover.map((conf) => (
-                <ConferenceCard
-                  key={conf.id}
-                  conf={conf}
-                  showApply
-                  accentColor="bg-dash-sand"
-                  onApply={setApplyModal}
-                />
-              ))}
-            </section>
-          </>
-        )}
-      </div>
+                {discover.length === 0 && (
+                  <p className="text-secondary text-base text-center py-8">
+                    {t("dashboard.noPublicConferences")}
+                  </p>
+                )}
+                {discover.map((conf) => (
+                  <ConferenceCard
+                    key={conf.id}
+                    conf={conf}
+                    showApply
+                    accentColor="bg-dash-sand"
+                    onApply={setApplyModal}
+                  />
+                ))}
+              </section>
+            </>
+          )}
+        </div>
 
-      {applyModal && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
-          onClick={() => setApplyModal(null)}
-        >
+        {applyModal && (
           <div
-            className="bg-white w-full max-w-sm rounded-xl shadow-xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={() => setApplyModal(null)}
           >
-            {/* Colored top bar */}
-            <div className="h-[3px] bg-dash-blue"></div>
-            <div className="p-6">
-              <h3 className="font-headline text-on-surface font-bold text-lg mb-1">
-                {t("dashboard.applyToJoin")}
-              </h3>
-              <p className="text-secondary text-sm mb-6">{applyModal.confName}</p>
+            <div
+              className="bg-white w-full max-w-sm rounded-xl shadow-xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Colored top bar */}
+              <div className="h-[3px] bg-dash-blue"></div>
+              <div className="p-6">
+                <h3 className="font-headline text-on-surface font-bold text-lg mb-1">
+                  {t("dashboard.applyToJoin")}
+                </h3>
+                <p className="text-secondary text-sm mb-6">{applyModal.confName}</p>
 
-              <div className="mb-6">
-                <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-3">
-                  {t("dashboard.attendanceMode")}
-                </label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setAttendanceMode("onsite")}
-                    className={`flex-1 p-3 text-sm font-headline uppercase tracking-wider rounded-lg transition-all duration-200
+                <div className="mb-6">
+                  <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-3">
+                    {t("dashboard.attendanceMode")}
+                  </label>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setAttendanceMode("onsite")}
+                      className={`flex-1 p-3 text-sm font-headline uppercase tracking-wider rounded-lg transition-all duration-200
                       ${
                         attendanceMode === "onsite"
                           ? "bg-dash-blue text-white shadow-sm"
                           : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
                       }`}
-                  >
-                    {t("dashboard.onsite")}
-                  </button>
-                  <button
-                    onClick={() => setAttendanceMode("online")}
-                    className={`flex-1 p-3 text-sm font-headline uppercase tracking-wider rounded-lg transition-all duration-200
+                    >
+                      {t("dashboard.onsite")}
+                    </button>
+                    <button
+                      onClick={() => setAttendanceMode("online")}
+                      className={`flex-1 p-3 text-sm font-headline uppercase tracking-wider rounded-lg transition-all duration-200
                       ${
                         attendanceMode === "online"
                           ? "bg-dash-blue text-white shadow-sm"
                           : "bg-white text-secondary border border-[#E8E4DF] hover:border-dash-blue hover:text-on-surface"
                       }`}
+                    >
+                      {t("dashboard.online")}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setApplyModal(null)}
+                    className="flex-1 bg-white border border-[#E8E4DF] p-2.5 text-secondary text-sm
+                    uppercase tracking-wider hover:text-on-surface hover:border-on-surface/30 rounded-lg transition-all duration-200"
                   >
-                    {t("dashboard.online")}
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    onClick={handleApply}
+                    disabled={applying}
+                    className="flex-1 bg-dash-blue text-white p-2.5 text-sm font-headline
+                    uppercase tracking-wider hover:bg-dash-blue-deep rounded-lg transition-colors duration-200
+                    disabled:opacity-50"
+                  >
+                    {applying ? t("dashboard.applying") : t("common.apply")}
                   </button>
                 </div>
               </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setApplyModal(null)}
-                  className="flex-1 bg-white border border-[#E8E4DF] p-2.5 text-secondary text-sm
-                    uppercase tracking-wider hover:text-on-surface hover:border-on-surface/30 rounded-lg transition-all duration-200"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  onClick={handleApply}
-                  disabled={applying}
-                  className="flex-1 bg-dash-blue text-white p-2.5 text-sm font-headline
-                    uppercase tracking-wider hover:bg-dash-blue-deep rounded-lg transition-colors duration-200
-                    disabled:opacity-50"
-                >
-                  {applying ? t("dashboard.applying") : t("common.apply")}
-                </button>
-              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </SectionAccentProvider>
   );
 }
