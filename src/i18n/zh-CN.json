@@ -48,6 +48,7 @@
   },
   "dashboard": {
     "myConferences": "我的会议",
+    "active": "进行中",
     "conference": "个会议",
     "conferences": "个会议",
     "noUpcoming": "暂无即将举行的会议。请浏览下方发现区加入会议。",

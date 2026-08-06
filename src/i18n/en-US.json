@@ -48,6 +48,7 @@
   },
   "dashboard": {
     "myConferences": "My Conferences",
+    "active": "In progress",
     "conference": "conference",
     "conferences": "conferences",
     "noUpcoming": "No upcoming conferences. Browse the discover section below to join one.",
