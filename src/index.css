@@ -66,6 +66,12 @@
   --brand-hover: #b00825;
   --brand-bg: var(--red-50);
 
+  /* ── Section accent palette (BlueprintJS redesign) ── */
+  --accent-dash: #4a7fb5;
+  --accent-cal: #e8976b;
+  --accent-report: #cf0a2c;
+  --accent-admin: #5e8b7e;
+
   /* ── Semantic: Status ── */
   --success: #27ae60;
   --warning: #e67e22;
