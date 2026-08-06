@@ -56,9 +56,7 @@ export default function SpeakersEditor({
         {speakers.map((spk, idx) => (
           <div key={idx} className="speaker-block">
             <div className="speaker-print-text" style={{ display: "block" }}>
-              {[spk.name, spk.position, spk.company]
-                .filter(Boolean)
-                .join(" · ")}
+              {[spk.name, spk.position, spk.company].filter(Boolean).join(" · ")}
             </div>
           </div>
         ))}
@@ -75,9 +73,7 @@ export default function SpeakersEditor({
               value={spk.name}
               placeholder={t("report.speakerName")}
               onChange={(v) => {
-                const updated = speakers.map((s, i) =>
-                  i === idx ? { ...s, name: v } : s,
-                );
+                const updated = speakers.map((s, i) => (i === idx ? { ...s, name: v } : s));
                 onUpdate(updated);
               }}
             />
@@ -85,9 +81,7 @@ export default function SpeakersEditor({
               value={spk.position}
               placeholder={t("report.speakerTitle")}
               onChange={(v) => {
-                const updated = speakers.map((s, i) =>
-                  i === idx ? { ...s, position: v } : s,
-                );
+                const updated = speakers.map((s, i) => (i === idx ? { ...s, position: v } : s));
                 onUpdate(updated);
               }}
             />
@@ -95,9 +89,7 @@ export default function SpeakersEditor({
               value={spk.company}
               placeholder={t("report.speakerCompany")}
               onChange={(v) => {
-                const updated = speakers.map((s, i) =>
-                  i === idx ? { ...s, company: v } : s,
-                );
+                const updated = speakers.map((s, i) => (i === idx ? { ...s, company: v } : s));
                 onUpdate(updated);
               }}
             />

@@ -79,9 +79,7 @@ function SessionAssignSearch({ sessions, onAssign, t }: SessionAssignSearchProps
                   {s.code}
                 </span>
               )}
-              <span className="text-on-surface text-xs flex-1 min-w-0 truncate">
-                {s.title}
-              </span>
+              <span className="text-on-surface text-xs flex-1 min-w-0 truncate">{s.title}</span>
               <span className="text-secondary text-[10px] flex-shrink-0">
                 {s.date} {s.start}
               </span>
@@ -110,15 +108,9 @@ export default function AdminAttendance() {
   const { sessions } = useConferenceSessions(confId);
 
   // Section 2 view mode: "byMember" | "bySession"
-  const [assignView, setAssignView] = useState<"byMember" | "bySession">(
-    "bySession",
-  );
+  const [assignView, setAssignView] = useState<"byMember" | "bySession">("bySession");
   // Expanded member in "byMember" view
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
-  // Expanded session in "bySession" view
-  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(
-    null,
-  );
   // Selected day for "bySession" calendar view
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
@@ -140,34 +132,21 @@ export default function AdminAttendance() {
   const [removeConfirm, setRemoveConfirm] = useState<string | null>(null);
 
   // Session detail modal: session object or null
-  const [sessionDetailModal, setSessionDetailModal] = useState<Session | null>(
-    null,
-  );
+  const [sessionDetailModal, setSessionDetailModal] = useState<Session | null>(null);
 
   // Mode filter for By Member view: "all" | "onsite" | "online"
-  const [modeFilter, setModeFilter] = useState<"all" | "onsite" | "online">(
-    "all",
-  );
-
-  // By-session: dropdown open for a session
-  const [bySessionDropdown, setBySessionDropdown] = useState<string | null>(
-    null,
-  );
+  const [modeFilter, setModeFilter] = useState<"all" | "onsite" | "online">("all");
 
   // ── Real-time data from shared hooks ────────────────────────────────────────
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const sessionCountForMember = useCallback(
-    (memberId: string) =>
-      sessions.filter((s) => (s.attendees || []).includes(memberId)).length,
+    (memberId: string) => sessions.filter((s) => (s.attendees || []).includes(memberId)).length,
     [sessions],
   );
 
-  const approvedMembers = useMemo(
-    () => members.filter((m) => m.status === "approved"),
-    [members],
-  );
+  const approvedMembers = useMemo(() => members.filter((m) => m.status === "approved"), [members]);
 
   // ── Attendee CRUD ──────────────────────────────────────────────────────────
 
@@ -177,9 +156,7 @@ export default function AdminAttendance() {
     setAddLoading(true);
     try {
       const id = generateId();
-      const usedIndices = members
-        .map((m) => m.colorIndex)
-        .filter((c) => c !== undefined);
+      const usedIndices = members.map((m) => m.colorIndex).filter((c) => c !== undefined);
       const colorIndex =
         COLOR_INDICES.find((i) => !usedIndices.includes(i)) ??
         Math.floor(Math.random() * COLOR_INDICES.length);
@@ -205,17 +182,11 @@ export default function AdminAttendance() {
 
   const handleRemoveAttendee = async (memberId: string) => {
     if (!confId) return;
-    if (
-      !window.confirm(
-        "Remove this attendee? This will also unassign them from all sessions.",
-      )
-    )
+    if (!window.confirm("Remove this attendee? This will also unassign them from all sessions."))
       return;
     try {
       // Remove from all sessions first
-      const sessionsWithMember = sessions.filter((s) =>
-        (s.attendees || []).includes(memberId),
-      );
+      const sessionsWithMember = sessions.filter((s) => (s.attendees || []).includes(memberId));
       await Promise.all(
         sessionsWithMember.map((s) =>
           updateDoc(doc(db, "conferences", confId, "sessions", s.id), {
@@ -234,13 +205,10 @@ export default function AdminAttendance() {
     if (!confId) return;
     setEditLoading(true);
     try {
-      await updateDoc(
-        doc(db, "conferences", confId, "members", editState.memberId),
-        {
-          displayName: editState.name.trim(),
-          attendanceMode: editState.mode,
-        },
-      );
+      await updateDoc(doc(db, "conferences", confId, "members", editState.memberId), {
+        displayName: editState.name.trim(),
+        attendanceMode: editState.mode,
+      });
       setEditState(null);
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
@@ -259,28 +227,11 @@ export default function AdminAttendance() {
     if (!confId) return;
     try {
       await updateDoc(doc(db, "conferences", confId, "sessions", sessionId), {
-        attendees: currentlyAssigned
-          ? arrayRemove(memberId)
-          : arrayUnion(memberId),
+        attendees: currentlyAssigned ? arrayRemove(memberId) : arrayUnion(memberId),
       });
     } catch (err) {
       alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
     }
-  };
-
-  const handleAssignToSession = async (
-    memberId: string,
-    sessionId: string,
-  ) => {
-    if (!confId) return;
-    try {
-      await updateDoc(doc(db, "conferences", confId, "sessions", sessionId), {
-        attendees: arrayUnion(memberId),
-      });
-    } catch (err) {
-      alert(`Error: ${err instanceof Error ? err.message : String(err)}`);
-    }
-    setBySessionDropdown(null);
   };
 
   // ── Role management ────────────────────────────────────────────────────────
@@ -309,8 +260,7 @@ export default function AdminAttendance() {
 
   // ── Render helpers ─────────────────────────────────────────────────────────
 
-  const getMemberName = (m: ResolvedMember) =>
-    memberNames[m.id] || m.displayName || m.id;
+  const getMemberName = (m: ResolvedMember) => memberNames[m.id] || m.displayName || m.id;
 
   const ModeBadge = ({ mode }: { mode: AttendanceMode }) =>
     mode === "online" ? (
@@ -455,10 +405,7 @@ export default function AdminAttendance() {
           const sessionCount = sessionCountForMember(m.id);
 
           return (
-            <div
-              key={m.id}
-              className="border-b border-surface-dim last:border-b-0"
-            >
+            <div key={m.id} className="border-b border-surface-dim last:border-b-0">
               {isEditing ? (
                 /* Edit row */
                 <div className="p-4 flex flex-wrap gap-3 items-end bg-surface-container/40">
@@ -469,9 +416,7 @@ export default function AdminAttendance() {
                     <input
                       type="text"
                       value={editState.name}
-                      onChange={(e) =>
-                        setEditState({ ...editState!, name: e.target.value })
-                      }
+                      onChange={(e) => setEditState({ ...editState!, name: e.target.value })}
                       onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
                       className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-admin-teal focus:outline-none"
                     />
@@ -484,9 +429,7 @@ export default function AdminAttendance() {
                       {(["onsite", "online"] as const).map((mo) => (
                         <button
                           key={mo}
-                          onClick={() =>
-                            setEditState({ ...editState!, mode: mo })
-                          }
+                          onClick={() => setEditState({ ...editState!, mode: mo })}
                           className={`px-3 py-1.5 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
                             editState.mode === mo
                               ? "bg-admin-teal text-white"
@@ -629,16 +572,17 @@ export default function AdminAttendance() {
 
       {/* View toggle */}
       <div className="flex gap-1 mb-6">
-        {([
-          { key: "bySession", label: t("admin.bySession") },
-          { key: "byMember", label: t("admin.byMember") },
-        ] as const).map((v) => (
+        {(
+          [
+            { key: "bySession", label: t("admin.bySession") },
+            { key: "byMember", label: t("admin.byMember") },
+          ] as const
+        ).map((v) => (
           <button
             key={v.key}
             onClick={() => {
               setAssignView(v.key);
               setExpandedMemberId(null);
-              setExpandedSessionId(null);
             }}
             className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
               assignView === v.key
@@ -662,11 +606,13 @@ export default function AdminAttendance() {
             <div>
               {/* Mode filter */}
               <div className="flex gap-1 mb-3">
-                {([
-                  { key: "all", label: t("admin.filterAll") },
-                  { key: "onsite", label: t("dashboard.onsite") },
-                  { key: "online", label: t("dashboard.online") },
-                ] as const).map((f) => (
+                {(
+                  [
+                    { key: "all", label: t("admin.filterAll") },
+                    { key: "onsite", label: t("dashboard.onsite") },
+                    { key: "online", label: t("dashboard.online") },
+                  ] as const
+                ).map((f) => (
                   <button
                     key={f.key}
                     onClick={() => setModeFilter(f.key)}
@@ -679,9 +625,8 @@ export default function AdminAttendance() {
                     {f.label} (
                     {f.key === "all"
                       ? approvedMembers.length
-                      : approvedMembers.filter(
-                          (m) => (m.attendanceMode || "onsite") === f.key,
-                        ).length}
+                      : approvedMembers.filter((m) => (m.attendanceMode || "onsite") === f.key)
+                          .length}
                     )
                   </button>
                 ))}
@@ -695,15 +640,10 @@ export default function AdminAttendance() {
                 {filteredMembers.map((m) => {
                   const isExpanded = expandedMemberId === m.id;
                   return (
-                    <div
-                      key={m.id}
-                      className="border-b border-surface-dim last:border-b-0"
-                    >
+                    <div key={m.id} className="border-b border-surface-dim last:border-b-0">
                       {/* Member row — clickable to expand */}
                       <button
-                        onClick={() =>
-                          setExpandedMemberId(isExpanded ? null : m.id)
-                        }
+                        onClick={() => setExpandedMemberId(isExpanded ? null : m.id)}
                         className="w-full px-4 py-3 flex justify-between items-center hover:bg-surface-container/30 transition-colors text-left"
                       >
                         <div className="flex items-center gap-3">
@@ -723,8 +663,7 @@ export default function AdminAttendance() {
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-secondary text-xs">
-                            {sessionCountForMember(m.id)}{" "}
-                            {t("admin.sessionsAssigned")}
+                            {sessionCountForMember(m.id)} {t("admin.sessionsAssigned")}
                           </span>
                           <span className="text-secondary text-xs font-headline uppercase tracking-wider">
                             {isExpanded ? "▲" : "▼"}
@@ -748,17 +687,13 @@ export default function AdminAttendance() {
                           // Sort dates, sort sessions within each date by start time
                           const sortedDates = Object.keys(byDate).sort();
                           sortedDates.forEach((d) =>
-                            byDate[d].sort((a, b) =>
-                              (a.start || "").localeCompare(b.start || ""),
-                            ),
+                            byDate[d].sort((a, b) => (a.start || "").localeCompare(b.start || "")),
                           );
 
                           const canUnassign = m.managedByAdmin; // only attendees can be unassigned by admin
                           const canAssign = m.role !== "admin"; // admins can't have sessions assigned by other admins
                           const unassignedSessions = canAssign
-                            ? sessions.filter(
-                                (s) => !(s.attendees || []).includes(m.id),
-                              )
+                            ? sessions.filter((s) => !(s.attendees || []).includes(m.id))
                             : [];
 
                           return (
@@ -780,9 +715,7 @@ export default function AdminAttendance() {
                                       <div className="flex items-center gap-2 mb-2">
                                         <span className="w-1 h-4 bg-admin-teal inline-block"></span>
                                         <span className="text-xs font-headline font-bold uppercase tracking-wider text-admin-teal">
-                                          {formatShortDate(
-                                            new Date(date + "T00:00:00"),
-                                          )}
+                                          {formatShortDate(new Date(date + "T00:00:00"))}
                                         </span>
                                         <span className="text-secondary text-[10px]">
                                           ({byDate[date].length} sessions)
@@ -792,9 +725,7 @@ export default function AdminAttendance() {
                                         {byDate[date].map((s) => (
                                           <div
                                             key={s.id}
-                                            onClick={() =>
-                                              setSessionDetailModal(s)
-                                            }
+                                            onClick={() => setSessionDetailModal(s)}
                                             className="flex items-center gap-3 px-3 py-2 hover:bg-surface-container/50 transition-colors text-left w-full cursor-pointer"
                                           >
                                             <span className="text-secondary text-xs font-mono w-24 flex-shrink-0">
@@ -812,11 +743,7 @@ export default function AdminAttendance() {
                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  handleToggleSession(
-                                                    m.id,
-                                                    s.id,
-                                                    true,
-                                                  );
+                                                  handleToggleSession(m.id, s.id, true);
                                                 }}
                                                 className="text-admin-teal text-xs hover:underline flex-shrink-0"
                                               >
@@ -860,9 +787,7 @@ export default function AdminAttendance() {
 
           if (!activeDay)
             return (
-              <div className="p-6 text-center text-secondary text-sm">
-                {t("admin.noSessions")}
-              </div>
+              <div className="p-6 text-center text-secondary text-sm">{t("admin.noSessions")}</div>
             );
 
           // Sessions for the active day
@@ -888,13 +813,10 @@ export default function AdminAttendance() {
           const dayEndMin = maxH * 60;
           const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MIN;
           const hourLabels: string[] = [];
-          for (let h = minH; h <= maxH; h++)
-            hourLabels.push(`${String(h).padStart(2, "0")}:00`);
+          for (let h = minH; h <= maxH; h++) hourLabels.push(`${String(h).padStart(2, "0")}:00`);
 
           // Column packing for overlaps — per overlap group
-          const sorted = [...daySessions].sort(
-            (a, b) => toMin(a.start) - toMin(b.start),
-          );
+          const sorted = [...daySessions].sort((a, b) => toMin(a.start) - toMin(b.start));
           const groups: { sessions: Session[]; groupEnd: number }[] = [];
           for (const s of sorted) {
             const sStart = toMin(s.start),
@@ -1025,8 +947,7 @@ export default function AdminAttendance() {
                     }}
                   >
                     {hourLabels.map((label) => {
-                      const top =
-                        (parseInt(label) * 60 - dayStartMin) * PX_PER_MIN;
+                      const top = (parseInt(label) * 60 - dayStartMin) * PX_PER_MIN;
                       return (
                         <div
                           key={label}
@@ -1057,8 +978,7 @@ export default function AdminAttendance() {
                   >
                     {/* Hour grid lines */}
                     {hourLabels.map((label) => {
-                      const top =
-                        (parseInt(label) * 60 - dayStartMin) * PX_PER_MIN;
+                      const top = (parseInt(label) * 60 - dayStartMin) * PX_PER_MIN;
                       return (
                         <div
                           key={label}
@@ -1104,12 +1024,8 @@ export default function AdminAttendance() {
                             flexDirection: "column",
                             borderRadius: 3,
                           }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.opacity = "0.85")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.opacity = "1")
-                          }
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                         >
                           <div
                             style={{
@@ -1155,9 +1071,7 @@ export default function AdminAttendance() {
                               }}
                             >
                               {(s.attendees || []).slice(0, 5).map((uid) => {
-                                const member = approvedMembers.find(
-                                  (mm) => mm.id === uid,
-                                );
+                                const member = approvedMembers.find((mm) => mm.id === uid);
                                 if (!member) return null;
                                 return (
                                   <div
@@ -1173,16 +1087,11 @@ export default function AdminAttendance() {
                                       fontWeight: 700,
                                       color: "#fff",
                                       background:
-                                        COLORS[
-                                          (member.colorIndex || 0) %
-                                            COLORS.length
-                                        ].hex,
+                                        COLORS[(member.colorIndex || 0) % COLORS.length].hex,
                                     }}
                                     title={getMemberName(member)}
                                   >
-                                    {(getMemberName(member) || "?")
-                                      .charAt(0)
-                                      .toUpperCase()}
+                                    {(getMemberName(member) || "?").charAt(0).toUpperCase()}
                                   </div>
                                 );
                               })}
@@ -1531,9 +1440,7 @@ export default function AdminAttendance() {
                     </span>
                   </div>
                   {sessionAttendees.length === 0 ? (
-                    <p style={{ color: "#7A7670", fontSize: 13 }}>
-                      {t("admin.noOneAssigned")}
-                    </p>
+                    <p style={{ color: "#7A7670", fontSize: 13 }}>{t("admin.noOneAssigned")}</p>
                   ) : (
                     <div
                       style={{
@@ -1556,8 +1463,7 @@ export default function AdminAttendance() {
                               width: 28,
                               height: 28,
                               borderRadius: "50%",
-                              background:
-                                COLORS[(m.colorIndex || 0) % COLORS.length].hex,
+                              background: COLORS[(m.colorIndex || 0) % COLORS.length].hex,
                               color: "#fff",
                               display: "flex",
                               alignItems: "center",
@@ -1610,9 +1516,7 @@ export default function AdminAttendance() {
                                     }),
                               }}
                             >
-                              {m.attendanceMode === "online"
-                                ? "Online"
-                                : "Onsite"}
+                              {m.attendanceMode === "online" ? "Online" : "Onsite"}
                             </span>
                           </div>
                         </div>

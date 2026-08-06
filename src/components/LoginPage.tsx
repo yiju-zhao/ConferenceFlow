@@ -24,9 +24,7 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof FirebaseError) {
         setError(
-          err.code === "auth/invalid-credential"
-            ? t("auth.invalidCredential")
-            : err.message,
+          err.code === "auth/invalid-credential" ? t("auth.invalidCredential") : err.message,
         );
       } else {
         setError(err instanceof Error ? err.message : String(err));
@@ -59,17 +57,11 @@ export default function LoginPage() {
           <h1 className="font-headline text-on-primary text-2xl font-bold tracking-tight">
             ConferenceFlow
           </h1>
-          <p className="text-on-primary/70 text-sm mt-1">
-            {t("auth.signInToAccount")}
-          </p>
+          <p className="text-on-primary/70 text-sm mt-1">{t("auth.signInToAccount")}</p>
         </div>
 
         <div className="bg-surface-container-lowest p-6">
-          {error && (
-            <div className="bg-primary/10 text-primary text-sm p-3 mb-4">
-              {error}
-            </div>
-          )}
+          {error && <div className="bg-primary/10 text-primary text-sm p-3 mb-4">{error}</div>}
 
           <form onSubmit={handleEmailLogin}>
             <div className="mb-4">

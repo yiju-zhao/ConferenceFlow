@@ -3,12 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db, storage } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  ref as sRef,
-  uploadString,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
+import { ref as sRef, uploadString, getDownloadURL, deleteObject } from "firebase/storage";
 import { useDebouncedSave } from "../../hooks/useDebouncedSave";
 import { useTranslation } from "react-i18next";
 import type { Report, SitePhoto } from "../../types";
@@ -201,27 +196,22 @@ export default function ConferenceReport() {
   };
 
   // ── Image compression & upload ──────────────────────────────────────────
-  const compressImage = useCallback(
-    (file: File, maxPx = 1200, quality = 0.75): Promise<string> => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.round(img.width * scale);
-          canvas.height = Math.round(img.height * scale);
-          canvas
-            .getContext("2d")!
-            .drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg", quality));
-        };
-        img.src = url;
-      });
-    },
-    [],
-  );
+  const compressImage = useCallback((file: File, maxPx = 1200, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = url;
+    });
+  }, []);
 
   const uploadToStorage = useCallback(
     async (base64DataUrl: string, path: string): Promise<string> => {
@@ -284,9 +274,7 @@ export default function ConferenceReport() {
   const saveSitePhotoCaption = useCallback(
     (idx: number, caption: string) => {
       debouncedSave(`sitePhoto-caption-${idx}`, async () => {
-        const photos: SitePhoto[] = [
-          ...(reportDataRef.current?.sitePhotos || []),
-        ];
+        const photos: SitePhoto[] = [...(reportDataRef.current?.sitePhotos || [])];
         if (photos[idx]) photos[idx] = { ...photos[idx], caption };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
@@ -301,9 +289,7 @@ export default function ConferenceReport() {
   const saveSitePhotoSource = useCallback(
     (idx: number, source: string) => {
       debouncedSave(`sitePhoto-source-${idx}`, async () => {
-        const photos: SitePhoto[] = [
-          ...(reportDataRef.current?.sitePhotos || []),
-        ];
+        const photos: SitePhoto[] = [...(reportDataRef.current?.sitePhotos || [])];
         if (photos[idx]) photos[idx] = { ...photos[idx], source };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
@@ -374,10 +360,7 @@ export default function ConferenceReport() {
       {/* ── Toolbar ──────────────────────────────────────────── */}
       <div className="report-toolbar no-print">
         <div className="report-toolbar-inner">
-          <Link
-            to={`/conference/${confId}/reports`}
-            className="report-back-btn"
-          >
+          <Link to={`/conference/${confId}/reports`} className="report-back-btn">
             {t("report.backToReportList")}
           </Link>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -523,14 +506,10 @@ export default function ConferenceReport() {
             onClick={() => htmlFileInputRef.current?.click()}
           >
             {uploading ? (
-              <div style={{ color: "#991b1b", fontWeight: 600 }}>
-                {t("report.uploading")}
-              </div>
+              <div style={{ color: "#991b1b", fontWeight: 600 }}>{t("report.uploading")}</div>
             ) : (
               <>
-                <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>
-                  📄
-                </div>
+                <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>📄</div>
                 <div style={{ fontSize: 14, color: "#555", fontWeight: 500 }}>
                   {t("report.dragDropHtml")}
                 </div>
@@ -668,9 +647,7 @@ export default function ConferenceReport() {
               >
                 <div className="site-photo-add-inner">
                   <span className="site-photo-add-icon">+</span>
-                  <span className="site-photo-add-label">
-                    {t("report.addImage")}
-                  </span>
+                  <span className="site-photo-add-label">{t("report.addImage")}</span>
                 </div>
               </div>
             </div>

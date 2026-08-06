@@ -1,6 +1,5 @@
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../contexts/AuthContext";
 import { useMembership } from "../../hooks/useMembership";
 import UserAvatar from "../UserAvatar";
 
@@ -30,10 +29,7 @@ export default function CalendarHeader({ confName }: CalendarHeaderProps) {
       </div>
       <div className="cal-header-actions">
         {isAdmin && (
-          <Link
-            to={`/conference/${confId}/admin/settings`}
-            className="cal-header-btn"
-          >
+          <Link to={`/conference/${confId}/admin/settings`} className="cal-header-btn">
             {t("admin.conferenceAdmin")}
           </Link>
         )}

@@ -15,7 +15,13 @@ export function useMembership(confId: string | undefined) {
       return;
     }
     if (isSuperAdmin) {
-      setMembership({ id: user.uid, role: "admin", status: "approved", attendanceMode: "onsite", colorIndex: 0 });
+      setMembership({
+        id: user.uid,
+        role: "admin",
+        status: "approved",
+        attendanceMode: "onsite",
+        colorIndex: 0,
+      });
       setLoading(false);
       return;
     }

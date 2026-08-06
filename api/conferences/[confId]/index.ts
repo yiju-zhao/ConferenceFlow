@@ -15,10 +15,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     if (req.method === "PUT") {
       await requireConfAdmin(req, confId);
-      const allowedFields = ["name", "description", "startDate", "endDate", "visibility", "joinCode"] as const;
+      const allowedFields = [
+        "name",
+        "description",
+        "startDate",
+        "endDate",
+        "visibility",
+        "joinCode",
+      ] as const;
       const body = req.body as UpdateConferenceBody;
       const updates: Record<string, unknown> = {};
-      for (const f of allowedFields) { if (body[f] !== undefined) updates[f] = body[f]; }
+      for (const f of allowedFields) {
+        if (body[f] !== undefined) updates[f] = body[f];
+      }
       updates.updatedAt = FieldValue.serverTimestamp();
       const ref = db.collection("conferences").doc(confId);
       const snap = await ref.get();
@@ -31,13 +40,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const ref = db.collection("conferences").doc(confId);
       const snap = await ref.get();
       if (!snap.exists) return res.status(404).json({ error: "Conference not found" });
-      await Promise.all(["members", "sessions", "dailyReports"].map(async (sub) => {
-        const subSnap = await ref.collection(sub).get();
-        if (subSnap.size === 0) return;
-        const batch = db.batch();
-        subSnap.docs.forEach((d) => batch.delete(d.ref));
-        await batch.commit();
-      }));
+      await Promise.all(
+        ["members", "sessions", "dailyReports"].map(async (sub) => {
+          const subSnap = await ref.collection(sub).get();
+          if (subSnap.size === 0) return;
+          const batch = db.batch();
+          subSnap.docs.forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+        }),
+      );
       await ref.delete();
       return res.json({ id: confId, deleted: true });
     }

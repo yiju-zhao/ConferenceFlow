@@ -1,13 +1,7 @@
 import "./i18n";
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  useParams,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { inject } from "@vercel/analytics";
 import "./index.css";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -25,16 +19,10 @@ const ViewReport = lazy(() => import("./components/report/ViewReport"));
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
 const AdminSettings = lazy(() => import("./components/admin/AdminSettings"));
 const AdminSessions = lazy(() => import("./components/admin/AdminSessions"));
-const AdminApplications = lazy(
-  () => import("./components/admin/AdminApplications"),
-);
+const AdminApplications = lazy(() => import("./components/admin/AdminApplications"));
 const AdminReports = lazy(() => import("./components/admin/AdminReports"));
-const AdminAttendance = lazy(
-  () => import("./components/admin/AdminAttendance"),
-);
-const SuperAdminPanel = lazy(
-  () => import("./components/admin/SuperAdminPanel"),
-);
+const AdminAttendance = lazy(() => import("./components/admin/AdminAttendance"));
+const SuperAdminPanel = lazy(() => import("./components/admin/SuperAdminPanel"));
 
 inject();
 
@@ -48,10 +36,7 @@ function LoadingFallback() {
         minHeight: "60vh",
       }}
     >
-      <span
-        className="font-mono"
-        style={{ color: "var(--text-muted)", fontSize: 13 }}
-      >
+      <span className="font-mono" style={{ color: "var(--text-muted)", fontSize: 13 }}>
         Loading...
       </span>
     </div>
@@ -80,10 +65,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/view/:date/:fileId" element={<ViewReport />} />
-            <Route
-              path="/view/report/:reportId"
-              element={<ReportRouter viewMode />}
-            />
+            <Route path="/view/report/:reportId" element={<ReportRouter viewMode />} />
 
             {/* Authenticated routes */}
             <Route
@@ -149,14 +131,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
             {/* Legacy routes redirect to dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route
-              path="/reports"
-              element={<Navigate to="/dashboard" replace />}
-            />
-            <Route
-              path="/report/:reportId"
-              element={<Navigate to="/dashboard" replace />}
-            />
+            <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/report/:reportId" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Suspense>
       </AuthProvider>

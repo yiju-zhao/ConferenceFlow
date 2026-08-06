@@ -10,16 +10,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { userId, globalRole, confId, confRole } = req.body as SetRoleBody;
     if (!userId) return res.status(400).json({ error: "userId is required" });
     if (globalRole) {
-      if (!["super_admin", "user"].includes(globalRole)) return res.status(400).json({ error: "Invalid globalRole" });
+      if (!["super_admin", "user"].includes(globalRole))
+        return res.status(400).json({ error: "Invalid globalRole" });
       await db.collection("users").doc(userId).update({ globalRole });
       await auth.setCustomUserClaims(userId, { globalRole });
     }
     if (confId && confRole) {
-      if (!["admin", "member"].includes(confRole)) return res.status(400).json({ error: "Invalid confRole" });
+      if (!["admin", "member"].includes(confRole))
+        return res.status(400).json({ error: "Invalid confRole" });
       const memberRef = db.collection("conferences").doc(confId).collection("members").doc(userId);
       const snap = await memberRef.get();
-      if (snap.exists) { await memberRef.update({ role: confRole }); }
-      else { await memberRef.set({ role: confRole, status: "approved", attendanceMode: "onsite", colorIndex: 0, appliedAt: FieldValue.serverTimestamp(), approvedAt: FieldValue.serverTimestamp(), approvedBy: "super_admin" }); }
+      if (snap.exists) {
+        await memberRef.update({ role: confRole });
+      } else {
+        await memberRef.set({
+          role: confRole,
+          status: "approved",
+          attendanceMode: "onsite",
+          colorIndex: 0,
+          appliedAt: FieldValue.serverTimestamp(),
+          approvedAt: FieldValue.serverTimestamp(),
+          approvedBy: "super_admin",
+        });
+      }
     }
     res.json({ userId, globalRole, confId, confRole } satisfies SetRoleResponse);
   } catch (error) {

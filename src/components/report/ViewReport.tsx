@@ -19,10 +19,7 @@ export default function ViewReport() {
       })
       .then(async (text) => {
         // Strip any leftover contenteditable attributes
-        let cleaned = text.replace(
-          /\s*contenteditable(=["'][^"']*["'])?/gi,
-          "",
-        );
+        let cleaned = text.replace(/\s*contenteditable(=["'][^"']*["'])?/gi, "");
 
         // Strip old asset stylesheet links that may 404 after rebuilds
         cleaned = cleaned.replace(
@@ -32,11 +29,7 @@ export default function ViewReport() {
 
         // Inject current app CSS from SPA's document.head (survives rebuilds)
         const currentCss = await Promise.all(
-          Array.from(
-            document.head.querySelectorAll<HTMLLinkElement>(
-              'link[rel="stylesheet"]',
-            ),
-          )
+          Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
             .filter((el) => !el.href.includes("fonts.googleapis.com"))
             .map((el) =>
               fetch(el.href)
@@ -54,10 +47,7 @@ export default function ViewReport() {
         const fontLink = `<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet"><style>.report-page,.report-container,body{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei","微软雅黑",sans-serif!important}</style>`;
         // Inject read-only CSS safeguard
         const readOnlyCss = `<style>.report-editable,.report-inline-editable{pointer-events:none!important;border-color:transparent!important;background:transparent!important;cursor:default!important}button:not(#dl-fab button),input,textarea,select{display:none!important}.report-toc-link{pointer-events:auto!important;cursor:pointer!important}</style>`;
-        cleaned = cleaned.replace(
-          "</head>",
-          fontLink + readOnlyCss + "</head>",
-        );
+        cleaned = cleaned.replace("</head>", fontLink + readOnlyCss + "</head>");
 
         // Inject a floating download + print button (hidden from print)
         const dlLabel = t("reportList.downloadHtml");
@@ -78,9 +68,7 @@ export default function ViewReport() {
         document.write(withFab);
         document.close();
       })
-      .catch((e: unknown) =>
-        setError(e instanceof Error ? e.message : String(e)),
-      );
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, [date, fileId]);
 
   if (error)

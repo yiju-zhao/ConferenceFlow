@@ -129,8 +129,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family:
-    "PingFang SC", "Microsoft YaHei", "\5FAE\8F6F\96C5\9ED1", "Helvetica Neue",
-    sans-serif;
+    "PingFang SC", "Microsoft YaHei", "\5FAE\8F6F\96C5\9ED1", "Helvetica Neue", sans-serif;
   margin: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -1408,8 +1407,7 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-page {
   min-height: 100vh;
   background: var(--bg);
-  font-family:
-    "Microsoft YaHei", "微软雅黑", "PingFang SC", "Helvetica Neue", sans-serif;
+  font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Helvetica Neue", sans-serif;
   color: var(--text-secondary);
   -webkit-font-smoothing: antialiased;
 }

@@ -1,12 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  collection,
-  onSnapshot,
-  doc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { collection, onSnapshot, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useTranslation } from "react-i18next";
 import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
@@ -104,9 +98,7 @@ const ConferenceCard = ({
           {showApply && !membership && (
             <div className="mt-4 pt-4 border-t border-[#E8E4DF]">
               <button
-                onClick={() =>
-                  onApply?.({ confId: conf.id, confName: conf.name })
-                }
+                onClick={() => onApply?.({ confId: conf.id, confName: conf.name })}
                 className="bg-dash-blue/10 text-dash-blue px-5 py-2.5 text-xs font-headline
                 uppercase tracking-wider rounded-md hover:bg-dash-blue hover:text-white transition-all duration-200"
               >
@@ -200,10 +192,7 @@ export default function Dashboard() {
       } else if (membership?.status === "approved") {
         if (isPast) past.push(conf);
         else upcoming.push(conf);
-      } else if (
-        !membership &&
-        (conf.visibility === "public" || isSuperAdmin)
-      ) {
+      } else if (!membership && (conf.visibility === "public" || isSuperAdmin)) {
         // Super admins can see all conferences in discover (including private)
         discover.push(conf);
       }
@@ -221,16 +210,13 @@ export default function Dashboard() {
     setApplying(true);
     try {
       const nextColorIndex = Object.keys(myMemberships).length % 6;
-      await setDoc(
-        doc(db, "conferences", applyModal.confId, "members", user.uid),
-        {
-          role: "member",
-          status: "pending",
-          attendanceMode,
-          colorIndex: nextColorIndex,
-          appliedAt: serverTimestamp(),
-        },
-      );
+      await setDoc(doc(db, "conferences", applyModal.confId, "members", user.uid), {
+        role: "member",
+        status: "pending",
+        attendanceMode,
+        colorIndex: nextColorIndex,
+        appliedAt: serverTimestamp(),
+      });
       setApplyModal(null);
       setAttendanceMode("onsite");
     } catch (err) {
@@ -246,9 +232,7 @@ export default function Dashboard() {
     const code = joinCode.trim().toUpperCase();
     if (!code) return;
 
-    const match = conferences.find(
-      (c) => c.visibility === "private" && c.joinCode === code,
-    );
+    const match = conferences.find((c) => c.visibility === "private" && c.joinCode === code);
     if (!match) {
       setJoinError(t("dashboard.invalidJoinCode"));
       return;
@@ -278,12 +262,8 @@ export default function Dashboard() {
                   background: "rgba(255,255,255,0.18)",
                   letterSpacing: "0.8px",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
               >
                 {t("dashboard.adminPanel")}
               </Link>
@@ -346,11 +326,7 @@ export default function Dashboard() {
                 </div>
                 <span className="text-xs font-headline text-secondary tracking-wider">
                   {upcoming.length}{" "}
-                  {t(
-                    upcoming.length === 1
-                      ? "dashboard.conference"
-                      : "dashboard.conferences",
-                  )}
+                  {t(upcoming.length === 1 ? "dashboard.conference" : "dashboard.conferences")}
                 </span>
               </div>
               {upcoming.length === 0 && (
@@ -401,9 +377,7 @@ export default function Dashboard() {
                 <span className="text-sm font-headline uppercase tracking-wider">
                   {t("dashboard.pastConferences")}
                 </span>
-                <span className="text-xs text-secondary/60">
-                  ({past.length})
-                </span>
+                <span className="text-xs text-secondary/60">({past.length})</span>
                 <span className="text-xs transition-transform group-hover:translate-x-0.5">
                   {showPast ? "\u25BC" : "\u25B6"}
                 </span>
@@ -497,9 +471,7 @@ export default function Dashboard() {
               <h3 className="font-headline text-on-surface font-bold text-lg mb-1">
                 {t("dashboard.applyToJoin")}
               </h3>
-              <p className="text-secondary text-sm mb-6">
-                {applyModal.confName}
-              </p>
+              <p className="text-secondary text-sm mb-6">{applyModal.confName}</p>
 
               <div className="mb-6">
                 <label className="block text-[11px] font-headline text-secondary uppercase tracking-widest mb-3">

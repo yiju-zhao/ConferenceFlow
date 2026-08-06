@@ -7,13 +7,11 @@ import LanguageSwitcher from "./LanguageSwitcher";
 interface UserAvatarProps {
   size?: number;
   onSignOut?: () => void;
-  light?: boolean;
 }
 
 function getAvatarColor(name: string): string {
   let hash = 0;
-  for (let i = 0; i < (name || "").length; i++)
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < (name || "").length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return COLORS[Math.abs(hash) % COLORS.length].hex;
 }
 
@@ -27,9 +25,8 @@ function getInitial(name: string): string {
  * Props:
  *   size: number (default 32)
  *   onSignOut: function (optional, called after sign out)
- *   light: boolean (for dark backgrounds, default false)
  */
-export default function UserAvatar({ size = 32, onSignOut, light = false }: UserAvatarProps) {
+export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
   const { userProfile, updateDisplayName, signOut } = useAuth();
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -152,14 +149,8 @@ export default function UserAvatar({ size = 32, onSignOut, light = false }: User
                 {initial}
               </div>
               <div>
-                <div
-                  style={{ fontSize: 14, fontWeight: 600, color: "#1a1c1c" }}
-                >
-                  {displayName}
-                </div>
-                <div style={{ fontSize: 11, color: "#5f5e5e" }}>
-                  {userProfile?.email}
-                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1c1c" }}>{displayName}</div>
+                <div style={{ fontSize: 11, color: "#5f5e5e" }}>{userProfile?.email}</div>
               </div>
             </div>
 
@@ -340,12 +331,8 @@ export function FirstTimeNameSetup() {
             fontFamily: "'Work Sans', sans-serif",
           }}
         >
-          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-            {t("avatar.welcome")}
-          </h2>
-          <p style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-            {t("avatar.setupName")}
-          </p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("avatar.welcome")}</h2>
+          <p style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{t("avatar.setupName")}</p>
         </div>
         <div style={{ padding: 24 }}>
           <label

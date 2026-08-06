@@ -100,18 +100,10 @@ const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 - If session_id matches an existing session, it will be overwritten
 `;
 
-function SessionField({
-  label,
-  field,
-  type = "text",
-  value,
-  onChange,
-}: SessionFieldProps) {
+function SessionField({ label, field, type = "text", value, onChange }: SessionFieldProps) {
   return (
     <div className="mb-3">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
-        {label}
-      </label>
+      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
       <input
         type={type}
         value={value || ""}
@@ -129,9 +121,7 @@ export default function AdminSessions() {
   const [search, setSearch] = useState("");
   const [editModal, setEditModal] = useState<SessionEditModal | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<SessionUploadResult | null>(
-    null,
-  );
+  const [uploadResult, setUploadResult] = useState<SessionUploadResult | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showFormatGuide, setShowFormatGuide] = useState(false);
   const [mdCopied, setMdCopied] = useState(false);
@@ -295,24 +285,12 @@ export default function AdminSessions() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-secondary text-xs uppercase tracking-wider bg-[#F7F5F2]">
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.code")}
-              </th>
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.title")}
-              </th>
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.date")}
-              </th>
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.time")}
-              </th>
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.room")}
-              </th>
-              <th className="p-3 w-32 border-b border-[#E8E4DF]">
-                {t("admin.actions")}
-              </th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.code")}</th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.title")}</th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.date")}</th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.time")}</th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.room")}</th>
+              <th className="p-3 w-32 border-b border-[#E8E4DF]">{t("admin.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -321,9 +299,7 @@ export default function AdminSessions() {
                 key={s.id}
                 className="border-t border-[#E8E4DF] hover:bg-[#FAFAF8] transition-colors"
               >
-                <td className="p-3 text-admin-teal font-mono text-xs">
-                  {s.code}
-                </td>
+                <td className="p-3 text-admin-teal font-mono text-xs">{s.code}</td>
                 <td className="p-3 text-on-surface">{s.title}</td>
                 <td className="p-3 text-secondary">{s.date}</td>
                 <td className="p-3 text-secondary">
@@ -332,9 +308,7 @@ export default function AdminSessions() {
                 <td className="p-3 text-secondary">{s.room}</td>
                 <td className="p-3">
                   <button
-                    onClick={() =>
-                      setEditModal({ mode: "edit", session: { ...s } })
-                    }
+                    onClick={() => setEditModal({ mode: "edit", session: { ...s } })}
                     className="text-admin-teal text-xs uppercase tracking-wider mr-3 hover:underline"
                   >
                     {t("admin.edit")}
@@ -351,13 +325,8 @@ export default function AdminSessions() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td
-                  colSpan={6}
-                  className="p-6 text-center text-secondary text-sm"
-                >
-                  {search
-                    ? t("admin.noSessionsMatchSearch")
-                    : t("admin.noSessionsYet")}
+                <td colSpan={6} className="p-6 text-center text-secondary text-sm">
+                  {search ? t("admin.noSessionsMatchSearch") : t("admin.noSessionsYet")}
                 </td>
               </tr>
             )}
@@ -376,9 +345,7 @@ export default function AdminSessions() {
             <div className="bg-admin-teal h-1 rounded-t-xl"></div>
             <div className="p-6">
               <h3 className="font-headline text-on-surface font-bold text-base mb-4 uppercase">
-                {editModal.mode === "add"
-                  ? t("admin.addSession")
-                  : t("admin.editSession")}
+                {editModal.mode === "add" ? t("admin.addSession") : t("admin.editSession")}
               </h3>
               <SessionField
                 label={t("admin.sessionCode")}
@@ -454,9 +421,7 @@ export default function AdminSessions() {
                   onClick={handleSaveSession}
                   className="flex-1 bg-admin-teal text-white p-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg shadow-sm hover:shadow transition-all"
                 >
-                  {editModal.mode === "add"
-                    ? t("admin.create")
-                    : t("common.save")}
+                  {editModal.mode === "add" ? t("admin.create") : t("common.save")}
                 </button>
               </div>
             </div>
@@ -507,9 +472,7 @@ export default function AdminSessions() {
                 color: "#1a1c1c",
               }}
             >
-              <p className="text-secondary text-sm mb-4">
-                {t("admin.formatGuideDesc")}
-              </p>
+              <p className="text-secondary text-sm mb-4">{t("admin.formatGuideDesc")}</p>
 
               <div className="mb-5">
                 <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
@@ -535,9 +498,7 @@ export default function AdminSessions() {
                       <tr className="border-t border-[#E8E4DF]">
                         <td className="p-2 font-mono text-admin-teal">title</td>
                         <td className="p-2">string</td>
-                        <td className="p-2 text-secondary">
-                          "Keynote: Future of AI"
-                        </td>
+                        <td className="p-2 text-secondary">"Keynote: Future of AI"</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
                         <td className="p-2 font-mono text-admin-teal">date</td>
@@ -581,59 +542,39 @@ export default function AdminSessions() {
                     </thead>
                     <tbody>
                       <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">
-                          session_id
-                        </td>
-                        <td className="p-2">
-                          Unique code (e.g. "S62911"). Used as document ID.
-                        </td>
+                        <td className="p-2 font-mono text-admin-teal">session_id</td>
+                        <td className="p-2">Unique code (e.g. "S62911"). Used as document ID.</td>
                         <td className="p-2 text-secondary font-mono">code</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
                         <td className="p-2 font-mono text-admin-teal">room</td>
                         <td className="p-2">Room or venue name</td>
-                        <td className="p-2 text-secondary font-mono">
-                          location
-                        </td>
+                        <td className="p-2 text-secondary font-mono">location</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">
-                          speakers
-                        </td>
+                        <td className="p-2 font-mono text-admin-teal">speakers</td>
                         <td className="p-2">Array of speaker objects</td>
                         <td className="p-2">—</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">
-                          format
-                        </td>
+                        <td className="p-2 font-mono text-admin-teal">format</td>
                         <td className="p-2">"In-Person", "Virtual", "Both"</td>
                         <td className="p-2">—</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">
-                          recording
-                        </td>
+                        <td className="p-2 font-mono text-admin-teal">recording</td>
                         <td className="p-2">"Yes" or "No"</td>
                         <td className="p-2">—</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">
-                          session_type
-                        </td>
-                        <td className="p-2">
-                          "Talk", "Panel", "Keynote", "Workshop"
-                        </td>
-                        <td className="p-2 text-secondary font-mono">
-                          sessionType
-                        </td>
+                        <td className="p-2 font-mono text-admin-teal">session_type</td>
+                        <td className="p-2">"Talk", "Panel", "Keynote", "Workshop"</td>
+                        <td className="p-2 text-secondary font-mono">sessionType</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
                         <td className="p-2 font-mono text-admin-teal">topic</td>
                         <td className="p-2">Primary topic/category</td>
-                        <td className="p-2 text-secondary font-mono">
-                          mainTopic
-                        </td>
+                        <td className="p-2 text-secondary font-mono">mainTopic</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
                         <td className="p-2 font-mono text-admin-teal">url</td>
@@ -641,15 +582,9 @@ export default function AdminSessions() {
                         <td className="p-2">—</td>
                       </tr>
                       <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">
-                          key_themes
-                        </td>
-                        <td className="p-2">
-                          Array of topic tags for filtering
-                        </td>
-                        <td className="p-2 text-secondary font-mono">
-                          keyThemes
-                        </td>
+                        <td className="p-2 font-mono text-admin-teal">key_themes</td>
+                        <td className="p-2">Array of topic tags for filtering</td>
+                        <td className="p-2 text-secondary font-mono">keyThemes</td>
                       </tr>
                     </tbody>
                   </table>

@@ -21,13 +21,8 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
     rumors: t("report.rumors"),
   };
   return (
-    <div
-      style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px" }}
-    >
-      <p
-        className="text-caption"
-        style={{ margin: "0 0 20px", color: "var(--text-muted)" }}
-      >
+    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px" }}>
+      <p className="text-caption" style={{ margin: "0 0 20px", color: "var(--text-muted)" }}>
         {t("report.snapshotTime", { time: ts })}
       </p>
       {JSON.stringify(currentData?.summaryPoints || []) !==
@@ -49,67 +44,51 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
           />
         </section>
       )}
-      {Object.keys({ ...data?.sessions, ...currentData?.sessions }).map(
-        (code) => {
-          const snapshotSd = data?.sessions?.[code] || {};
-          const currentSd = currentData?.sessions?.[code] || {};
-          const hasTakeawaysDiff =
-            stripHtml(snapshotSd.takeaways) !== stripHtml(currentSd.takeaways);
-          const hasInsightsDiff =
-            stripHtml(snapshotSd.insights) !== stripHtml(currentSd.insights);
-          if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
-          return (
-            <section
-              key={code}
+      {Object.keys({ ...data?.sessions, ...currentData?.sessions }).map((code) => {
+        const snapshotSd = data?.sessions?.[code] || {};
+        const currentSd = currentData?.sessions?.[code] || {};
+        const hasTakeawaysDiff = stripHtml(snapshotSd.takeaways) !== stripHtml(currentSd.takeaways);
+        const hasInsightsDiff = stripHtml(snapshotSd.insights) !== stripHtml(currentSd.insights);
+        if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
+        return (
+          <section
+            key={code}
+            style={{
+              marginBottom: 24,
+              paddingLeft: 12,
+              borderLeft: "3px solid var(--border)",
+            }}
+          >
+            <h4
+              className="text-caption"
               style={{
-                marginBottom: 24,
-                paddingLeft: 12,
-                borderLeft: "3px solid var(--border)",
+                margin: "0 0 8px",
+                fontWeight: 700,
+                color: "var(--text-muted)",
+                fontFamily: "monospace",
               }}
             >
-              <h4
-                className="text-caption"
-                style={{
-                  margin: "0 0 8px",
-                  fontWeight: 700,
-                  color: "var(--text-muted)",
-                  fontFamily: "monospace",
-                }}
-              >
-                {code}
-              </h4>
-              {hasTakeawaysDiff && (
-                <div style={{ marginBottom: 8 }}>
-                  <div
-                    className="text-label"
-                    style={{ color: "var(--text-dim)", marginBottom: 4 }}
-                  >
-                    {t("report.keyTakeaways")}
-                  </div>
-                  <DiffText
-                    oldText={snapshotSd.takeaways}
-                    newText={currentSd.takeaways}
-                  />
+              {code}
+            </h4>
+            {hasTakeawaysDiff && (
+              <div style={{ marginBottom: 8 }}>
+                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>
+                  {t("report.keyTakeaways")}
                 </div>
-              )}
-              {hasInsightsDiff && (
-                <div>
-                  <div
-                    className="text-label"
-                    style={{ color: "var(--text-dim)", marginBottom: 4 }}
-                  >
-                    {t("report.insightsLabel")}
-                  </div>
-                  <DiffText
-                    oldText={snapshotSd.insights}
-                    newText={currentSd.insights}
-                  />
+                <DiffText oldText={snapshotSd.takeaways} newText={currentSd.takeaways} />
+              </div>
+            )}
+            {hasInsightsDiff && (
+              <div>
+                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>
+                  {t("report.insightsLabel")}
                 </div>
-              )}
-            </section>
-          );
-        },
-      )}
+                <DiffText oldText={snapshotSd.insights} newText={currentSd.insights} />
+              </div>
+            )}
+          </section>
+        );
+      })}
       {(["onsiteInfo", "reflections", "rumors"] as const).map((field) => {
         const snapshotVal = data?.[field];
         const currentVal = currentData?.[field];
@@ -132,10 +111,12 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
       })}
 
       {/* Block-based section diffs */}
-      {([
-        { field: "onsiteInfoBlocks", label: t("report.onsiteInfoBlocks") },
-        { field: "reflectionsBlocks", label: t("report.reflectionsBlocks") },
-      ] as { field: "onsiteInfoBlocks" | "reflectionsBlocks"; label: string }[]).map(({ field, label }) => {
+      {(
+        [
+          { field: "onsiteInfoBlocks", label: t("report.onsiteInfoBlocks") },
+          { field: "reflectionsBlocks", label: t("report.reflectionsBlocks") },
+        ] as { field: "onsiteInfoBlocks" | "reflectionsBlocks"; label: string }[]
+      ).map(({ field, label }) => {
         const snapshotBlocks = data?.[field] || [];
         const currentBlocks = currentData?.[field] || [];
 
@@ -143,10 +124,7 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
         const snapshotMap = new Map(snapshotBlocks.map((b) => [b.id, b]));
         const currentMap = new Map(currentBlocks.map((b) => [b.id, b]));
         const allIds = [
-          ...new Set([
-            ...snapshotBlocks.map((b) => b.id),
-            ...currentBlocks.map((b) => b.id),
-          ]),
+          ...new Set([...snapshotBlocks.map((b) => b.id), ...currentBlocks.map((b) => b.id)]),
         ];
 
         // Check if any block actually has content differences

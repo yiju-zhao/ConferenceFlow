@@ -13,7 +13,9 @@ export function useConferenceDoc(confId: string | undefined) {
       return;
     }
     return onSnapshot(doc(db, "conferences", confId), (snap) => {
-      setConference(snap.exists() ? { id: snap.id, ...(snap.data() as Omit<Conference, "id">) } : null);
+      setConference(
+        snap.exists() ? { id: snap.id, ...(snap.data() as Omit<Conference, "id">) } : null,
+      );
       setLoading(false);
     });
   }, [confId]);
