@@ -1,6 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Popover, Menu, MenuItem, MenuDivider, Switch, InputGroup, Button } from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import { useAuth } from "../contexts/AuthContext";
+import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants";
 import LanguageSwitcher from "./LanguageSwitcher";
 
@@ -19,34 +23,19 @@ function getInitial(name: string): string {
   return (name || "?").charAt(0).toUpperCase();
 }
 
-/**
- * Circular avatar showing first letter of display name.
- * Clicking opens a dropdown to edit display name or sign out.
- * Props:
- *   size: number (default 32)
- *   onSignOut: function (optional, called after sign out)
- */
 export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
-  const { userProfile, updateDisplayName, signOut } = useAuth();
+  const { userProfile, updateDisplayName, signOut, isSuperAdmin } = useAuth();
+  const { dark, toggleDark } = useTheme();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   const displayName = userProfile?.displayName || "";
   const initial = getInitial(displayName);
   const color = getAvatarColor(displayName);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
 
   const handleEdit = () => {
     setName(displayName);
@@ -59,7 +48,6 @@ export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
     try {
       await updateDisplayName(name.trim());
       setEditing(false);
-      setOpen(false);
     } catch (err) {
       alert(err instanceof Error ? err.message : String(err));
     } finally {
@@ -73,64 +61,26 @@ export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
     onSignOut?.();
   };
 
-  return (
-    <div ref={ref} style={{ position: "relative" }}>
-      {/* Avatar circle */}
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          background: color,
-          color: "#fff",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: size * 0.45,
-          fontFamily: "'Work Sans', sans-serif",
-          fontWeight: 700,
-          letterSpacing: 0,
-          transition: "opacity 100ms",
-        }}
-        title={displayName}
-      >
-        {initial}
-      </button>
+  const goAdmin = () => {
+    setOpen(false);
+    navigate("/super-admin");
+  };
 
-      {/* Dropdown */}
-      {open && (
-        <div
-          style={{
-            position: "absolute",
-            top: size + 6,
-            right: 0,
-            background: "#fff",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-            borderRadius: 8,
-            minWidth: 240,
-            zIndex: 100,
-            fontFamily: "'Inter', sans-serif",
-            overflow: "hidden",
-          }}
-        >
-          {/* Profile info */}
-          <div
-            style={{
-              padding: "16px 16px 12px",
-              borderBottom: "1px solid #eee",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                marginBottom: 8,
-              }}
-            >
+  return (
+    <Popover
+      isOpen={open}
+      interactionKind="click"
+      onInteraction={(next) => setOpen(next)}
+      onClose={() => {
+        setOpen(false);
+        setEditing(false);
+      }}
+      placement="bottom-end"
+      content={
+        <div style={{ minWidth: 248, fontFamily: "'Inter', sans-serif" }}>
+          {/* Profile header */}
+          <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <div
                 style={{
                   width: 40,
@@ -148,140 +98,105 @@ export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
               >
                 {initial}
               </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1c1c" }}>{displayName}</div>
-                <div style={{ fontSize: 11, color: "#5f5e5e" }}>{userProfile?.email}</div>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "var(--text-primary, #1a1c1c)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {displayName}
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-muted, #888)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {userProfile?.email}
+                </div>
               </div>
             </div>
 
             {editing ? (
-              <div style={{ marginTop: 8 }}>
-                <input
-                  type="text"
+              <div>
+                <InputGroup
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                  autoFocus
-                  style={{
-                    width: "100%",
-                    padding: "6px 8px",
-                    fontSize: 13,
-                    border: "none",
-                    borderBottom: "2px solid #a20513",
-                    background: "#f3f3f3",
-                    outline: "none",
-                    fontFamily: "'Inter', sans-serif",
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSave();
                   }}
                   placeholder={t("avatar.enterDisplayName")}
+                  autoFocus
+                  small
+                  fill
                 />
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <button
+                  <Button
+                    intent="primary"
+                    small
+                    text={saving ? t("common.saving") : t("common.save")}
                     onClick={handleSave}
                     disabled={saving || !name.trim()}
-                    style={{
-                      flex: 1,
-                      padding: "6px",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: "#a20513",
-                      color: "#fff",
-                      border: "none",
-                      cursor: "pointer",
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
-                      fontFamily: "'Work Sans', sans-serif",
-                      opacity: saving || !name.trim() ? 0.5 : 1,
-                    }}
-                  >
-                    {saving ? t("common.saving") : t("common.save")}
-                  </button>
-                  <button
-                    onClick={() => setEditing(false)}
-                    style={{
-                      flex: 1,
-                      padding: "6px",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: "#eee",
-                      color: "#5f5e5e",
-                      border: "none",
-                      cursor: "pointer",
-                      textTransform: "uppercase",
-                      letterSpacing: 1,
-                      fontFamily: "'Work Sans', sans-serif",
-                    }}
-                  >
-                    {t("common.cancel")}
-                  </button>
+                  />
+                  <Button small text={t("common.cancel")} onClick={() => setEditing(false)} />
                 </div>
               </div>
             ) : (
-              <button
-                onClick={handleEdit}
-                style={{
-                  fontSize: 11,
-                  color: "#a20513",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
-                  fontFamily: "'Work Sans', sans-serif",
-                  fontWeight: 600,
-                }}
-              >
-                {t("avatar.editName")}
-              </button>
+              <Button minimal small icon={IconNames.EDIT} text={t("avatar.editName")} onClick={handleEdit} />
             )}
           </div>
 
-          {/* Language */}
-          <div
-            style={{
-              padding: "12px 16px",
-              borderTop: "1px solid #eee",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span
-              style={{
-                fontSize: 14,
-                color: "#333",
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              Language / 语言
-            </span>
-            <LanguageSwitcher variant="dropdown" />
+          {/* Setting rows (controls must stay interactive inside the popover) */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px" }}>
+            <span style={{ fontSize: 14 }}>{t("avatar.language")}</span>
+            <LanguageSwitcher variant="badge" />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px" }}>
+            <span style={{ fontSize: 14 }}>{t("avatar.darkMode")}</span>
+            <Switch checked={dark} onChange={toggleDark} />
           </div>
 
-          {/* Sign Out */}
-          <div style={{ borderTop: "1px solid #eee", padding: "8px 16px" }}>
-            <button
-              onClick={handleSignOut}
-              style={{
-                width: "100%",
-                padding: "8px 0",
-                fontSize: 14,
-                color: "#e53e3e",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: "'Inter', sans-serif",
-              }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#c53030")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "#e53e3e")}
-            >
-              {t("avatar.signOut")}
-            </button>
-          </div>
+          {/* Actions */}
+          <Menu style={{ boxShadow: "none" }}>
+            {isSuperAdmin && (
+              <MenuItem icon={IconNames.CROWN} text={t("avatar.adminPanel")} onClick={goAdmin} />
+            )}
+            <MenuDivider />
+            <MenuItem icon={IconNames.LOG_OUT} text={t("avatar.signOut")} intent="danger" onClick={handleSignOut} />
+          </Menu>
         </div>
-      )}
-    </div>
+      }
+    >
+      <button
+        type="button"
+        title={displayName}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          background: color,
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: size * 0.45,
+          fontFamily: "'Work Sans', sans-serif",
+          fontWeight: 700,
+        }}
+      >
+        {initial}
+      </button>
+    </Popover>
   );
 }
 
