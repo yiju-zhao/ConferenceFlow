@@ -14,6 +14,11 @@
     "join": "Join",
     "add": "Add"
   },
+  "nav": {
+    "calendar": "Schedule",
+    "reports": "Reports",
+    "admin": "Admin"
+  },
   "auth": {
     "signIn": "Sign In",
     "signInToAccount": "Sign in to your account",
