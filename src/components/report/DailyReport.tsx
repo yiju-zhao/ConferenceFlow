@@ -1,0 +1,3691 @@
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useParams, Link } from "react-router-dom";
+import {
+  collection,
+  doc,
+  setDoc,
+  onSnapshot,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  deleteDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { db, storage } from "../../firebase";
+import { useAuth } from "../../contexts/AuthContext";
+import { useMembership } from "../../hooks/useMembership";
+import {
+  ref,
+  uploadString,
+  getDownloadURL,
+  deleteObject,
+  listAll,
+} from "firebase/storage";
+import { COLORS, COLOR_PRESETS } from "../../constants";
+import { SESSION_CATALOG } from "../../sessionCatalog";
+import { parseReportId, generateId } from "../../lib/reportUtils";
+import { useDebouncedSave } from "../../hooks/useDebouncedSave";
+import { EditableField, InlineAddButton, BulletEditor } from "./SharedEditors";
+import { usePresence } from "./usePresence";
+import PresenceBar from "./PresenceBar";
+import { useTranslation } from "react-i18next";
+import { formatDateTime } from "../../i18n/dateUtils";
+import huaweiLogo from "../../assets/huawei_logo.png";
+import IntelCard, {
+  topicSlug,
+  formatOneSource,
+  normaliseSources,
+} from "./IntelCard";
+import SessionPicker from "./SessionPicker";
+import SpeakersEditor from "./SpeakersEditor";
+import SnapshotViewer from "./SnapshotViewer";
+import type {
+  BlockField,
+  Member,
+  Report,
+  ReportBlock,
+  ReportBlockType,
+  ReportIllustration,
+  ReportSessionData,
+  ReportSnapshot,
+  ReportSnapshotData,
+  ReportSpeaker,
+  Session,
+  SitePhoto,
+} from "../../types";
+
+// A conference session scoped to a single day's report. `attendees` is
+// normalized to a Set for membership lookups (source Session.attendees is an
+// array); `code` is required — the report subsystem keys everything on it.
+type DailySession = Omit<Session, "attendees" | "code"> & {
+  attendees: Set<string>;
+  code: string;
+};
+
+// A member doc with its display name resolved (members effect always sets
+// `name` to a non-empty string).
+type ResolvedMember = Member & { name: string };
+
+type SnapshotType = "auto" | "manual";
+
+interface DailyReportProps {
+  viewMode?: boolean;
+}
+
+// ── DailyReport ──────────────────────────────────────────────────────────────
+export default function DailyReport({ viewMode: viewModeProp = false }: DailyReportProps) {
+  const { t, i18n } = useTranslation();
+  const { confId, reportId } = useParams() as {
+    confId: string;
+    reportId: string;
+  };
+  const { date } = parseReportId(reportId);
+  const viewMode =
+    viewModeProp ||
+    new URLSearchParams(window.location.search).get("preview") === "1";
+  const { user } = useAuth();
+  const { isAdmin: isConfAdmin } = useMembership(confId);
+  const [confName, setConfName] = useState("");
+  const [sessions, setSessions] = useState<DailySession[]>([]);
+  const [allConferenceSessions, setAllConferenceSessions] = useState<Session[]>([]);
+  const [members, setMembers] = useState<ResolvedMember[]>([]);
+  const [reportData, setReportData] = useState<Report | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [floatingToolbar, setFloatingToolbar] = useState<{ top: number; left: number } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [urlCopied, setUrlCopied] = useState(false);
+  const [snapshots, setSnapshots] = useState<ReportSnapshot[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [viewingSnapshot, setViewingSnapshot] = useState<ReportSnapshot | null>(null);
+  const [restoreConfirm, setRestoreConfirm] = useState<ReportSnapshot | null>(null);
+  const [collapsedSessions, setCollapsedSessions] = useState<Set<string>>(new Set());
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    code: string | null;
+    contributorNames: string[];
+    nameInput: string;
+    error: boolean;
+  }>({
+    code: null,
+    contributorNames: [],
+    nameInput: "",
+    error: false,
+  });
+  const [showDeleteSelect, setShowDeleteSelect] = useState(false);
+
+  const [tocVisible, setTocVisible] = useState(true);
+  const [openInlineMenu, setOpenInlineMenu] = useState<string | null>(null);
+
+  useEffect(() => {
+    const el = document.getElementById("report-toc");
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setTocVisible(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const illustInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const sessionDataRef = useRef<Record<string, ReportSessionData>>({});
+  const reportDataRef = useRef<Report | null>(null);
+  const createSnapshotRef = useRef<((type: SnapshotType) => Promise<void>) | null>(null);
+  const lastSnapshotHashRef = useRef<string | null>(null);
+  const sitePhotoInputRef = useRef<HTMLInputElement>(null);
+  const reportContainerRef = useRef<HTMLDivElement>(null);
+  const initDone = useRef(false);
+  const collapsedInit = useRef(false);
+  const { debouncedSave, saveState } = useDebouncedSave(600);
+
+  // Lock body scroll when history panel is open
+  useEffect(() => {
+    if (!showHistory) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showHistory]);
+
+  // Close export dropdown on outside click or Escape
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".export-dropdown-wrapper"))
+        setShowExportMenu(false);
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowExportMenu(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [showExportMenu]);
+
+  // Close inline add menu on outside click or Escape
+  useEffect(() => {
+    if (!openInlineMenu) return;
+    const close = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(".inline-add-zone")) setOpenInlineMenu(null);
+    };
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenInlineMenu(null);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [openInlineMenu]);
+
+  // Snapshots subscription
+  useEffect(() => {
+    if (!user || !reportId) return;
+    const q = query(
+      collection(
+        db,
+        "conferences",
+        confId,
+        "dailyReports",
+        reportId,
+        "snapshots",
+      ),
+      orderBy("createdAt", "desc"),
+    );
+    return onSnapshot(q, (snap) => {
+      setSnapshots(
+        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ReportSnapshot, "id">) })),
+      );
+    });
+  }, [user, reportId]);
+
+  // 5-minute auto snapshot
+  useEffect(() => {
+    if (!user || viewMode) return;
+    const timer = setInterval(
+      () => {
+        createSnapshotRef.current?.("auto");
+      },
+      5 * 60 * 1000,
+    );
+    return () => clearInterval(timer);
+  }, [user, viewMode]);
+
+  // Save snapshot on page leave
+  useEffect(() => {
+    if (!user || viewMode) return;
+    const handleBeforeUnload = () => {
+      createSnapshotRef.current?.("auto");
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [user, viewMode]);
+
+  // Conference name
+  useEffect(() => {
+    if (!confId) return;
+    return onSnapshot(doc(db, "conferences", confId), (snap) => {
+      setConfName(snap.exists() ? snap.data().name || confId : confId);
+    });
+  }, [confId]);
+
+  // Members — load with doc ID and resolve display names in parallel
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(
+      collection(db, "conferences", confId, "members"),
+      async (snap) => {
+        const { getDoc: gd, doc: dc } = await import("firebase/firestore");
+        const arr = await Promise.all(
+          snap.docs.map(async (d) => {
+            const data = d.data() as Omit<Member, "id">;
+            let name: string | null = data.legacyName || data.displayName || null;
+            if (!name && !data.managedByAdmin) {
+              try {
+                const userSnap = await gd(dc(db, "users", d.id));
+                const ud = userSnap.data() as { displayName?: string; email?: string };
+                name = userSnap.exists() ? ud.displayName || ud.email || null : d.id;
+              } catch {
+                name = d.id;
+              }
+            }
+            return { ...data, id: d.id, name: name || d.id };
+          }),
+        );
+        setMembers(arr);
+      },
+    );
+  }, [user, confId]);
+
+  // Sessions (filtered by date + all for session picker)
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(
+      collection(db, "conferences", confId, "sessions"),
+      (snap) => {
+        const all: Session[] = [];
+        const filtered: DailySession[] = [];
+        snap.forEach((d) => {
+          const data = d.data() as Session;
+          all.push({ ...data, id: d.id });
+          if (data.date === date)
+            filtered.push({
+              ...(data as Omit<Session, "attendees">),
+              id: d.id,
+              attendees: new Set(data.attendees || []),
+            } as DailySession);
+        });
+        filtered.sort((a, b) => a.start.localeCompare(b.start));
+        setSessions(filtered);
+        setAllConferenceSessions(all);
+      },
+    );
+  }, [user, date, confId]);
+
+  // Report data
+  useEffect(() => {
+    if (!user) return;
+    return onSnapshot(
+      doc(db, "conferences", confId, "dailyReports", reportId),
+      (snap) => {
+        setReportData(snap.exists() ? (snap.data() as Report) : null);
+        setLoading(false);
+      },
+    );
+  }, [user, reportId]);
+
+  // Auto-init report
+  useEffect(() => {
+    if (
+      !user ||
+      loading ||
+      reportData ||
+      initDone.current ||
+      sessions.length === 0
+    )
+      return;
+    initDone.current = true;
+    const sessionMap: Record<string, ReportSessionData> = {};
+    sessions.forEach((s) => {
+      sessionMap[s.code] = {
+        speakers:
+          s.speakers && s.speakers.length > 0
+            ? s.speakers.map((sp) => ({
+                name: sp.name || "",
+                position: sp.title || "",
+                company: sp.company || "",
+              }))
+            : [{ name: "", position: "", company: "" }],
+        takeaways: "",
+        insights: "",
+        illustration: "",
+      };
+    });
+    setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
+      date,
+      title: "",
+      summaryPoints: [],
+      onsiteInfo: "",
+      reflections: "",
+      rumors: "",
+      sitePhotos: [],
+      sessions: sessionMap,
+      topicOrder: [],
+      status: "draft",
+    }).catch(console.error);
+  }, [user, loading, reportData, sessions, reportId, date]);
+
+  // Keep sessionDataRef and reportDataRef in sync
+  const sessionData = reportData?.sessions || {};
+  sessionDataRef.current = sessionData;
+  reportDataRef.current = reportData;
+
+  // ── Computed ────────────────────────────────────────────────────────────────
+  const memberMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    members.forEach((m) => {
+      map[m.id] = m.name;
+    });
+    return map;
+  }, [members]);
+
+  const memberColorMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    members.forEach((m) => {
+      map[m.id || m.userId || ""] = m.colorIndex ?? 0;
+    });
+    return map;
+  }, [members]);
+
+  const { activeUsers } = usePresence(confId, reportId);
+
+  const deletedSessionCodes = useMemo(
+    () => new Set(reportData?.deletedSessions || []),
+    [reportData],
+  );
+
+  const activeSessions = useMemo(
+    () => sessions.filter((s) => !deletedSessionCodes.has(s.code)),
+    [sessions, deletedSessionCodes],
+  );
+
+  const topicsMap = useMemo(() => {
+    const map: Record<string, DailySession[]> = {};
+    activeSessions.forEach((s) => {
+      const cat = SESSION_CATALOG.get(s.code);
+      const rawTopic = cat?.topic
+        ? cat.topic.split(" - ").at(-1)?.trim()
+        : null;
+      const topic = s.mainTopic?.trim() || cat?.key_themes?.[0] || rawTopic;
+      if (!topic) return;
+      if (!map[topic]) map[topic] = [];
+      map[topic].push(s);
+    });
+    Object.values(map).forEach((arr) =>
+      arr.sort((a, b) => {
+        const tc = a.start.localeCompare(b.start);
+        return tc !== 0 ? tc : a.title.localeCompare(b.title);
+      }),
+    );
+    return map;
+  }, [activeSessions]);
+
+  const noTopicSessions = useMemo(() => {
+    return activeSessions
+      .filter((s) => {
+        const cat = SESSION_CATALOG.get(s.code);
+        return !(s.mainTopic?.trim() || cat?.key_themes?.[0] || cat?.topic);
+      })
+      .sort((a, b) => {
+        const tc = a.start.localeCompare(b.start);
+        return tc !== 0 ? tc : a.title.localeCompare(b.title);
+      });
+  }, [activeSessions]);
+
+  const orderedTopics = useMemo(() => {
+    const allTopics = Object.keys(topicsMap);
+    const saved = reportData?.topicOrder || [];
+    const result = saved.filter((t) => allTopics.includes(t));
+    allTopics.forEach((t) => {
+      if (!result.includes(t)) result.push(t);
+    });
+    return result;
+  }, [topicsMap, reportData]);
+
+  // ── Save helpers ────────────────────────────────────────────────────────────
+  const saveField = useCallback(
+    (field: string, value: unknown) => {
+      if (!user || viewMode) return;
+      debouncedSave(field, () => {
+        setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          { [field]: value },
+          { merge: true },
+        ).catch(console.error);
+      });
+    },
+    [user, reportId, debouncedSave, viewMode],
+  );
+
+  // ── Block helpers ─────────────────────────────────────────────────────────────
+  const addBlock = useCallback(
+    (field: BlockField, type: ReportBlockType) => {
+      const newBlock: ReportBlock = {
+        id: generateId(),
+        type,
+        content: "",
+        ownerId: user?.uid || "",
+        contributorIds: user?.uid ? [user.uid] : [],
+        lastEditedBy: user?.uid || "",
+        lastEditedAt: Date.now(),
+      };
+      saveField(field, [...(reportDataRef.current?.[field] || []), newBlock]);
+    },
+    [saveField, user],
+  );
+  const updateBlock = useCallback(
+    (field: BlockField, id: string, content: string) => {
+      saveField(
+        field,
+        (reportDataRef.current?.[field] || []).map((b) =>
+          b.id === id ? { ...b, content } : b,
+        ),
+      );
+    },
+    [saveField],
+  );
+  const removeBlock = useCallback(
+    (field: BlockField, id: string) => {
+      saveField(
+        field,
+        (reportDataRef.current?.[field] || []).filter((b) => b.id !== id),
+      );
+    },
+    [saveField],
+  );
+  const insertBlock = useCallback(
+    (field: BlockField, type: ReportBlockType, afterId: string | null) => {
+      const newBlock: ReportBlock = {
+        id: generateId(),
+        type,
+        content: "",
+        ownerId: user?.uid || "",
+        contributorIds: user?.uid ? [user.uid] : [],
+        lastEditedBy: user?.uid || "",
+        lastEditedAt: Date.now(),
+      };
+      const blocks = reportDataRef.current?.[field] || [];
+      const idx = afterId ? blocks.findIndex((b) => b.id === afterId) : -1;
+      const next = [...blocks];
+      next.splice(idx + 1, 0, newBlock);
+      saveField(field, next);
+    },
+    [saveField, user],
+  );
+  const updateBlockFields = useCallback(
+    (field: BlockField, id: string, fields: Partial<ReportBlock>) => {
+      saveField(
+        field,
+        (reportDataRef.current?.[field] || []).map((b) => {
+          if (b.id !== id) return b;
+          return {
+            ...b,
+            ...fields,
+            lastEditedBy: user?.uid || b.lastEditedBy,
+            lastEditedAt: Date.now(),
+          };
+        }),
+      );
+    },
+    [saveField, user],
+  );
+
+  // ── Snapshot helpers ─────────────────────────────────────────────────────────
+  const pruneSnapshots = useCallback(async () => {
+    const q = query(
+      collection(
+        db,
+        "conferences",
+        confId,
+        "dailyReports",
+        reportId,
+        "snapshots",
+      ),
+      orderBy("createdAt", "desc"),
+      limit(51),
+    );
+    const snap = await getDocs(q);
+    if (snap.docs.length > 50) {
+      await deleteDoc(snap.docs[50].ref);
+    }
+  }, [reportId]);
+
+  const createSnapshot = useCallback(
+    async (type: SnapshotType) => {
+      if (!user || !reportDataRef.current) return;
+      const rd = reportDataRef.current;
+      const data: ReportSnapshotData = {
+        title: rd.title || "",
+        summaryPoints: rd.summaryPoints || [],
+        sessions: sessionDataRef.current || {},
+        topicOrder: rd.topicOrder || [],
+        deletedSessions: rd.deletedSessions || [],
+        onsiteInfo: rd.onsiteInfo || "",
+        reflections: rd.reflections || "",
+        rumors: rd.rumors || "",
+        onsiteInfoBlocks: rd.onsiteInfoBlocks || [],
+        reflectionsBlocks: rd.reflectionsBlocks || [],
+      };
+      const hash = JSON.stringify(data);
+      // Skip auto snapshots when content hasn't changed since last snapshot
+      if (type === "auto" && hash === lastSnapshotHashRef.current) return;
+      try {
+        await addDoc(
+          collection(
+            db,
+            "conferences",
+            confId,
+            "dailyReports",
+            reportId,
+            "snapshots",
+          ),
+          {
+            type,
+            label:
+              type === "auto" ? t("report.autoSave") : t("report.manualSave"),
+            createdAt: serverTimestamp(),
+            createdBy: user.uid,
+            data,
+          },
+        );
+        lastSnapshotHashRef.current = hash;
+        await pruneSnapshots();
+      } catch (err) {
+        console.error(
+          "[Snapshot] Failed to save snapshot:",
+          (err as { code?: string }).code,
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    },
+    [user, reportId, pruneSnapshots],
+  );
+
+  // Keep createSnapshotRef up to date (used by 5-min timer)
+  createSnapshotRef.current = createSnapshot;
+
+  const handleSave = async () => {
+    await createSnapshot("manual");
+  };
+
+  const handleRestore = (snapshot: ReportSnapshot) => {
+    setRestoreConfirm(snapshot);
+  };
+
+  const confirmRestore = async () => {
+    if (!restoreConfirm) return;
+    const snapshot = restoreConfirm;
+    setRestoreConfirm(null);
+    await createSnapshot("manual");
+    await setDoc(
+      doc(db, "conferences", confId, "dailyReports", reportId),
+      snapshot.data!,
+      { merge: true },
+    );
+    setShowHistory(false);
+    setViewingSnapshot(null);
+  };
+
+  const saveSessionField = useCallback(
+    (code: string, field: string, value: unknown) => {
+      if (!user) return;
+      debouncedSave(`${code}.${field}`, () => {
+        setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          {
+            sessions: {
+              [code]: {
+                [field]: value,
+                lastEditedBy: user.uid,
+                lastEditedAt: Date.now(),
+              },
+            },
+          },
+          { merge: true },
+        ).catch(console.error);
+      });
+    },
+    [user, reportId, debouncedSave, confId],
+  );
+
+  // Speakers: save whole array debounced
+  const saveSpeakers = useCallback(
+    (code: string, speakers: ReportSpeaker[]) => {
+      if (!user) return;
+      debouncedSave(`${code}.speakers`, () => {
+        setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          {
+            sessions: { [code]: { speakers } },
+          },
+          { merge: true },
+        ).catch(console.error);
+      });
+    },
+    [user, reportId, debouncedSave],
+  );
+
+  const addSpeaker = useCallback(
+    (code: string) => {
+      if (!user) return;
+      const sd = sessionDataRef.current[code] || {};
+      const speakers: ReportSpeaker[] = [
+        ...(sd.speakers || []),
+        { name: "", position: "", company: "" },
+      ];
+      setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        {
+          sessions: { [code]: { speakers } },
+        },
+        { merge: true },
+      ).catch(console.error);
+    },
+    [user, reportId],
+  );
+
+  const removeSpeaker = useCallback(
+    (code: string, idx: number) => {
+      if (!user) return;
+      const sd = sessionDataRef.current[code] || {};
+      const speakers = (sd.speakers || []).filter((_, i) => i !== idx);
+      setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        {
+          sessions: {
+            [code]: {
+              speakers: speakers.length
+                ? speakers
+                : [{ name: "", position: "", company: "" }],
+            },
+          },
+        },
+        { merge: true },
+      ).catch(console.error);
+    },
+    [user, reportId],
+  );
+
+  const openDeleteConfirm = useCallback((code: string, contributorNames: string[]) => {
+    setShowDeleteSelect(false);
+    setDeleteConfirm({ code, contributorNames, nameInput: "", error: false });
+  }, []);
+
+  const confirmDeleteSession = useCallback(() => {
+    const { code, contributorNames, nameInput } = deleteConfirm;
+    const trimmed = nameInput.trim();
+    const valid =
+      contributorNames.length === 0
+        ? trimmed.length > 0
+        : contributorNames.some((n) => n === trimmed);
+    if (!valid) {
+      setDeleteConfirm((prev) => ({ ...prev, error: true }));
+      return;
+    }
+    const currentDeleted = reportDataRef.current?.deletedSessions || [];
+    setDoc(
+      doc(db, "conferences", confId, "dailyReports", reportId),
+      {
+        deletedSessions: [...currentDeleted, code],
+      },
+      { merge: true },
+    ).catch(console.error);
+    setDeleteConfirm({
+      code: null,
+      contributorNames: [],
+      nameInput: "",
+      error: false,
+    });
+  }, [deleteConfirm, reportId]);
+
+  const compressImage = useCallback(
+    (file: File, maxPx = 1200, quality = 0.75): Promise<string> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas
+            .getContext("2d")!
+            .drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", quality));
+        };
+        img.src = url;
+      });
+    },
+    [],
+  );
+
+  const uploadToStorage = useCallback(
+    async (base64DataUrl: string, path: string): Promise<string> => {
+      const storageRef = ref(storage, path);
+      await uploadString(storageRef, base64DataUrl, "data_url");
+      return getDownloadURL(storageRef);
+    },
+    [],
+  );
+
+  // Normalize illustrations: supports old single string + new array format
+  const getIllustrations = useCallback(
+    (sd: ReportSessionData & { _code?: string }): ReportIllustration[] => {
+      if (Array.isArray(sd.illustrations)) return sd.illustrations;
+      if (sd.illustration)
+        return [
+          {
+            url: sd.illustration,
+            storagePath: `illustrations/${reportId}/${sd._code}`,
+          },
+        ];
+      return [];
+    },
+    [reportId],
+  );
+
+  const handleIllustration = useCallback(
+    (code: string, e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      const storagePath = `illustrations/${reportId}/${code}_${Date.now()}`;
+      compressImage(file)
+        .then((compressed) => uploadToStorage(compressed, storagePath))
+        .then((url) => {
+          const current = sessionDataRef.current[code] || {};
+          const existing: ReportIllustration[] = Array.isArray(current.illustrations)
+            ? current.illustrations
+            : current.illustration
+              ? [
+                  {
+                    url: current.illustration,
+                    storagePath: `illustrations/${reportId}/${code}`,
+                  },
+                ]
+              : [];
+          saveSessionField(code, "illustrations", [
+            ...existing,
+            { url, storagePath },
+          ]);
+        });
+    },
+    [compressImage, uploadToStorage, reportId, saveSessionField],
+  );
+
+  const handleIllustrationDelete = useCallback(
+    (code: string, idx: number) => {
+      const current = sessionDataRef.current[code] || {};
+      const existing: ReportIllustration[] = Array.isArray(current.illustrations)
+        ? current.illustrations
+        : current.illustration
+          ? [
+              {
+                url: current.illustration,
+                storagePath: `illustrations/${reportId}/${code}`,
+              },
+            ]
+          : [];
+      const item = existing[idx];
+      if (item?.storagePath)
+        deleteObject(ref(storage, item.storagePath)).catch(() => {});
+      const next = existing.filter((_, i) => i !== idx);
+      saveSessionField(code, "illustrations", next);
+      // Clear legacy field if present
+      if (current.illustration) saveSessionField(code, "illustration", "");
+    },
+    [reportId, saveSessionField],
+  );
+
+  // ── Site Photos handlers ─────────────────────────────────────────────────
+  const handleSitePhotoAdd = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      const objUrl = URL.createObjectURL(file);
+      const imgEl = new window.Image();
+      imgEl.onload = () => {
+        const w = imgEl.naturalWidth;
+        const h = imgEl.naturalHeight;
+        URL.revokeObjectURL(objUrl);
+        const storagePath = `sitePhotos/${reportId}/${Date.now()}`;
+        compressImage(file)
+          .then((compressed) => uploadToStorage(compressed, storagePath))
+          .then((url) => {
+            const photos: SitePhoto[] = [
+              ...(reportDataRef.current?.sitePhotos || []),
+              { image: url, storagePath, caption: "", source: "", w, h },
+            ];
+            setDoc(
+              doc(db, "conferences", confId, "dailyReports", reportId),
+              { sitePhotos: photos },
+              { merge: true },
+            ).catch(console.error);
+          });
+      };
+      imgEl.src = objUrl;
+    },
+    [compressImage, uploadToStorage, reportId],
+  );
+
+  const handleSitePhotoDelete = useCallback(
+    (idx: number) => {
+      const photos: SitePhoto[] = reportDataRef.current?.sitePhotos || [];
+      const photo = photos[idx];
+      if (photo?.storagePath) {
+        deleteObject(ref(storage, photo.storagePath)).catch(() => {});
+      }
+      const updated = photos.filter((_, i) => i !== idx);
+      setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        { sitePhotos: updated },
+        { merge: true },
+      ).catch(console.error);
+    },
+    [reportId],
+  );
+
+  const saveSitePhotoCaption = useCallback(
+    (idx: number, caption: string) => {
+      debouncedSave(`sitePhoto-caption-${idx}`, async () => {
+        const photos: SitePhoto[] = [
+          ...(reportDataRef.current?.sitePhotos || []),
+        ];
+        if (photos[idx]) photos[idx] = { ...photos[idx], caption };
+        await setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          { sitePhotos: photos },
+          { merge: true },
+        ).catch(console.error);
+      });
+    },
+    [reportId, debouncedSave],
+  );
+
+  const saveSitePhotoSource = useCallback(
+    (idx: number, source: string) => {
+      debouncedSave(`sitePhoto-source-${idx}`, async () => {
+        const photos: SitePhoto[] = [
+          ...(reportDataRef.current?.sitePhotos || []),
+        ];
+        if (photos[idx]) photos[idx] = { ...photos[idx], source };
+        await setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          { sitePhotos: photos },
+          { merge: true },
+        ).catch(console.error);
+      });
+    },
+    [debouncedSave, reportId],
+  );
+
+  // Extract all CSS text via CSSOM — skips cross-origin sheets silently
+  // Export handler for markdown format
+  const handleExport = async (format: string) => {
+    setExporting(true);
+    setShowExportMenu(false);
+
+    const prevCollapsed = new Set(collapsedSessions);
+    setCollapsedSessions(new Set());
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    try {
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
+
+      // Clone report DOM and strip interactive / UI-only elements
+      const clone = container.cloneNode(true) as HTMLElement;
+      clone
+        .querySelectorAll(
+          ".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn",
+        )
+        .forEach((el) => el.remove());
+      clone.querySelectorAll<HTMLElement>(".print-only").forEach((el) => {
+        el.style.display = "block";
+      });
+
+      let blob: Blob | undefined, filename: string | undefined;
+
+      if (format === "markdown") {
+        const { default: TurndownService } = await import("turndown");
+        const { gfm } = await import("turndown-plugin-gfm");
+
+        // ── DOM pre-processing ──────────────────────────────────────────
+        // 1. Remove empty 关键收获/启示 blocks (heading + empty content)
+        clone.querySelectorAll(".report-field-block").forEach((block) => {
+          const heading = block.querySelector(".report-field-heading");
+          if (!heading) return;
+          const bodyText = block.textContent
+            .replace(heading.textContent, "")
+            .trim();
+          if (!bodyText) block.remove();
+        });
+        // 1a. Remove entire session cards where all field blocks were empty
+        clone.querySelectorAll(".report-session").forEach((session) => {
+          if (session.querySelectorAll(".report-field-block").length === 0) {
+            session.remove();
+          }
+        });
+
+        // 1b. Add ids to topic dividers so TOC #topic-* links have targets
+        clone.querySelectorAll(".report-topic-divider").forEach((el) => {
+          const name =
+            el.querySelector(".report-topic-name")?.textContent.trim() || "";
+          if (name)
+            el.id =
+              "topic-" +
+              name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-|-$/g, "");
+        });
+
+        // 2. Inject <a id="..."> for all TOC anchor targets
+        clone.querySelectorAll("[id]").forEach((el) => {
+          const anchor = document.createElement("a");
+          anchor.id = el.id;
+          el.removeAttribute("id");
+          el.insertBefore(anchor, el.firstChild);
+        });
+
+        const td = new TurndownService({
+          headingStyle: "atx",
+          codeBlockStyle: "fenced",
+          bulletListMarker: "-",
+        });
+        td.use(gfm);
+
+        // Preserve <a id="..."> anchor tags as raw HTML
+        td.addRule("session-anchor", {
+          filter: (node) =>
+            node.nodeName === "A" &&
+            !!node.getAttribute("id") &&
+            !node.getAttribute("href"),
+          replacement: (_content, node) =>
+            `<a id="${node.getAttribute("id")}"></a>`,
+        });
+
+        // Session title: merge code + title into one heading (### S82322 — Title)
+        td.addRule("session-title", {
+          filter: (node) =>
+            node.nodeName === "H3" &&
+            node.classList.contains("report-session-title"),
+          replacement: (content, node) => {
+            const codeEl = node
+              .closest(".report-session-header")
+              ?.querySelector(".report-session-code");
+            const code = codeEl ? codeEl.textContent.trim() : "";
+            return `\n\n### ${code ? code + " — " : ""}${content.trim()}\n\n`;
+          },
+        });
+
+        // Suppress standalone session code span (merged into heading above)
+        td.addRule("session-code", {
+          filter: (node) =>
+            node.nodeName === "SPAN" &&
+            node.classList.contains("report-session-code"),
+          replacement: () => "",
+        });
+
+        // Field headings (关键收获 / 启示): render in red
+        td.addRule("field-heading", {
+          filter: (node) =>
+            node.nodeName === "H4" &&
+            node.classList.contains("report-field-heading"),
+          replacement: (content) =>
+            `\n\n<span style="color:#CF0A2C">**${content.trim()}**</span>\n\n`,
+        });
+
+        // Topic divider: render as ## heading for visual hierarchy above ### sessions
+        td.addRule("topic-divider", {
+          filter: (node) => node.classList?.contains("report-topic-divider"),
+          replacement: (_content, node) => {
+            const name =
+              node.querySelector(".report-topic-name")?.textContent.trim() ||
+              "";
+            return name ? `\n\n---\n\n## ${name}\n\n` : "";
+          },
+        });
+
+        // Contributors row: "贡献人: Name1、Name2"
+        td.addRule("contributors-row", {
+          filter: (node) => node.classList?.contains("report-contributors-row"),
+          replacement: (_content, node) => {
+            const label =
+              node
+                .querySelector(".report-contributors-label")
+                ?.textContent.trim() || t("report.contributorLabel");
+            const names =
+              node
+                .querySelector(".report-contributors-names")
+                ?.textContent.trim() || "";
+            return names ? `\n\n${label}: ${names}\n\n` : "";
+          },
+        });
+
+        // Intel card meta rows (来源 / 贡献人 inside onsite/reflections intel cards)
+        td.addRule("intel-card-meta-row", {
+          filter: (node) =>
+            node.nodeName === "DIV" &&
+            node.classList.contains("intel-card-section") &&
+            !!node.querySelector(".intel-card-label"),
+          replacement: (_content, node) => {
+            const label = node
+              .querySelector(".intel-card-label")
+              ?.textContent?.trim();
+            if (!label) return _content;
+            // _content contains label text + Turndown-processed value (with markdown links)
+            const valueMarkdown = _content.replace(label, "").trim();
+            return valueMarkdown ? `\n\n*${label}:* ${valueMarkdown}\n\n` : "";
+          },
+        });
+
+        const frontmatter = `---\ntitle: ${confName || "Conference"} ${t("report.dailyReportTitle", { date })}\ndate: ${date}\n---\n\n`;
+        const md = frontmatter + td.turndown(clone.outerHTML);
+        blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+        filename = `GTC2026_report_${date}.md`;
+      }
+
+      if (!blob || !filename) throw new Error(`Unsupported export format: ${format}`);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error("[Export] Failed:", err);
+      alert(
+        t("report.exportFailed", {
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } finally {
+      setCollapsedSessions(prevCollapsed);
+      setExporting(false);
+    }
+  };
+
+  // Collapse init: sessions with content start collapsed
+  useEffect(() => {
+    if (!reportData || collapsedInit.current) return;
+    collapsedInit.current = true;
+    const initial = new Set(
+      sessions
+        .filter((s) => {
+          const sd = reportData.sessions?.[s.code];
+          return sd?.takeaways && sd.takeaways !== "";
+        })
+        .map((s) => s.code),
+    );
+    setCollapsedSessions(initial);
+  }, [reportData, sessions]);
+
+  const toggleCollapse = useCallback((code: string) => {
+    setCollapsedSessions((prev) => {
+      const next = new Set(prev);
+      next.has(code) ? next.delete(code) : next.add(code);
+      return next;
+    });
+  }, []);
+
+  const handleSyncFromCatalog = async () => {
+    if (!user || syncing) return;
+    setSyncing(true);
+    setSyncMsg("");
+    try {
+      const updatedMap: Record<string, ReportSessionData> = {};
+      let syncedCount = 0;
+      sessions.forEach((s) => {
+        const existing = sessionDataRef.current[s.code] || {};
+        const info = SESSION_CATALOG.get(s.code);
+        if (info && info.speakers && info.speakers.length > 0) {
+          updatedMap[s.code] = {
+            ...existing,
+            speakers: info.speakers.map((sp) => ({
+              name: sp.name || "",
+              position: sp.title || "",
+              company: sp.company || "",
+            })),
+          };
+          syncedCount++;
+        }
+      });
+      if (syncedCount === 0) {
+        setSyncMsg(t("report.noMatchingCatalog"));
+      } else {
+        await setDoc(
+          doc(db, "conferences", confId, "dailyReports", reportId),
+          { sessions: updatedMap },
+          { merge: true },
+        );
+        setSyncMsg(t("report.syncedSessions", { count: syncedCount }));
+      }
+    } catch (err) {
+      console.error("Sync failed:", err);
+      setSyncMsg(t("report.syncFailed"));
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMsg(""), 3000);
+    }
+  };
+
+  // Publish: generate full HTML, upload to Firebase Storage, return share URL
+  const handlePublish = async ({ silent = false }: { silent?: boolean } = {}): Promise<string | undefined> => {
+    setPublishing(true);
+    setShowExportMenu(false);
+
+    const prevCollapsed = new Set(collapsedSessions);
+    setCollapsedSessions(new Set());
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    try {
+      const container = reportContainerRef.current;
+      if (!container) throw new Error("Report container not found");
+
+      const clone = container.cloneNode(true) as HTMLElement;
+      clone
+        .querySelectorAll(
+          ".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn, .subtitle-toggle-btn",
+        )
+        .forEach((el) => el.remove());
+      clone.querySelectorAll<HTMLElement>(".print-only").forEach((el) => {
+        el.classList.remove("print-only");
+        // Use flex for meta rows (label + value inline), block for everything else
+        el.style.display = el.classList.contains("intel-card-meta")
+          ? "flex"
+          : "block";
+      });
+      clone.querySelectorAll("[contenteditable]").forEach((el) => {
+        el.removeAttribute("contenteditable");
+      });
+      // Strip inline styles from category title spans (can accumulate from rich-text paste)
+      clone.querySelectorAll(".onsite-category-title").forEach((el) => {
+        el.textContent = el.textContent;
+      });
+      // Remove empty field blocks (关键收获 / 启示) from published HTML
+      clone.querySelectorAll(".report-field-block").forEach((block) => {
+        const heading = block.querySelector(".report-field-heading");
+        if (!heading) return;
+        const bodyText = (block.textContent ?? "")
+          .replace(heading.textContent ?? "", "")
+          .trim();
+        if (!bodyText) block.remove();
+      });
+      // Remove entire session cards where all field blocks were empty
+      clone.querySelectorAll(".report-session").forEach((session) => {
+        if (session.querySelectorAll(".report-field-block").length === 0) {
+          session.remove();
+        }
+      });
+      // Convert form fields to static text (before removing interactive elements)
+      const origCaptions = container.querySelectorAll<HTMLTextAreaElement>(".site-photo-caption");
+      const clonedCaptions = clone.querySelectorAll<HTMLTextAreaElement>(".site-photo-caption");
+      origCaptions.forEach((orig, i) => {
+        const cloned = clonedCaptions[i];
+        if (!cloned) return;
+        const p = document.createElement("p");
+        p.className = cloned.className;
+        p.textContent = orig.value;
+        cloned.parentNode!.replaceChild(p, cloned);
+      });
+
+      const origSources = container.querySelectorAll<HTMLInputElement>(".site-photo-source");
+      const clonedSources = clone.querySelectorAll<HTMLInputElement>(".site-photo-source");
+      origSources.forEach((orig, i) => {
+        const cloned = clonedSources[i];
+        if (!cloned) return;
+        const p = document.createElement("p");
+        p.className = cloned.className;
+        p.textContent = orig.value;
+        cloned.parentNode!.replaceChild(p, cloned);
+      });
+
+      // Convert bullet-editor textareas to static text
+      const origBullets = container.querySelectorAll<HTMLTextAreaElement>(".bullet-input");
+      const clonedBullets = clone.querySelectorAll<HTMLTextAreaElement>(".bullet-input");
+      origBullets.forEach((orig, i) => {
+        const cloned = clonedBullets[i];
+        if (!cloned) return;
+        const span = document.createElement("span");
+        span.className = cloned.className;
+        span.textContent = orig.value;
+        cloned.parentNode!.replaceChild(span, cloned);
+      });
+
+      // Remove any remaining interactive elements
+      clone
+        .querySelectorAll("button, input, textarea, select")
+        .forEach((el) => el.remove());
+
+      const styleTagsHtml = (
+        await Promise.all(
+          Array.from(
+            document.head.querySelectorAll<HTMLLinkElement | HTMLStyleElement>(
+              'link[rel="stylesheet"], style',
+            ),
+          ).map(async (el) => {
+            if (el.tagName === "LINK") {
+              try {
+                const href = new URL(
+                  el.getAttribute("href") || "",
+                  window.location.href,
+                ).href;
+                const css = await fetch(href).then((r) => r.text());
+                return `<style>${css}</style>`;
+              } catch {
+                return "";
+              }
+            }
+            return el.outerHTML;
+          }),
+        )
+      ).join("\n");
+
+      const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTC2026 Report ${date}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+${styleTagsHtml}
+<style>
+  body { background: #fff; color: #111; }
+  .report-container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .report-page, .report-container, body {
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif !important;
+  }
+  /* Read-only overrides for published view */
+  .report-editable { pointer-events: none; border-color: transparent !important; background: transparent !important; }
+  .report-editable:hover, .report-editable:focus { border-color: transparent !important; background: transparent !important; }
+  .report-inline-editable { pointer-events: none; border-bottom-color: transparent !important; }
+  /* Keep TOC links clickable */
+  .report-toc-link { pointer-events: auto !important; cursor: pointer !important; }
+</style>
+</head>
+<body>
+${clone.outerHTML}
+</body>
+</html>`;
+
+      const fileId = String(Date.now());
+      const storageRef = ref(
+        storage,
+        `published-reports/${date}/${fileId}.html`,
+      );
+      await uploadString(storageRef, html, "raw", {
+        contentType: "text/html; charset=utf-8",
+      });
+
+      // Prune: keep only the latest 100 published reports for this date
+      const dirRef = ref(storage, `published-reports/${date}`);
+      const { items } = await listAll(dirRef);
+      if (items.length > 100) {
+        const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+        const toDelete = sorted.slice(0, items.length - 100);
+        await Promise.all(toDelete.map((item) => deleteObject(item)));
+      }
+
+      const url = `${window.location.origin}/view/${date}/${fileId}`;
+      setShareUrl(url);
+      if (silent) return url;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Publish] Failed:", msg);
+      alert(t("report.publishFailed", { error: msg }));
+    } finally {
+      setCollapsedSessions(prevCollapsed);
+      setPublishing(false);
+    }
+  };
+
+  function escapeHtml(str: string | null | undefined): string {
+    return String(str ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  const handleEmailExport = async () => {
+    setShowExportMenu(false);
+
+    let url: string | undefined = shareUrl ?? undefined;
+    if (!url) {
+      url = await handlePublish({ silent: true });
+      if (!url) return;
+    }
+
+    const title = reportData?.title || t("report.dailyReportTitle", { date });
+    const points = (reportData?.summaryPoints || []).filter(Boolean);
+    const pointsHtml = points.length
+      ? points
+          .map(
+            (p) =>
+              `<li style="margin:0 0 8px; color:#333; font-size:15px; line-height:1.6;">${escapeHtml(p)}</li>`,
+          )
+          .join("")
+      : `<li style="color:#888; font-size:15px;">${escapeHtml(t("report.noKeyPoints"))}</li>`;
+
+    const html = `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+  @media only screen and (max-width:620px){
+    .email-wrapper{width:100%!important;}
+    .email-card{border-radius:0!important;}
+    .email-btn{display:block!important;width:auto!important;}
+  }
+</style>
+</head>
+<body style="margin:0;padding:0;background:#f4f5f6;font-family:Arial,'Noto Sans SC',sans-serif;">
+<span style="display:none;max-height:0;overflow:hidden;">GTC2026 ${escapeHtml(title)} — ${escapeHtml(t("report.emailSubjectPreview"))}</span>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td align="center" style="padding:24px 16px;">
+  <table class="email-card" width="600" cellpadding="0" cellspacing="0" border="0"
+    style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+    <!-- Header bar -->
+    <tr><td style="background:#C41E3A;padding:14px 28px;">
+      <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;font-weight:bold;">${escapeHtml(confName || "Conference")} · DAILY BRIEFING</p>
+    </td></tr>
+    <!-- Title + date -->
+    <tr><td style="padding:28px 28px 12px;">
+      <h1 style="margin:0 0 6px;font-size:22px;line-height:1.3;color:#1a1a1a;">${escapeHtml(title)}</h1>
+      <p style="margin:0;font-size:13px;color:#999;">${escapeHtml(date)}</p>
+    </td></tr>
+    <!-- Divider -->
+    <tr><td style="padding:0 28px;"><hr style="border:none;border-top:1px solid #eee;margin:0;"></td></tr>
+    <!-- 核心要点 -->
+    <tr><td style="padding:20px 28px 8px;">
+      <p style="margin:0 0 14px;font-size:11px;font-weight:bold;letter-spacing:2px;color:#C41E3A;">${escapeHtml(t("report.emailCorePoints"))}</p>
+      <ul style="margin:0;padding:0 0 0 18px;">${pointsHtml}</ul>
+    </td></tr>
+    <!-- CTA button -->
+    <tr><td align="center" style="padding:28px;">
+      <a class="email-btn" href="${url}"
+        style="display:inline-block;background:#C41E3A;color:#ffffff;font-size:15px;font-weight:bold;
+               text-decoration:none;padding:14px 36px;border-radius:5px;letter-spacing:0.5px;">
+        ${escapeHtml(t("report.viewFullReport"))}
+      </a>
+    </td></tr>
+    <!-- Footer -->
+    <tr><td style="padding:16px 28px;border-top:1px solid #f0f0f0;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#bbb;">${escapeHtml(confName || "Conference")} Daily Report · ${escapeHtml(date)}</p>
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: "text/html; charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `GTC2026_report_email_${date}.html`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  // Toolbar — execCommand has no modern replacement for contenteditable rich-text
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  const execCmd = (cmd: string, val?: string) =>
+    document.execCommand(cmd, false, val);
+  const execBold = () => execCmd("bold");
+  const execColor = (color: string) => {
+    execCmd("foreColor", color);
+    setShowColorPicker(false);
+  };
+
+  // Floating formatting toolbar on text selection
+  useEffect(() => {
+    if (viewMode) return;
+    const handleSelection = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) {
+        setFloatingToolbar(null);
+        setShowColorPicker(false);
+        return;
+      }
+      // Only show if selection is inside an editable element
+      const range = sel.getRangeAt(0);
+      const container = reportContainerRef.current;
+      if (!container || !container.contains(range.commonAncestorContainer)) {
+        setFloatingToolbar(null);
+        return;
+      }
+      // Check if selection is within a contenteditable element
+      let node: Node | null = range.commonAncestorContainer;
+      let inEditable = false;
+      while (node && node !== container) {
+        if (
+          node.nodeType === 1 &&
+          (node as Element).getAttribute("contenteditable") === "true"
+        ) {
+          inEditable = true;
+          break;
+        }
+        node = node.parentNode;
+      }
+      if (!inEditable) {
+        setFloatingToolbar(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setFloatingToolbar({
+        top: rect.top + window.scrollY - 44,
+        left: rect.left + window.scrollX + rect.width / 2,
+      });
+    };
+    document.addEventListener("selectionchange", handleSelection);
+    return () =>
+      document.removeEventListener("selectionchange", handleSelection);
+  }, [viewMode]);
+
+  // ── Loading ─────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="report-page">
+        <div
+          className="report-container"
+          style={{ textAlign: "center", padding: "80px 20px" }}
+        >
+          <p style={{ color: "var(--text-muted)" }}>{t("common.loading")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <div className={`report-page${viewMode ? " report-view-mode" : ""}`}>
+      {/* ── Toolbar (redesigned) ────────────────────────────────── */}
+      {!viewMode && (
+        <div
+          className="no-print"
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+            background: "#222",
+            borderBottom: "1px solid #333",
+            padding: "10px 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Left: nav + title + status badge */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Link
+              to={`/conference/${confId}/reports`}
+              style={{ color: "#888", fontSize: 12, textDecoration: "none" }}
+            >
+              {t("report.backToReportList")}
+            </Link>
+            <span style={{ color: "#555" }}>|</span>
+            <span
+              style={{
+                color: "#eee",
+                fontSize: 14,
+                fontWeight: 700,
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {reportData?.title || t("report.dailyReportTitle", { date })}
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                padding: "2px 8px",
+                background: "rgba(255,255,255,0.1)",
+                color: "#888",
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {reportData?.status === "published" ? "PUBLISHED" : "DRAFT"}
+            </span>
+          </div>
+
+          {/* Right: presence + grouped actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <PresenceBar
+              activeUsers={activeUsers}
+              memberColorMap={memberColorMap}
+              currentUid={user?.uid}
+            />
+
+            {/* ① Save status + button */}
+            {saveState === "saving" && (
+              <span style={{ fontSize: 11, color: "#666" }}>
+                ● {t("common.saving")}
+              </span>
+            )}
+            {saveState === "saved" && (
+              <span style={{ fontSize: 11, color: "#27AE60" }}>
+                ✓ {t("admin.saved")}
+              </span>
+            )}
+            <button
+              onClick={handleSave}
+              title={t("report.saveTip")}
+              style={{
+                padding: "5px 14px",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+                background: "#333",
+                color: "#ccc",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {t("common.save")}
+            </button>
+
+            {/* ② Preview — primary action, visually distinct */}
+            <button
+              onClick={() =>
+                window.open(
+                  `/conference/${confId}/report/${reportId}?preview=1`,
+                  "_blank",
+                )
+              }
+              style={{
+                padding: "5px 16px",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                background: "#a20513",
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {t("report.preview")}
+            </button>
+
+            {/* ③ Export/Share dropdown */}
+            <div
+              className="export-dropdown-wrapper"
+              style={{ position: "relative" }}
+            >
+              <button
+                onClick={() => !exporting && setShowExportMenu((v) => !v)}
+                disabled={exporting}
+                style={{
+                  padding: "5px 14px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  background: "#333",
+                  color: "#ccc",
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: "'Work Sans', sans-serif",
+                }}
+              >
+                {exporting ? t("report.generating") : t("report.export")}
+              </button>
+              {showExportMenu && (
+                <div className="export-dropdown-menu">
+                  <button
+                    className="export-menu-item export-menu-item--publish"
+                    onClick={() => handlePublish()}
+                  >
+                    <span className="export-menu-icon">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                      >
+                        <circle
+                          cx="12"
+                          cy="4"
+                          r="2"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                        />
+                        <circle
+                          cx="4"
+                          cy="8"
+                          r="2"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                        />
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="2"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                        />
+                        <path
+                          d="M6 7l4-2M6 9l4 2"
+                          stroke="currentColor"
+                          strokeWidth="1.3"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </span>
+                    <span className="export-menu-label">
+                      {publishing
+                        ? t("report.sharing")
+                        : t("report.shareReport")}
+                    </span>
+                  </button>
+                  <div className="export-menu-divider" />
+                  <button
+                    className="export-menu-item"
+                    onClick={() => handleExport("markdown")}
+                  >
+                    <span className="export-menu-icon">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                      >
+                        <rect
+                          x="1.5"
+                          y="3.5"
+                          width="13"
+                          height="9"
+                          rx="1.5"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                        />
+                        <path
+                          d="M4 10V6l2 2 2-2v4M11 10V8.5M11 6.5v.5"
+                          stroke="currentColor"
+                          strokeWidth="1.3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <span className="export-menu-label">
+                      {t("report.exportMarkdown")}
+                    </span>
+                  </button>
+                  <div className="export-menu-divider" />
+                  <button
+                    className="export-menu-item"
+                    onClick={handleEmailExport}
+                  >
+                    <span className="export-menu-icon">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                      >
+                        <rect
+                          x="1.5"
+                          y="3.5"
+                          width="13"
+                          height="9"
+                          rx="1.5"
+                          stroke="currentColor"
+                          strokeWidth="1.4"
+                        />
+                        <path
+                          d="M1.5 5.5l6.5 4 6.5-4"
+                          stroke="currentColor"
+                          strokeWidth="1.3"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </span>
+                    <span className="export-menu-label">
+                      {t("report.exportEmailHtml")}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                width: 1,
+                height: 20,
+                background: "#444",
+                margin: "0 2px",
+              }}
+            />
+
+            {/* ④ Maintenance: history + sync */}
+            <button
+              onClick={() => setShowHistory(true)}
+              title={t("report.versionHistory")}
+              style={{
+                padding: "5px 14px",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+                background: "transparent",
+                color: "#888",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {t("report.versionHistory")}
+            </button>
+            <button
+              onClick={handleSyncFromCatalog}
+              disabled={syncing}
+              title={t("report.syncFromCatalog")}
+              style={{
+                padding: "5px 14px",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+                background: "transparent",
+                color: "#888",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Work Sans', sans-serif",
+                opacity: syncing ? 0.5 : 1,
+              }}
+            >
+              {syncing ? t("report.syncing") : t("report.syncFromCatalog")}
+            </button>
+            {syncMsg && (
+              <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>
+                {syncMsg}
+              </span>
+            )}
+
+            <div
+              style={{
+                width: 1,
+                height: 20,
+                background: "#444",
+                margin: "0 2px",
+              }}
+            />
+
+            {/* ⑤ Destructive: delete — far right, red */}
+            <button
+              onClick={() => setShowDeleteSelect(true)}
+              title={t("report.deleteSession")}
+              style={{
+                padding: "5px 14px",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                textTransform: "uppercase",
+                background: "transparent",
+                color: "#a20513",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {t("report.deleteSession")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Floating formatting toolbar (appears on text selection) ── */}
+      {!viewMode && floatingToolbar && (
+        <div
+          className="no-print"
+          style={{
+            position: "absolute",
+            top: floatingToolbar.top,
+            left: floatingToolbar.left,
+            transform: "translateX(-50%)",
+            zIndex: 200,
+            background: "#222",
+            padding: "4px 6px",
+            display: "flex",
+            alignItems: "center",
+            gap: 3,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+          }}
+          onMouseDown={(e) => e.preventDefault()} /* prevent losing selection */
+        >
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              execBold();
+            }}
+            title={t("report.bold")}
+            style={{
+              width: 28,
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              color: "#ccc",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+          >
+            B
+          </button>
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              execCmd("italic");
+            }}
+            title={t("report.italic")}
+            style={{
+              width: 28,
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              color: "#ccc",
+              cursor: "pointer",
+              fontSize: 13,
+              fontStyle: "italic",
+            }}
+          >
+            I
+          </button>
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              execCmd("underline");
+            }}
+            title={t("report.underline")}
+            style={{
+              width: 28,
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              color: "#ccc",
+              cursor: "pointer",
+              fontSize: 13,
+              textDecoration: "underline",
+            }}
+          >
+            U
+          </button>
+          <div style={{ width: 1, height: 18, background: "#444" }} />
+          {COLOR_PRESETS.map((c) => (
+            <button
+              key={c}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                execColor(c);
+              }}
+              title={c}
+              style={{
+                width: 18,
+                height: 18,
+                background: c,
+                border: "none",
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── Share Modal ──────────────────────────────────────────── */}
+      {!viewMode && shareUrl && (
+        <div
+          className="share-modal-overlay"
+          onClick={() => {
+            setShareUrl(null);
+            setUrlCopied(false);
+          }}
+        >
+          <div
+            className="share-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="share-modal-header">
+              <span className="share-modal-title">
+                {t("report.shareableLink")}
+              </span>
+              <button
+                className="share-modal-close"
+                onClick={() => {
+                  setShareUrl(null);
+                  setUrlCopied(false);
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="share-modal-url-row">
+              <span className="share-modal-url">{shareUrl}</span>
+              <button
+                className={`share-modal-copy-btn${urlCopied ? " share-modal-copy-btn--copied" : ""}`}
+                onClick={() => {
+                  navigator.clipboard.writeText(shareUrl);
+                  setUrlCopied(true);
+                  setTimeout(() => setUrlCopied(false), 2000);
+                }}
+              >
+                {urlCopied ? t("report.linkCopied") : t("report.copyLink")}
+              </button>
+            </div>
+            <p className="share-modal-hint">{t("report.shareLinkHint")}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Report Content ───────────────────────────────────────── */}
+      <div className="report-container" ref={reportContainerRef}>
+        {/* Title bar */}
+        <div
+          className="report-title-bar"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div>
+            <div className="report-title-eyebrow">
+              {confName || "CONFERENCE"} · DAILY BRIEFING
+            </div>
+            <h1>
+              {viewMode ? (
+                <span>
+                  {reportData?.title || t("report.dailyReportTitle", { date })}
+                </span>
+              ) : (
+                <span
+                  contentEditable
+                  suppressContentEditableWarning
+                  onBlur={(e) =>
+                    saveField("title", e.currentTarget.textContent.trim() || "")
+                  }
+                >
+                  {reportData?.title || t("report.dailyReportTitle", { date })}
+                </span>
+              )}
+            </h1>
+          </div>
+          <img
+            src={huaweiLogo}
+            alt="Huawei"
+            style={{
+              height: 28,
+              opacity: 0.9,
+              flexShrink: 0,
+              filter: "brightness(0) invert(1)",
+            }}
+          />
+        </div>
+
+        {/* Header: TOC + Summary */}
+        <div className="report-header">
+          {/* TOC – organized by topic, drag-to-reorder */}
+          <div className="report-toc" id="report-toc">
+            <h2 className="report-section-title">{t("report.toc")}</h2>
+            <ul className="report-toc-list">
+              <li className="report-toc-section-item">
+                <a
+                  href="#section-related"
+                  className="report-toc-link report-toc-section-link"
+                >
+                  <span className="report-toc-title">
+                    {t("report.relatedTopics")}
+                  </span>
+                </a>
+                {orderedTopics.length > 0 && (
+                  <ul className="report-toc-sublist">
+                    {orderedTopics.map((topic) => (
+                      <li key={topic}>
+                        <a
+                          href={`#topic-${topicSlug(topic)}`}
+                          className="report-toc-link report-toc-cat-link"
+                        >
+                          <span
+                            className="report-toc-title"
+                            style={{ color: "var(--brand)" }}
+                          >
+                            {topic}
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+              <li className="report-toc-section-item">
+                <a
+                  href="#section-onsite-info"
+                  className="report-toc-link report-toc-section-link"
+                >
+                  <span className="report-toc-title">
+                    {t("report.onsiteInfo")}
+                  </span>
+                </a>
+                {(reportData?.onsiteInfoBlocks || []).filter(
+                  (b) => b.type === "heading" && b.content,
+                ).length > 0 && (
+                  <ul className="report-toc-sublist">
+                    {(reportData?.onsiteInfoBlocks || [])
+                      .filter((b) => b.type === "heading" && b.content)
+                      .map((block) => (
+                        <li key={block.id}>
+                          <a
+                            href={`#block-${block.id}`}
+                            className="report-toc-link report-toc-cat-link"
+                          >
+                            <span
+                              className="report-toc-title"
+                              style={{ color: "var(--brand)" }}
+                            >
+                              {block.content}
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </li>
+              <li className="report-toc-section-item">
+                <a
+                  href="#section-reflections"
+                  className="report-toc-link report-toc-section-link"
+                >
+                  <span className="report-toc-title">
+                    {t("report.reflections")}
+                  </span>
+                </a>
+                {(reportData?.reflectionsBlocks || []).filter(
+                  (b) => b.type === "heading" && b.content,
+                ).length > 0 && (
+                  <ul className="report-toc-sublist">
+                    {(reportData?.reflectionsBlocks || [])
+                      .filter((b) => b.type === "heading" && b.content)
+                      .map((block) => (
+                        <li key={block.id}>
+                          <a
+                            href={`#block-${block.id}`}
+                            className="report-toc-link report-toc-cat-link"
+                          >
+                            <span
+                              className="report-toc-title"
+                              style={{ color: "var(--brand)" }}
+                            >
+                              {block.content}
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </li>
+              <li className="report-toc-section-item">
+                <a
+                  href="#section-rumors"
+                  className="report-toc-link report-toc-section-link"
+                >
+                  <span className="report-toc-title">{t("report.rumors")}</span>
+                </a>
+              </li>
+              <li className="report-toc-section-item">
+                <a
+                  href="#section-site-photos"
+                  className="report-toc-link report-toc-section-link"
+                >
+                  <span className="report-toc-title">
+                    {t("report.siteRecords")}
+                  </span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Summary */}
+          <div className="report-summary">
+            <h2 className="report-section-title">{t("report.corePoints")}</h2>
+            <BulletEditor
+              points={reportData?.summaryPoints}
+              onSave={(pts) => saveField("summaryPoints", pts)}
+              placeholder={t("report.coreKeyPoints")}
+              readOnly={viewMode}
+            />
+          </div>
+        </div>
+
+        {/* Session Reports – organized by topic */}
+        <div id="section-related" className="report-sessions">
+          <h2 className="report-section-title" style={{ marginTop: 32 }}>
+            {t("report.relatedTopics")}
+          </h2>
+
+          {noTopicSessions.map((session) => {
+            const sd = sessionData[session.code] || {};
+            // In preview/viewMode, skip sessions with no content
+            if (
+              viewMode &&
+              !sd.takeaways?.replace(/<[^>]*>/g, "").trim() &&
+              !sd.insights?.replace(/<[^>]*>/g, "").trim()
+            )
+              return null;
+            const speakers =
+              sd.speakers ||
+              (sd.speaker
+                ? [
+                    {
+                      name: sd.speaker,
+                      position: "",
+                      company: sd.company || "",
+                    },
+                  ]
+                : [{ name: "", position: "", company: "" }]);
+            const contributorNames = Array.from(session.attendees)
+              .map((id) => memberMap[id])
+              .filter(Boolean);
+            const contributors = contributorNames.join("、");
+            const isCollapsed = collapsedSessions.has(session.code);
+            return (
+              <div
+                key={session.code}
+                id={`session-${session.code}`}
+                className="report-session"
+              >
+                <div
+                  className="report-session-header"
+                  onClick={() => toggleCollapse(session.code)}
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 10,
+                        marginBottom: isCollapsed ? 0 : 6,
+                      }}
+                    >
+                      <span
+                        className="report-session-code"
+                        style={{ marginBottom: 0, flexShrink: 0 }}
+                      >
+                        {session.code}
+                      </span>
+                      <h3
+                        className="report-session-title"
+                        style={{ margin: 0 }}
+                      >
+                        {SESSION_CATALOG.get(session.code)?.url ? (
+                          <a
+                            href={SESSION_CATALOG.get(session.code)?.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "inherit", textDecoration: "none" }}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.textDecoration =
+                                "underline")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.textDecoration = "none")
+                            }
+                          >
+                            {SESSION_CATALOG.get(session.code)?.title ||
+                              session.title}
+                          </a>
+                        ) : (
+                          SESSION_CATALOG.get(session.code)?.title ||
+                          session.title
+                        )}
+                      </h3>
+                    </div>
+                    {!isCollapsed && (
+                      <div className="report-session-time">
+                        {session.start}–{session.end}
+                        {session.room && ` | ${session.room}`}
+                      </div>
+                    )}
+                  </div>
+                  <span className="session-collapse-btn">
+                    {isCollapsed ? "▶" : "▼"}
+                  </span>
+                </div>
+                {!isCollapsed && (
+                  <>
+                    <div className="report-session-meta">
+                      <SpeakersEditor
+                        code={session.code}
+                        speakers={speakers}
+                        onUpdate={(newSpeakers) =>
+                          saveSpeakers(session.code, newSpeakers)
+                        }
+                        onAdd={() => addSpeaker(session.code)}
+                        onRemove={(idx) => removeSpeaker(session.code, idx)}
+                        readOnly={viewMode}
+                      />
+                    </div>
+                    <div style={{ padding: "6px 20px 0" }}>
+                      {(() => {
+                        const illus = getIllustrations({
+                          ...sd,
+                          _code: session.code,
+                        });
+                        return (
+                          <>
+                            {illus.length > 0 && (
+                              <div className="session-illustrations-grid">
+                                {illus.map((item, i) => (
+                                  <div
+                                    key={i}
+                                    className="session-illustration-item"
+                                  >
+                                    <img
+                                      src={item.url}
+                                      className="session-illustration"
+                                      alt={t("report.illustrationAlt", {
+                                        index: i + 1,
+                                      })}
+                                    />
+                                    <button
+                                      className="no-print session-illustration-del"
+                                      onClick={() =>
+                                        handleIllustrationDelete(
+                                          session.code,
+                                          i,
+                                        )
+                                      }
+                                    >
+                                      {t("report.deleteBtn")}
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <button
+                              className="no-print"
+                              onClick={() =>
+                                illustInputRefs.current[session.code]?.click()
+                              }
+                              style={{
+                                fontSize: 11,
+                                color: "var(--text-placeholder)",
+                                border: "1px dashed #DDDDDD",
+                                background: "none",
+                                cursor: "pointer",
+                                padding: "5px 0",
+                                borderRadius: 4,
+                                display: "block",
+                                textAlign: "center",
+                                width: "100%",
+                                marginTop: illus.length > 0 ? 6 : 0,
+                              }}
+                            >
+                              {t("report.addIllustration")}
+                            </button>
+                          </>
+                        );
+                      })()}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        ref={(el) => {
+                          illustInputRefs.current[session.code] = el;
+                        }}
+                        onChange={(e) => handleIllustration(session.code, e)}
+                      />
+                    </div>
+                    <div className="report-session-body">
+                      <div className="report-field-block">
+                        <h4 className="report-field-heading report-field-heading--highlight">
+                          {t("report.keyTakeaways")}
+                        </h4>
+                        <EditableField
+                          value={sd.takeaways}
+                          onSave={(html) =>
+                            saveSessionField(session.code, "takeaways", html)
+                          }
+                          placeholder={t("report.recordKeyTakeaways")}
+                          readOnly={viewMode}
+                        />
+                      </div>
+                      <div className="report-field-block">
+                        <h4 className="report-field-heading report-field-heading--highlight">
+                          {t("report.insightsLabel")}
+                        </h4>
+                        <EditableField
+                          value={sd.insights}
+                          onSave={(html) =>
+                            saveSessionField(session.code, "insights", html)
+                          }
+                          placeholder={t("report.recordInsights")}
+                          readOnly={viewMode}
+                        />
+                      </div>
+                      <div
+                        className="report-contributors-row"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          paddingTop: 8,
+                          borderTop: "1px solid #eee",
+                          marginTop: 8,
+                        }}
+                      >
+                        <span style={{ fontSize: 10, color: "#5f5e5e" }}>
+                          {t("report.contributorLabel")}
+                        </span>
+                        {Array.from(session.attendees || []).map((id) => {
+                          const name = memberMap[id];
+                          if (!name) return null;
+                          const colorIdx = memberColorMap[id] ?? 0;
+                          const color = COLORS[colorIdx]?.hex || "#5f5e5e";
+                          return (
+                            <span
+                              key={id}
+                              style={{
+                                background: color,
+                                color: "#fff",
+                                padding: "1px 8px",
+                                fontSize: 10,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {name}
+                            </span>
+                          );
+                        })}
+                        {sd.lastEditedBy &&
+                          (() => {
+                            const editorName = memberMap[sd.lastEditedBy] || "";
+                            const ago = sd.lastEditedAt
+                              ? Math.round(
+                                  (Date.now() - sd.lastEditedAt) / 60000,
+                                )
+                              : null;
+                            if (!editorName) return null;
+                            return (
+                              <span
+                                style={{
+                                  marginLeft: "auto",
+                                  fontSize: 10,
+                                  color: "#bbb",
+                                }}
+                              >
+                                edited{" "}
+                                {ago !== null && ago < 60 ? `${ago}m ago` : ""}{" "}
+                                by {editorName}
+                              </span>
+                            );
+                          })()}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {orderedTopics.map((topic) => (
+            <div key={topic}>
+              {/* Topic section header */}
+              <div
+                className="report-topic-divider"
+                id={`topic-${topicSlug(topic)}`}
+              >
+                <span className="report-topic-bar" />
+                <span className="report-topic-name">{topic}</span>
+                <span className="report-topic-line" />
+              </div>
+
+              {(topicsMap[topic] || []).map((session) => {
+                const sd = sessionData[session.code] || {};
+                // Graceful migration: old single-speaker format → new array format
+                const speakers =
+                  sd.speakers ||
+                  (sd.speaker
+                    ? [
+                        {
+                          name: sd.speaker,
+                          position: "",
+                          company: sd.company || "",
+                        },
+                      ]
+                    : [{ name: "", position: "", company: "" }]);
+                const contributorNames = Array.from(session.attendees)
+                  .map((id) => memberMap[id])
+                  .filter(Boolean);
+                const contributors = contributorNames.join("、");
+
+                const isCollapsed = collapsedSessions.has(session.code);
+                return (
+                  <div
+                    key={session.code}
+                    id={`session-${session.code}`}
+                    className="report-session"
+                  >
+                    {/* Session Header: clickable to collapse */}
+                    <div
+                      className="report-session-header"
+                      onClick={() => toggleCollapse(session.code)}
+                      style={{
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "baseline",
+                            gap: 10,
+                            marginBottom: isCollapsed ? 0 : 6,
+                          }}
+                        >
+                          <span
+                            className="report-session-code"
+                            style={{ marginBottom: 0, flexShrink: 0 }}
+                          >
+                            {session.code}
+                          </span>
+                          <h3
+                            className="report-session-title"
+                            style={{ margin: 0 }}
+                          >
+                            {SESSION_CATALOG.get(session.code)?.url ? (
+                              <a
+                                href={SESSION_CATALOG.get(session.code)?.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: "inherit",
+                                  textDecoration: "none",
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.textDecoration =
+                                    "underline")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.textDecoration =
+                                    "none")
+                                }
+                              >
+                                {SESSION_CATALOG.get(session.code)?.title ||
+                                  session.title}
+                              </a>
+                            ) : (
+                              SESSION_CATALOG.get(session.code)?.title ||
+                              session.title
+                            )}
+                          </h3>
+                        </div>
+                        {!isCollapsed && (
+                          <div className="report-session-time">
+                            {session.start}–{session.end}
+                            {session.room && ` | ${session.room}`}
+                          </div>
+                        )}
+                      </div>
+                      <span className="session-collapse-btn">
+                        {isCollapsed ? "▶" : "▼"}
+                      </span>
+                    </div>
+
+                    {!isCollapsed && (
+                      <>
+                        {/* Speakers */}
+                        <div className="report-session-meta">
+                          <SpeakersEditor
+                            code={session.code}
+                            speakers={speakers}
+                            onUpdate={(newSpeakers) =>
+                              saveSpeakers(session.code, newSpeakers)
+                            }
+                            onAdd={() => addSpeaker(session.code)}
+                            onRemove={(idx) => removeSpeaker(session.code, idx)}
+                          />
+                        </div>
+
+                        {/* Illustration */}
+                        <div style={{ padding: "6px 20px 0" }}>
+                          {(() => {
+                            const illus = getIllustrations({
+                              ...sd,
+                              _code: session.code,
+                            });
+                            return (
+                              <>
+                                {illus.length > 0 && (
+                                  <div className="session-illustrations-grid">
+                                    {illus.map((item, i) => (
+                                      <div
+                                        key={i}
+                                        className="session-illustration-item"
+                                      >
+                                        <img
+                                          src={item.url}
+                                          className="session-illustration"
+                                          alt={t("report.illustrationAlt", {
+                                            index: i + 1,
+                                          })}
+                                        />
+                                        <button
+                                          className="no-print session-illustration-del"
+                                          onClick={() =>
+                                            handleIllustrationDelete(
+                                              session.code,
+                                              i,
+                                            )
+                                          }
+                                        >
+                                          {t("report.deleteBtn")}
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  className="no-print"
+                                  onClick={() =>
+                                    illustInputRefs.current[
+                                      session.code
+                                    ]?.click()
+                                  }
+                                  style={{
+                                    fontSize: 11,
+                                    color: "var(--text-placeholder)",
+                                    border: "1px dashed #DDDDDD",
+                                    background: "none",
+                                    cursor: "pointer",
+                                    padding: "5px 0",
+                                    borderRadius: 4,
+                                    display: "block",
+                                    textAlign: "center",
+                                    width: "100%",
+                                    marginTop: illus.length > 0 ? 6 : 0,
+                                  }}
+                                >
+                                  {t("report.addIllustration")}
+                                </button>
+                              </>
+                            );
+                          })()}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: "none" }}
+                            ref={(el) => {
+                              illustInputRefs.current[session.code] = el;
+                            }}
+                            onChange={(e) =>
+                              handleIllustration(session.code, e)
+                            }
+                          />
+                        </div>
+
+                        {/* Body: takeaways & insights */}
+                        <div className="report-session-body">
+                          <div className="report-field-block">
+                            <h4 className="report-field-heading report-field-heading--highlight">
+                              {t("report.keyTakeaways")}
+                            </h4>
+                            <EditableField
+                              value={sd.takeaways}
+                              onSave={(html) =>
+                                saveSessionField(
+                                  session.code,
+                                  "takeaways",
+                                  html,
+                                )
+                              }
+                              placeholder={t("report.recordKeyTakeaways")}
+                              readOnly={viewMode}
+                            />
+                          </div>
+                          <div className="report-field-block">
+                            <h4 className="report-field-heading report-field-heading--highlight">
+                              {t("report.insightsLabel")}
+                            </h4>
+                            <EditableField
+                              value={sd.insights}
+                              onSave={(html) =>
+                                saveSessionField(session.code, "insights", html)
+                              }
+                              placeholder={t("report.recordInsights")}
+                              readOnly={viewMode}
+                            />
+                          </div>
+
+                          {/* 贡献人 at the end */}
+                          {contributors && (
+                            <div className="report-contributors-row">
+                              <span className="report-contributors-label">
+                                {t("report.contributorLabel")}
+                              </span>
+                              <span className="report-contributors-names">
+                                {contributors}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Onsite Section */}
+        <div className="report-onsite">
+          {/* 现场情报 */}
+          <h2
+            id="section-onsite-info"
+            className="report-section-title"
+            style={{ marginTop: 32 }}
+          >
+            {t("report.onsiteInfo")}
+          </h2>
+          {(() => {
+            const blocks = reportData?.onsiteInfoBlocks || [];
+            const els = [
+              <InlineAddButton
+                key="add-start"
+                field="onsiteInfoBlocks"
+                afterId={null}
+                openKey={openInlineMenu}
+                onOpen={setOpenInlineMenu}
+                onInsert={insertBlock}
+              />,
+            ];
+            blocks.forEach((block) => {
+              if (block.type === "heading") {
+                els.push(
+                  <div
+                    key={block.id}
+                    id={`block-${block.id}`}
+                    className="onsite-category-header"
+                    style={{ marginTop: 8 }}
+                  >
+                    {viewMode ? (
+                      <span className="onsite-category-title">
+                        {block.content}
+                      </span>
+                    ) : (
+                      <span
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="onsite-category-title"
+                        onBlur={(e) =>
+                          updateBlock(
+                            "onsiteInfoBlocks",
+                            block.id,
+                            e.currentTarget.textContent.trim(),
+                          )
+                        }
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          document.execCommand(
+                            "insertText",
+                            false,
+                            e.clipboardData.getData("text/plain"),
+                          );
+                        }}
+                      >
+                        {block.content}
+                      </span>
+                    )}
+                    <button
+                      className="onsite-category-remove no-print"
+                      onClick={() => removeBlock("onsiteInfoBlocks", block.id)}
+                    >
+                      ×
+                    </button>
+                  </div>,
+                );
+              } else {
+                els.push(
+                  <IntelCard
+                    key={block.id}
+                    block={block}
+                    members={members}
+                    onUpdate={(fields) =>
+                      updateBlockFields("onsiteInfoBlocks", block.id, fields)
+                    }
+                    onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
+                    readOnly={viewMode}
+                    currentUid={user?.uid}
+                    memberColorMap={memberColorMap}
+                    isAdmin={isConfAdmin}
+                    conferenceSessions={allConferenceSessions}
+                  />,
+                );
+              }
+              els.push(
+                <InlineAddButton
+                  key={`add-${block.id}`}
+                  field="onsiteInfoBlocks"
+                  afterId={block.id}
+                  openKey={openInlineMenu}
+                  onOpen={setOpenInlineMenu}
+                  onInsert={insertBlock}
+                />,
+              );
+            });
+            return els;
+          })()}
+
+          {/* 圈内声音 */}
+          <h2
+            id="section-reflections"
+            className="report-section-title"
+            style={{ marginTop: 24 }}
+          >
+            {t("report.reflections")}
+          </h2>
+          {(() => {
+            const blocks = reportData?.reflectionsBlocks || [];
+            const els = [
+              <InlineAddButton
+                key="add-start"
+                field="reflectionsBlocks"
+                afterId={null}
+                openKey={openInlineMenu}
+                onOpen={setOpenInlineMenu}
+                onInsert={insertBlock}
+              />,
+            ];
+            blocks.forEach((block) => {
+              if (block.type === "heading") {
+                els.push(
+                  <div
+                    key={block.id}
+                    id={`block-${block.id}`}
+                    className="onsite-category-header"
+                    style={{ marginTop: 8 }}
+                  >
+                    {viewMode ? (
+                      <span className="onsite-category-title">
+                        {block.content}
+                      </span>
+                    ) : (
+                      <span
+                        contentEditable
+                        suppressContentEditableWarning
+                        className="onsite-category-title"
+                        onBlur={(e) =>
+                          updateBlock(
+                            "reflectionsBlocks",
+                            block.id,
+                            e.currentTarget.textContent.trim(),
+                          )
+                        }
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          document.execCommand(
+                            "insertText",
+                            false,
+                            e.clipboardData.getData("text/plain"),
+                          );
+                        }}
+                      >
+                        {block.content}
+                      </span>
+                    )}
+                    <button
+                      className="onsite-category-remove no-print"
+                      onClick={() => removeBlock("reflectionsBlocks", block.id)}
+                    >
+                      ×
+                    </button>
+                  </div>,
+                );
+              } else {
+                els.push(
+                  <IntelCard
+                    key={block.id}
+                    block={block}
+                    members={members}
+                    placeholder={t("report.recordVoices")}
+                    onUpdate={(fields) =>
+                      updateBlockFields("reflectionsBlocks", block.id, fields)
+                    }
+                    onRemove={() => removeBlock("reflectionsBlocks", block.id)}
+                    readOnly={viewMode}
+                    currentUid={user?.uid}
+                    memberColorMap={memberColorMap}
+                    isAdmin={isConfAdmin}
+                    conferenceSessions={allConferenceSessions}
+                  />,
+                );
+              }
+              els.push(
+                <InlineAddButton
+                  key={`add-${block.id}`}
+                  field="reflectionsBlocks"
+                  afterId={block.id}
+                  openKey={openInlineMenu}
+                  onOpen={setOpenInlineMenu}
+                  onInsert={insertBlock}
+                />,
+              );
+            });
+            return els;
+          })()}
+
+          {/* 深度研判 */}
+          <h2
+            id="section-rumors"
+            className="report-section-title"
+            style={{ marginTop: 24 }}
+          >
+            {t("report.rumors")}
+          </h2>
+          <EditableField
+            value={reportData?.rumors || ""}
+            onSave={(html) => saveField("rumors", html)}
+            placeholder={t("report.deepAnalysis")}
+            minHeight={120}
+            readOnly={viewMode}
+          />
+        </div>
+
+        {/* Site Photos Section */}
+        <div id="section-site-photos" className="report-site-photos">
+          <h2 className="report-section-title" style={{ marginTop: 32 }}>
+            {t("report.siteRecords")}
+          </h2>
+          <div className="site-photos-grid">
+            {(() => {
+              const rawPhotos = reportData?.sitePhotos || [];
+              const sortedPhotos = rawPhotos
+                .map((photo, originalIdx) => ({ ...photo, originalIdx }))
+                .sort((a, b) => (a.source || "").localeCompare(b.source || ""));
+              const cols: (SitePhoto & { originalIdx: number })[][] = [[], []];
+              const colH = [0, 0];
+              for (const photo of sortedPhotos) {
+                const col = colH[0] <= colH[1] ? 0 : 1;
+                cols[col].push(photo);
+                // Height proxy: image aspect ratio + caption length (CJK ≈ 2 units)
+                const imgRatio = photo.h && photo.w ? photo.h / photo.w : 0.75;
+                const captionLen = [...(photo.caption || "")].reduce(
+                  (s, c) => s + (c.charCodeAt(0) > 0x2e7f ? 2 : 1),
+                  0,
+                );
+                colH[col] += imgRatio + captionLen / 50;
+              }
+              const addCol = colH[0] <= colH[1] ? 0 : 1;
+              const renderCard = (photo: SitePhoto & { originalIdx: number }) => (
+                <div key={photo.originalIdx} className="site-photo-card">
+                  <div className="site-photo-img-wrapper">
+                    <img
+                      src={photo.image}
+                      alt={t("report.sitePhotoAlt", {
+                        index: photo.originalIdx + 1,
+                      })}
+                      className="site-photo-img"
+                    />
+                    {!viewMode && (
+                      <button
+                        className="site-photo-delete-btn no-print"
+                        onClick={() => handleSitePhotoDelete(photo.originalIdx)}
+                        title={t("report.deleteImage")}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  {viewMode ? (
+                    <>
+                      {photo.caption && (
+                        <p
+                          className="site-photo-caption"
+                          style={{ whiteSpace: "pre-wrap" }}
+                        >
+                          {photo.caption}
+                        </p>
+                      )}
+                      {photo.source && (
+                        <p
+                          className="site-photo-source"
+                          style={{
+                            color: "var(--text-muted)",
+                            fontSize: "var(--report-fs-caption)",
+                          }}
+                        >
+                          {photo.source}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <textarea
+                        className="site-photo-caption"
+                        placeholder={t("report.imageCaption")}
+                        defaultValue={photo.caption}
+                        onBlur={(e) =>
+                          saveSitePhotoCaption(
+                            photo.originalIdx,
+                            e.target.value,
+                          )
+                        }
+                        onInput={(e) => {
+                          const t = e.currentTarget;
+                          t.style.height = "auto";
+                          t.style.height = t.scrollHeight + "px";
+                        }}
+                        ref={(el) => {
+                          if (el) {
+                            el.style.height = "auto";
+                            el.style.height = el.scrollHeight + "px";
+                          }
+                        }}
+                      />
+                      <input
+                        className="site-photo-source"
+                        type="text"
+                        placeholder={t("report.sourcePlaceholder")}
+                        defaultValue={photo.source || ""}
+                        onBlur={(e) =>
+                          saveSitePhotoSource(photo.originalIdx, e.target.value)
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+              );
+              const addButton = (
+                <div
+                  key="add"
+                  className="site-photo-add-card no-print"
+                  onClick={() => sitePhotoInputRef.current?.click()}
+                >
+                  <div className="site-photo-add-inner">
+                    <span className="site-photo-add-icon">+</span>
+                    <span className="site-photo-add-label">
+                      {t("report.addImage")}
+                    </span>
+                  </div>
+                </div>
+              );
+              return [0, 1].map((col) => (
+                <div key={col} className="site-photos-col">
+                  {cols[col].map(renderCard)}
+                  {!viewMode && addCol === col && addButton}
+                </div>
+              ));
+            })()}
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            ref={sitePhotoInputRef}
+            onChange={handleSitePhotoAdd}
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="report-footer">
+          <div className="report-footer-inner">
+            <p>
+              {confName || "Conference"} · {date} · {t("report.teamGenerated")}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating back-to-TOC button — only when TOC is scrolled out of view */}
+      {!tocVisible && (
+        <a href="#report-toc" className="toc-float-btn no-print">
+          {t("report.backToToc")}
+        </a>
+      )}
+
+      {/* Delete session — select session modal */}
+      {!viewMode && showDeleteSelect && (
+        <div
+          className="delete-confirm-overlay"
+          onClick={() => setShowDeleteSelect(false)}
+        >
+          <div
+            className="delete-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 480, width: "90%" }}
+          >
+            <h3 className="delete-confirm-title">
+              {t("report.selectDeleteSession")}
+            </h3>
+            <div style={{ maxHeight: 360, overflowY: "auto", margin: "8px 0" }}>
+              {activeSessions.map((s) => {
+                const names = Array.from(s.attendees)
+                  .map((id) => memberMap[id])
+                  .filter(Boolean);
+                return (
+                  <button
+                    key={s.code}
+                    onClick={() => openDeleteConfirm(s.code, names)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 2,
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 10px",
+                      background: "none",
+                      border: "none",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      borderBottom: "1px solid #F0F0F0",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#FFF5F5")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "none")
+                    }
+                  >
+                    <span
+                      className="text-caption"
+                      style={{
+                        fontWeight: 600,
+                        color: "var(--text-secondary)",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {s.code}
+                    </span>
+                    <span
+                      className="text-caption"
+                      style={{
+                        color: "var(--text-secondary)",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {SESSION_CATALOG.get(s.code)?.title || s.title}
+                    </span>
+                    {names.length > 0 && (
+                      <span
+                        className="text-label"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        {t("report.contributors", {
+                          names: names.join(
+                            i18n.language.startsWith("zh") ? "、" : ", ",
+                          ),
+                        })}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="delete-confirm-actions">
+              <button
+                className="delete-confirm-cancel"
+                onClick={() => setShowDeleteSelect(false)}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── History Panel ────────────────────────────────────────── */}
+      {!viewMode &&
+        showHistory &&
+        (() => {
+          // Relative time helper
+          const relativeTime = (date: Date | null | undefined) => {
+            if (!date) return "";
+            const now = Date.now();
+            const diff = now - date.getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) return t("report.justNow");
+            if (mins < 60) return t("report.minutesAgo", { count: mins });
+            const hours = Math.floor(mins / 60);
+            if (hours < 24) return t("report.hoursAgo", { count: hours });
+            const days = Math.floor(hours / 24);
+            if (days < 7) return t("report.daysAgo", { count: days });
+            return formatDateTime(date);
+          };
+
+          // No grouping — flat list, all versions equal
+
+          return (
+            <div style={{ position: "fixed", inset: 0, zIndex: 1000 }}>
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.4)",
+                }}
+                onClick={() => {
+                  setShowHistory(false);
+                  setViewingSnapshot(null);
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: viewingSnapshot ? "min(80%, 960px)" : "380px",
+                  background: "#fff",
+                  display: "flex",
+                  flexDirection: "column",
+                  boxShadow: "-8px 0 32px rgba(0,0,0,0.12)",
+                }}
+              >
+                {/* Panel header */}
+                <div
+                  style={{
+                    padding: "16px 20px",
+                    background: "#222",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexShrink: 0,
+                  }}
+                >
+                  {viewingSnapshot && (
+                    <button
+                      onClick={() => setViewingSnapshot(null)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#888",
+                        fontSize: 12,
+                      }}
+                    >
+                      {t("common.back")}
+                    </button>
+                  )}
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontWeight: 700,
+                      flex: 1,
+                      fontSize: 14,
+                      fontFamily: "'Work Sans', sans-serif",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {viewingSnapshot
+                      ? t("report.versionDetails")
+                      : t("report.versionHistory")}
+                  </h2>
+                  <span style={{ fontSize: 10, color: "#666" }}>
+                    {t("report.versions", { count: snapshots.length })}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setShowHistory(false);
+                      setViewingSnapshot(null);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 18,
+                      color: "#666",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {!viewingSnapshot ? (
+                  <div style={{ flex: 1, overflowY: "auto" }}>
+                    {/* Current version indicator */}
+                    <div
+                      style={{
+                        padding: "14px 20px",
+                        borderBottom: "1px solid #eee",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 10,
+                          height: 10,
+                          background: "#27AE60",
+                          borderRadius: "50%",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: "#1a1c1c",
+                          }}
+                        >
+                          {t("report.currentVersion")}
+                        </div>
+                        <div
+                          style={{ fontSize: 11, color: "#888", marginTop: 2 }}
+                        >
+                          {t("report.editing")}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          padding: "2px 8px",
+                          background: "#27AE60",
+                          color: "#fff",
+                          fontWeight: 600,
+                          letterSpacing: 0.5,
+                          textTransform: "uppercase",
+                          fontFamily: "'Work Sans', sans-serif",
+                        }}
+                      >
+                        Current
+                      </span>
+                    </div>
+
+                    {/* Timeline */}
+                    {snapshots.length === 0 ? (
+                      <div
+                        style={{ padding: "40px 20px", textAlign: "center" }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#888",
+                            marginBottom: 8,
+                          }}
+                        >
+                          {t("report.noHistoryVersions")}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#bbb" }}>
+                          {t("report.autoSaveHint")}
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ padding: "0 20px" }}>
+                        {snapshots.map((snap, i) => {
+                          const date = snap.createdAt?.toDate?.();
+                          const isManual = snap.type === "manual";
+                          const shortId = snap.id.slice(-6).toUpperCase();
+                          return (
+                            <div
+                              key={snap.id}
+                              style={{
+                                display: "flex",
+                                gap: 12,
+                                paddingTop: 14,
+                                paddingBottom: 14,
+                                borderBottom: "1px solid #f3f3f3",
+                              }}
+                            >
+                              {/* Timeline dot */}
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                  width: 20,
+                                  flexShrink: 0,
+                                  paddingTop: 2,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: 10,
+                                    height: 10,
+                                    background: "#a20513",
+                                    borderRadius: "50%",
+                                  }}
+                                />
+                                {i < snapshots.length - 1 && (
+                                  <div
+                                    style={{
+                                      flex: 1,
+                                      width: 1,
+                                      background: "#eee",
+                                      marginTop: 4,
+                                    }}
+                                  />
+                                )}
+                              </div>
+                              {/* Content */}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    marginBottom: 4,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      color: "#888",
+                                      fontFamily: "monospace",
+                                    }}
+                                  >
+                                    #{shortId}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: 9,
+                                      padding: "1px 6px",
+                                      fontWeight: 700,
+                                      letterSpacing: 0.5,
+                                      textTransform: "uppercase",
+                                      fontFamily: "'Work Sans', sans-serif",
+                                      background: isManual
+                                        ? "rgba(162,5,19,0.08)"
+                                        : "rgba(41,128,185,0.08)",
+                                      color: isManual ? "#a20513" : "#2980B9",
+                                    }}
+                                  >
+                                    {isManual ? "Manual" : "Auto"}
+                                  </span>
+                                  {snap.createdBy &&
+                                    memberMap[snap.createdBy] && (
+                                      <span
+                                        style={{ fontSize: 10, color: "#888" }}
+                                      >
+                                        by {memberMap[snap.createdBy]}
+                                      </span>
+                                    )}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#1a1c1c",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {date
+                                    ? relativeTime(date)
+                                    : t("report.unknownTime")}
+                                </div>
+                                {date && (
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: "#bbb",
+                                      marginTop: 2,
+                                    }}
+                                  >
+                                    {formatDateTime(date)}
+                                  </div>
+                                )}
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: 8,
+                                    marginTop: 8,
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => setViewingSnapshot(snap)}
+                                    style={{
+                                      fontSize: 11,
+                                      padding: "4px 14px",
+                                      background: "#f3f3f3",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      color: "#555",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {t("report.viewChanges")}
+                                  </button>
+                                  <button
+                                    onClick={() => handleRestore(snap)}
+                                    style={{
+                                      fontSize: 11,
+                                      padding: "4px 14px",
+                                      background: "none",
+                                      border: "1px solid rgba(162,5,19,0.2)",
+                                      cursor: "pointer",
+                                      color: "#a20513",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {t("report.restore")}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Snapshot viewer with diff */
+                  <div
+                    style={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      minHeight: 0,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: "12px 20px",
+                        borderBottom: "1px solid #eee",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "#888",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        #{viewingSnapshot.id.slice(-6).toUpperCase()}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          padding: "1px 6px",
+                          fontWeight: 700,
+                          letterSpacing: 0.5,
+                          textTransform: "uppercase",
+                          fontFamily: "'Work Sans', sans-serif",
+                          background:
+                            viewingSnapshot.type === "manual"
+                              ? "rgba(162,5,19,0.08)"
+                              : "rgba(41,128,185,0.08)",
+                          color:
+                            viewingSnapshot.type === "manual"
+                              ? "#a20513"
+                              : "#2980B9",
+                        }}
+                      >
+                        {viewingSnapshot.type === "manual" ? "Manual" : "Auto"}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#888" }}>
+                        {viewingSnapshot.createdAt?.toDate
+                          ? relativeTime(viewingSnapshot.createdAt.toDate())
+                          : ""}
+                      </span>
+                      {viewingSnapshot.createdBy &&
+                        memberMap[viewingSnapshot.createdBy] && (
+                          <span style={{ fontSize: 11, color: "#888" }}>
+                            · {memberMap[viewingSnapshot.createdBy]}
+                          </span>
+                        )}
+                      <div style={{ flex: 1 }} />
+                      <button
+                        onClick={() => handleRestore(viewingSnapshot)}
+                        style={{
+                          fontSize: 11,
+                          padding: "4px 14px",
+                          background: "none",
+                          border: "1px solid rgba(162,5,19,0.2)",
+                          cursor: "pointer",
+                          color: "#a20513",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {t("report.restoreThisVersion")}
+                      </button>
+                    </div>
+                    <SnapshotViewer
+                      snapshot={viewingSnapshot}
+                      currentData={reportDataRef.current}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* Restore confirm modal */}
+      {restoreConfirm && (
+        <div
+          className="delete-confirm-overlay"
+          onClick={() => setRestoreConfirm(null)}
+        >
+          <div
+            className="delete-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="delete-confirm-title">
+              {t("report.confirmRestore")}
+            </h3>
+            <p className="delete-confirm-desc">{t("report.restoreDesc")}</p>
+            <div className="delete-confirm-actions">
+              <button
+                className="delete-confirm-cancel"
+                onClick={() => setRestoreConfirm(null)}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                className="delete-confirm-submit"
+                onClick={confirmRestore}
+              >
+                {t("report.confirmRestoreBtn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete session confirmation modal */}
+      {!viewMode && deleteConfirm.code && (
+        <div
+          className="delete-confirm-overlay"
+          onClick={() =>
+            setDeleteConfirm({
+              code: null,
+              contributorNames: [],
+              nameInput: "",
+              error: false,
+            })
+          }
+        >
+          <div
+            className="delete-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="delete-confirm-title">
+              {t("report.removeSessionFromReport")}
+            </h3>
+            <p className="delete-confirm-desc">
+              {deleteConfirm.contributorNames.length > 0
+                ? t("report.deleteSessionConfirmWithContributors", {
+                    names: deleteConfirm.contributorNames.join(
+                      i18n.language.startsWith("zh") ? "、" : ", ",
+                    ),
+                  })
+                : t("report.deleteSessionConfirmNoContributors")}
+            </p>
+            <input
+              className={`delete-confirm-input${deleteConfirm.error ? " delete-confirm-input--error" : ""}`}
+              type="text"
+              placeholder={t("report.enterName")}
+              value={deleteConfirm.nameInput}
+              autoFocus
+              onChange={(e) =>
+                setDeleteConfirm((prev) => ({
+                  ...prev,
+                  nameInput: e.target.value,
+                  error: false,
+                }))
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmDeleteSession();
+                if (e.key === "Escape")
+                  setDeleteConfirm({
+                    code: null,
+                    contributorNames: [],
+                    nameInput: "",
+                    error: false,
+                  });
+              }}
+            />
+            {deleteConfirm.error && (
+              <p className="delete-confirm-error">{t("report.nameNotMatch")}</p>
+            )}
+            <div className="delete-confirm-actions">
+              <button
+                className="delete-confirm-cancel"
+                onClick={() =>
+                  setDeleteConfirm({
+                    code: null,
+                    contributorNames: [],
+                    nameInput: "",
+                    error: false,
+                  })
+                }
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                className="delete-confirm-submit"
+                onClick={confirmDeleteSession}
+              >
+                {t("report.confirmDelete")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

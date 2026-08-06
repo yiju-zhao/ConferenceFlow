@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
@@ -23,10 +24,15 @@
     "turndown-plugin-gfm": "^1.0.2"
   },
   "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vercel/node": "^5.9.5",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
+    "typescript": "^5.9.3",
     "vite": "^5.3.1"
   }
 }
