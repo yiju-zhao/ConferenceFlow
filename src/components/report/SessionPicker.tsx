@@ -24,11 +24,8 @@ export default function SessionPicker({
   }, [query]);
   // Look up title from conference sessions first, then fall back to SESSION_CATALOG
   const findSession = (id: string) =>
-    conferenceSessions.find((s) => s.code === id || s.id === id) ||
-    SESSION_CATALOG.get(id);
-  const selectedTitle = value?.id
-    ? findSession(value.id)?.title || value.id
-    : null;
+    conferenceSessions.find((s) => s.code === id || s.id === id) || SESSION_CATALOG.get(id);
+  const selectedTitle = value?.id ? findSession(value.id)?.title || value.id : null;
 
   const results = useMemo(() => {
     const q = debouncedQuery.trim();
@@ -74,16 +71,10 @@ export default function SessionPicker({
     return (
       <div className="session-picker">
         <span className="session-picker-selected">
-          {value?.id && (
-            <span className="session-picker-id-badge">{value.id}</span>
-          )}
+          {value?.id && <span className="session-picker-id-badge">{value.id}</span>}
           {selectedTitle}
         </span>
-        <button
-          className="session-picker-clear"
-          onClick={handleClear}
-          title={t("report.clear")}
-        >
+        <button className="session-picker-clear" onClick={handleClear} title={t("report.clear")}>
           ×
         </button>
       </div>
@@ -105,11 +96,7 @@ export default function SessionPicker({
         onBlur={handleBlur}
       />
       {value?.manual && !query && (
-        <button
-          className="session-picker-clear"
-          onClick={handleClear}
-          title={t("report.clear")}
-        >
+        <button className="session-picker-clear" onClick={handleClear} title={t("report.clear")}>
           ×
         </button>
       )}

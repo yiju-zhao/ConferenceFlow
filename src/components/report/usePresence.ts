@@ -14,10 +14,7 @@ import type { ActiveUser, Presence } from "../../types";
 const HEARTBEAT_INTERVAL = 30000;
 const OFFLINE_THRESHOLD = 60000;
 
-export function usePresence(
-  confId: string | undefined,
-  reportId: string | undefined,
-) {
+export function usePresence(confId: string | undefined, reportId: string | undefined) {
   const { user, userProfile } = useAuth();
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
 
@@ -36,8 +33,7 @@ export function usePresence(
       setDoc(
         presenceRef,
         {
-          displayName:
-            userProfile?.displayName || user.displayName || "Anonymous",
+          displayName: userProfile?.displayName || user.displayName || "Anonymous",
           email: userProfile?.email || user.email || "",
           lastSeen: serverTimestamp(),
         },
@@ -55,14 +51,7 @@ export function usePresence(
   useEffect(() => {
     if (!confId || !reportId) return;
     return onSnapshot(
-      collection(
-        db,
-        "conferences",
-        confId,
-        "dailyReports",
-        reportId,
-        "presence",
-      ),
+      collection(db, "conferences", confId, "dailyReports", reportId, "presence"),
       (snap) => {
         const now = Date.now();
         const users: ActiveUser[] = [];

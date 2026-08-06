@@ -23,16 +23,12 @@ export default function CalendarPage() {
   // IDs of sessions the current user is attending
   const userAttendingIds = useMemo(() => {
     if (!user) return [];
-    return allSessions
-      .filter((s) => (s.attendees || []).includes(user.uid))
-      .map((s) => s.id);
+    return allSessions.filter((s) => (s.attendees || []).includes(user.uid)).map((s) => s.id);
   }, [allSessions, user]);
 
   // Sessions the user is attending (for the grid)
   const mySchedule = useMemo(() => {
-    return allSessions.filter((s) =>
-      (s.attendees || []).includes(user?.uid ?? ""),
-    );
+    return allSessions.filter((s) => (s.attendees || []).includes(user?.uid ?? ""));
   }, [allSessions, user]);
 
   // Selected session object
@@ -47,13 +43,7 @@ export default function CalendarPage() {
   // Toggle attendance
   const handleToggleAttend = useCallback(async () => {
     if (!selectedSession || !user || !confId) return;
-    const sessionRef = doc(
-      db,
-      "conferences",
-      confId,
-      "sessions",
-      selectedSession.id,
-    );
+    const sessionRef = doc(db, "conferences", confId, "sessions", selectedSession.id);
     if (isAttendingSelected) {
       await updateDoc(sessionRef, { attendees: arrayRemove(user.uid) });
     } else {

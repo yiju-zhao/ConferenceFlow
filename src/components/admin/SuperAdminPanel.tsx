@@ -24,18 +24,10 @@ interface FieldProps {
   placeholder?: string;
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  placeholder = "",
-}: FieldProps) {
+function Field({ label, value, onChange, type = "text", placeholder = "" }: FieldProps) {
   return (
     <div className="mb-3">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
-        {label}
-      </label>
+      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
       <input
         type={type}
         value={value}
@@ -65,11 +57,7 @@ export default function SuperAdminPanel() {
 
   useEffect(() => {
     return onSnapshot(collection(db, "conferences"), (snap) => {
-      setConferences(
-        snap.docs.map(
-          (d) => ({ id: d.id, ...(d.data() as Omit<Conference, "id">) }),
-        ),
-      );
+      setConferences(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Conference, "id">) })));
     });
   }, []);
 
@@ -100,9 +88,7 @@ export default function SuperAdminPanel() {
   if (!isSuperAdmin) {
     return (
       <div className="min-h-screen bg-[#F7F5F2] flex items-center justify-center">
-        <p className="text-admin-teal font-headline uppercase">
-          {t("admin.superAdminRequired")}
-        </p>
+        <p className="text-admin-teal font-headline uppercase">{t("admin.superAdminRequired")}</p>
       </div>
     );
   }
@@ -125,12 +111,8 @@ export default function SuperAdminPanel() {
                 background: "rgba(255,255,255,0.18)",
                 letterSpacing: "0.8px",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
-              }
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
             >
               {t("dashboard.dashboard")}
             </Link>
@@ -144,10 +126,7 @@ export default function SuperAdminPanel() {
             className={`p-3 mb-4 text-sm rounded-lg ${message.startsWith("Error") ? "bg-red-500/10 text-red-600 border border-red-200" : "bg-[#27AE60]/10 text-[#27AE60] border border-[#27AE60]/20"}`}
           >
             {message}
-            <button
-              onClick={() => setMessage("")}
-              className="ml-3 opacity-50 hover:opacity-100"
-            >
+            <button onClick={() => setMessage("")} className="ml-3 opacity-50 hover:opacity-100">
               ×
             </button>
           </div>
@@ -181,9 +160,7 @@ export default function SuperAdminPanel() {
               <Field
                 label={t("admin.description")}
                 value={createForm.description}
-                onChange={(v) =>
-                  setCreateForm({ ...createForm, description: v })
-                }
+                onChange={(v) => setCreateForm({ ...createForm, description: v })}
                 placeholder={t("admin.description")}
               />
               <div className="flex gap-3">
@@ -191,9 +168,7 @@ export default function SuperAdminPanel() {
                   <Field
                     label={t("admin.startDate")}
                     value={createForm.startDate}
-                    onChange={(v) =>
-                      setCreateForm({ ...createForm, startDate: v })
-                    }
+                    onChange={(v) => setCreateForm({ ...createForm, startDate: v })}
                     type="date"
                   />
                 </div>
@@ -201,9 +176,7 @@ export default function SuperAdminPanel() {
                   <Field
                     label={t("admin.endDate")}
                     value={createForm.endDate}
-                    onChange={(v) =>
-                      setCreateForm({ ...createForm, endDate: v })
-                    }
+                    onChange={(v) => setCreateForm({ ...createForm, endDate: v })}
                     type="date"
                   />
                 </div>
@@ -216,9 +189,7 @@ export default function SuperAdminPanel() {
                   {(["public", "private"] as const).map((v) => (
                     <button
                       key={v}
-                      onClick={() =>
-                        setCreateForm({ ...createForm, visibility: v })
-                      }
+                      onClick={() => setCreateForm({ ...createForm, visibility: v })}
                       className={`px-4 py-1.5 text-xs font-headline uppercase tracking-wider transition-all duration-150 rounded-full ${createForm.visibility === v ? "bg-admin-teal text-white" : "bg-white border border-[#E8E4DF] text-secondary hover:border-admin-teal/30"}`}
                     >
                       {v === "public" ? t("admin.public") : t("admin.private")}
@@ -229,10 +200,7 @@ export default function SuperAdminPanel() {
               <button
                 onClick={handleCreate}
                 disabled={
-                  creating ||
-                  !createForm.name ||
-                  !createForm.startDate ||
-                  !createForm.endDate
+                  creating || !createForm.name || !createForm.startDate || !createForm.endDate
                 }
                 className="bg-admin-teal text-white px-6 py-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg disabled:opacity-50 shadow-sm hover:shadow transition-all"
               >
@@ -249,9 +217,7 @@ export default function SuperAdminPanel() {
                 <div className="w-1 bg-admin-teal flex-shrink-0"></div>
                 <div className="flex-1 p-4 flex justify-between items-center">
                   <div>
-                    <div className="text-on-surface font-bold text-sm">
-                      {conf.name}
-                    </div>
+                    <div className="text-on-surface font-bold text-sm">{conf.name}</div>
                     <div className="text-secondary text-xs mt-1">
                       {conf.startDate} — {conf.endDate} · {conf.visibility}
                       {conf.joinCode && ` · Code: ${conf.joinCode}`}

@@ -49,14 +49,11 @@ export default function SessionPool({
       if (activeFilter !== "ALL") {
         if (activeFilter === "AM") return s.start < "12:00";
         if (activeFilter === "PM") return s.start >= "12:00";
-        if (activeFilter === "IN-PERSON")
-          return s.format?.toLowerCase().includes("person");
-        if (activeFilter === "VIRTUAL")
-          return s.format?.toLowerCase().includes("virtual");
+        if (activeFilter === "IN-PERSON") return s.format?.toLowerCase().includes("person");
+        if (activeFilter === "VIRTUAL") return s.format?.toLowerCase().includes("virtual");
         // Topic filter
         const topicMatch =
-          s.mainTopic === activeFilter ||
-          (s.keyThemes || []).includes(activeFilter);
+          s.mainTopic === activeFilter || (s.keyThemes || []).includes(activeFilter);
         if (!topicMatch) return false;
       }
 
@@ -108,9 +105,7 @@ export default function SessionPool({
           <button
             key={topic}
             className={`cal-pool-filter ${activeFilter === topic ? "cal-pool-filter--active" : ""}`}
-            onClick={() =>
-              setActiveFilter(activeFilter === topic ? "ALL" : topic)
-            }
+            onClick={() => setActiveFilter(activeFilter === topic ? "ALL" : topic)}
           >
             {topic.length > 12 ? topic.slice(0, 12) + "…" : topic}
           </button>
@@ -141,9 +136,7 @@ export default function SessionPool({
               padding: 20,
             }}
           >
-            {search
-              ? t("calendar.noSessionsMatch")
-              : t("calendar.noSessionsAvailable")}
+            {search ? t("calendar.noSessionsMatch") : t("calendar.noSessionsAvailable")}
           </div>
         )}
       </div>

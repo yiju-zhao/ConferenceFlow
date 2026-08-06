@@ -22,9 +22,7 @@ export default function AdminLayout() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F7F5F2] flex items-center justify-center">
-        <div className="text-secondary text-sm uppercase tracking-wider">
-          {t("common.loading")}
-        </div>
+        <div className="text-secondary text-sm uppercase tracking-wider">{t("common.loading")}</div>
       </div>
     );
   }
@@ -36,9 +34,7 @@ export default function AdminLayout() {
           <p className="text-admin-teal font-headline text-lg font-bold uppercase">
             {t("admin.accessDenied")}
           </p>
-          <p className="text-secondary text-sm mt-2">
-            {t("admin.needAdminAccess")}
-          </p>
+          <p className="text-secondary text-sm mt-2">{t("admin.needAdminAccess")}</p>
           <Link
             to={`/conference/${confId}`}
             className="text-admin-teal text-sm mt-4 inline-block hover:underline"
@@ -68,12 +64,8 @@ export default function AdminLayout() {
                 background: "rgba(255,255,255,0.18)",
                 letterSpacing: "0.8px",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
-              }
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
             >
               {t("calendar.schedule")}
             </Link>
@@ -85,12 +77,8 @@ export default function AdminLayout() {
                   background: "rgba(255,255,255,0.18)",
                   letterSpacing: "0.8px",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
               >
                 {t("admin.adminPanel")}
               </Link>

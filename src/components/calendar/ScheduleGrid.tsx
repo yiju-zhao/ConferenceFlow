@@ -26,9 +26,7 @@ interface ColumnPlacement {
  */
 function computeColumns(sessions: Session[]): ColumnPlacement[] {
   if (sessions.length === 0) return [];
-  const sorted = [...sessions].sort(
-    (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start),
-  );
+  const sorted = [...sessions].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
 
   // Step 1: Find overlap groups
   const groups: { sessions: Session[]; groupEnd: number }[] = [];
@@ -88,47 +86,46 @@ export default function ScheduleGrid({
   onSelect,
   members,
 }: ScheduleGridProps) {
-  const { days, hourLabels, dayStartMin, dayEndMin, daySessionMap } =
-    useMemo(() => {
-      if (sessions.length === 0)
-        return {
-          days: [] as string[],
-          hourLabels: [] as string[],
-          dayStartMin: 0,
-          dayEndMin: 0,
-          daySessionMap: {} as Record<string, Session[]>,
-        };
+  const { days, hourLabels, dayStartMin, dayEndMin, daySessionMap } = useMemo(() => {
+    if (sessions.length === 0)
+      return {
+        days: [] as string[],
+        hourLabels: [] as string[],
+        dayStartMin: 0,
+        dayEndMin: 0,
+        daySessionMap: {} as Record<string, Session[]>,
+      };
 
-      const daySet = new Set(sessions.map((s) => s.date));
-      const days = [...daySet].sort();
+    const daySet = new Set(sessions.map((s) => s.date));
+    const days = [...daySet].sort();
 
-      // Find global time range
-      let globalMinH = 24,
-        globalMaxH = 0;
-      sessions.forEach((s) => {
-        const sh = parseInt(s.start?.split(":")[0] || "9");
-        const eh = Math.ceil(timeToMinutes(s.end) / 60);
-        if (sh < globalMinH) globalMinH = sh;
-        if (eh > globalMaxH) globalMaxH = eh;
-      });
+    // Find global time range
+    let globalMinH = 24,
+      globalMaxH = 0;
+    sessions.forEach((s) => {
+      const sh = parseInt(s.start?.split(":")[0] || "9");
+      const eh = Math.ceil(timeToMinutes(s.end) / 60);
+      if (sh < globalMinH) globalMinH = sh;
+      if (eh > globalMaxH) globalMaxH = eh;
+    });
 
-      const dayStartMin = globalMinH * 60;
-      const dayEndMin = globalMaxH * 60;
+    const dayStartMin = globalMinH * 60;
+    const dayEndMin = globalMaxH * 60;
 
-      // Hour labels
-      const hourLabels: string[] = [];
-      for (let h = globalMinH; h <= globalMaxH; h++) {
-        hourLabels.push(`${String(h).padStart(2, "0")}:00`);
-      }
+    // Hour labels
+    const hourLabels: string[] = [];
+    for (let h = globalMinH; h <= globalMaxH; h++) {
+      hourLabels.push(`${String(h).padStart(2, "0")}:00`);
+    }
 
-      // Group sessions by day
-      const daySessionMap: Record<string, Session[]> = {};
-      days.forEach((d) => {
-        daySessionMap[d] = sessions.filter((s) => s.date === d);
-      });
+    // Group sessions by day
+    const daySessionMap: Record<string, Session[]> = {};
+    days.forEach((d) => {
+      daySessionMap[d] = sessions.filter((s) => s.date === d);
+    });
 
-      return { days, hourLabels, dayStartMin, dayEndMin, daySessionMap };
-    }, [sessions]);
+    return { days, hourLabels, dayStartMin, dayEndMin, daySessionMap };
+  }, [sessions]);
 
   const memberColors = useMemo(() => {
     const map: Record<string, { color: string; initials: string }> = {};
@@ -152,9 +149,7 @@ export default function ScheduleGrid({
             <div style={{ fontSize: 18, marginBottom: 8, color: "#A9A5A0" }}>
               No sessions scheduled
             </div>
-            <div style={{ fontSize: 13 }}>
-              Browse the session pool and mark sessions to attend
-            </div>
+            <div style={{ fontSize: 13 }}>Browse the session pool and mark sessions to attend</div>
           </div>
         </div>
       </div>
@@ -164,10 +159,7 @@ export default function ScheduleGrid({
 
   // Paginate days
   const totalPages = Math.ceil(days.length / DAYS_PER_PAGE);
-  const visibleDays = days.slice(
-    dayPage * DAYS_PER_PAGE,
-    (dayPage + 1) * DAYS_PER_PAGE,
-  );
+  const visibleDays = days.slice(dayPage * DAYS_PER_PAGE, (dayPage + 1) * DAYS_PER_PAGE);
   const hasPrev = dayPage > 0;
   const hasNext = dayPage < totalPages - 1;
 
@@ -237,11 +229,7 @@ export default function ScheduleGrid({
             const d = new Date(day + "T00:00:00");
             const label = formatShortDate(d);
             return (
-              <div
-                key={day}
-                className="cal-grid-day-header"
-                style={{ flex: 1 }}
-              >
+              <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
                 {label}
               </div>
             );
@@ -329,10 +317,7 @@ export default function ScheduleGrid({
                   const startMin = timeToMinutes(s.start);
                   const endMin = timeToMinutes(s.end);
                   const top = (startMin - dayStartMin) * PX_PER_MINUTE;
-                  const height = Math.max(
-                    (endMin - startMin) * PX_PER_MINUTE,
-                    24,
-                  );
+                  const height = Math.max((endMin - startMin) * PX_PER_MINUTE, 24);
                   const left = `${(colIndex / totalCols) * 100}%`;
                   const width = `calc(${100 / totalCols}% - 2px)`;
 
@@ -353,19 +338,14 @@ export default function ScheduleGrid({
                         transition: "opacity 120ms ease",
                         boxSizing: "border-box",
                         borderRadius: 3,
-                        outline:
-                          s.id === selectedId ? "2px solid #fff" : "none",
+                        outline: s.id === selectedId ? "2px solid #fff" : "none",
                         outlineOffset: s.id === selectedId ? -2 : 0,
                         zIndex: s.id === selectedId ? 10 : 1,
                         display: "flex",
                         flexDirection: "column",
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.opacity = "0.85")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.opacity = "1")
-                      }
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                     >
                       <div
                         style={{

@@ -29,10 +29,7 @@ export default function CalendarHeader({ confName }: CalendarHeaderProps) {
       </div>
       <div className="cal-header-actions">
         {isAdmin && (
-          <Link
-            to={`/conference/${confId}/admin/settings`}
-            className="cal-header-btn"
-          >
+          <Link to={`/conference/${confId}/admin/settings`} className="cal-header-btn">
             {t("admin.conferenceAdmin")}
           </Link>
         )}

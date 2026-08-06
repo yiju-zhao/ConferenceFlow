@@ -30,8 +30,7 @@ export function EditableField({
   const focused = useRef(false);
   useEffect(() => {
     if (ref.current && !focused.current && value !== undefined) {
-      if (ref.current.innerHTML !== (value || ""))
-        ref.current.innerHTML = value || "";
+      if (ref.current.innerHTML !== (value || "")) ref.current.innerHTML = value || "";
     }
   }, [value]);
 
@@ -75,7 +74,13 @@ interface InlineAddButtonProps {
   onInsert: (field: BlockField, type: ReportBlockType, afterId: string | null) => void;
 }
 
-export function InlineAddButton({ field, afterId, openKey, onOpen, onInsert }: InlineAddButtonProps) {
+export function InlineAddButton({
+  field,
+  afterId,
+  openKey,
+  onOpen,
+  onInsert,
+}: InlineAddButtonProps) {
   const { t } = useTranslation();
   const isOpen = openKey === `${field}::${afterId}`;
   return (
@@ -121,12 +126,7 @@ interface BulletEditorProps {
   readOnly?: boolean;
 }
 
-export function BulletEditor({
-  points,
-  onSave,
-  placeholder,
-  readOnly = false,
-}: BulletEditorProps) {
+export function BulletEditor({ points, onSave, placeholder, readOnly = false }: BulletEditorProps) {
   const { t } = useTranslation();
   const ph = placeholder || t("report.enterKeyPoints");
   const [local, setLocal] = useState<string[]>(points || []);
@@ -139,12 +139,10 @@ export function BulletEditor({
 
   useEffect(() => {
     if (!readOnly) {
-      containerRef.current
-        ?.querySelectorAll<HTMLTextAreaElement>(".bullet-input")
-        .forEach((el) => {
-          el.style.height = "auto";
-          el.style.height = el.scrollHeight + "px";
-        });
+      containerRef.current?.querySelectorAll<HTMLTextAreaElement>(".bullet-input").forEach((el) => {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      });
     }
   }, [local.length, readOnly]);
 
@@ -199,8 +197,7 @@ export function BulletEditor({
         const inputs = (e.target as HTMLElement)
           .closest(".bullet-editor-list")
           ?.querySelectorAll<HTMLTextAreaElement>(".bullet-input");
-        if (inputs?.[Math.max(0, idx - 1)])
-          inputs[Math.max(0, idx - 1)].focus();
+        if (inputs?.[Math.max(0, idx - 1)]) inputs[Math.max(0, idx - 1)].focus();
       }, 0);
     }
   };
@@ -251,9 +248,7 @@ export function BulletEditor({
           </li>
         ))}
       </ul>
-      {local.length === 0 && (
-        <p className="bullet-editor-empty no-print">{ph}</p>
-      )}
+      {local.length === 0 && <p className="bullet-editor-empty no-print">{ph}</p>}
       <button className="bullet-add-btn no-print" onClick={handleAdd}>
         {t("report.addPoint")}
       </button>

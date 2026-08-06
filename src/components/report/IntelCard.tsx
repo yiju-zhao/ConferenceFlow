@@ -3,12 +3,7 @@ import { COLORS } from "../../constants";
 import { SESSION_CATALOG } from "../../sessionCatalog";
 import { EditableField } from "./SharedEditors";
 import SessionPicker from "./SessionPicker";
-import type {
-  Member,
-  ReportBlock,
-  ReportSourceSession,
-  Session,
-} from "../../types";
+import type { Member, ReportBlock, ReportSourceSession, Session } from "../../types";
 
 export const topicSlug = (t: string) =>
   t
@@ -26,8 +21,7 @@ export function formatOneSource(s: ReportSourceSession): string {
 export function normaliseSources(block: ReportBlock): ReportSourceSession[] {
   if (Array.isArray(block.sourceSessions) && block.sourceSessions.length)
     return block.sourceSessions;
-  if (block.sourceSession?.id || block.sourceSession?.manual)
-    return [block.sourceSession];
+  if (block.sourceSession?.id || block.sourceSession?.manual) return [block.sourceSession];
   return [];
 }
 
@@ -68,12 +62,10 @@ export default function IntelCard({
   const contributorNames = contributorIds
     .map((id) => members.find((m) => m.id === id)?.name)
     .filter(Boolean);
-  const contributorText =
-    contributorNames.join("\u3001") || (block.contributor || "").trim();
+  const contributorText = contributorNames.join("\u3001") || (block.contributor || "").trim();
 
   const ownerColorIdx = block.ownerId ? (memberColorMap[block.ownerId] ?? null) : null;
-  const ownerColor =
-    ownerColorIdx !== null ? COLORS[ownerColorIdx]?.hex || "#5f5e5e" : null;
+  const ownerColor = ownerColorIdx !== null ? COLORS[ownerColorIdx]?.hex || "#5f5e5e" : null;
   const isOwner = currentUid && block.ownerId === currentUid;
   // Admins can edit any block, members can only edit their own
   const isEditable = !readOnly && (!block.ownerId || isOwner || isAdmin);
@@ -112,10 +104,7 @@ export default function IntelCard({
       style={ownerColor ? { borderLeft: `3px solid ${ownerColor}` } : undefined}
     >
       {canDelete && (
-        <button
-          className="onsite-block-body-remove no-print"
-          onClick={onRemove}
-        >
+        <button className="onsite-block-body-remove no-print" onClick={onRemove}>
           ×
         </button>
       )}
@@ -156,9 +145,7 @@ export default function IntelCard({
           <span className="intel-card-label">{t("report.source")}</span>
           <SessionPicker
             value={{ id: null, manual: "" }}
-            onChange={(v) =>
-              onUpdate({ sourceSessions: [v], sourceSession: v })
-            }
+            onChange={(v) => onUpdate({ sourceSessions: [v], sourceSession: v })}
             conferenceSessions={conferenceSessions}
           />
         </div>
@@ -178,17 +165,9 @@ export default function IntelCard({
               const url = s?.id ? SESSION_CATALOG.get(s.id)?.url : null;
               const inner = (
                 <>
-                  {i > 0 && (
-                    <span style={{ margin: "0 4px", color: "var(--text-dim)" }}>
-                      ｜
-                    </span>
-                  )}
-                  {s?.id && (
-                    <span className="session-picker-id-badge">{s.id}</span>
-                  )}
-                  {s?.id
-                    ? ` ${SESSION_CATALOG.get(s.id)?.title?.trim() || ""}`
-                    : text}
+                  {i > 0 && <span style={{ margin: "0 4px", color: "var(--text-dim)" }}>｜</span>}
+                  {s?.id && <span className="session-picker-id-badge">{s.id}</span>}
+                  {s?.id ? ` ${SESSION_CATALOG.get(s.id)?.title?.trim() || ""}` : text}
                 </>
               );
               return url ? (
@@ -248,8 +227,7 @@ export default function IntelCard({
                     onUpdate({
                       contributorIds: next,
                       contributorId: next[0] || "",
-                      contributor:
-                        members.find((m) => m.id === next[0])?.name || "",
+                      contributor: members.find((m) => m.id === next[0])?.name || "",
                     });
                   }}
                 >
@@ -281,9 +259,7 @@ export default function IntelCard({
           }}
         >
           <option value="">
-            {contributorIds.length
-              ? t("report.addContributor")
-              : t("report.selectContributor")}
+            {contributorIds.length ? t("report.addContributor") : t("report.selectContributor")}
           </option>
           {members
             .filter((m) => !contributorIds.includes(m.id))
@@ -294,16 +270,12 @@ export default function IntelCard({
             ))}
         </select>
         {editLabel && (
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>
-            {editLabel}
-          </span>
+          <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>{editLabel}</span>
         )}
       </div>
       {contributorText && (
         <div className="intel-card-section intel-card-meta print-only">
-          <span className="intel-card-label">
-            {t("report.contributorLabel")}
-          </span>
+          <span className="intel-card-label">{t("report.contributorLabel")}</span>
           <span className="intel-card-static-value">{contributorText}</span>
         </div>
       )}

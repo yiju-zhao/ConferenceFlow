@@ -57,10 +57,7 @@ function ReportCard({
   const isArchived = report.status === "archived";
 
   return (
-    <div
-      className="report-card"
-      style={isArchived ? { opacity: 0.6 } : undefined}
-    >
+    <div className="report-card" style={isArchived ? { opacity: 0.6 } : undefined}>
       <div className="report-card-main">
         <div className="report-card-date">{dateContent}</div>
         <div className="report-card-meta">{metaContent}</div>
@@ -68,13 +65,9 @@ function ReportCard({
       <div className="report-card-right">
         <button
           className="report-archive-btn"
-          onClick={() =>
-            isArchived ? onUnarchive(report.id) : onArchive(report.id)
-          }
+          onClick={() => (isArchived ? onUnarchive(report.id) : onArchive(report.id))}
         >
-          {isArchived
-            ? t("reportList.unarchive")
-            : t("reportList.archive")}
+          {isArchived ? t("reportList.unarchive") : t("reportList.archive")}
         </button>
         {isArchived &&
           (deleteConfirmId === report.id ? (
@@ -95,10 +88,7 @@ function ReportCard({
               >
                 {t("common.delete")}
               </button>
-              <button
-                className="report-archive-btn"
-                onClick={onDeleteCancel}
-              >
+              <button className="report-archive-btn" onClick={onDeleteCancel}>
                 {t("common.cancel")}
               </button>
             </span>
@@ -111,10 +101,7 @@ function ReportCard({
               {t("common.delete")}
             </button>
           ))}
-        <Link
-          to={`/conference/${confId}/report/${report.id}`}
-          className="report-card-view-btn"
-        >
+        <Link to={`/conference/${confId}/report/${report.id}`} className="report-card-view-btn">
           {linkText} &rarr;
         </Link>
       </div>
@@ -139,29 +126,23 @@ export default function ReportList() {
 
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(
-      collection(db, "conferences", confId, "dailyReports"),
-      (snap) => {
-        const docs = snap.docs
-          .map((d) => ({
-            id: d.id,
-            ...(d.data() as Omit<Report, "id">),
-            ...parseReportId(d.id),
-          }))
-          .sort((a, b) => b.id.localeCompare(a.id)) as ListReport[];
-        setReportDocs(docs);
-      },
-    );
+    return onSnapshot(collection(db, "conferences", confId, "dailyReports"), (snap) => {
+      const docs = snap.docs
+        .map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<Report, "id">),
+          ...parseReportId(d.id),
+        }))
+        .sort((a, b) => b.id.localeCompare(a.id)) as ListReport[];
+      setReportDocs(docs);
+    });
   }, [user, confId]);
 
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(
-      collection(db, "conferences", confId, "sessions"),
-      (snap) => {
-        setAllSessions(snap.docs.map((d) => d.data() as Session));
-      },
-    );
+    return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
+      setAllSessions(snap.docs.map((d) => d.data() as Session));
+    });
   }, [user, confId]);
 
   // Daily report dates (non-summary)
@@ -176,32 +157,23 @@ export default function ReportList() {
   // Show only the latest version per date, plus summary reports at top
   const displayReports = useMemo(() => {
     // Separate summary reports from daily reports
-    const summaryReports = reportDocs.filter((r) =>
-      r.id.startsWith("summary-"),
-    );
+    const summaryReports = reportDocs.filter((r) => r.id.startsWith("summary-"));
     const dailyDocs = reportDocs.filter((r) => !r.id.startsWith("summary-"));
 
-    const latestByDate = dailyDocs.reduce<Record<string, ReducedReport>>(
-      (acc, doc) => {
-        const { date, version } = parseReportId(doc.id);
-        const isPlain = doc.id === date;
-        const existing = acc[date];
-        if (
-          !existing ||
-          isPlain ||
-          (!existing._isPlain && version > existing._version)
-        ) {
-          acc[date] = {
-            ...doc,
-            _date: date,
-            _version: version,
-            _isPlain: isPlain,
-          };
-        }
-        return acc;
-      },
-      {},
-    );
+    const latestByDate = dailyDocs.reduce<Record<string, ReducedReport>>((acc, doc) => {
+      const { date, version } = parseReportId(doc.id);
+      const isPlain = doc.id === date;
+      const existing = acc[date];
+      if (!existing || isPlain || (!existing._isPlain && version > existing._version)) {
+        acc[date] = {
+          ...doc,
+          _date: date,
+          _version: version,
+          _isPlain: isPlain,
+        };
+      }
+      return acc;
+    }, {});
     const dailyList: ReducedReport[] = Object.values(latestByDate).sort((a, b) =>
       b._date.localeCompare(a._date),
     );
@@ -213,10 +185,7 @@ export default function ReportList() {
       : summaryReports.filter((r) => r.status !== "archived");
 
     // Summary reports at top, then daily reports
-    return [
-      ...filteredSummary.sort((a, b) => b.id.localeCompare(a.id)),
-      ...filteredDaily,
-    ];
+    return [...filteredSummary.sort((a, b) => b.id.localeCompare(a.id)), ...filteredDaily];
   }, [reportDocs, showArchived]);
 
   // Dates that already have reports
@@ -230,9 +199,7 @@ export default function ReportList() {
 
   // All session dates for the create dropdown
   const allSessionDates = useMemo(() => {
-    const sessionDates = new Set(
-      allSessions.map((s) => s.date).filter(Boolean) as string[],
-    );
+    const sessionDates = new Set(allSessions.map((s) => s.date).filter(Boolean) as string[]);
     return [...sessionDates].sort();
   }, [allSessions]);
 
@@ -268,9 +235,7 @@ export default function ReportList() {
     setShowSummaryDatePicker(false);
     setCreatingSummary(true);
     try {
-      const snap = await getDocs(
-        collection(db, "conferences", confId, "dailyReports"),
-      );
+      const snap = await getDocs(collection(db, "conferences", confId, "dailyReports"));
       const allDocs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Report, "id">) }));
       const summaryId = generateSummaryId(allDocs);
 
@@ -313,12 +278,8 @@ export default function ReportList() {
                 background: "rgba(255,255,255,0.18)",
                 letterSpacing: "0.8px",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.3)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.background = "rgba(255,255,255,0.18)")
-              }
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
             >
               {t("reportList.backToSchedule")}
             </Link>
@@ -335,9 +296,7 @@ export default function ReportList() {
               style={{ letterSpacing: "0.8px" }}
               onClick={() => setShowArchived(!showArchived)}
             >
-              {showArchived
-                ? t("reportList.hideArchived")
-                : t("reportList.showArchived")}
+              {showArchived ? t("reportList.hideArchived") : t("reportList.showArchived")}
             </button>
             <UserAvatar size={28} onSignOut={() => navigate("/login")} />
           </div>
@@ -352,9 +311,7 @@ export default function ReportList() {
             onClick={openSummaryDatePicker}
             disabled={creatingSummary}
           >
-            {creatingSummary
-              ? t("reportList.creating")
-              : t("reportList.createSummary")}
+            {creatingSummary ? t("reportList.creating") : t("reportList.createSummary")}
           </button>
           <div style={{ position: "relative" }}>
             <button
@@ -366,14 +323,10 @@ export default function ReportList() {
             </button>
             {showDatePicker && allSessionDates.length > 0 && (
               <div className="create-report-dropdown">
-                <div className="create-report-dropdown-label">
-                  {t("reportList.selectDate")}
-                </div>
+                <div className="create-report-dropdown-label">{t("reportList.selectDate")}</div>
                 {allSessionDates.map((date) => {
                   const weekday = formatWeekday(new Date(date + "T00:00"));
-                  const count = allSessions.filter(
-                    (s) => s.date === date,
-                  ).length;
+                  const count = allSessions.filter((s) => s.date === date).length;
                   const hasReport = reportedDates.has(date);
                   return (
                     <button
@@ -392,9 +345,7 @@ export default function ReportList() {
                           marginLeft: "auto",
                         }}
                       >
-                        {hasReport
-                          ? t("reportList.alreadyCreated")
-                          : `${count} sessions`}
+                        {hasReport ? t("reportList.alreadyCreated") : `${count} sessions`}
                       </span>
                     </button>
                   );
@@ -429,9 +380,7 @@ export default function ReportList() {
                     report={r}
                     confId={confId}
                     dateContent={
-                      <span className="summary-badge">
-                        {t("reportList.summaryBadge")}
-                      </span>
+                      <span className="summary-badge">{t("reportList.summaryBadge")}</span>
                     }
                     metaContent={
                       <span style={{ fontSize: 12, color: "#888" }}>
@@ -457,10 +406,7 @@ export default function ReportList() {
                   confId={confId}
                   dateContent={
                     <>
-                      {r.date}{" "}
-                      <span style={{ fontWeight: 400, color: "#888" }}>
-                        {weekday}
-                      </span>
+                      {r.date} <span style={{ fontWeight: 400, color: "#888" }}>{weekday}</span>
                     </>
                   }
                   metaContent={
@@ -548,9 +494,7 @@ export default function ReportList() {
               </button>
             </div>
             <div style={{ padding: "24px 24px 0" }}>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 14 }}
-              >
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <label
                   style={{
                     fontFamily: "Work Sans, sans-serif",
@@ -644,9 +588,7 @@ export default function ReportList() {
                   letterSpacing: "0.5px",
                 }}
                 disabled={!summaryDateStart || !summaryDateEnd}
-                onClick={() =>
-                  handleCreateSummary(summaryDateStart, summaryDateEnd)
-                }
+                onClick={() => handleCreateSummary(summaryDateStart, summaryDateEnd)}
               >
                 {t("reportList.confirmCreate")}
               </button>

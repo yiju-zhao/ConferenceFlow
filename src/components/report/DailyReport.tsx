@@ -16,13 +16,7 @@ import {
 import { db, storage } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { useMembership } from "../../hooks/useMembership";
-import {
-  ref,
-  uploadString,
-  getDownloadURL,
-  deleteObject,
-  listAll,
-} from "firebase/storage";
+import { ref, uploadString, getDownloadURL, deleteObject, listAll } from "firebase/storage";
 import { COLORS, COLOR_PRESETS } from "../../constants";
 import { SESSION_CATALOG } from "../../sessionCatalog";
 import { parseReportId, generateId } from "../../lib/reportUtils";
@@ -78,8 +72,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   };
   const { date } = parseReportId(reportId);
   const viewMode =
-    viewModeProp ||
-    new URLSearchParams(window.location.search).get("preview") === "1";
+    viewModeProp || new URLSearchParams(window.location.search).get("preview") === "1";
   const { user } = useAuth();
   const { isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
@@ -88,7 +81,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const [members, setMembers] = useState<ResolvedMember[]>([]);
   const [reportData, setReportData] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
-  const [floatingToolbar, setFloatingToolbar] = useState<{ top: number; left: number } | null>(null);
+  const [floatingToolbar, setFloatingToolbar] = useState<{ top: number; left: number } | null>(
+    null,
+  );
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -120,10 +115,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   useEffect(() => {
     const el = document.getElementById("report-toc");
     if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setTocVisible(entry.isIntersecting),
-      { threshold: 0 },
-    );
+    const obs = new IntersectionObserver(([entry]) => setTocVisible(entry.isIntersecting), {
+      threshold: 0,
+    });
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -153,8 +147,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   useEffect(() => {
     if (!showExportMenu) return;
     const close = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest(".export-dropdown-wrapper"))
-        setShowExportMenu(false);
+      if (!(e.target as HTMLElement).closest(".export-dropdown-wrapper")) setShowExportMenu(false);
     };
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setShowExportMenu(false);
@@ -188,14 +181,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   useEffect(() => {
     if (!user || !reportId) return;
     const q = query(
-      collection(
-        db,
-        "conferences",
-        confId,
-        "dailyReports",
-        reportId,
-        "snapshots",
-      ),
+      collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"),
       orderBy("createdAt", "desc"),
     );
     return onSnapshot(q, (snap) => {
@@ -238,78 +224,62 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   // Members — load with doc ID and resolve display names in parallel
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(
-      collection(db, "conferences", confId, "members"),
-      async (snap) => {
-        const { getDoc: gd, doc: dc } = await import("firebase/firestore");
-        const arr = await Promise.all(
-          snap.docs.map(async (d) => {
-            const data = d.data() as Omit<Member, "id">;
-            let name: string | null = data.legacyName || data.displayName || null;
-            if (!name && !data.managedByAdmin) {
-              try {
-                const userSnap = await gd(dc(db, "users", d.id));
-                const ud = userSnap.data() as { displayName?: string; email?: string };
-                name = userSnap.exists() ? ud.displayName || ud.email || null : d.id;
-              } catch {
-                name = d.id;
-              }
+    return onSnapshot(collection(db, "conferences", confId, "members"), async (snap) => {
+      const { getDoc: gd, doc: dc } = await import("firebase/firestore");
+      const arr = await Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data() as Omit<Member, "id">;
+          let name: string | null = data.legacyName || data.displayName || null;
+          if (!name && !data.managedByAdmin) {
+            try {
+              const userSnap = await gd(dc(db, "users", d.id));
+              const ud = userSnap.data() as { displayName?: string; email?: string };
+              name = userSnap.exists() ? ud.displayName || ud.email || null : d.id;
+            } catch {
+              name = d.id;
             }
-            return { ...data, id: d.id, name: name || d.id };
-          }),
-        );
-        setMembers(arr);
-      },
-    );
+          }
+          return { ...data, id: d.id, name: name || d.id };
+        }),
+      );
+      setMembers(arr);
+    });
   }, [user, confId]);
 
   // Sessions (filtered by date + all for session picker)
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(
-      collection(db, "conferences", confId, "sessions"),
-      (snap) => {
-        const all: Session[] = [];
-        const filtered: DailySession[] = [];
-        snap.forEach((d) => {
-          const data = d.data() as Session;
-          all.push({ ...data, id: d.id });
-          if (data.date === date)
-            filtered.push({
-              ...(data as Omit<Session, "attendees">),
-              id: d.id,
-              attendees: new Set(data.attendees || []),
-            } as DailySession);
-        });
-        filtered.sort((a, b) => a.start.localeCompare(b.start));
-        setSessions(filtered);
-        setAllConferenceSessions(all);
-      },
-    );
+    return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
+      const all: Session[] = [];
+      const filtered: DailySession[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as Session;
+        all.push({ ...data, id: d.id });
+        if (data.date === date)
+          filtered.push({
+            ...(data as Omit<Session, "attendees">),
+            id: d.id,
+            attendees: new Set(data.attendees || []),
+          } as DailySession);
+      });
+      filtered.sort((a, b) => a.start.localeCompare(b.start));
+      setSessions(filtered);
+      setAllConferenceSessions(all);
+    });
   }, [user, date, confId]);
 
   // Report data
   useEffect(() => {
     if (!user) return;
-    return onSnapshot(
-      doc(db, "conferences", confId, "dailyReports", reportId),
-      (snap) => {
-        setReportData(snap.exists() ? (snap.data() as Report) : null);
-        setLoading(false);
-      },
-    );
+    return onSnapshot(doc(db, "conferences", confId, "dailyReports", reportId), (snap) => {
+      setReportData(snap.exists() ? (snap.data() as Report) : null);
+      setLoading(false);
+    });
   }, [user, reportId]);
 
   // Auto-init report
   useEffect(() => {
-    if (
-      !user ||
-      loading ||
-      reportData ||
-      initDone.current ||
-      sessions.length === 0
-    )
-      return;
+    if (!user || loading || reportData || initDone.current || sessions.length === 0) return;
     initDone.current = true;
     const sessionMap: Record<string, ReportSessionData> = {};
     sessions.forEach((s) => {
@@ -379,9 +349,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     const map: Record<string, DailySession[]> = {};
     activeSessions.forEach((s) => {
       const cat = SESSION_CATALOG.get(s.code);
-      const rawTopic = cat?.topic
-        ? cat.topic.split(" - ").at(-1)?.trim()
-        : null;
+      const rawTopic = cat?.topic ? cat.topic.split(" - ").at(-1)?.trim() : null;
       const topic = s.mainTopic?.trim() || cat?.key_themes?.[0] || rawTopic;
       if (!topic) return;
       if (!map[topic]) map[topic] = [];
@@ -438,9 +406,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     (field: BlockField, id: string, content: string) => {
       saveField(
         field,
-        (reportDataRef.current?.[field] || []).map((b) =>
-          b.id === id ? { ...b, content } : b,
-        ),
+        (reportDataRef.current?.[field] || []).map((b) => (b.id === id ? { ...b, content } : b)),
       );
     },
     [saveField],
@@ -494,14 +460,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
   const pruneSnapshots = useCallback(async () => {
     const q = query(
-      collection(
-        db,
-        "conferences",
-        confId,
-        "dailyReports",
-        reportId,
-        "snapshots",
-      ),
+      collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"),
       orderBy("createdAt", "desc"),
       limit(51),
     );
@@ -531,24 +490,13 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       // Skip auto snapshots when content hasn't changed since last snapshot
       if (type === "auto" && hash === lastSnapshotHashRef.current) return;
       try {
-        await addDoc(
-          collection(
-            db,
-            "conferences",
-            confId,
-            "dailyReports",
-            reportId,
-            "snapshots",
-          ),
-          {
-            type,
-            label:
-              type === "auto" ? t("report.autoSave") : t("report.manualSave"),
-            createdAt: serverTimestamp(),
-            createdBy: user.uid,
-            data,
-          },
-        );
+        await addDoc(collection(db, "conferences", confId, "dailyReports", reportId, "snapshots"), {
+          type,
+          label: type === "auto" ? t("report.autoSave") : t("report.manualSave"),
+          createdAt: serverTimestamp(),
+          createdBy: user.uid,
+          data,
+        });
         lastSnapshotHashRef.current = hash;
         await pruneSnapshots();
       } catch (err) {
@@ -578,11 +526,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     const snapshot = restoreConfirm;
     setRestoreConfirm(null);
     await createSnapshot("manual");
-    await setDoc(
-      doc(db, "conferences", confId, "dailyReports", reportId),
-      snapshot.data!,
-      { merge: true },
-    );
+    await setDoc(doc(db, "conferences", confId, "dailyReports", reportId), snapshot.data!, {
+      merge: true,
+    });
     setShowHistory(false);
     setViewingSnapshot(null);
   };
@@ -655,9 +601,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         {
           sessions: {
             [code]: {
-              speakers: speakers.length
-                ? speakers
-                : [{ name: "", position: "", company: "" }],
+              speakers: speakers.length ? speakers : [{ name: "", position: "", company: "" }],
             },
           },
         },
@@ -699,27 +643,22 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     });
   }, [deleteConfirm, reportId]);
 
-  const compressImage = useCallback(
-    (file: File, maxPx = 1200, quality = 0.75): Promise<string> => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        const url = URL.createObjectURL(file);
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.round(img.width * scale);
-          canvas.height = Math.round(img.height * scale);
-          canvas
-            .getContext("2d")!
-            .drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL("image/jpeg", quality));
-        };
-        img.src = url;
-      });
-    },
-    [],
-  );
+  const compressImage = useCallback((file: File, maxPx = 1200, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = url;
+    });
+  }, []);
 
   const uploadToStorage = useCallback(
     async (base64DataUrl: string, path: string): Promise<string> => {
@@ -766,10 +705,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
                   },
                 ]
               : [];
-          saveSessionField(code, "illustrations", [
-            ...existing,
-            { url, storagePath },
-          ]);
+          saveSessionField(code, "illustrations", [...existing, { url, storagePath }]);
         });
     },
     [compressImage, uploadToStorage, reportId, saveSessionField],
@@ -789,8 +725,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
             ]
           : [];
       const item = existing[idx];
-      if (item?.storagePath)
-        deleteObject(ref(storage, item.storagePath)).catch(() => {});
+      if (item?.storagePath) deleteObject(ref(storage, item.storagePath)).catch(() => {});
       const next = existing.filter((_, i) => i !== idx);
       saveSessionField(code, "illustrations", next);
       // Clear legacy field if present
@@ -851,9 +786,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const saveSitePhotoCaption = useCallback(
     (idx: number, caption: string) => {
       debouncedSave(`sitePhoto-caption-${idx}`, async () => {
-        const photos: SitePhoto[] = [
-          ...(reportDataRef.current?.sitePhotos || []),
-        ];
+        const photos: SitePhoto[] = [...(reportDataRef.current?.sitePhotos || [])];
         if (photos[idx]) photos[idx] = { ...photos[idx], caption };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
@@ -868,9 +801,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const saveSitePhotoSource = useCallback(
     (idx: number, source: string) => {
       debouncedSave(`sitePhoto-source-${idx}`, async () => {
-        const photos: SitePhoto[] = [
-          ...(reportDataRef.current?.sitePhotos || []),
-        ];
+        const photos: SitePhoto[] = [...(reportDataRef.current?.sitePhotos || [])];
         if (photos[idx]) photos[idx] = { ...photos[idx], source };
         await setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
@@ -899,9 +830,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       // Clone report DOM and strip interactive / UI-only elements
       const clone = container.cloneNode(true) as HTMLElement;
       clone
-        .querySelectorAll(
-          ".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn",
-        )
+        .querySelectorAll(".no-print, .report-toolbar, .report-nav-bar, .session-collapse-btn")
         .forEach((el) => el.remove());
       clone.querySelectorAll<HTMLElement>(".print-only").forEach((el) => {
         el.style.display = "block";
@@ -918,9 +847,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         clone.querySelectorAll(".report-field-block").forEach((block) => {
           const heading = block.querySelector(".report-field-heading");
           if (!heading) return;
-          const bodyText = block.textContent
-            .replace(heading.textContent, "")
-            .trim();
+          const bodyText = block.textContent.replace(heading.textContent, "").trim();
           if (!bodyText) block.remove();
         });
         // 1a. Remove entire session cards where all field blocks were empty
@@ -932,8 +859,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
         // 1b. Add ids to topic dividers so TOC #topic-* links have targets
         clone.querySelectorAll(".report-topic-divider").forEach((el) => {
-          const name =
-            el.querySelector(".report-topic-name")?.textContent.trim() || "";
+          const name = el.querySelector(".report-topic-name")?.textContent.trim() || "";
           if (name)
             el.id =
               "topic-" +
@@ -961,18 +887,14 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         // Preserve <a id="..."> anchor tags as raw HTML
         td.addRule("session-anchor", {
           filter: (node) =>
-            node.nodeName === "A" &&
-            !!node.getAttribute("id") &&
-            !node.getAttribute("href"),
-          replacement: (_content, node) =>
-            `<a id="${node.getAttribute("id")}"></a>`,
+            node.nodeName === "A" && !!node.getAttribute("id") && !node.getAttribute("href"),
+          replacement: (_content, node) => `<a id="${node.getAttribute("id")}"></a>`,
         });
 
         // Session title: merge code + title into one heading (### S82322 — Title)
         td.addRule("session-title", {
           filter: (node) =>
-            node.nodeName === "H3" &&
-            node.classList.contains("report-session-title"),
+            node.nodeName === "H3" && node.classList.contains("report-session-title"),
           replacement: (content, node) => {
             const codeEl = node
               .closest(".report-session-header")
@@ -985,16 +907,14 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         // Suppress standalone session code span (merged into heading above)
         td.addRule("session-code", {
           filter: (node) =>
-            node.nodeName === "SPAN" &&
-            node.classList.contains("report-session-code"),
+            node.nodeName === "SPAN" && node.classList.contains("report-session-code"),
           replacement: () => "",
         });
 
         // Field headings (关键收获 / 启示): render in red
         td.addRule("field-heading", {
           filter: (node) =>
-            node.nodeName === "H4" &&
-            node.classList.contains("report-field-heading"),
+            node.nodeName === "H4" && node.classList.contains("report-field-heading"),
           replacement: (content) =>
             `\n\n<span style="color:#CF0A2C">**${content.trim()}**</span>\n\n`,
         });
@@ -1003,9 +923,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         td.addRule("topic-divider", {
           filter: (node) => node.classList?.contains("report-topic-divider"),
           replacement: (_content, node) => {
-            const name =
-              node.querySelector(".report-topic-name")?.textContent.trim() ||
-              "";
+            const name = node.querySelector(".report-topic-name")?.textContent.trim() || "";
             return name ? `\n\n---\n\n## ${name}\n\n` : "";
           },
         });
@@ -1015,13 +933,10 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
           filter: (node) => node.classList?.contains("report-contributors-row"),
           replacement: (_content, node) => {
             const label =
-              node
-                .querySelector(".report-contributors-label")
-                ?.textContent.trim() || t("report.contributorLabel");
+              node.querySelector(".report-contributors-label")?.textContent.trim() ||
+              t("report.contributorLabel");
             const names =
-              node
-                .querySelector(".report-contributors-names")
-                ?.textContent.trim() || "";
+              node.querySelector(".report-contributors-names")?.textContent.trim() || "";
             return names ? `\n\n${label}: ${names}\n\n` : "";
           },
         });
@@ -1033,9 +948,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
             node.classList.contains("intel-card-section") &&
             !!node.querySelector(".intel-card-label"),
           replacement: (_content, node) => {
-            const label = node
-              .querySelector(".intel-card-label")
-              ?.textContent?.trim();
+            const label = node.querySelector(".intel-card-label")?.textContent?.trim();
             if (!label) return _content;
             // _content contains label text + Turndown-processed value (with markdown links)
             const valueMarkdown = _content.replace(label, "").trim();
@@ -1135,7 +1048,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   };
 
   // Publish: generate full HTML, upload to Firebase Storage, return share URL
-  const handlePublish = async ({ silent = false }: { silent?: boolean } = {}): Promise<string | undefined> => {
+  const handlePublish = async ({ silent = false }: { silent?: boolean } = {}): Promise<
+    string | undefined
+  > => {
     setPublishing(true);
     setShowExportMenu(false);
 
@@ -1156,9 +1071,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       clone.querySelectorAll<HTMLElement>(".print-only").forEach((el) => {
         el.classList.remove("print-only");
         // Use flex for meta rows (label + value inline), block for everything else
-        el.style.display = el.classList.contains("intel-card-meta")
-          ? "flex"
-          : "block";
+        el.style.display = el.classList.contains("intel-card-meta") ? "flex" : "block";
       });
       clone.querySelectorAll("[contenteditable]").forEach((el) => {
         el.removeAttribute("contenteditable");
@@ -1171,9 +1084,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       clone.querySelectorAll(".report-field-block").forEach((block) => {
         const heading = block.querySelector(".report-field-heading");
         if (!heading) return;
-        const bodyText = (block.textContent ?? "")
-          .replace(heading.textContent ?? "", "")
-          .trim();
+        const bodyText = (block.textContent ?? "").replace(heading.textContent ?? "", "").trim();
         if (!bodyText) block.remove();
       });
       // Remove entire session cards where all field blocks were empty
@@ -1218,9 +1129,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       });
 
       // Remove any remaining interactive elements
-      clone
-        .querySelectorAll("button, input, textarea, select")
-        .forEach((el) => el.remove());
+      clone.querySelectorAll("button, input, textarea, select").forEach((el) => el.remove());
 
       const styleTagsHtml = (
         await Promise.all(
@@ -1231,10 +1140,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
           ).map(async (el) => {
             if (el.tagName === "LINK") {
               try {
-                const href = new URL(
-                  el.getAttribute("href") || "",
-                  window.location.href,
-                ).href;
+                const href = new URL(el.getAttribute("href") || "", window.location.href).href;
                 const css = await fetch(href).then((r) => r.text());
                 return `<style>${css}</style>`;
               } catch {
@@ -1276,10 +1182,7 @@ ${clone.outerHTML}
 </html>`;
 
       const fileId = String(Date.now());
-      const storageRef = ref(
-        storage,
-        `published-reports/${date}/${fileId}.html`,
-      );
+      const storageRef = ref(storage, `published-reports/${date}/${fileId}.html`);
       await uploadString(storageRef, html, "raw", {
         contentType: "text/html; charset=utf-8",
       });
@@ -1398,8 +1301,7 @@ ${clone.outerHTML}
 
   // Toolbar — execCommand has no modern replacement for contenteditable rich-text
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  const execCmd = (cmd: string, val?: string) =>
-    document.execCommand(cmd, false, val);
+  const execCmd = (cmd: string, val?: string) => document.execCommand(cmd, false, val);
   const execBold = () => execCmd("bold");
   const execColor = (color: string) => {
     execCmd("foreColor", color);
@@ -1425,10 +1327,7 @@ ${clone.outerHTML}
       let node: Node | null = range.commonAncestorContainer;
       let inEditable = false;
       while (node && node !== container) {
-        if (
-          node.nodeType === 1 &&
-          (node as Element).getAttribute("contenteditable") === "true"
-        ) {
+        if (node.nodeType === 1 && (node as Element).getAttribute("contenteditable") === "true") {
           inEditable = true;
           break;
         }
@@ -1445,18 +1344,14 @@ ${clone.outerHTML}
       });
     };
     document.addEventListener("selectionchange", handleSelection);
-    return () =>
-      document.removeEventListener("selectionchange", handleSelection);
+    return () => document.removeEventListener("selectionchange", handleSelection);
   }, [viewMode]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="report-page">
-        <div
-          className="report-container"
-          style={{ textAlign: "center", padding: "80px 20px" }}
-        >
+        <div className="report-container" style={{ textAlign: "center", padding: "80px 20px" }}>
           <p style={{ color: "var(--text-muted)" }}>{t("common.loading")}</p>
         </div>
       </div>
@@ -1527,14 +1422,10 @@ ${clone.outerHTML}
 
             {/* ① Save status + button */}
             {saveState === "saving" && (
-              <span style={{ fontSize: 11, color: "#666" }}>
-                ● {t("common.saving")}
-              </span>
+              <span style={{ fontSize: 11, color: "#666" }}>● {t("common.saving")}</span>
             )}
             {saveState === "saved" && (
-              <span style={{ fontSize: 11, color: "#27AE60" }}>
-                ✓ {t("admin.saved")}
-              </span>
+              <span style={{ fontSize: 11, color: "#27AE60" }}>✓ {t("admin.saved")}</span>
             )}
             <button
               onClick={handleSave}
@@ -1558,10 +1449,7 @@ ${clone.outerHTML}
             {/* ② Preview — primary action, visually distinct */}
             <button
               onClick={() =>
-                window.open(
-                  `/conference/${confId}/report/${reportId}?preview=1`,
-                  "_blank",
-                )
+                window.open(`/conference/${confId}/report/${reportId}?preview=1`, "_blank")
               }
               style={{
                 padding: "5px 16px",
@@ -1580,10 +1468,7 @@ ${clone.outerHTML}
             </button>
 
             {/* ③ Export/Share dropdown */}
-            <div
-              className="export-dropdown-wrapper"
-              style={{ position: "relative" }}
-            >
+            <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
               <button
                 onClick={() => !exporting && setShowExportMenu((v) => !v)}
                 disabled={exporting}
@@ -1609,33 +1494,10 @@ ${clone.outerHTML}
                     onClick={() => handlePublish()}
                   >
                     <span className="export-menu-icon">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
-                        <circle
-                          cx="12"
-                          cy="4"
-                          r="2"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                        />
-                        <circle
-                          cx="4"
-                          cy="8"
-                          r="2"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                        />
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="2"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                        />
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.4" />
+                        <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
+                        <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.4" />
                         <path
                           d="M6 7l4-2M6 9l4 2"
                           stroke="currentColor"
@@ -1645,23 +1507,13 @@ ${clone.outerHTML}
                       </svg>
                     </span>
                     <span className="export-menu-label">
-                      {publishing
-                        ? t("report.sharing")
-                        : t("report.shareReport")}
+                      {publishing ? t("report.sharing") : t("report.shareReport")}
                     </span>
                   </button>
                   <div className="export-menu-divider" />
-                  <button
-                    className="export-menu-item"
-                    onClick={() => handleExport("markdown")}
-                  >
+                  <button className="export-menu-item" onClick={() => handleExport("markdown")}>
                     <span className="export-menu-icon">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <rect
                           x="1.5"
                           y="3.5"
@@ -1680,22 +1532,12 @@ ${clone.outerHTML}
                         />
                       </svg>
                     </span>
-                    <span className="export-menu-label">
-                      {t("report.exportMarkdown")}
-                    </span>
+                    <span className="export-menu-label">{t("report.exportMarkdown")}</span>
                   </button>
                   <div className="export-menu-divider" />
-                  <button
-                    className="export-menu-item"
-                    onClick={handleEmailExport}
-                  >
+                  <button className="export-menu-item" onClick={handleEmailExport}>
                     <span className="export-menu-icon">
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <rect
                           x="1.5"
                           y="3.5"
@@ -1713,9 +1555,7 @@ ${clone.outerHTML}
                         />
                       </svg>
                     </span>
-                    <span className="export-menu-label">
-                      {t("report.exportEmailHtml")}
-                    </span>
+                    <span className="export-menu-label">{t("report.exportEmailHtml")}</span>
                   </button>
                 </div>
               )}
@@ -1770,9 +1610,7 @@ ${clone.outerHTML}
               {syncing ? t("report.syncing") : t("report.syncFromCatalog")}
             </button>
             {syncMsg && (
-              <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>
-                {syncMsg}
-              </span>
+              <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>{syncMsg}</span>
             )}
 
             <div
@@ -1923,14 +1761,9 @@ ${clone.outerHTML}
             setUrlCopied(false);
           }}
         >
-          <div
-            className="share-modal-card"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="share-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="share-modal-header">
-              <span className="share-modal-title">
-                {t("report.shareableLink")}
-              </span>
+              <span className="share-modal-title">{t("report.shareableLink")}</span>
               <button
                 className="share-modal-close"
                 onClick={() => {
@@ -1971,21 +1804,15 @@ ${clone.outerHTML}
           }}
         >
           <div>
-            <div className="report-title-eyebrow">
-              {confName || "CONFERENCE"} · DAILY BRIEFING
-            </div>
+            <div className="report-title-eyebrow">{confName || "CONFERENCE"} · DAILY BRIEFING</div>
             <h1>
               {viewMode ? (
-                <span>
-                  {reportData?.title || t("report.dailyReportTitle", { date })}
-                </span>
+                <span>{reportData?.title || t("report.dailyReportTitle", { date })}</span>
               ) : (
                 <span
                   contentEditable
                   suppressContentEditableWarning
-                  onBlur={(e) =>
-                    saveField("title", e.currentTarget.textContent.trim() || "")
-                  }
+                  onBlur={(e) => saveField("title", e.currentTarget.textContent.trim() || "")}
                 >
                   {reportData?.title || t("report.dailyReportTitle", { date })}
                 </span>
@@ -2011,13 +1838,8 @@ ${clone.outerHTML}
             <h2 className="report-section-title">{t("report.toc")}</h2>
             <ul className="report-toc-list">
               <li className="report-toc-section-item">
-                <a
-                  href="#section-related"
-                  className="report-toc-link report-toc-section-link"
-                >
-                  <span className="report-toc-title">
-                    {t("report.relatedTopics")}
-                  </span>
+                <a href="#section-related" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">{t("report.relatedTopics")}</span>
                 </a>
                 {orderedTopics.length > 0 && (
                   <ul className="report-toc-sublist">
@@ -2027,10 +1849,7 @@ ${clone.outerHTML}
                           href={`#topic-${topicSlug(topic)}`}
                           className="report-toc-link report-toc-cat-link"
                         >
-                          <span
-                            className="report-toc-title"
-                            style={{ color: "var(--brand)" }}
-                          >
+                          <span className="report-toc-title" style={{ color: "var(--brand)" }}>
                             {topic}
                           </span>
                         </a>
@@ -2040,13 +1859,8 @@ ${clone.outerHTML}
                 )}
               </li>
               <li className="report-toc-section-item">
-                <a
-                  href="#section-onsite-info"
-                  className="report-toc-link report-toc-section-link"
-                >
-                  <span className="report-toc-title">
-                    {t("report.onsiteInfo")}
-                  </span>
+                <a href="#section-onsite-info" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">{t("report.onsiteInfo")}</span>
                 </a>
                 {(reportData?.onsiteInfoBlocks || []).filter(
                   (b) => b.type === "heading" && b.content,
@@ -2060,10 +1874,7 @@ ${clone.outerHTML}
                             href={`#block-${block.id}`}
                             className="report-toc-link report-toc-cat-link"
                           >
-                            <span
-                              className="report-toc-title"
-                              style={{ color: "var(--brand)" }}
-                            >
+                            <span className="report-toc-title" style={{ color: "var(--brand)" }}>
                               {block.content}
                             </span>
                           </a>
@@ -2073,13 +1884,8 @@ ${clone.outerHTML}
                 )}
               </li>
               <li className="report-toc-section-item">
-                <a
-                  href="#section-reflections"
-                  className="report-toc-link report-toc-section-link"
-                >
-                  <span className="report-toc-title">
-                    {t("report.reflections")}
-                  </span>
+                <a href="#section-reflections" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">{t("report.reflections")}</span>
                 </a>
                 {(reportData?.reflectionsBlocks || []).filter(
                   (b) => b.type === "heading" && b.content,
@@ -2093,10 +1899,7 @@ ${clone.outerHTML}
                             href={`#block-${block.id}`}
                             className="report-toc-link report-toc-cat-link"
                           >
-                            <span
-                              className="report-toc-title"
-                              style={{ color: "var(--brand)" }}
-                            >
+                            <span className="report-toc-title" style={{ color: "var(--brand)" }}>
                               {block.content}
                             </span>
                           </a>
@@ -2106,21 +1909,13 @@ ${clone.outerHTML}
                 )}
               </li>
               <li className="report-toc-section-item">
-                <a
-                  href="#section-rumors"
-                  className="report-toc-link report-toc-section-link"
-                >
+                <a href="#section-rumors" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">{t("report.rumors")}</span>
                 </a>
               </li>
               <li className="report-toc-section-item">
-                <a
-                  href="#section-site-photos"
-                  className="report-toc-link report-toc-section-link"
-                >
-                  <span className="report-toc-title">
-                    {t("report.siteRecords")}
-                  </span>
+                <a href="#section-site-photos" className="report-toc-link report-toc-section-link">
+                  <span className="report-toc-title">{t("report.siteRecords")}</span>
                 </a>
               </li>
             </ul>
@@ -2166,11 +1961,7 @@ ${clone.outerHTML}
                 : [{ name: "", position: "", company: "" }]);
             const isCollapsed = collapsedSessions.has(session.code);
             return (
-              <div
-                key={session.code}
-                id={`session-${session.code}`}
-                className="report-session"
-              >
+              <div key={session.code} id={`session-${session.code}`} className="report-session">
                 <div
                   className="report-session-header"
                   onClick={() => toggleCollapse(session.code)}
@@ -2196,10 +1987,7 @@ ${clone.outerHTML}
                       >
                         {session.code}
                       </span>
-                      <h3
-                        className="report-session-title"
-                        style={{ margin: 0 }}
-                      >
+                      <h3 className="report-session-title" style={{ margin: 0 }}>
                         {SESSION_CATALOG.get(session.code)?.url ? (
                           <a
                             href={SESSION_CATALOG.get(session.code)?.url}
@@ -2208,19 +1996,14 @@ ${clone.outerHTML}
                             style={{ color: "inherit", textDecoration: "none" }}
                             onClick={(e) => e.stopPropagation()}
                             onMouseEnter={(e) =>
-                              (e.currentTarget.style.textDecoration =
-                                "underline")
+                              (e.currentTarget.style.textDecoration = "underline")
                             }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.textDecoration = "none")
-                            }
+                            onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
                           >
-                            {SESSION_CATALOG.get(session.code)?.title ||
-                              session.title}
+                            {SESSION_CATALOG.get(session.code)?.title || session.title}
                           </a>
                         ) : (
-                          SESSION_CATALOG.get(session.code)?.title ||
-                          session.title
+                          SESSION_CATALOG.get(session.code)?.title || session.title
                         )}
                       </h3>
                     </div>
@@ -2231,9 +2014,7 @@ ${clone.outerHTML}
                       </div>
                     )}
                   </div>
-                  <span className="session-collapse-btn">
-                    {isCollapsed ? "▶" : "▼"}
-                  </span>
+                  <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                 </div>
                 {!isCollapsed && (
                   <>
@@ -2241,9 +2022,7 @@ ${clone.outerHTML}
                       <SpeakersEditor
                         code={session.code}
                         speakers={speakers}
-                        onUpdate={(newSpeakers) =>
-                          saveSpeakers(session.code, newSpeakers)
-                        }
+                        onUpdate={(newSpeakers) => saveSpeakers(session.code, newSpeakers)}
                         onAdd={() => addSpeaker(session.code)}
                         onRemove={(idx) => removeSpeaker(session.code, idx)}
                         readOnly={viewMode}
@@ -2260,10 +2039,7 @@ ${clone.outerHTML}
                             {illus.length > 0 && (
                               <div className="session-illustrations-grid">
                                 {illus.map((item, i) => (
-                                  <div
-                                    key={i}
-                                    className="session-illustration-item"
-                                  >
+                                  <div key={i} className="session-illustration-item">
                                     <img
                                       src={item.url}
                                       className="session-illustration"
@@ -2273,12 +2049,7 @@ ${clone.outerHTML}
                                     />
                                     <button
                                       className="no-print session-illustration-del"
-                                      onClick={() =>
-                                        handleIllustrationDelete(
-                                          session.code,
-                                          i,
-                                        )
-                                      }
+                                      onClick={() => handleIllustrationDelete(session.code, i)}
                                     >
                                       {t("report.deleteBtn")}
                                     </button>
@@ -2288,9 +2059,7 @@ ${clone.outerHTML}
                             )}
                             <button
                               className="no-print"
-                              onClick={() =>
-                                illustInputRefs.current[session.code]?.click()
-                              }
+                              onClick={() => illustInputRefs.current[session.code]?.click()}
                               style={{
                                 fontSize: 11,
                                 color: "var(--text-placeholder)",
@@ -2327,9 +2096,7 @@ ${clone.outerHTML}
                         </h4>
                         <EditableField
                           value={sd.takeaways}
-                          onSave={(html) =>
-                            saveSessionField(session.code, "takeaways", html)
-                          }
+                          onSave={(html) => saveSessionField(session.code, "takeaways", html)}
                           placeholder={t("report.recordKeyTakeaways")}
                           readOnly={viewMode}
                         />
@@ -2340,9 +2107,7 @@ ${clone.outerHTML}
                         </h4>
                         <EditableField
                           value={sd.insights}
-                          onSave={(html) =>
-                            saveSessionField(session.code, "insights", html)
-                          }
+                          onSave={(html) => saveSessionField(session.code, "insights", html)}
                           placeholder={t("report.recordInsights")}
                           readOnly={viewMode}
                         />
@@ -2385,9 +2150,7 @@ ${clone.outerHTML}
                           (() => {
                             const editorName = memberMap[sd.lastEditedBy] || "";
                             const ago = sd.lastEditedAt
-                              ? Math.round(
-                                  (Date.now() - sd.lastEditedAt) / 60000,
-                                )
+                              ? Math.round((Date.now() - sd.lastEditedAt) / 60000)
                               : null;
                             if (!editorName) return null;
                             return (
@@ -2398,9 +2161,8 @@ ${clone.outerHTML}
                                   color: "#bbb",
                                 }}
                               >
-                                edited{" "}
-                                {ago !== null && ago < 60 ? `${ago}m ago` : ""}{" "}
-                                by {editorName}
+                                edited {ago !== null && ago < 60 ? `${ago}m ago` : ""} by{" "}
+                                {editorName}
                               </span>
                             );
                           })()}
@@ -2415,10 +2177,7 @@ ${clone.outerHTML}
           {orderedTopics.map((topic) => (
             <div key={topic}>
               {/* Topic section header */}
-              <div
-                className="report-topic-divider"
-                id={`topic-${topicSlug(topic)}`}
-              >
+              <div className="report-topic-divider" id={`topic-${topicSlug(topic)}`}>
                 <span className="report-topic-bar" />
                 <span className="report-topic-name">{topic}</span>
                 <span className="report-topic-line" />
@@ -2445,11 +2204,7 @@ ${clone.outerHTML}
 
                 const isCollapsed = collapsedSessions.has(session.code);
                 return (
-                  <div
-                    key={session.code}
-                    id={`session-${session.code}`}
-                    className="report-session"
-                  >
+                  <div key={session.code} id={`session-${session.code}`} className="report-session">
                     {/* Session Header: clickable to collapse */}
                     <div
                       className="report-session-header"
@@ -2476,10 +2231,7 @@ ${clone.outerHTML}
                           >
                             {session.code}
                           </span>
-                          <h3
-                            className="report-session-title"
-                            style={{ margin: 0 }}
-                          >
+                          <h3 className="report-session-title" style={{ margin: 0 }}>
                             {SESSION_CATALOG.get(session.code)?.url ? (
                               <a
                                 href={SESSION_CATALOG.get(session.code)?.url}
@@ -2491,20 +2243,16 @@ ${clone.outerHTML}
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                                 onMouseEnter={(e) =>
-                                  (e.currentTarget.style.textDecoration =
-                                    "underline")
+                                  (e.currentTarget.style.textDecoration = "underline")
                                 }
                                 onMouseLeave={(e) =>
-                                  (e.currentTarget.style.textDecoration =
-                                    "none")
+                                  (e.currentTarget.style.textDecoration = "none")
                                 }
                               >
-                                {SESSION_CATALOG.get(session.code)?.title ||
-                                  session.title}
+                                {SESSION_CATALOG.get(session.code)?.title || session.title}
                               </a>
                             ) : (
-                              SESSION_CATALOG.get(session.code)?.title ||
-                              session.title
+                              SESSION_CATALOG.get(session.code)?.title || session.title
                             )}
                           </h3>
                         </div>
@@ -2515,9 +2263,7 @@ ${clone.outerHTML}
                           </div>
                         )}
                       </div>
-                      <span className="session-collapse-btn">
-                        {isCollapsed ? "▶" : "▼"}
-                      </span>
+                      <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
                     </div>
 
                     {!isCollapsed && (
@@ -2527,9 +2273,7 @@ ${clone.outerHTML}
                           <SpeakersEditor
                             code={session.code}
                             speakers={speakers}
-                            onUpdate={(newSpeakers) =>
-                              saveSpeakers(session.code, newSpeakers)
-                            }
+                            onUpdate={(newSpeakers) => saveSpeakers(session.code, newSpeakers)}
                             onAdd={() => addSpeaker(session.code)}
                             onRemove={(idx) => removeSpeaker(session.code, idx)}
                           />
@@ -2547,10 +2291,7 @@ ${clone.outerHTML}
                                 {illus.length > 0 && (
                                   <div className="session-illustrations-grid">
                                     {illus.map((item, i) => (
-                                      <div
-                                        key={i}
-                                        className="session-illustration-item"
-                                      >
+                                      <div key={i} className="session-illustration-item">
                                         <img
                                           src={item.url}
                                           className="session-illustration"
@@ -2560,12 +2301,7 @@ ${clone.outerHTML}
                                         />
                                         <button
                                           className="no-print session-illustration-del"
-                                          onClick={() =>
-                                            handleIllustrationDelete(
-                                              session.code,
-                                              i,
-                                            )
-                                          }
+                                          onClick={() => handleIllustrationDelete(session.code, i)}
                                         >
                                           {t("report.deleteBtn")}
                                         </button>
@@ -2575,11 +2311,7 @@ ${clone.outerHTML}
                                 )}
                                 <button
                                   className="no-print"
-                                  onClick={() =>
-                                    illustInputRefs.current[
-                                      session.code
-                                    ]?.click()
-                                  }
+                                  onClick={() => illustInputRefs.current[session.code]?.click()}
                                   style={{
                                     fontSize: 11,
                                     color: "var(--text-placeholder)",
@@ -2606,9 +2338,7 @@ ${clone.outerHTML}
                             ref={(el) => {
                               illustInputRefs.current[session.code] = el;
                             }}
-                            onChange={(e) =>
-                              handleIllustration(session.code, e)
-                            }
+                            onChange={(e) => handleIllustration(session.code, e)}
                           />
                         </div>
 
@@ -2620,13 +2350,7 @@ ${clone.outerHTML}
                             </h4>
                             <EditableField
                               value={sd.takeaways}
-                              onSave={(html) =>
-                                saveSessionField(
-                                  session.code,
-                                  "takeaways",
-                                  html,
-                                )
-                              }
+                              onSave={(html) => saveSessionField(session.code, "takeaways", html)}
                               placeholder={t("report.recordKeyTakeaways")}
                               readOnly={viewMode}
                             />
@@ -2637,9 +2361,7 @@ ${clone.outerHTML}
                             </h4>
                             <EditableField
                               value={sd.insights}
-                              onSave={(html) =>
-                                saveSessionField(session.code, "insights", html)
-                              }
+                              onSave={(html) => saveSessionField(session.code, "insights", html)}
                               placeholder={t("report.recordInsights")}
                               readOnly={viewMode}
                             />
@@ -2651,9 +2373,7 @@ ${clone.outerHTML}
                               <span className="report-contributors-label">
                                 {t("report.contributorLabel")}
                               </span>
-                              <span className="report-contributors-names">
-                                {contributors}
-                              </span>
+                              <span className="report-contributors-names">{contributors}</span>
                             </div>
                           )}
                         </div>
@@ -2669,11 +2389,7 @@ ${clone.outerHTML}
         {/* Onsite Section */}
         <div className="report-onsite">
           {/* 现场情报 */}
-          <h2
-            id="section-onsite-info"
-            className="report-section-title"
-            style={{ marginTop: 32 }}
-          >
+          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>
             {t("report.onsiteInfo")}
           </h2>
           {(() => {
@@ -2698,9 +2414,7 @@ ${clone.outerHTML}
                     style={{ marginTop: 8 }}
                   >
                     {viewMode ? (
-                      <span className="onsite-category-title">
-                        {block.content}
-                      </span>
+                      <span className="onsite-category-title">{block.content}</span>
                     ) : (
                       <span
                         contentEditable
@@ -2739,9 +2453,7 @@ ${clone.outerHTML}
                     key={block.id}
                     block={block}
                     members={members}
-                    onUpdate={(fields) =>
-                      updateBlockFields("onsiteInfoBlocks", block.id, fields)
-                    }
+                    onUpdate={(fields) => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
                     onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
                     readOnly={viewMode}
                     currentUid={user?.uid}
@@ -2766,11 +2478,7 @@ ${clone.outerHTML}
           })()}
 
           {/* 圈内声音 */}
-          <h2
-            id="section-reflections"
-            className="report-section-title"
-            style={{ marginTop: 24 }}
-          >
+          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>
             {t("report.reflections")}
           </h2>
           {(() => {
@@ -2795,9 +2503,7 @@ ${clone.outerHTML}
                     style={{ marginTop: 8 }}
                   >
                     {viewMode ? (
-                      <span className="onsite-category-title">
-                        {block.content}
-                      </span>
+                      <span className="onsite-category-title">{block.content}</span>
                     ) : (
                       <span
                         contentEditable
@@ -2837,9 +2543,7 @@ ${clone.outerHTML}
                     block={block}
                     members={members}
                     placeholder={t("report.recordVoices")}
-                    onUpdate={(fields) =>
-                      updateBlockFields("reflectionsBlocks", block.id, fields)
-                    }
+                    onUpdate={(fields) => updateBlockFields("reflectionsBlocks", block.id, fields)}
                     onRemove={() => removeBlock("reflectionsBlocks", block.id)}
                     readOnly={viewMode}
                     currentUid={user?.uid}
@@ -2864,11 +2568,7 @@ ${clone.outerHTML}
           })()}
 
           {/* 深度研判 */}
-          <h2
-            id="section-rumors"
-            className="report-section-title"
-            style={{ marginTop: 24 }}
-          >
+          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>
             {t("report.rumors")}
           </h2>
           <EditableField
@@ -2928,10 +2628,7 @@ ${clone.outerHTML}
                   {viewMode ? (
                     <>
                       {photo.caption && (
-                        <p
-                          className="site-photo-caption"
-                          style={{ whiteSpace: "pre-wrap" }}
-                        >
+                        <p className="site-photo-caption" style={{ whiteSpace: "pre-wrap" }}>
                           {photo.caption}
                         </p>
                       )}
@@ -2953,12 +2650,7 @@ ${clone.outerHTML}
                         className="site-photo-caption"
                         placeholder={t("report.imageCaption")}
                         defaultValue={photo.caption}
-                        onBlur={(e) =>
-                          saveSitePhotoCaption(
-                            photo.originalIdx,
-                            e.target.value,
-                          )
-                        }
+                        onBlur={(e) => saveSitePhotoCaption(photo.originalIdx, e.target.value)}
                         onInput={(e) => {
                           const t = e.currentTarget;
                           t.style.height = "auto";
@@ -2976,9 +2668,7 @@ ${clone.outerHTML}
                         type="text"
                         placeholder={t("report.sourcePlaceholder")}
                         defaultValue={photo.source || ""}
-                        onBlur={(e) =>
-                          saveSitePhotoSource(photo.originalIdx, e.target.value)
-                        }
+                        onBlur={(e) => saveSitePhotoSource(photo.originalIdx, e.target.value)}
                       />
                     </>
                   )}
@@ -2992,9 +2682,7 @@ ${clone.outerHTML}
                 >
                   <div className="site-photo-add-inner">
                     <span className="site-photo-add-icon">+</span>
-                    <span className="site-photo-add-label">
-                      {t("report.addImage")}
-                    </span>
+                    <span className="site-photo-add-label">{t("report.addImage")}</span>
                   </div>
                 </div>
               );
@@ -3034,18 +2722,13 @@ ${clone.outerHTML}
 
       {/* Delete session — select session modal */}
       {!viewMode && showDeleteSelect && (
-        <div
-          className="delete-confirm-overlay"
-          onClick={() => setShowDeleteSelect(false)}
-        >
+        <div className="delete-confirm-overlay" onClick={() => setShowDeleteSelect(false)}>
           <div
             className="delete-confirm-modal"
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: 480, width: "90%" }}
           >
-            <h3 className="delete-confirm-title">
-              {t("report.selectDeleteSession")}
-            </h3>
+            <h3 className="delete-confirm-title">{t("report.selectDeleteSession")}</h3>
             <div style={{ maxHeight: 360, overflowY: "auto", margin: "8px 0" }}>
               {activeSessions.map((s) => {
                 const names = Array.from(s.attendees)
@@ -3068,12 +2751,8 @@ ${clone.outerHTML}
                       cursor: "pointer",
                       borderBottom: "1px solid #F0F0F0",
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "#FFF5F5")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "none")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#FFF5F5")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                   >
                     <span
                       className="text-caption"
@@ -3095,14 +2774,9 @@ ${clone.outerHTML}
                       {SESSION_CATALOG.get(s.code)?.title || s.title}
                     </span>
                     {names.length > 0 && (
-                      <span
-                        className="text-label"
-                        style={{ color: "var(--text-muted)" }}
-                      >
+                      <span className="text-label" style={{ color: "var(--text-muted)" }}>
                         {t("report.contributors", {
-                          names: names.join(
-                            i18n.language.startsWith("zh") ? "、" : ", ",
-                          ),
+                          names: names.join(i18n.language.startsWith("zh") ? "、" : ", "),
                         })}
                       </span>
                     )}
@@ -3111,10 +2785,7 @@ ${clone.outerHTML}
               })}
             </div>
             <div className="delete-confirm-actions">
-              <button
-                className="delete-confirm-cancel"
-                onClick={() => setShowDeleteSelect(false)}
-              >
+              <button className="delete-confirm-cancel" onClick={() => setShowDeleteSelect(false)}>
                 {t("common.cancel")}
               </button>
             </div>
@@ -3205,9 +2876,7 @@ ${clone.outerHTML}
                       letterSpacing: 0.5,
                     }}
                   >
-                    {viewingSnapshot
-                      ? t("report.versionDetails")
-                      : t("report.versionHistory")}
+                    {viewingSnapshot ? t("report.versionDetails") : t("report.versionHistory")}
                   </h2>
                   <span style={{ fontSize: 10, color: "#666" }}>
                     {t("report.versions", { count: snapshots.length })}
@@ -3261,9 +2930,7 @@ ${clone.outerHTML}
                         >
                           {t("report.currentVersion")}
                         </div>
-                        <div
-                          style={{ fontSize: 11, color: "#888", marginTop: 2 }}
-                        >
+                        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
                           {t("report.editing")}
                         </div>
                       </div>
@@ -3285,9 +2952,7 @@ ${clone.outerHTML}
 
                     {/* Timeline */}
                     {snapshots.length === 0 ? (
-                      <div
-                        style={{ padding: "40px 20px", textAlign: "center" }}
-                      >
+                      <div style={{ padding: "40px 20px", textAlign: "center" }}>
                         <div
                           style={{
                             fontSize: 13,
@@ -3384,14 +3049,11 @@ ${clone.outerHTML}
                                   >
                                     {isManual ? "Manual" : "Auto"}
                                   </span>
-                                  {snap.createdBy &&
-                                    memberMap[snap.createdBy] && (
-                                      <span
-                                        style={{ fontSize: 10, color: "#888" }}
-                                      >
-                                        by {memberMap[snap.createdBy]}
-                                      </span>
-                                    )}
+                                  {snap.createdBy && memberMap[snap.createdBy] && (
+                                    <span style={{ fontSize: 10, color: "#888" }}>
+                                      by {memberMap[snap.createdBy]}
+                                    </span>
+                                  )}
                                 </div>
                                 <div
                                   style={{
@@ -3400,9 +3062,7 @@ ${clone.outerHTML}
                                     fontWeight: 600,
                                   }}
                                 >
-                                  {date
-                                    ? relativeTime(date)
-                                    : t("report.unknownTime")}
+                                  {date ? relativeTime(date) : t("report.unknownTime")}
                                 </div>
                                 {date && (
                                   <div
@@ -3501,10 +3161,7 @@ ${clone.outerHTML}
                             viewingSnapshot.type === "manual"
                               ? "rgba(162,5,19,0.08)"
                               : "rgba(41,128,185,0.08)",
-                          color:
-                            viewingSnapshot.type === "manual"
-                              ? "#a20513"
-                              : "#2980B9",
+                          color: viewingSnapshot.type === "manual" ? "#a20513" : "#2980B9",
                         }}
                       >
                         {viewingSnapshot.type === "manual" ? "Manual" : "Auto"}
@@ -3514,12 +3171,11 @@ ${clone.outerHTML}
                           ? relativeTime(viewingSnapshot.createdAt.toDate())
                           : ""}
                       </span>
-                      {viewingSnapshot.createdBy &&
-                        memberMap[viewingSnapshot.createdBy] && (
-                          <span style={{ fontSize: 11, color: "#888" }}>
-                            · {memberMap[viewingSnapshot.createdBy]}
-                          </span>
-                        )}
+                      {viewingSnapshot.createdBy && memberMap[viewingSnapshot.createdBy] && (
+                        <span style={{ fontSize: 11, color: "#888" }}>
+                          · {memberMap[viewingSnapshot.createdBy]}
+                        </span>
+                      )}
                       <div style={{ flex: 1 }} />
                       <button
                         onClick={() => handleRestore(viewingSnapshot)}
@@ -3549,29 +3205,15 @@ ${clone.outerHTML}
 
       {/* Restore confirm modal */}
       {restoreConfirm && (
-        <div
-          className="delete-confirm-overlay"
-          onClick={() => setRestoreConfirm(null)}
-        >
-          <div
-            className="delete-confirm-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="delete-confirm-title">
-              {t("report.confirmRestore")}
-            </h3>
+        <div className="delete-confirm-overlay" onClick={() => setRestoreConfirm(null)}>
+          <div className="delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="delete-confirm-title">{t("report.confirmRestore")}</h3>
             <p className="delete-confirm-desc">{t("report.restoreDesc")}</p>
             <div className="delete-confirm-actions">
-              <button
-                className="delete-confirm-cancel"
-                onClick={() => setRestoreConfirm(null)}
-              >
+              <button className="delete-confirm-cancel" onClick={() => setRestoreConfirm(null)}>
                 {t("common.cancel")}
               </button>
-              <button
-                className="delete-confirm-submit"
-                onClick={confirmRestore}
-              >
+              <button className="delete-confirm-submit" onClick={confirmRestore}>
                 {t("report.confirmRestoreBtn")}
               </button>
             </div>
@@ -3592,13 +3234,8 @@ ${clone.outerHTML}
             })
           }
         >
-          <div
-            className="delete-confirm-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="delete-confirm-title">
-              {t("report.removeSessionFromReport")}
-            </h3>
+          <div className="delete-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="delete-confirm-title">{t("report.removeSessionFromReport")}</h3>
             <p className="delete-confirm-desc">
               {deleteConfirm.contributorNames.length > 0
                 ? t("report.deleteSessionConfirmWithContributors", {
@@ -3649,10 +3286,7 @@ ${clone.outerHTML}
               >
                 {t("common.cancel")}
               </button>
-              <button
-                className="delete-confirm-submit"
-                onClick={confirmDeleteSession}
-              >
+              <button className="delete-confirm-submit" onClick={confirmDeleteSession}>
                 {t("report.confirmDelete")}
               </button>
             </div>

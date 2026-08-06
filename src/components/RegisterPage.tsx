@@ -39,11 +39,7 @@ export default function RegisterPage() {
       navigate("/dashboard");
     } catch (err) {
       if (err instanceof FirebaseError) {
-        setError(
-          err.code === "auth/email-already-in-use"
-            ? t("auth.emailInUse")
-            : err.message,
-        );
+        setError(err.code === "auth/email-already-in-use" ? t("auth.emailInUse") : err.message);
       } else {
         setError(err instanceof Error ? err.message : String(err));
       }
@@ -75,17 +71,11 @@ export default function RegisterPage() {
           <h1 className="font-headline text-on-primary text-2xl font-bold tracking-tight">
             ConferenceFlow
           </h1>
-          <p className="text-on-primary/70 text-sm mt-1">
-            {t("auth.createAccount")}
-          </p>
+          <p className="text-on-primary/70 text-sm mt-1">{t("auth.createAccount")}</p>
         </div>
 
         <div className="bg-surface-container-lowest p-6">
-          {error && (
-            <div className="bg-primary/10 text-primary text-sm p-3 mb-4">
-              {error}
-            </div>
-          )}
+          {error && <div className="bg-primary/10 text-primary text-sm p-3 mb-4">{error}</div>}
 
           <form onSubmit={handleRegister}>
             <div className="mb-4">

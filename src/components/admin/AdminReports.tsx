@@ -16,16 +16,11 @@ export default function AdminReports() {
 
   useEffect(() => {
     if (!confId) return;
-    return onSnapshot(
-      collection(db, "conferences", confId, "dailyReports"),
-      (snap) => {
-        const arr = snap.docs.map(
-          (d) => ({ id: d.id, ...(d.data() as Omit<Report, "id">) }),
-        );
-        arr.sort((a, b) => b.id.localeCompare(a.id));
-        setReports(arr);
-      },
-    );
+    return onSnapshot(collection(db, "conferences", confId, "dailyReports"), (snap) => {
+      const arr = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Report, "id">) }));
+      arr.sort((a, b) => b.id.localeCompare(a.id));
+      setReports(arr);
+    });
   }, [confId]);
 
   const handlePublish = async (reportId: string) => {
@@ -77,18 +72,10 @@ export default function AdminReports() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-secondary text-xs uppercase tracking-wider bg-[#F7F5F2]">
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.reportName")}
-              </th>
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.status")}
-              </th>
-              <th className="p-3 border-b border-[#E8E4DF]">
-                {t("admin.publishedAt")}
-              </th>
-              <th className="p-3 w-48 border-b border-[#E8E4DF]">
-                {t("admin.actions")}
-              </th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.reportName")}</th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.status")}</th>
+              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.publishedAt")}</th>
+              <th className="p-3 w-48 border-b border-[#E8E4DF]">{t("admin.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -108,22 +95,16 @@ export default function AdminReports() {
                       {r.title || r.id}
                     </Link>
                     <div className="text-secondary text-xs mt-0.5">
-                      {isSummary
-                        ? t("admin.summaryReport")
-                        : `${t("admin.daily")} · ${date}`}
+                      {isSummary ? t("admin.summaryReport") : `${t("admin.daily")} · ${date}`}
                     </div>
                   </td>
                   <td className="p-3">
-                    <span
-                      className={`text-xs uppercase tracking-wider ${statusColor(r.status)}`}
-                    >
+                    <span className={`text-xs uppercase tracking-wider ${statusColor(r.status)}`}>
                       {r.status || t("admin.draft")}
                     </span>
                   </td>
                   <td className="p-3 text-secondary text-xs">
-                    {r.publishedAt
-                      ? formatDateTime(new Date(r.publishedAt.seconds * 1000))
-                      : "—"}
+                    {r.publishedAt ? formatDateTime(new Date(r.publishedAt.seconds * 1000)) : "—"}
                   </td>
                   <td className="p-3">
                     {r.status === "published" ? (
@@ -159,10 +140,7 @@ export default function AdminReports() {
             })}
             {reports.length === 0 && (
               <tr>
-                <td
-                  colSpan={4}
-                  className="p-6 text-center text-secondary text-sm"
-                >
+                <td colSpan={4} className="p-6 text-center text-secondary text-sm">
                   {t("admin.noReports")}
                 </td>
               </tr>

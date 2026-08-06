@@ -66,9 +66,7 @@ export default function SessionDetail({
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           </div>
-          <div className="cal-detail-empty-text">
-            {t("calendar.selectSession")}
-          </div>
+          <div className="cal-detail-empty-text">{t("calendar.selectSession")}</div>
         </div>
       </div>
     );
@@ -97,9 +95,7 @@ export default function SessionDetail({
 
       {/* ── Title Block ────────────────────────────────────── */}
       <div className="cal-detail-title-block">
-        {session.code && (
-          <span className="cal-detail-code">{session.code}</span>
-        )}
+        {session.code && <span className="cal-detail-code">{session.code}</span>}
         <h2 className="cal-detail-title">{session.title}</h2>
       </div>
 
@@ -198,9 +194,7 @@ export default function SessionDetail({
       {speakers.length > 0 && (
         <div className="cal-detail-section">
           <div className="cal-detail-section-label">
-            {speakers.length > 1
-              ? t("calendar.speakers")
-              : t("calendar.speaker")}
+            {speakers.length > 1 ? t("calendar.speakers") : t("calendar.speaker")}
           </div>
           <div className="cal-detail-speakers">
             {speakers.map((sp, i) => (
@@ -227,10 +221,7 @@ export default function SessionDetail({
           <div className="cal-detail-attendees">
             {attendees.map((a) => (
               <div key={a.userId} className="cal-detail-attendee">
-                <div
-                  className="cal-detail-attendee-avatar"
-                  style={{ background: a.color }}
-                >
+                <div className="cal-detail-attendee-avatar" style={{ background: a.color }}>
                   {a.initials}
                 </div>
                 <div className="cal-detail-attendee-info">
@@ -238,9 +229,7 @@ export default function SessionDetail({
                   <span
                     className={`cal-detail-attendee-badge cal-detail-attendee-badge--${a.mode === "online" ? "online" : "onsite"}`}
                   >
-                    {a.mode === "online"
-                      ? t("dashboard.online")
-                      : t("dashboard.onsite")}
+                    {a.mode === "online" ? t("dashboard.online") : t("dashboard.onsite")}
                   </span>
                 </div>
               </div>

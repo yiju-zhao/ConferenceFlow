@@ -39,9 +39,7 @@ export default function AdminApplications() {
     }
   };
 
-  const filtered = members.filter((m) =>
-    filter === "all" ? true : m.status === filter,
-  );
+  const filtered = members.filter((m) => (filter === "all" ? true : m.status === filter));
   const pendingCount = members.filter((m) => m.status === "pending").length;
 
   return (
@@ -75,9 +73,7 @@ export default function AdminApplications() {
       <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden">
         {filtered.length === 0 && (
           <div className="p-6 text-center text-secondary text-sm">
-            {filter === "pending"
-              ? t("admin.noPendingApplications")
-              : t("admin.noApplications")}
+            {filter === "pending" ? t("admin.noPendingApplications") : t("admin.noApplications")}
           </div>
         )}
         {filtered.map((m, index) => (
@@ -86,9 +82,7 @@ export default function AdminApplications() {
             className={`p-4 flex justify-between items-center hover:bg-[#FAFAF8] transition-colors ${index > 0 ? "border-t border-[#E8E4DF]" : ""}`}
           >
             <div>
-              <div className="text-on-surface font-bold text-sm">
-                {memberNames[m.id] || m.id}
-              </div>
+              <div className="text-on-surface font-bold text-sm">{memberNames[m.id] || m.id}</div>
               <div className="text-secondary text-xs mt-1 flex gap-3">
                 <span>{m.attendanceMode || "onsite"}</span>
                 <span>

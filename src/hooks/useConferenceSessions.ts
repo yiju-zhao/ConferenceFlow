@@ -16,7 +16,10 @@ interface SessionsMapValue extends Omit<Session, "attendees"> {
   attendees: Set<string>;
 }
 
-export function useConferenceSessions(confId: string | undefined, options: UseConferenceSessionsOptions = {}) {
+export function useConferenceSessions(
+  confId: string | undefined,
+  options: UseConferenceSessionsOptions = {},
+) {
   const { user } = useAuth();
   const [allSessions, setAllSessions] = useState<WithId<Session>[]>([]);
   const [loading, setLoading] = useState(true);

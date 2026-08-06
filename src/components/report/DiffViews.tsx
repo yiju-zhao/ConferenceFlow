@@ -8,10 +8,7 @@ interface DiffListProps {
 
 export function DiffList({ oldItems, newItems }: DiffListProps) {
   const { t } = useTranslation();
-  const diff = diffArrays(
-    (oldItems || []).map(String),
-    (newItems || []).map(String),
-  );
+  const diff = diffArrays((oldItems || []).map(String), (newItems || []).map(String));
   if (diff.length === 0)
     return (
       <p className="text-body" style={{ color: "var(--text-muted)" }}>

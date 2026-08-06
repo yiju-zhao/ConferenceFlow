@@ -11,8 +11,7 @@ interface UserAvatarProps {
 
 function getAvatarColor(name: string): string {
   let hash = 0;
-  for (let i = 0; i < (name || "").length; i++)
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < (name || "").length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return COLORS[Math.abs(hash) % COLORS.length].hex;
 }
 
@@ -150,14 +149,8 @@ export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
                 {initial}
               </div>
               <div>
-                <div
-                  style={{ fontSize: 14, fontWeight: 600, color: "#1a1c1c" }}
-                >
-                  {displayName}
-                </div>
-                <div style={{ fontSize: 11, color: "#5f5e5e" }}>
-                  {userProfile?.email}
-                </div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#1a1c1c" }}>{displayName}</div>
+                <div style={{ fontSize: 11, color: "#5f5e5e" }}>{userProfile?.email}</div>
               </div>
             </div>
 
@@ -338,12 +331,8 @@ export function FirstTimeNameSetup() {
             fontFamily: "'Work Sans', sans-serif",
           }}
         >
-          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
-            {t("avatar.welcome")}
-          </h2>
-          <p style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-            {t("avatar.setupName")}
-          </p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{t("avatar.welcome")}</h2>
+          <p style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{t("avatar.setupName")}</p>
         </div>
         <div style={{ padding: 24 }}>
           <label
