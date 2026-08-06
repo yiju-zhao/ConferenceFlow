@@ -3,8 +3,11 @@ import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { inject } from "@vercel/analytics";
+import "@blueprintjs/core/lib/css/blueprint.css";
+import "@blueprintjs/icons/lib/css/blueprint-icons.css";
 import "./index.css";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 import AuthGuard from "./components/AuthGuard";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
@@ -58,84 +61,86 @@ function ReportRouter({ viewMode = false }: ReportRouterProps) {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/view/:date/:fileId" element={<ViewReport />} />
-            <Route path="/view/report/:reportId" element={<ReportRouter viewMode />} />
+      <ThemeProvider>
+        <AuthProvider>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/view/:date/:fileId" element={<ViewReport />} />
+              <Route path="/view/report/:reportId" element={<ReportRouter viewMode />} />
 
-            {/* Authenticated routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <AuthGuard>
-                  <Dashboard />
-                </AuthGuard>
-              }
-            />
+              {/* Authenticated routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <AuthGuard>
+                    <Dashboard />
+                  </AuthGuard>
+                }
+              />
 
-            {/* Conference-scoped routes */}
-            <Route
-              path="/conference/:confId"
-              element={
-                <AuthGuard>
-                  <CalendarPage />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/conference/:confId/reports"
-              element={
-                <AuthGuard>
-                  <ReportList />
-                </AuthGuard>
-              }
-            />
-            <Route
-              path="/conference/:confId/report/:reportId"
-              element={
-                <AuthGuard>
-                  <ReportRouter />
-                </AuthGuard>
-              }
-            />
+              {/* Conference-scoped routes */}
+              <Route
+                path="/conference/:confId"
+                element={
+                  <AuthGuard>
+                    <CalendarPage />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/conference/:confId/reports"
+                element={
+                  <AuthGuard>
+                    <ReportList />
+                  </AuthGuard>
+                }
+              />
+              <Route
+                path="/conference/:confId/report/:reportId"
+                element={
+                  <AuthGuard>
+                    <ReportRouter />
+                  </AuthGuard>
+                }
+              />
 
-            {/* Admin routes */}
-            <Route
-              path="/conference/:confId/admin"
-              element={
-                <AuthGuard>
-                  <AdminLayout />
-                </AuthGuard>
-              }
-            >
-              <Route index element={<AdminSettings />} />
-              <Route path="settings" element={<AdminSettings />} />
-              <Route path="sessions" element={<AdminSessions />} />
-              <Route path="applications" element={<AdminApplications />} />
-              <Route path="reports" element={<AdminReports />} />
-              <Route path="attendance" element={<AdminAttendance />} />
-            </Route>
+              {/* Admin routes */}
+              <Route
+                path="/conference/:confId/admin"
+                element={
+                  <AuthGuard>
+                    <AdminLayout />
+                  </AuthGuard>
+                }
+              >
+                <Route index element={<AdminSettings />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="sessions" element={<AdminSessions />} />
+                <Route path="applications" element={<AdminApplications />} />
+                <Route path="reports" element={<AdminReports />} />
+                <Route path="attendance" element={<AdminAttendance />} />
+              </Route>
 
-            <Route
-              path="/super-admin"
-              element={
-                <AuthGuard requireSuperAdmin>
-                  <SuperAdminPanel />
-                </AuthGuard>
-              }
-            />
+              <Route
+                path="/super-admin"
+                element={
+                  <AuthGuard requireSuperAdmin>
+                    <SuperAdminPanel />
+                  </AuthGuard>
+                }
+              />
 
-            {/* Legacy routes redirect to dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/report/:reportId" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </Suspense>
-      </AuthProvider>
+              {/* Legacy routes redirect to dashboard */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/report/:reportId" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Suspense>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

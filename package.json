@@ -11,6 +11,8 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@blueprintjs/core": "^6.18.0",
+    "@blueprintjs/icons": "^6.13.0",
     "@vercel/analytics": "^2.0.1",
     "firebase": "^10.12.0",
     "firebase-admin": "^13.7.0",
