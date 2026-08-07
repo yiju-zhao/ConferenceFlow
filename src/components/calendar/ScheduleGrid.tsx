@@ -5,6 +5,8 @@ import { getInitials } from "../../lib/reportUtils";
 import type { Member, Session } from "../../types";
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
+const DAY_START_HOUR = 8; // 08:00
+const DAY_END_HOUR = 18; // 18:00
 
 function timeToMinutes(t: string): number {
   if (!t) return 0;
@@ -98,22 +100,22 @@ export default function ScheduleGrid({
     const daySet = new Set(sessions.map((s) => s.date));
     const days = [...daySet].sort();
 
-    // Find global time range
-    let globalMinH = 24,
-      globalMaxH = 0;
+    // Full-day range: always at least 08:00–18:00, extended to cover outlying sessions
+    let minH = DAY_START_HOUR;
+    let maxH = DAY_END_HOUR;
     sessions.forEach((s) => {
       const sh = parseInt(s.start?.split(":")[0] || "9");
       const eh = Math.ceil(timeToMinutes(s.end) / 60);
-      if (sh < globalMinH) globalMinH = sh;
-      if (eh > globalMaxH) globalMaxH = eh;
+      if (sh < minH) minH = sh;
+      if (eh > maxH) maxH = eh;
     });
 
-    const dayStartMin = globalMinH * 60;
-    const dayEndMin = globalMaxH * 60;
+    const dayStartMin = minH * 60;
+    const dayEndMin = maxH * 60;
 
     // Hour labels
     const hourLabels: string[] = [];
-    for (let h = globalMinH; h <= globalMaxH; h++) {
+    for (let h = minH; h <= maxH; h++) {
       hourLabels.push(`${String(h).padStart(2, "0")}:00`);
     }
 
