@@ -5,7 +5,7 @@ import { getInitials } from "../../lib/reportUtils";
 import type { Member, Session } from "../../types";
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
-const DAYS_PER_PAGE = 3;
+const DAYS_PER_PAGE = 1;
 
 function timeToMinutes(t: string): number {
   if (!t) return 0;

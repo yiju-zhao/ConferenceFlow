@@ -176,6 +176,25 @@
   box-sizing: border-box;
 }
 
+/* ── Focus rings: remove the blue click ring; keep a keyboard indicator ── */
+button:focus,
+a:focus,
+[role="button"]:focus,
+[role="tab"]:focus,
+.bp6-button:focus,
+.bp6-tab:focus,
+.bp6-menu-item:focus {
+  outline: none;
+}
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+.bp6-button:focus-visible,
+.bp6-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 html {
   scroll-behavior: smooth;
 }
