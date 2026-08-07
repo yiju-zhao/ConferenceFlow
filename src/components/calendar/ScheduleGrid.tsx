@@ -146,7 +146,7 @@ export default function ScheduleGrid({
         <div className="cal-grid-label">Your Schedule</div>
         <div className="cal-grid-empty">
           <div>
-            <div style={{ fontSize: 18, marginBottom: 8, color: "#6A6660" }}>
+            <div style={{ fontSize: 18, marginBottom: 8, color: "var(--text-secondary)" }}>
               No sessions scheduled
             </div>
             <div style={{ fontSize: 13 }}>Browse the session pool and mark sessions to attend</div>
@@ -170,7 +170,7 @@ export default function ScheduleGrid({
         style={{
           flexShrink: 0,
           padding: "16px 16px 0",
-          background: "#FBF6F2",
+          background: "var(--surface-warm)",
           zIndex: 2,
         }}
       >
@@ -194,7 +194,7 @@ export default function ScheduleGrid({
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#E8976B",
+                  color: "var(--accent)",
                   cursor: "pointer",
                   fontSize: 16,
                   fontWeight: 700,
@@ -212,7 +212,7 @@ export default function ScheduleGrid({
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#E8976B",
+                  color: "var(--accent)",
                   cursor: "pointer",
                   fontSize: 16,
                   fontWeight: 700,
@@ -267,7 +267,7 @@ export default function ScheduleGrid({
                     top,
                     right: 6,
                     fontSize: 12,
-                    color: "#8C8884",
+                    color: "var(--text-muted)",
                     fontFamily: "Inter, sans-serif",
                   }}
                 >
@@ -289,7 +289,7 @@ export default function ScheduleGrid({
                   flex: 1,
                   position: "relative",
                   height: totalHeight,
-                  background: "#FBF6F2",
+                  background: "var(--surface-warm)",
                   marginLeft: 1,
                 }}
               >
@@ -305,7 +305,7 @@ export default function ScheduleGrid({
                         top,
                         left: 0,
                         right: 0,
-                        borderTop: "1px solid #E3DED8",
+                        borderTop: "1px solid var(--border)",
                         pointerEvents: "none",
                       }}
                     />
@@ -331,7 +331,7 @@ export default function ScheduleGrid({
                         left,
                         width,
                         height,
-                        background: "#E8976B",
+                        background: "var(--accent)",
                         padding: "6px 10px",
                         cursor: "pointer",
                         overflow: "hidden",
