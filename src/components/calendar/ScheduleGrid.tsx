@@ -5,7 +5,6 @@ import { getInitials } from "../../lib/reportUtils";
 import type { Member, Session } from "../../types";
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
-const DAYS_PER_PAGE = 1;
 
 function timeToMinutes(t: string): number {
   if (!t) return 0;
@@ -138,7 +137,7 @@ export default function ScheduleGrid({
     return map;
   }, [members]);
 
-  const [dayPage, setDayPage] = useState(0);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
   if (sessions.length === 0) {
     return (
@@ -157,11 +156,9 @@ export default function ScheduleGrid({
   }
   const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MINUTE;
 
-  // Paginate days
-  const totalPages = Math.ceil(days.length / DAYS_PER_PAGE);
-  const visibleDays = days.slice(dayPage * DAYS_PER_PAGE, (dayPage + 1) * DAYS_PER_PAGE);
-  const hasPrev = dayPage > 0;
-  const hasNext = dayPage < totalPages - 1;
+  // One day at a time, selected via the day tabs
+  const sel = Math.min(selectedDayIndex, days.length - 1);
+  const visibleDays = days.length ? [days[sel]] : [];
 
   return (
     <div className="cal-grid">
@@ -169,69 +166,41 @@ export default function ScheduleGrid({
       <div
         style={{
           flexShrink: 0,
-          padding: "16px 16px 0",
+          padding: "12px 16px",
           background: "var(--surface-warm)",
           zIndex: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
         }}
       >
         <div className="cal-grid-label">Your Schedule</div>
 
-        {/* Day headers with pagination */}
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <div
-            style={{
-              width: 56,
-              flexShrink: 0,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "0 4px",
-            }}
-          >
-            {hasPrev ? (
-              <button
-                onClick={() => setDayPage(dayPage - 1)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--accent)",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  padding: 0,
-                }}
-              >
-                ←
-              </button>
-            ) : (
-              <span />
-            )}
-            {hasNext ? (
-              <button
-                onClick={() => setDayPage(dayPage + 1)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--accent)",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  padding: 0,
-                }}
-              >
-                →
-              </button>
-            ) : (
-              <span />
-            )}
-          </div>
-          {visibleDays.map((day) => {
+        {/* Day tabs — click to switch the visible day */}
+        <div style={{ display: "flex", gap: 6 }}>
+          {days.map((day, i) => {
+            const active = i === sel;
             const d = new Date(day + "T00:00:00");
-            const label = formatShortDate(d);
             return (
-              <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
-                {label}
-              </div>
+              <button
+                key={day}
+                onClick={() => setSelectedDayIndex(i)}
+                style={{
+                  padding: "5px 12px",
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: active ? 700 : 600,
+                  fontSize: 12,
+                  letterSpacing: "0.3px",
+                  background: active ? "var(--accent)" : "transparent",
+                  color: active ? "#fff" : "var(--text-muted)",
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 3,
+                  cursor: "pointer",
+                }}
+              >
+                {formatShortDate(d)}
+              </button>
             );
           })}
         </div>
