@@ -41,10 +41,12 @@
   --red-100: rgba(207, 10, 44, 0.07);
 
   /* ── Semantic: Surfaces ── */
-  --bg: #edeef0;
+  --bg: #f6f7f9;
   --surface: #ffffff;
   --surface-dim: #fafafa;
   --surface-alt: #f9f9f9;
+  --surface-warm: #fbf6f2;
+  --surface-hover: #efeae4;
 
   /* ── Semantic: Text ── */
   --text: #3d3d3d;
@@ -65,12 +67,18 @@
   --brand-soft: var(--red-100);
   --brand-hover: #b00825;
   --brand-bg: var(--red-50);
+  --link: #2d72d2;
 
   /* ── Section accent palette (BlueprintJS redesign) ── */
   --accent-dash: #4a7fb5;
   --accent-cal: #e8976b;
   --accent-report: #cf0a2c;
   --accent-admin: #5e8b7e;
+
+  /* ── Generic section accent + derived tints (default = dash) ── */
+  --accent: var(--accent-dash);
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-bg: color-mix(in srgb, var(--accent) 9%, var(--surface));
 
   /* ── Semantic: Status ── */
   --success: #27ae60;
@@ -107,6 +115,47 @@
   --report-fs-heading: 17px;
   --report-fs-title: 20px;
   --report-fs-display: 30px;
+}
+
+/* ── Section accent scopes (SectionAccentProvider sets data-accent) ── */
+[data-accent="dash"] { --accent: var(--accent-dash); }
+[data-accent="cal"] { --accent: var(--accent-cal); }
+[data-accent="report"] { --accent: var(--accent-report); }
+[data-accent="admin"] { --accent: var(--accent-admin); }
+/* Derived tints follow the locally-resolved --accent */
+[data-accent="dash"],
+[data-accent="cal"],
+[data-accent="report"],
+[data-accent="admin"] {
+  --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-bg: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+
+/* ── Dark mode (toggled on <html> by ThemeProvider via .bp6-dark) ── */
+.bp6-dark {
+  --bg: #1c2128;
+  --surface: #2a2f37;
+  --surface-dim: #1e2229;
+  --surface-alt: #323843;
+  --surface-warm: #2a2622;
+  --surface-hover: #353b45;
+  --text: #c8c5be;
+  --text-primary: #edeae5;
+  --text-secondary: #c8c5be;
+  --text-tertiary: #a9a5a0;
+  --text-muted: #8a8680;
+  --text-dim: #6a6660;
+  --text-placeholder: #5a5650;
+  --border: #383e47;
+  --border-soft: #2f343c;
+  --border-dim: #2a2f37;
+  --brand-soft: rgba(207, 10, 44, 0.22);
+  --brand-bg: #3a2024;
+  --link: #5ea6ff;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Typography utility classes (use tokens, replace inline styles) ──────── */

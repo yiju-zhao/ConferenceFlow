@@ -59,7 +59,7 @@ export default function RegisterPage() {
         alignItems: "center",
         justifyContent: "center",
         padding: "48px 24px",
-        background: "#F6F7F9",
+        background: "var(--bg)",
       }}
     >
       <div style={{ width: "100%", maxWidth: 420, display: "flex", flexDirection: "column", gap: 18 }}>
@@ -78,7 +78,7 @@ export default function RegisterPage() {
               }}
             >
               <span style={{ fontWeight: 800, letterSpacing: "-0.035em" }}>Conference</span>
-              <span style={{ fontWeight: 400, letterSpacing: "0.01em", color: "#4A7FB5" }}>Flow</span>
+              <span style={{ fontWeight: 400, letterSpacing: "0.01em", color: "var(--accent-dash)" }}>Flow</span>
             </div>
             <div style={{ fontSize: 13, opacity: 0.65 }}>{t("auth.tagline")}</div>
           </div>
@@ -157,7 +157,7 @@ export default function RegisterPage() {
             <div style={{ textAlign: "center", fontSize: 13, opacity: 0.65 }}>
               {t("auth.hasAccount")}{" "}
               <Link to="/login" style={{ color: "inherit", textDecoration: "none" }}>
-                <span style={{ color: "#2D72D2" }}>{t("auth.signIn")}</span>
+                <span style={{ color: "var(--link)" }}>{t("auth.signIn")}</span>
               </Link>
             </div>
           </div>

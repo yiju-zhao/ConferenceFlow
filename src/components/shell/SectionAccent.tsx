@@ -30,7 +30,9 @@ export function SectionAccentProvider({
 }) {
   return (
     <SectionAccentContext.Provider value={{ accent, hex: ACCENT_HEX[accent] }}>
-      {children}
+      <div data-accent={accent} style={{ display: "contents" }}>
+        {children}
+      </div>
     </SectionAccentContext.Provider>
   );
 }

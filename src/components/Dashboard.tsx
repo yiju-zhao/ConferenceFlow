@@ -55,7 +55,7 @@ function SectionHeader({
           display: "flex",
           alignItems: "center",
           gap: 8,
-          color: "#1a1c1c",
+          color: "var(--text-primary)",
         }}
       >
         <span style={{ width: 3, height: 14, background: bar, borderRadius: 2, display: "inline-block" }} />
@@ -90,7 +90,7 @@ function ConfCard({
       style={{
         borderLeft: `4px solid ${accent}`,
         borderRadius: "4px 3px 3px 4px",
-        background: "#fff",
+        background: "var(--surface)",
         boxShadow: "0 1px 2px rgba(95,107,124,.12), 0 0 0 1px rgba(95,107,124,.10)",
         marginBottom: 14,
       }}
@@ -106,7 +106,7 @@ function ConfCard({
               fontFamily: "'Work Sans', sans-serif",
               fontWeight: 700,
               fontSize: 15,
-              color: "#1a1c1c",
+              color: "var(--text-primary)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -114,7 +114,7 @@ function ConfCard({
           >
             {conf.name}
           </span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "#888" }}>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: "var(--text-muted)" }}>
             {conf.startDate} — {conf.endDate}
           </span>
         </div>
@@ -129,7 +129,7 @@ function ConfCard({
           </Tag>
         )}
         {isAdmin && <Tag intent="primary">{t("dashboard.admin")}</Tag>}
-        {approved && <Icon icon={IconNames.CHEVRON_RIGHT} size={16} style={{ color: "#888" }} />}
+        {approved && <Icon icon={IconNames.CHEVRON_RIGHT} size={16} style={{ color: "var(--text-muted)" }} />}
       </div>
       {showApply && !membership && (
         <div style={{ padding: "0 18px 16px", display: "flex", justifyContent: "flex-end" }}>
@@ -275,7 +275,7 @@ export default function Dashboard() {
 
   return (
     <SectionAccentProvider accent="dash">
-      <div style={{ minHeight: "100vh", background: "#F6F7F9" }}>
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
         <FirstTimeNameSetup />
         <AppNavbar />
         <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 20px 56px", display: "flex", flexDirection: "column", gap: 26 }}>
@@ -322,7 +322,7 @@ export default function Dashboard() {
               {/* My conferences */}
               <div>
                 {upcoming.length === 0 && (
-                  <div style={{ textAlign: "center", color: "#888", fontSize: 14, padding: "32px 0" }}>
+                  <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 14, padding: "32px 0" }}>
                     {t("dashboard.noUpcoming")}
                   </div>
                 )}
@@ -366,7 +366,7 @@ export default function Dashboard() {
                       fontSize: 13,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      color: "#888",
+                      color: "var(--text-muted)",
                       marginBottom: 12,
                       padding: 0,
                     }}
@@ -388,7 +388,7 @@ export default function Dashboard() {
                   <SectionHeader
                     bar={ACCENT.sand}
                     right={
-                      <span style={{ fontSize: 12, color: "#888" }}>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                         {discover.length} {t("dashboard.available")}
                       </span>
                     }
@@ -419,7 +419,7 @@ export default function Dashboard() {
           icon={IconNames.ADD}
         >
           <div className={Classes.DIALOG_BODY}>
-            <p style={{ color: "#5f5e5e", marginBottom: 18 }}>{applyModal?.confName}</p>
+            <p style={{ color: "var(--text-secondary)", marginBottom: 18 }}>{applyModal?.confName}</p>
             <div
               style={{
                 fontFamily: "'Work Sans', sans-serif",
@@ -427,7 +427,7 @@ export default function Dashboard() {
                 fontSize: 11,
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                color: "#888",
+                color: "var(--text-muted)",
                 marginBottom: 8,
               }}
             >
