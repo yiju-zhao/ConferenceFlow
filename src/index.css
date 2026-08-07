@@ -79,6 +79,7 @@
   --accent: var(--accent-dash);
   --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
   --accent-bg: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --accent-deep: color-mix(in srgb, var(--accent) 76%, black);
 
   /* ── Semantic: Status ── */
   --success: #27ae60;
@@ -129,6 +130,7 @@
 [data-accent="admin"] {
   --accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
   --accent-bg: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  --accent-deep: color-mix(in srgb, var(--accent) 76%, black);
 }
 
 /* ── Dark mode (toggled on <html> by ThemeProvider via .bp6-dark) ── */

@@ -309,7 +309,7 @@ export default function ScheduleGrid({
                         transition: "opacity 120ms ease",
                         boxSizing: "border-box",
                         borderRadius: 3,
-                        outline: s.id === selectedId ? "2px solid #fff" : "none",
+                        outline: s.id === selectedId ? "2px solid var(--accent-deep)" : "none",
                         outlineOffset: s.id === selectedId ? -2 : 0,
                         zIndex: s.id === selectedId ? 10 : 1,
                         display: "flex",
