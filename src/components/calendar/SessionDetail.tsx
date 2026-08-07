@@ -55,7 +55,7 @@ export default function SessionDetail({
               height="32"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#7A7670"
+              stroke="#8C8884"
               strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"

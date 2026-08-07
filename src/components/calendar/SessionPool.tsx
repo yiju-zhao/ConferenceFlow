@@ -130,7 +130,7 @@ export default function SessionPool({
         {filtered.length === 0 && (
           <div
             style={{
-              color: "#7A7670",
+              color: "#8C8884",
               fontSize: 14,
               textAlign: "center",
               padding: 20,
