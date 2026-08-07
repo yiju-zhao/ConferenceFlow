@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db, FieldValue } from "../../../lib/firebase-admin";
-import { requireConfAdmin, AuthError } from "../../../lib/auth-middleware";
+import { db, FieldValue } from "../../../lib/firebase-admin.js";
+import { requireConfAdmin, AuthError } from "../../../lib/auth-middleware.js";
 import type { ReportActionResponse } from "@/types/api";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
