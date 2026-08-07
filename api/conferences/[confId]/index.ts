@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db, FieldValue } from "../../lib/firebase-admin";
-import { requireConfAdmin, requireSuperAdmin, AuthError } from "../../lib/auth-middleware";
+import { db, FieldValue } from "../../lib/firebase-admin.js";
+import { requireConfAdmin, requireSuperAdmin, AuthError } from "../../lib/auth-middleware.js";
 import type { UpdateConferenceBody } from "@/types/api";
 import type { Conference } from "@/types/firestore";
 

@@ -1,6 +1,6 @@
 import type { VercelRequest } from "@vercel/node";
 import type { DecodedIdToken } from "firebase-admin/auth";
-import { auth, db } from "./firebase-admin";
+import { auth, db } from "./firebase-admin.js";
 
 interface DecodedToken extends DecodedIdToken {
   globalRole?: string;
