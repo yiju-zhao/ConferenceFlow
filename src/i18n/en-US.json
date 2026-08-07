@@ -447,8 +447,8 @@
     "hideArchived": "Hide archived",
     "showArchived": "Show archived",
     "creating": "Creating...",
-    "createSummary": "+ Create Summary",
-    "createDailyReport": "+ Create Report",
+    "createSummary": "Create Summary",
+    "createDailyReport": "Create Report",
     "selectDate": "Select date",
     "alreadyCreated": "Created",
     "noReports": "No reports yet. Click \"Create Report\" to get started.",
@@ -463,6 +463,10 @@
     "endDate": "End Date",
     "confirmCreate": "Confirm Create",
     "downloadHtml": "Download HTML",
-    "print": "Print"
+    "print": "Print",
+    "reportCount": "reports",
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "statusArchived": "Archived"
   }
 }
