@@ -6,7 +6,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useConferenceDoc } from "../../hooks/useConferenceDoc";
 import { useConferenceMembers } from "../../hooks/useConferenceMembers";
 import { useConferenceSessions } from "../../hooks/useConferenceSessions";
-import CalendarHeader from "./CalendarHeader";
+import AppNavbar from "../shell/AppNavbar";
+import { SectionAccentProvider } from "../shell/SectionAccent";
 import SessionPool from "./SessionPool";
 import ScheduleGrid from "./ScheduleGrid";
 import SessionDetail from "./SessionDetail";
@@ -15,7 +16,7 @@ import "./calendar.css";
 export default function CalendarPage() {
   const { confId } = useParams();
   const { user } = useAuth();
-  const { conference } = useConferenceDoc(confId);
+  useConferenceDoc(confId);
   const { members } = useConferenceMembers(confId);
   const { allSessions } = useConferenceSessions(confId);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -52,28 +53,30 @@ export default function CalendarPage() {
   }, [selectedSession, user, confId, isAttendingSelected]);
 
   return (
-    <div className="cal-page">
-      <CalendarHeader confName={conference?.name} />
-      <div className="cal-body">
-        <SessionPool
-          sessions={allSessions}
-          selectedId={selectedSessionId}
-          onSelect={setSelectedSessionId}
-          userAttending={userAttendingIds}
-        />
-        <ScheduleGrid
-          sessions={mySchedule}
-          selectedId={selectedSessionId}
-          onSelect={setSelectedSessionId}
-          members={members}
-        />
-        <SessionDetail
-          session={selectedSession}
-          members={members}
-          isAttending={isAttendingSelected}
-          onToggleAttend={handleToggleAttend}
-        />
+    <SectionAccentProvider accent="cal">
+      <div className="cal-page">
+        <AppNavbar showConfTabs />
+        <div className="cal-body">
+          <SessionPool
+            sessions={allSessions}
+            selectedId={selectedSessionId}
+            onSelect={setSelectedSessionId}
+            userAttending={userAttendingIds}
+          />
+          <ScheduleGrid
+            sessions={mySchedule}
+            selectedId={selectedSessionId}
+            onSelect={setSelectedSessionId}
+            members={members}
+          />
+          <SessionDetail
+            session={selectedSession}
+            members={members}
+            isAttending={isAttendingSelected}
+            onToggleAttend={handleToggleAttend}
+          />
+        </div>
       </div>
-    </div>
+    </SectionAccentProvider>
   );
 }
