@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { collection, onSnapshot } from "firebase/firestore";
+import { Button, Card, Tag } from "@blueprintjs/core";
 import { db } from "../../firebase";
 import { apiFetch } from "../../lib/api";
 import { parseReportId } from "../../lib/reportUtils";
@@ -49,33 +50,59 @@ export default function AdminReports() {
     }
   };
 
-  const statusColor = (status: string | undefined) => {
+  const statusIntent = (status: string | undefined) => {
     switch (status) {
       case "published":
-        return "text-[#27AE60]";
+        return "success" as const;
       case "archived":
-        return "text-secondary";
+        return "none" as const;
       default:
-        return "text-[#E67E22]";
+        return "warning" as const;
     }
+  };
+
+  const thStyle: React.CSSProperties = {
+    padding: 12,
+    borderBottom: "1px solid var(--border)",
+    textAlign: "left",
+    color: "var(--text-secondary)",
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    fontWeight: 600,
+  };
+  const tdStyle: React.CSSProperties = {
+    padding: 12,
+    borderTop: "1px solid var(--border)",
+    fontSize: 14,
   };
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-1 h-6 rounded-full bg-admin-teal"></div>
-        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+        <div style={{ width: 4, height: 24, borderRadius: 9999, background: "var(--accent)" }} />
+        <h2
+          style={{
+            fontFamily: "'Work Sans', sans-serif",
+            color: "var(--text-primary)",
+            fontSize: 18,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            margin: 0,
+          }}
+        >
           {t("admin.reportManagement")}
         </h2>
       </div>
-      <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr className="text-left text-secondary text-xs uppercase tracking-wider bg-[#F7F5F2]">
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.reportName")}</th>
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.status")}</th>
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.publishedAt")}</th>
-              <th className="p-3 w-48 border-b border-[#E8E4DF]">{t("admin.actions")}</th>
+            <tr style={{ background: "var(--surface-warm)" }}>
+              <th style={thStyle}>{t("admin.reportName")}</th>
+              <th style={thStyle}>{t("admin.status")}</th>
+              <th style={thStyle}>{t("admin.publishedAt")}</th>
+              <th style={{ ...thStyle, width: 192 }}>{t("admin.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -83,53 +110,57 @@ export default function AdminReports() {
               const { date } = parseReportId(r.id);
               const isSummary = r.id.startsWith("summary-");
               return (
-                <tr
-                  key={r.id}
-                  className="border-t border-[#E8E4DF] hover:bg-[#FAFAF8] transition-colors"
-                >
-                  <td className="p-3">
+                <tr key={r.id}>
+                  <td style={tdStyle}>
                     <Link
                       to={`/conference/${confId}/report/${r.id}`}
-                      className="text-on-surface hover:text-admin-teal transition-colors"
+                      style={{ color: "var(--text-primary)", textDecoration: "none" }}
                     >
                       {r.title || r.id}
                     </Link>
-                    <div className="text-secondary text-xs mt-0.5">
+                    <div style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 2 }}>
                       {isSummary ? t("admin.summaryReport") : `${t("admin.daily")} · ${date}`}
                     </div>
                   </td>
-                  <td className="p-3">
-                    <span className={`text-xs uppercase tracking-wider ${statusColor(r.status)}`}>
+                  <td style={tdStyle}>
+                    <Tag minimal intent={statusIntent(r.status)}>
                       {r.status || t("admin.draft")}
-                    </span>
+                    </Tag>
                   </td>
-                  <td className="p-3 text-secondary text-xs">
+                  <td style={{ ...tdStyle, color: "var(--text-secondary)", fontSize: 12 }}>
                     {r.publishedAt ? formatDateTime(new Date(r.publishedAt.seconds * 1000)) : "—"}
                   </td>
-                  <td className="p-3">
+                  <td style={tdStyle}>
                     {r.status === "published" ? (
-                      <button
+                      <Button
+                        small
+                        outlined
                         onClick={() => handleUnpublish(r.id)}
                         disabled={publishing === r.id}
-                        className="bg-white border border-[#E8E4DF] text-secondary px-3 py-1 text-xs uppercase tracking-wider hover:text-admin-teal hover:border-admin-teal/30 disabled:opacity-50 rounded-lg transition-all"
-                      >
-                        {publishing === r.id ? "..." : t("admin.unpublish")}
-                      </button>
+                        text={publishing === r.id ? "..." : t("admin.unpublish")}
+                      />
                     ) : (
-                      <button
+                      <Button
+                        small
+                        intent="primary"
                         onClick={() => handlePublish(r.id)}
                         disabled={publishing === r.id}
-                        className="bg-admin-teal text-white px-3 py-1 text-xs uppercase tracking-wider hover:bg-admin-teal-deep disabled:opacity-50 rounded-lg shadow-sm transition-all"
-                      >
-                        {publishing === r.id ? "..." : t("admin.publish")}
-                      </button>
+                        text={publishing === r.id ? "..." : t("admin.publish")}
+                      />
                     )}
                     {r.publishedUrl && (
                       <a
                         href={r.publishedUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-secondary text-xs uppercase tracking-wider ml-3 hover:text-on-surface"
+                        style={{
+                          color: "var(--accent)",
+                          fontSize: 12,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          marginLeft: 12,
+                          textDecoration: "none",
+                        }}
                       >
                         {t("admin.view")}
                       </a>
@@ -140,14 +171,22 @@ export default function AdminReports() {
             })}
             {reports.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-6 text-center text-secondary text-sm">
+                <td
+                  colSpan={4}
+                  style={{
+                    padding: 24,
+                    textAlign: "center",
+                    color: "var(--text-secondary)",
+                    fontSize: 14,
+                  }}
+                >
                   {t("admin.noReports")}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }
