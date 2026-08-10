@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import {
   Button,
+  Card,
   Tag,
   Icon,
   Popover,
@@ -81,87 +82,103 @@ function ReportCard({
 
   return (
     <div
-      onClick={() => navigate(`/conference/${confId}/report/${report.id}`)}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "14px 16px",
-        borderLeft: "3px solid var(--accent)",
+        borderLeft: "3px solid var(--accent-report)",
         borderRadius: "4px 3px 3px 4px",
         background: "var(--surface)",
         boxShadow: "0 1px 2px rgba(95,107,124,.12), 0 0 0 1px rgba(95,107,124,.10)",
-        cursor: "pointer",
         opacity: isArchived ? 0.6 : undefined,
       }}
     >
-      <Icon
-        icon={isSummary ? IconNames.JOIN_TABLE : IconNames.DOCUMENT}
-        size={20}
-        style={{ color: "var(--accent)", flexShrink: 0 }}
-      />
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, flex: 1 }}>
-        <span
-          style={{
-            fontFamily: "'Work Sans', sans-serif",
-            fontWeight: 700,
-            fontSize: 15,
-            color: "var(--text-primary)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          {dateContent}
-        </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{metaContent}</span>
-      </div>
-      <Tag minimal intent={statusIntent}>
-        {statusLabel}
-      </Tag>
-      <Button
-        small
-        minimal
-        text={isArchived ? t("reportList.unarchive") : t("reportList.archive")}
-        onClick={(e) => {
-          e.stopPropagation();
-          isArchived ? onUnarchive(report.id) : onArchive(report.id);
+      <Card
+        interactive
+        onClick={() => navigate(`/conference/${confId}/report/${report.id}`)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "14px 16px",
+          background: "transparent",
+          boxShadow: "none",
+          borderRadius: "0 3px 3px 0",
         }}
-      />
-      {isArchived &&
-        (deleteConfirmId === report.id ? (
+      >
+        <Icon
+          icon={isSummary ? IconNames.JOIN_TABLE : IconNames.DOCUMENT}
+          size={20}
+          style={{ color: "var(--accent)", flexShrink: 0 }}
+        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, flex: 1 }}>
           <span
-            style={{ display: "inline-flex", gap: 4, alignItems: "center" }}
-            onClick={(e) => e.stopPropagation()}
+            style={{
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 700,
+              fontSize: 15,
+              color: "var(--text-primary)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
           >
-            <span style={{ fontSize: 11, color: "var(--accent)" }}>
-              {t("reportList.confirmDelete")}
+            {dateContent}
+          </span>
+          <span
+            style={{
+              fontSize: 12,
+              fontFamily: "'DM Mono', monospace",
+              color: "var(--text-muted)",
+            }}
+          >
+            {metaContent}
+          </span>
+        </div>
+        <Tag minimal intent={statusIntent}>
+          {statusLabel}
+        </Tag>
+        <Button
+          small
+          minimal
+          text={isArchived ? t("reportList.unarchive") : t("reportList.archive")}
+          onClick={(e) => {
+            e.stopPropagation();
+            isArchived ? onUnarchive(report.id) : onArchive(report.id);
+          }}
+        />
+        {isArchived &&
+          (deleteConfirmId === report.id ? (
+            <span
+              style={{ display: "inline-flex", gap: 4, alignItems: "center" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span style={{ fontSize: 11, color: "var(--accent)" }}>
+                {t("reportList.confirmDelete")}
+              </span>
+              <Button
+                small
+                minimal
+                intent="danger"
+                text={t("common.delete")}
+                onClick={() => onDelete(report.id)}
+              />
+              <Button small minimal text={t("common.cancel")} onClick={onDeleteCancel} />
             </span>
+          ) : (
             <Button
               small
               minimal
               intent="danger"
               text={t("common.delete")}
-              onClick={() => onDelete(report.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteConfirm(report.id);
+              }}
             />
-            <Button small minimal text={t("common.cancel")} onClick={onDeleteCancel} />
-          </span>
-        ) : (
-          <Button
-            small
-            minimal
-            intent="danger"
-            text={t("common.delete")}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteConfirm(report.id);
-            }}
-          />
-        ))}
-      <Icon icon={IconNames.CHEVRON_RIGHT} size={16} style={{ color: "var(--text-muted)" }} />
+          ))}
+        <Icon icon={IconNames.CHEVRON_RIGHT} size={16} style={{ color: "var(--text-muted)" }} />
+      </Card>
     </div>
   );
 }
@@ -363,6 +380,7 @@ export default function ReportList() {
                 fontSize: 12,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
+                color: "var(--text-muted)",
                 opacity: 0.55,
               }}
             >
@@ -372,16 +390,12 @@ export default function ReportList() {
               <Switch
                 checked={showArchived}
                 onChange={() => setShowArchived(!showArchived)}
-                label={
-                  showArchived ? t("reportList.hideArchived") : t("reportList.showArchived")
-                }
+                label={showArchived ? t("reportList.hideArchived") : t("reportList.showArchived")}
                 style={{ marginBottom: 0 }}
               />
               <Button
                 icon={IconNames.JOIN_TABLE}
-                text={
-                  creatingSummary ? t("reportList.creating") : t("reportList.createSummary")
-                }
+                text={creatingSummary ? t("reportList.creating") : t("reportList.createSummary")}
                 onClick={openSummaryDatePicker}
                 disabled={creatingSummary}
               />
@@ -451,19 +465,13 @@ export default function ReportList() {
                       confId={confId}
                       dateContent={
                         <>
-                          <Tag
-                            minimal
-                            intent="danger"
-                            style={{ borderRadius: 6, fontWeight: 700 }}
-                          >
+                          <Tag minimal intent="danger" style={{ borderRadius: 6, fontWeight: 700 }}>
                             {t("reportList.summaryBadge")}
                           </Tag>
                           {r.title}
                         </>
                       }
-                      metaContent={
-                        <span>{(r.sourceReports || []).join(", ")}</span>
-                      }
+                      metaContent={<span>{(r.sourceReports || []).join(", ")}</span>}
                       deleteConfirmId={deleteConfirmId}
                       onArchive={archiveReport}
                       onUnarchive={unarchiveReport}
@@ -488,9 +496,7 @@ export default function ReportList() {
                         </span>
                       </>
                     }
-                    metaContent={
-                      <span>{Object.keys(r.sessions || {}).length} sessions</span>
-                    }
+                    metaContent={<span>{Object.keys(r.sessions || {}).length} sessions</span>}
                     deleteConfirmId={deleteConfirmId}
                     onArchive={archiveReport}
                     onUnarchive={unarchiveReport}
@@ -536,9 +542,7 @@ export default function ReportList() {
           </div>
           <div className={Classes.DIALOG_FOOTER}>
             <div className={Classes.DIALOG_FOOTER_ACTIONS}>
-              <Button onClick={() => setShowSummaryDatePicker(false)}>
-                {t("common.cancel")}
-              </Button>
+              <Button onClick={() => setShowSummaryDatePicker(false)}>{t("common.cancel")}</Button>
               <Button
                 intent="primary"
                 disabled={!summaryDateStart || !summaryDateEnd}
