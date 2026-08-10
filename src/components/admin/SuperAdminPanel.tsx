@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { collection, onSnapshot } from "firebase/firestore";
 import {
@@ -17,7 +17,7 @@ import { IconNames } from "@blueprintjs/icons";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
-import UserAvatar from "../UserAvatar";
+import AppNavbar from "../shell/AppNavbar";
 import { SectionAccentProvider } from "../shell/SectionAccent";
 import type { Conference, ConferenceVisibility } from "../../types";
 
@@ -31,7 +31,6 @@ interface ConferenceCreateForm {
 
 export default function SuperAdminPanel() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -102,50 +101,7 @@ export default function SuperAdminPanel() {
   return (
     <SectionAccentProvider accent="admin">
       <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
-        <div style={{ background: "var(--accent)", padding: "14px 24px" }}>
-          <div
-            style={{
-              maxWidth: 1152,
-              margin: "0 auto",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <h1
-              style={{
-                fontFamily: "'Work Sans', sans-serif",
-                color: "#fff",
-                fontSize: 18,
-                fontWeight: 700,
-                letterSpacing: "0.3px",
-                margin: 0,
-              }}
-            >
-              {t("admin.adminPanel")}
-            </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Link
-                to="/dashboard"
-                style={{
-                  fontFamily: "'Work Sans', sans-serif",
-                  color: "#fff",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  padding: "6px 16px",
-                  borderRadius: 4,
-                  background: "rgba(255,255,255,0.18)",
-                  letterSpacing: "0.8px",
-                  textDecoration: "none",
-                }}
-              >
-                {t("dashboard.dashboard")}
-              </Link>
-              <UserAvatar size={28} onSignOut={() => navigate("/login")} />
-            </div>
-          </div>
-        </div>
+        <AppNavbar />
         <div style={{ maxWidth: 1152, margin: "0 auto", padding: 32 }}>
           {message && (
             <Callout

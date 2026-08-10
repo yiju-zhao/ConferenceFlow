@@ -432,6 +432,8 @@
     "noSessionsAvailable": "No sessions available",
     "am": "AM",
     "pm": "PM",
+    "mine": "Mine",
+    "mine": "Mine",
     "inPerson": "IN-PERSON",
     "virtual": "VIRTUAL"
   },

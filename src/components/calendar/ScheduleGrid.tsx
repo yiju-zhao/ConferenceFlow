@@ -169,7 +169,6 @@ export default function ScheduleGrid({
         style={{
           flexShrink: 0,
           padding: "12px 16px",
-          background: "var(--surface-warm)",
           zIndex: 2,
           display: "flex",
           alignItems: "center",
