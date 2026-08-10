@@ -432,6 +432,7 @@
     "noSessionsAvailable": "暂无可用 session",
     "am": "上午",
     "pm": "下午",
+    "mine": "我的",
     "inPerson": "线下",
     "virtual": "线上"
   },
