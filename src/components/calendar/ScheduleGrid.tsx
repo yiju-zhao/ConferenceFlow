@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COLORS } from "../../constants";
 import { formatShortDate } from "../../i18n/dateUtils";
 import { getInitials } from "../../lib/reportUtils";
@@ -140,6 +140,32 @@ export default function ScheduleGrid({
   }, [members]);
 
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const sel = Math.min(selectedDayIndex, days.length - 1);
+  const visibleDays = days.length ? [days[sel]] : [];
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Jump to the selected session: switch to its day tab and scroll it into view
+  useEffect(() => {
+    if (!selectedId || !scrollRef.current) return;
+    const sess = sessions.find((s) => s.id === selectedId);
+    if (!sess) return;
+    const dayIdx = days.indexOf(sess.date);
+    if (dayIdx < 0) return;
+    if (dayIdx !== sel) {
+      setSelectedDayIndex(dayIdx);
+      return;
+    }
+    const el = scrollRef.current;
+    const startMin = timeToMinutes(sess.start);
+    const endMin = timeToMinutes(sess.end);
+    const top = (startMin - dayStartMin) * PX_PER_MINUTE;
+    const blockH = Math.max((endMin - startMin) * PX_PER_MINUTE, 24);
+    const viewTop = el.scrollTop;
+    const viewBottom = viewTop + el.clientHeight;
+    if (top < viewTop || top + blockH > viewBottom) {
+      el.scrollTo({ top: Math.max(top - 40, 0), behavior: "smooth" });
+    }
+  }, [selectedId, sel, sessions, days, dayStartMin]);
 
   if (sessions.length === 0) {
     return (
@@ -157,10 +183,6 @@ export default function ScheduleGrid({
     );
   }
   const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MINUTE;
-
-  // One day at a time, selected via the day tabs
-  const sel = Math.min(selectedDayIndex, days.length - 1);
-  const visibleDays = days.length ? [days[sel]] : [];
 
   return (
     <div className="cal-grid">
@@ -209,6 +231,7 @@ export default function ScheduleGrid({
 
       {/* Scrollable time grid */}
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           minHeight: 0,
