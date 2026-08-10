@@ -29,7 +29,6 @@ export default function SessionPool({
     return [...set].sort().slice(0, 8); // Top 8 topics
   }, [sessions]);
 
-  const timeFilters = ["AM", "PM"];
   const formatFilters = ["IN-PERSON", "VIRTUAL"];
 
   const filtered = useMemo(() => {
@@ -45,10 +44,9 @@ export default function SessionPool({
         if (!matches) return false;
       }
 
-      // Topic/time/format filter
+      // Mine/format/topic filter
       if (activeFilter !== "ALL") {
-        if (activeFilter === "AM") return s.start < "12:00";
-        if (activeFilter === "PM") return s.start >= "12:00";
+        if (activeFilter === "MINE") return userAttending.includes(s.id);
         if (activeFilter === "IN-PERSON") return s.format?.toLowerCase().includes("person");
         if (activeFilter === "VIRTUAL") return s.format?.toLowerCase().includes("virtual");
         // Topic filter
@@ -59,7 +57,7 @@ export default function SessionPool({
 
       return true;
     });
-  }, [sessions, search, activeFilter]);
+  }, [sessions, search, activeFilter, userAttending]);
 
   const attendingSet = new Set(userAttending);
 
@@ -83,15 +81,12 @@ export default function SessionPool({
         >
           {t("calendar.filterAll")}
         </button>
-        {timeFilters.map((f) => (
-          <button
-            key={f}
-            className={`cal-pool-filter ${activeFilter === f ? "cal-pool-filter--active" : ""}`}
-            onClick={() => setActiveFilter(activeFilter === f ? "ALL" : f)}
-          >
-            {f === "AM" ? t("calendar.am") : t("calendar.pm")}
-          </button>
-        ))}
+        <button
+          className={`cal-pool-filter ${activeFilter === "MINE" ? "cal-pool-filter--active" : ""}`}
+          onClick={() => setActiveFilter(activeFilter === "MINE" ? "ALL" : "MINE")}
+        >
+          {t("calendar.mine")}
+        </button>
         {formatFilters.map((f) => (
           <button
             key={f}
@@ -130,7 +125,7 @@ export default function SessionPool({
         {filtered.length === 0 && (
           <div
             style={{
-              color: "#7A7670",
+              color: "var(--text-muted)",
               fontSize: 14,
               textAlign: "center",
               padding: 20,

@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COLORS } from "../../constants";
 import { formatShortDate } from "../../i18n/dateUtils";
 import { getInitials } from "../../lib/reportUtils";
 import type { Member, Session } from "../../types";
 
 const PX_PER_MINUTE = 2.5; // 150px per hour
-const DAYS_PER_PAGE = 3;
+const DAY_START_HOUR = 8; // 08:00
+const DAY_END_HOUR = 18; // 18:00
 
 function timeToMinutes(t: string): number {
   if (!t) return 0;
@@ -99,22 +100,22 @@ export default function ScheduleGrid({
     const daySet = new Set(sessions.map((s) => s.date));
     const days = [...daySet].sort();
 
-    // Find global time range
-    let globalMinH = 24,
-      globalMaxH = 0;
+    // Full-day range: always at least 08:00–18:00, extended to cover outlying sessions
+    let minH = DAY_START_HOUR;
+    let maxH = DAY_END_HOUR;
     sessions.forEach((s) => {
       const sh = parseInt(s.start?.split(":")[0] || "9");
       const eh = Math.ceil(timeToMinutes(s.end) / 60);
-      if (sh < globalMinH) globalMinH = sh;
-      if (eh > globalMaxH) globalMaxH = eh;
+      if (sh < minH) minH = sh;
+      if (eh > maxH) maxH = eh;
     });
 
-    const dayStartMin = globalMinH * 60;
-    const dayEndMin = globalMaxH * 60;
+    const dayStartMin = minH * 60;
+    const dayEndMin = maxH * 60;
 
     // Hour labels
     const hourLabels: string[] = [];
-    for (let h = globalMinH; h <= globalMaxH; h++) {
+    for (let h = minH; h <= maxH; h++) {
       hourLabels.push(`${String(h).padStart(2, "0")}:00`);
     }
 
@@ -138,7 +139,33 @@ export default function ScheduleGrid({
     return map;
   }, [members]);
 
-  const [dayPage, setDayPage] = useState(0);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const sel = Math.min(selectedDayIndex, days.length - 1);
+  const visibleDays = days.length ? [days[sel]] : [];
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Jump to the selected session: switch to its day tab and scroll it into view
+  useEffect(() => {
+    if (!selectedId || !scrollRef.current) return;
+    const sess = sessions.find((s) => s.id === selectedId);
+    if (!sess) return;
+    const dayIdx = days.indexOf(sess.date);
+    if (dayIdx < 0) return;
+    if (dayIdx !== sel) {
+      setSelectedDayIndex(dayIdx);
+      return;
+    }
+    const el = scrollRef.current;
+    const startMin = timeToMinutes(sess.start);
+    const endMin = timeToMinutes(sess.end);
+    const top = (startMin - dayStartMin) * PX_PER_MINUTE;
+    const blockH = Math.max((endMin - startMin) * PX_PER_MINUTE, 24);
+    const viewTop = el.scrollTop;
+    const viewBottom = viewTop + el.clientHeight;
+    if (top < viewTop || top + blockH > viewBottom) {
+      el.scrollTo({ top: Math.max(top - 40, 0), behavior: "smooth" });
+    }
+  }, [selectedId, sel, sessions, days, dayStartMin]);
 
   if (sessions.length === 0) {
     return (
@@ -146,7 +173,7 @@ export default function ScheduleGrid({
         <div className="cal-grid-label">Your Schedule</div>
         <div className="cal-grid-empty">
           <div>
-            <div style={{ fontSize: 18, marginBottom: 8, color: "#A9A5A0" }}>
+            <div style={{ fontSize: 18, marginBottom: 8, color: "var(--text-secondary)" }}>
               No sessions scheduled
             </div>
             <div style={{ fontSize: 13 }}>Browse the session pool and mark sessions to attend</div>
@@ -157,81 +184,46 @@ export default function ScheduleGrid({
   }
   const totalHeight = (dayEndMin - dayStartMin) * PX_PER_MINUTE;
 
-  // Paginate days
-  const totalPages = Math.ceil(days.length / DAYS_PER_PAGE);
-  const visibleDays = days.slice(dayPage * DAYS_PER_PAGE, (dayPage + 1) * DAYS_PER_PAGE);
-  const hasPrev = dayPage > 0;
-  const hasNext = dayPage < totalPages - 1;
-
   return (
     <div className="cal-grid">
       {/* Frozen header: label + day headers */}
       <div
         style={{
           flexShrink: 0,
-          padding: "16px 16px 0",
-          background: "#171B21",
+          padding: "12px 16px",
           zIndex: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
         }}
       >
         <div className="cal-grid-label">Your Schedule</div>
 
-        {/* Day headers with pagination */}
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <div
-            style={{
-              width: 56,
-              flexShrink: 0,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "0 4px",
-            }}
-          >
-            {hasPrev ? (
-              <button
-                onClick={() => setDayPage(dayPage - 1)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#E8976B",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  padding: 0,
-                }}
-              >
-                ←
-              </button>
-            ) : (
-              <span />
-            )}
-            {hasNext ? (
-              <button
-                onClick={() => setDayPage(dayPage + 1)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#E8976B",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  padding: 0,
-                }}
-              >
-                →
-              </button>
-            ) : (
-              <span />
-            )}
-          </div>
-          {visibleDays.map((day) => {
+        {/* Day tabs — click to switch the visible day */}
+        <div style={{ display: "flex", gap: 6 }}>
+          {days.map((day, i) => {
+            const active = i === sel;
             const d = new Date(day + "T00:00:00");
-            const label = formatShortDate(d);
             return (
-              <div key={day} className="cal-grid-day-header" style={{ flex: 1 }}>
-                {label}
-              </div>
+              <button
+                key={day}
+                onClick={() => setSelectedDayIndex(i)}
+                style={{
+                  padding: "5px 12px",
+                  fontFamily: "'Work Sans', sans-serif",
+                  fontWeight: active ? 700 : 600,
+                  fontSize: 12,
+                  letterSpacing: "0.3px",
+                  background: active ? "var(--accent)" : "transparent",
+                  color: active ? "#fff" : "var(--text-muted)",
+                  border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: 3,
+                  cursor: "pointer",
+                }}
+              >
+                {formatShortDate(d)}
+              </button>
             );
           })}
         </div>
@@ -239,6 +231,7 @@ export default function ScheduleGrid({
 
       {/* Scrollable time grid */}
       <div
+        ref={scrollRef}
         style={{
           flex: 1,
           minHeight: 0,
@@ -267,7 +260,7 @@ export default function ScheduleGrid({
                     top,
                     right: 6,
                     fontSize: 12,
-                    color: "#7A7670",
+                    color: "var(--text-muted)",
                     fontFamily: "Inter, sans-serif",
                   }}
                 >
@@ -289,7 +282,7 @@ export default function ScheduleGrid({
                   flex: 1,
                   position: "relative",
                   height: totalHeight,
-                  background: "#272C35",
+                  background: "var(--surface-warm)",
                   marginLeft: 1,
                 }}
               >
@@ -305,7 +298,7 @@ export default function ScheduleGrid({
                         top,
                         left: 0,
                         right: 0,
-                        borderTop: "1px solid #333840",
+                        borderTop: "1px solid var(--border)",
                         pointerEvents: "none",
                       }}
                     />
@@ -331,14 +324,14 @@ export default function ScheduleGrid({
                         left,
                         width,
                         height,
-                        background: "#E8976B",
+                        background: "var(--accent)",
                         padding: "6px 10px",
                         cursor: "pointer",
                         overflow: "hidden",
                         transition: "opacity 120ms ease",
                         boxSizing: "border-box",
                         borderRadius: 3,
-                        outline: s.id === selectedId ? "2px solid #fff" : "none",
+                        outline: s.id === selectedId ? "2px solid var(--accent-deep)" : "none",
                         outlineOffset: s.id === selectedId ? -2 : 0,
                         zIndex: s.id === selectedId ? 10 : 1,
                         display: "flex",

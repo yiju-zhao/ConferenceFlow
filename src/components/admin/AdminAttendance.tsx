@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
+import { Button, Card, InputGroup, SegmentedControl, Tag } from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import {
   doc,
   setDoc,
@@ -54,33 +56,47 @@ function SessionAssignSearch({ sessions, onAssign, t }: SessionAssignSearchProps
 
   return (
     <div className="mt-2 relative" style={{ maxWidth: 480 }}>
-      <input
-        type="text"
+      <InputGroup
+        small
+        leftIcon={IconNames.SEARCH}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setTimeout(() => setFocused(false), 150)}
         placeholder={t("admin.assignSessionSearch")}
-        className="w-full bg-surface-container-high p-2 text-on-surface text-xs border-0 border-b-2 border-transparent focus:border-admin-teal focus:outline-none"
       />
       {focused && query.trim() && results.length > 0 && (
         <div
-          className="absolute z-10 left-0 right-0 bg-surface-container-lowest shadow-lg max-h-60 overflow-y-auto"
-          style={{ top: "100%", border: "1px solid #dadada" }}
+          className="absolute z-10 left-0 right-0 max-h-60 overflow-y-auto"
+          style={{
+            top: "100%",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            boxShadow: "var(--shadow-md)",
+          }}
         >
           {results.map((s) => (
             <button
               key={s.id}
               onMouseDown={() => handleSelect(s.id)}
-              className="w-full text-left px-3 py-2 hover:bg-surface-container/50 transition-colors flex items-center gap-2"
+              className="w-full text-left px-3 py-2 transition-colors flex items-center gap-2"
+              style={{ background: "transparent", border: "none", cursor: "pointer" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-hover)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
               {s.code && (
-                <span className="text-admin-teal text-[10px] font-mono bg-admin-teal/10 px-1.5 py-0.5 flex-shrink-0">
+                <Tag minimal intent="primary" style={{ flexShrink: 0, fontFamily: "monospace" }}>
                   {s.code}
-                </span>
+                </Tag>
               )}
-              <span className="text-on-surface text-xs flex-1 min-w-0 truncate">{s.title}</span>
-              <span className="text-secondary text-[10px] flex-shrink-0">
+              <span
+                className="text-xs flex-1 min-w-0 truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {s.title}
+              </span>
+              <span style={{ color: "var(--text-muted)", fontSize: 10, flexShrink: 0 }}>
                 {s.date} {s.start}
               </span>
             </button>
@@ -89,8 +105,14 @@ function SessionAssignSearch({ sessions, onAssign, t }: SessionAssignSearchProps
       )}
       {focused && query.trim() && results.length === 0 && (
         <div
-          className="absolute z-10 left-0 right-0 bg-surface-container-lowest px-3 py-2 text-secondary text-xs"
-          style={{ top: "100%", border: "1px solid #dadada" }}
+          className="absolute z-10 left-0 right-0 px-3 py-2 text-xs"
+          style={{
+            top: "100%",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            color: "var(--text-muted)",
+          }}
         >
           {t("admin.noMatchingSessions")}
         </div>
@@ -264,40 +286,13 @@ export default function AdminAttendance() {
 
   const ModeBadge = ({ mode }: { mode: AttendanceMode }) =>
     mode === "online" ? (
-      <span className="inline-flex items-center gap-1.5 bg-[#2980B9]/10 text-[#2980B9] text-xs px-2.5 py-1 uppercase tracking-wider font-headline">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect x="2" y="3" width="20" height="14" rx="0" />
-          <line x1="8" y1="21" x2="16" y2="21" />
-          <line x1="12" y1="17" x2="12" y2="21" />
-        </svg>
+      <Tag minimal intent="primary">
         Online
-      </span>
+      </Tag>
     ) : (
-      <span className="inline-flex items-center gap-1.5 bg-[#27AE60]/10 text-[#27AE60] text-xs px-2.5 py-1 uppercase tracking-wider font-headline">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
+      <Tag minimal intent="success">
         Onsite
-      </span>
+      </Tag>
     );
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -305,162 +300,267 @@ export default function AdminAttendance() {
   return (
     <div>
       {/* ── Section 1: Attendee Table ─────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <span className="w-1 h-5 bg-admin-teal inline-block" />
-          <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 4, height: 24, borderRadius: 9999, background: "var(--accent)" }} />
+          <h2
+            style={{
+              fontFamily: "'Work Sans', sans-serif",
+              color: "var(--text-primary)",
+              fontSize: 18,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              margin: 0,
+            }}
+          >
             {t("admin.attendeeManagement")}
           </h2>
-          <span className="text-secondary text-xs uppercase tracking-wider ml-1">
+          <Tag minimal round>
             {approvedMembers.length} {t("admin.members")}
-          </span>
+          </Tag>
         </div>
-        <button
+        <Button
+          intent="primary"
+          icon={showAddForm ? undefined : IconNames.PLUS}
+          text={showAddForm ? t("common.cancel") : t("admin.addAttendee")}
           onClick={() => {
             setShowAddForm((v) => !v);
             setAddName("");
             setAddMode("onsite");
           }}
-          className="bg-admin-teal text-white px-4 py-2 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity rounded-lg"
-        >
-          {showAddForm ? t("common.cancel") : t("admin.addAttendee")}
-        </button>
+        />
       </div>
 
       {/* Add form */}
       {showAddForm && (
-        <div className="bg-surface-container-lowest border-b border-surface-dim p-4 mb-4 flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-40">
-            <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
+        <Card
+          style={{
+            marginBottom: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 12,
+            alignItems: "flex-end",
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label
+              style={{
+                display: "block",
+                color: "var(--text-muted)",
+                fontSize: 12,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 4,
+              }}
+            >
               {t("admin.name")}
             </label>
-            <input
-              type="text"
+            <InputGroup
               value={addName}
               onChange={(e) => setAddName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddAttendee()}
               placeholder={t("admin.fullName")}
-              className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-admin-teal focus:outline-none"
             />
           </div>
           <div>
-            <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
+            <label
+              style={{
+                display: "block",
+                color: "var(--text-muted)",
+                fontSize: 12,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: 4,
+              }}
+            >
               {t("admin.mode")}
             </label>
-            <div className="flex gap-1">
-              {(["onsite", "online"] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setAddMode(m)}
-                  className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 rounded-lg ${
-                    addMode === m
-                      ? "bg-admin-teal text-white"
-                      : "bg-surface-container text-secondary hover:text-on-surface"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              small
+              options={[
+                { label: "onsite", value: "onsite" },
+                { label: "online", value: "online" },
+              ]}
+              value={addMode}
+              onValueChange={(v) => setAddMode(v as AttendanceMode)}
+            />
           </div>
-          <button
+          <Button
+            intent="primary"
+            text={addLoading ? t("admin.adding") : t("admin.add")}
             onClick={handleAddAttendee}
             disabled={addLoading || !addName.trim()}
-            className="bg-admin-teal text-white px-5 py-2 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity disabled:opacity-50 rounded-lg"
-          >
-            {addLoading ? t("admin.adding") : t("admin.add")}
-          </button>
-        </div>
+          />
+        </Card>
       )}
 
       {/* Table */}
-      <div className="bg-surface-container-lowest mb-10 rounded-lg shadow-sm">
+      <Card style={{ padding: 0, overflow: "hidden", marginBottom: 40 }}>
         {/* Header row */}
-        <div className="hidden md:grid grid-cols-[2fr_100px_100px_100px_160px] gap-4 px-4 py-2 border-b border-surface-dim bg-surface-container">
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline">
+        <div
+          className="hidden md:grid grid-cols-[2fr_100px_100px_100px_160px] gap-4 px-4 py-2"
+          style={{
+            borderBottom: "1px solid var(--border)",
+            background: "var(--surface-warm)",
+          }}
+        >
+          <span
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 600,
+            }}
+          >
             {t("admin.name")}
           </span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">
+          <span
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 600,
+              textAlign: "center",
+            }}
+          >
             {t("admin.mode")}
           </span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">
+          <span
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 600,
+              textAlign: "center",
+            }}
+          >
             {t("admin.role")}
           </span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">
+          <span
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 600,
+              textAlign: "center",
+            }}
+          >
             {t("admin.sessions")}
           </span>
-          <span className="text-secondary text-xs uppercase tracking-wider font-headline text-center">
+          <span
+            style={{
+              color: "var(--text-muted)",
+              fontSize: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 600,
+              textAlign: "center",
+            }}
+          >
             {t("admin.actions")}
           </span>
         </div>
 
         {approvedMembers.length === 0 && (
-          <div className="p-6 text-center text-secondary text-sm">
+          <div
+            style={{ padding: 24, textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}
+          >
             {t("admin.noApprovedMembers")}
           </div>
         )}
 
-        {approvedMembers.map((m) => {
+        {approvedMembers.map((m, index) => {
           const isEditing = editState?.memberId === m.id;
           const sessionCount = sessionCountForMember(m.id);
 
           return (
-            <div key={m.id} className="border-b border-surface-dim last:border-b-0">
+            <div
+              key={m.id}
+              style={{ borderTop: index > 0 ? "1px solid var(--border)" : undefined }}
+            >
               {isEditing ? (
                 /* Edit row */
-                <div className="p-4 flex flex-wrap gap-3 items-end bg-surface-container/40">
+                <div
+                  className="p-4 flex flex-wrap gap-3 items-end"
+                  style={{ background: "var(--surface-warm)" }}
+                >
                   <div className="flex-1 min-w-40">
-                    <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
+                    <label
+                      style={{
+                        display: "block",
+                        color: "var(--text-muted)",
+                        fontSize: 12,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        marginBottom: 4,
+                      }}
+                    >
                       {t("admin.name")}
                     </label>
-                    <input
-                      type="text"
+                    <InputGroup
                       value={editState.name}
                       onChange={(e) => setEditState({ ...editState!, name: e.target.value })}
                       onKeyDown={(e) => e.key === "Enter" && handleSaveEdit()}
-                      className="w-full bg-surface-container-high p-2 text-on-surface text-sm border-0 border-b-2 border-transparent focus:border-admin-teal focus:outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
+                    <label
+                      style={{
+                        display: "block",
+                        color: "var(--text-muted)",
+                        fontSize: 12,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        marginBottom: 4,
+                      }}
+                    >
                       {t("admin.mode")}
                     </label>
-                    <div className="flex gap-1">
-                      {(["onsite", "online"] as const).map((mo) => (
-                        <button
-                          key={mo}
-                          onClick={() => setEditState({ ...editState!, mode: mo })}
-                          className={`px-3 py-1.5 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
-                            editState.mode === mo
-                              ? "bg-admin-teal text-white"
-                              : "bg-surface-container text-secondary hover:text-on-surface"
-                          }`}
-                        >
-                          {mo}
-                        </button>
-                      ))}
-                    </div>
+                    <SegmentedControl
+                      small
+                      options={[
+                        { label: "onsite", value: "onsite" },
+                        { label: "online", value: "online" },
+                      ]}
+                      value={editState.mode}
+                      onValueChange={(v) => setEditState({ ...editState!, mode: v as AttendanceMode })}
+                    />
                   </div>
                   <div className="flex gap-2">
-                    <button
+                    <Button
+                      small
+                      intent="primary"
+                      text={editLoading ? t("common.saving") : t("common.save")}
                       onClick={handleSaveEdit}
                       disabled={editLoading}
-                      className="bg-admin-teal text-white px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity disabled:opacity-50"
-                    >
-                      {editLoading ? t("common.saving") : t("common.save")}
-                    </button>
-                    <button
-                      onClick={() => setEditState(null)}
-                      className="bg-surface-container text-secondary px-4 py-1.5 text-xs font-headline uppercase tracking-wider hover:text-on-surface transition-colors"
-                    >
-                      {t("common.cancel")}
-                    </button>
+                    />
+                    <Button small text={t("common.cancel")} onClick={() => setEditState(null)} />
                   </div>
                 </div>
               ) : (
                 /* Normal row */
                 <div className="md:grid md:grid-cols-[2fr_100px_100px_100px_160px] gap-4 px-4 py-3 flex flex-wrap items-center">
-                  <div className="text-on-surface text-sm font-bold truncate min-w-0">
+                  <div
+                    className="text-sm font-bold truncate min-w-0"
+                    style={{ color: "var(--text-primary)" }}
+                  >
                     {getMemberName(m)}
                   </div>
                   <div className="flex items-center justify-center">
@@ -468,20 +568,18 @@ export default function AdminAttendance() {
                   </div>
                   <div className="flex items-center justify-center">
                     {m.role === "admin" ? (
-                      <span className="bg-admin-teal/10 text-admin-teal text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
+                      <Tag minimal intent="primary">
                         Admin
-                      </span>
+                      </Tag>
                     ) : m.managedByAdmin ? (
-                      <span className="bg-[#E67E22]/10 text-[#E67E22] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
+                      <Tag minimal intent="warning">
                         Attendee
-                      </span>
+                      </Tag>
                     ) : (
-                      <span className="bg-[#F1C40F]/10 text-[#D4AC0D] text-xs px-2 py-0.5 uppercase tracking-wider font-headline">
-                        Member
-                      </span>
+                      <Tag minimal>Member</Tag>
                     )}
                   </div>
-                  <div className="text-secondary text-xs text-center">
+                  <div className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
                     {sessionCount} {t("admin.sessions").toLowerCase()}
                   </div>
                   <div className="flex gap-2 items-center justify-center">
@@ -491,25 +589,28 @@ export default function AdminAttendance() {
                       !m.legacyName &&
                       m.role !== "admin" &&
                       m.status === "approved" ? (
-                        <button
+                        <Button
+                          minimal
+                          small
+                          text={t("admin.promote")}
                           onClick={() => handleSetAdmin(m.id)}
-                          className="text-admin-teal text-xs hover:underline"
-                        >
-                          {t("admin.promote")}
-                        </button>
+                        />
                       ) : !m.managedByAdmin &&
                         !m.legacyName &&
                         m.role === "admin" &&
                         isSuperAdmin &&
                         m.id !== user?.uid ? (
-                        <button
+                        <Button
+                          minimal
+                          small
+                          text={t("admin.demote")}
                           onClick={() => handleRemoveAdmin(m.id)}
-                          className="text-secondary text-xs hover:text-admin-teal hover:underline"
-                        >
-                          {t("admin.demote")}
-                        </button>
+                        />
                       ) : m.managedByAdmin ? (
-                        <button
+                        <Button
+                          minimal
+                          small
+                          text={t("admin.edit")}
                           onClick={() =>
                             setEditState({
                               memberId: m.id,
@@ -517,10 +618,7 @@ export default function AdminAttendance() {
                               mode: m.attendanceMode || "onsite",
                             })
                           }
-                          className="text-secondary text-xs hover:text-on-surface"
-                        >
-                          {t("admin.edit")}
-                        </button>
+                        />
                       ) : null}
                     </span>
                     {/* Slot 2: Remove — fixed width */}
@@ -528,29 +626,25 @@ export default function AdminAttendance() {
                       {m.role !== "admin" && m.id !== user?.uid ? (
                         removeConfirm === m.id ? (
                           <span className="flex gap-1 items-center justify-center">
-                            <button
+                            <Button
+                              small
+                              intent="danger"
+                              text={t("admin.yes")}
                               onClick={() => {
                                 handleRemoveAttendee(m.id);
                                 setRemoveConfirm(null);
                               }}
-                              className="bg-admin-teal text-white px-2 py-1 text-[10px] font-headline uppercase tracking-wider"
-                            >
-                              {t("admin.yes")}
-                            </button>
-                            <button
-                              onClick={() => setRemoveConfirm(null)}
-                              className="bg-surface-container text-secondary px-2 py-1 text-[10px] font-headline uppercase tracking-wider"
-                            >
-                              {t("admin.no")}
-                            </button>
+                            />
+                            <Button small text={t("admin.no")} onClick={() => setRemoveConfirm(null)} />
                           </span>
                         ) : (
-                          <button
+                          <Button
+                            minimal
+                            small
+                            intent="danger"
+                            text={t("admin.remove")}
                             onClick={() => setRemoveConfirm(m.id)}
-                            className="bg-surface-container text-admin-teal px-3 py-1 text-xs font-headline uppercase tracking-wider hover:opacity-80 transition-opacity"
-                          >
-                            {t("admin.remove")}
-                          </button>
+                          />
                         )
                       ) : null}
                     </span>
@@ -560,39 +654,40 @@ export default function AdminAttendance() {
             </div>
           );
         })}
-      </div>
+      </Card>
 
       {/* ── Section 2: Session Assignment ─────────────────────────────────── */}
-      <div className="flex items-center gap-2 mb-4">
-        <span className="w-1 h-5 bg-admin-teal inline-block" />
-        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <div style={{ width: 4, height: 24, borderRadius: 9999, background: "var(--accent)" }} />
+        <h2
+          style={{
+            fontFamily: "'Work Sans', sans-serif",
+            color: "var(--text-primary)",
+            fontSize: 18,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            margin: 0,
+          }}
+        >
           {t("admin.sessionAssignment")}
         </h2>
       </div>
 
       {/* View toggle */}
-      <div className="flex gap-1 mb-6">
-        {(
-          [
-            { key: "bySession", label: t("admin.bySession") },
-            { key: "byMember", label: t("admin.byMember") },
-          ] as const
-        ).map((v) => (
-          <button
-            key={v.key}
-            onClick={() => {
-              setAssignView(v.key);
-              setExpandedMemberId(null);
-            }}
-            className={`px-4 py-2 text-xs font-headline uppercase tracking-wider transition-colors duration-50 ${
-              assignView === v.key
-                ? "bg-admin-teal text-white"
-                : "bg-surface-container text-secondary hover:text-on-surface"
-            }`}
-          >
-            {v.label}
-          </button>
-        ))}
+      <div style={{ marginBottom: 24 }}>
+        <SegmentedControl
+          small
+          options={[
+            { label: t("admin.bySession"), value: "bySession" },
+            { label: t("admin.byMember"), value: "byMember" },
+          ]}
+          value={assignView}
+          onValueChange={(v) => {
+            setAssignView(v as "byMember" | "bySession");
+            setExpandedMemberId(null);
+          }}
+        />
       </div>
 
       {/* ── By Member View ────────────────────────────────────────────────── */}
@@ -605,67 +700,83 @@ export default function AdminAttendance() {
           return (
             <div>
               {/* Mode filter */}
-              <div className="flex gap-1 mb-3">
-                {(
-                  [
-                    { key: "all", label: t("admin.filterAll") },
-                    { key: "onsite", label: t("dashboard.onsite") },
-                    { key: "online", label: t("dashboard.online") },
-                  ] as const
-                ).map((f) => (
-                  <button
-                    key={f.key}
-                    onClick={() => setModeFilter(f.key)}
-                    className={`px-3 py-1.5 text-[10px] font-headline uppercase tracking-wider transition-colors duration-50 ${
-                      modeFilter === f.key
-                        ? "bg-admin-teal text-white"
-                        : "bg-surface-container text-secondary hover:text-on-surface"
-                    }`}
-                  >
-                    {f.label} (
-                    {f.key === "all"
-                      ? approvedMembers.length
-                      : approvedMembers.filter((m) => (m.attendanceMode || "onsite") === f.key)
-                          .length}
-                    )
-                  </button>
-                ))}
+              <div style={{ marginBottom: 12 }}>
+                <SegmentedControl
+                  small
+                  options={(
+                    [
+                      { key: "all", label: t("admin.filterAll") },
+                      { key: "onsite", label: t("dashboard.onsite") },
+                      { key: "online", label: t("dashboard.online") },
+                    ] as const
+                  ).map((f) => ({
+                    value: f.key as string,
+                    label: `${f.label} (${
+                      f.key === "all"
+                        ? approvedMembers.length
+                        : approvedMembers.filter((m) => (m.attendanceMode || "onsite") === f.key)
+                            .length
+                    })`,
+                  }))}
+                  value={modeFilter}
+                  onValueChange={(v) => setModeFilter(v as "all" | "onsite" | "online")}
+                />
               </div>
-              <div className="bg-surface-container-lowest">
+              <Card style={{ padding: 0, overflow: "hidden" }}>
                 {filteredMembers.length === 0 && (
-                  <div className="p-6 text-center text-secondary text-sm">
+                  <div
+                    style={{
+                      padding: 24,
+                      textAlign: "center",
+                      color: "var(--text-muted)",
+                      fontSize: 14,
+                    }}
+                  >
                     {t("admin.noMembersToDisplay")}
                   </div>
                 )}
-                {filteredMembers.map((m) => {
+                {filteredMembers.map((m, index) => {
                   const isExpanded = expandedMemberId === m.id;
                   return (
-                    <div key={m.id} className="border-b border-surface-dim last:border-b-0">
+                    <div
+                      key={m.id}
+                      style={{ borderTop: index > 0 ? "1px solid var(--border)" : undefined }}
+                    >
                       {/* Member row — clickable to expand */}
                       <button
                         onClick={() => setExpandedMemberId(isExpanded ? null : m.id)}
-                        className="w-full px-4 py-3 flex justify-between items-center hover:bg-surface-container/30 transition-colors text-left"
+                        className="w-full px-4 py-3 flex justify-between items-center transition-colors text-left"
+                        style={{ background: "transparent", border: "none", cursor: "pointer" }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "var(--surface-hover)")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "transparent")
+                        }
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-on-surface text-sm font-bold">
+                          <span
+                            className="text-sm font-bold"
+                            style={{ color: "var(--text-primary)" }}
+                          >
                             {getMemberName(m)}
                           </span>
                           <ModeBadge mode={m.attendanceMode || "onsite"} />
                           {m.role === "admin" ? (
-                            <span className="bg-admin-teal/10 text-admin-teal text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">
+                            <Tag minimal intent="primary">
                               Admin
-                            </span>
+                            </Tag>
                           ) : m.managedByAdmin ? (
-                            <span className="bg-[#E67E22]/10 text-[#E67E22] text-[10px] px-1.5 py-0.5 uppercase tracking-wider font-headline">
+                            <Tag minimal intent="warning">
                               Attendee
-                            </span>
+                            </Tag>
                           ) : null}
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-secondary text-xs">
+                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                             {sessionCountForMember(m.id)} {t("admin.sessionsAssigned")}
                           </span>
-                          <span className="text-secondary text-xs font-headline uppercase tracking-wider">
+                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                             {isExpanded ? "▲" : "▼"}
                           </span>
                         </div>
@@ -697,14 +808,23 @@ export default function AdminAttendance() {
                             : [];
 
                           return (
-                            <div className="bg-surface-container/20 px-6 py-3 border-t border-surface-dim">
+                            <div
+                              className="px-6 py-3"
+                              style={{
+                                background: "var(--surface-warm)",
+                                borderTop: "1px solid var(--border)",
+                              }}
+                            >
                               {memberSessions.length === 0 && !canAssign && (
-                                <p className="text-secondary text-xs">
+                                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                                   {t("admin.noSessionsAssigned")}
                                 </p>
                               )}
                               {memberSessions.length === 0 && canAssign && (
-                                <p className="text-secondary text-xs mb-3">
+                                <p
+                                  className="text-xs mb-3"
+                                  style={{ color: "var(--text-muted)" }}
+                                >
                                   {t("admin.noSessionsAssigned")}
                                 </p>
                               )}
@@ -713,11 +833,30 @@ export default function AdminAttendance() {
                                   {sortedDates.map((date) => (
                                     <div key={date} className="mb-4 last:mb-0">
                                       <div className="flex items-center gap-2 mb-2">
-                                        <span className="w-1 h-4 bg-admin-teal inline-block"></span>
-                                        <span className="text-xs font-headline font-bold uppercase tracking-wider text-admin-teal">
+                                        <span
+                                          style={{
+                                            width: 4,
+                                            height: 16,
+                                            borderRadius: 9999,
+                                            background: "var(--accent)",
+                                            display: "inline-block",
+                                          }}
+                                        />
+                                        <span
+                                          style={{
+                                            fontSize: 12,
+                                            fontFamily: "'Work Sans', sans-serif",
+                                            fontWeight: 700,
+                                            textTransform: "uppercase",
+                                            letterSpacing: "0.05em",
+                                            color: "var(--accent-deep)",
+                                          }}
+                                        >
                                           {formatShortDate(new Date(date + "T00:00:00"))}
                                         </span>
-                                        <span className="text-secondary text-[10px]">
+                                        <span
+                                          style={{ color: "var(--text-muted)", fontSize: 10 }}
+                                        >
                                           ({byDate[date].length} sessions)
                                         </span>
                                       </div>
@@ -726,29 +865,48 @@ export default function AdminAttendance() {
                                           <div
                                             key={s.id}
                                             onClick={() => setSessionDetailModal(s)}
-                                            className="flex items-center gap-3 px-3 py-2 hover:bg-surface-container/50 transition-colors text-left w-full cursor-pointer"
+                                            className="flex items-center gap-3 px-3 py-2 transition-colors text-left w-full cursor-pointer"
+                                            style={{ borderRadius: 4 }}
+                                            onMouseEnter={(e) =>
+                                              (e.currentTarget.style.background =
+                                                "var(--surface-hover)")
+                                            }
+                                            onMouseLeave={(e) =>
+                                              (e.currentTarget.style.background = "transparent")
+                                            }
                                           >
-                                            <span className="text-secondary text-xs font-mono w-24 flex-shrink-0">
+                                            <span
+                                              className="text-xs font-mono w-24 flex-shrink-0"
+                                              style={{ color: "var(--text-muted)" }}
+                                            >
                                               {s.start}–{s.end}
                                             </span>
-                                            <span className="text-on-surface text-sm flex-1 min-w-0 truncate">
+                                            <span
+                                              className="text-sm flex-1 min-w-0 truncate"
+                                              style={{ color: "var(--text-primary)" }}
+                                            >
                                               {s.title}
                                             </span>
                                             {s.room && (
-                                              <span className="text-secondary text-xs flex-shrink-0">
+                                              <span
+                                                className="text-xs flex-shrink-0"
+                                                style={{ color: "var(--text-muted)" }}
+                                              >
                                                 {s.room}
                                               </span>
                                             )}
                                             {canUnassign && (
-                                              <button
+                                              <Button
+                                                minimal
+                                                small
+                                                intent="danger"
+                                                text={t("admin.unassign")}
+                                                style={{ flexShrink: 0 }}
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   handleToggleSession(m.id, s.id, true);
                                                 }}
-                                                className="text-admin-teal text-xs hover:underline flex-shrink-0"
-                                              >
-                                                {t("admin.unassign")}
-                                              </button>
+                                              />
                                             )}
                                           </div>
                                         ))}
@@ -773,7 +931,7 @@ export default function AdminAttendance() {
                     </div>
                   );
                 })}
-              </div>
+              </Card>
             </div>
           );
         })()}
@@ -787,7 +945,16 @@ export default function AdminAttendance() {
 
           if (!activeDay)
             return (
-              <div className="p-6 text-center text-secondary text-sm">{t("admin.noSessions")}</div>
+              <div
+                style={{
+                  padding: 24,
+                  textAlign: "center",
+                  color: "var(--text-muted)",
+                  fontSize: 14,
+                }}
+              >
+                {t("admin.noSessions")}
+              </div>
             );
 
           // Sessions for the active day
@@ -856,11 +1023,11 @@ export default function AdminAttendance() {
 
           return (
             <div>
-              {/* Day switcher — Warm Midnight style */}
+              {/* Day switcher */}
               <div
                 style={{
                   display: "flex",
-                  gap: 4,
+                  gap: 6,
                   marginBottom: 12,
                   flexWrap: "wrap",
                 }}
@@ -874,24 +1041,16 @@ export default function AdminAttendance() {
                       key={d}
                       onClick={() => setSelectedDay(d)}
                       style={{
-                        padding: "8px 16px",
-                        fontSize: 12,
+                        padding: "5px 12px",
                         fontFamily: "'Work Sans', sans-serif",
-                        fontWeight: 600,
-                        letterSpacing: "0.5px",
-                        textTransform: "uppercase",
-                        border: "none",
+                        fontWeight: isActive ? 700 : 600,
+                        fontSize: 12,
+                        letterSpacing: "0.3px",
+                        background: isActive ? "var(--accent)" : "transparent",
+                        color: isActive ? "#fff" : "var(--text-muted)",
+                        border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                        borderRadius: 3,
                         cursor: "pointer",
-                        borderRadius: 4,
-                        transition: "all 120ms ease",
-                        background: isActive ? "#E8976B" : "#272C35",
-                        color: isActive ? "#fff" : "#A9A5A0",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) e.currentTarget.style.color = "#EDEAE5";
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) e.currentTarget.style.color = "#A9A5A0";
                       }}
                     >
                       {label} <span style={{ opacity: 0.6 }}>({count})</span>
@@ -900,18 +1059,11 @@ export default function AdminAttendance() {
                 })}
               </div>
 
-              {/* Calendar grid — Warm Midnight theme (matches schedule page) */}
-              <div
-                style={{
-                  background: "#171B21",
-                  padding: 16,
-                  borderRadius: 8,
-                  fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
-                }}
-              >
+              {/* Calendar grid — matches schedule page */}
+              <Card style={{ padding: 16, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}>
                 <div
                   style={{
-                    background: "#272C35",
+                    background: "var(--surface-warm)",
                     padding: "12px 16px",
                     borderRadius: 6,
                     display: "flex",
@@ -925,13 +1077,13 @@ export default function AdminAttendance() {
                       fontFamily: "'Work Sans', sans-serif",
                       fontWeight: 700,
                       fontSize: 14,
-                      color: "#E8976B",
+                      color: "var(--accent-deep)",
                       letterSpacing: "0.3px",
                     }}
                   >
                     {formatLongDate(new Date(activeDay + "T00:00:00"))}
                   </span>
-                  <span style={{ color: "#7A7670", fontSize: 13 }}>
+                  <span style={{ color: "var(--text-muted)", fontSize: 13 }}>
                     {daySessions.length} {t("admin.sessions").toLowerCase()}
                   </span>
                 </div>
@@ -956,7 +1108,7 @@ export default function AdminAttendance() {
                             top,
                             right: 6,
                             fontSize: 12,
-                            color: "#7A7670",
+                            color: "var(--text-muted)",
                             fontFamily: "'Inter', sans-serif",
                           }}
                         >
@@ -972,7 +1124,7 @@ export default function AdminAttendance() {
                       flex: 1,
                       position: "relative",
                       height: totalHeight,
-                      background: "#272C35",
+                      background: "var(--surface-warm)",
                       borderRadius: 4,
                     }}
                   >
@@ -987,7 +1139,7 @@ export default function AdminAttendance() {
                             top,
                             left: 0,
                             right: 0,
-                            borderTop: "1px solid #333840",
+                            borderTop: "1px solid var(--border)",
                             pointerEvents: "none",
                           }}
                         />
@@ -1014,7 +1166,7 @@ export default function AdminAttendance() {
                             left,
                             width,
                             height,
-                            background: "#E8976B",
+                            background: "var(--accent)",
                             padding: "6px 10px",
                             cursor: "pointer",
                             overflow: "hidden",
@@ -1105,8 +1257,8 @@ export default function AdminAttendance() {
                                     alignItems: "center",
                                     justifyContent: "center",
                                     fontSize: 9,
-                                    color: "#7A7670",
-                                    background: "#1E2229",
+                                    color: "var(--text-muted)",
+                                    background: "var(--surface)",
                                   }}
                                 >
                                   +{attendeeCount - 5}
@@ -1119,7 +1271,7 @@ export default function AdminAttendance() {
                     })}
                   </div>
                 </div>
-              </div>
+              </Card>
             </div>
           );
         })()}
@@ -1146,10 +1298,11 @@ export default function AdminAttendance() {
                   maxWidth: "90vw",
                   maxHeight: "80vh",
                   overflow: "auto",
-                  background: "#1E2229",
+                  background: "var(--surface)",
                   borderRadius: 10,
                   fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
-                  color: "#EDEAE5",
+                  color: "var(--text-primary)",
+                  boxShadow: "var(--shadow-xl)",
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1157,7 +1310,7 @@ export default function AdminAttendance() {
                 <div
                   style={{
                     padding: "18px 20px 14px",
-                    borderBottom: "1px solid #333840",
+                    borderBottom: "1px solid var(--border)",
                   }}
                 >
                   {s.code && (
@@ -1169,8 +1322,8 @@ export default function AdminAttendance() {
                         fontWeight: 700,
                         letterSpacing: "1px",
                         textTransform: "uppercase",
-                        color: "#E8976B",
-                        background: "rgba(232,151,107,0.1)",
+                        color: "var(--accent-deep)",
+                        background: "var(--accent-soft)",
                         padding: "3px 8px",
                         borderRadius: 3,
                         marginBottom: 8,
@@ -1192,7 +1345,7 @@ export default function AdminAttendance() {
                         margin: 0,
                         fontSize: 18,
                         fontWeight: 700,
-                        color: "#EDEAE5",
+                        color: "var(--text-primary)",
                         lineHeight: 1.35,
                       }}
                     >
@@ -1203,7 +1356,7 @@ export default function AdminAttendance() {
                       style={{
                         background: "none",
                         border: "none",
-                        color: "#7A7670",
+                        color: "var(--text-muted)",
                         fontSize: 18,
                         cursor: "pointer",
                         padding: 0,
@@ -1220,7 +1373,7 @@ export default function AdminAttendance() {
                 <div
                   style={{
                     padding: "14px 20px",
-                    borderBottom: "1px solid #333840",
+                    borderBottom: "1px solid var(--border)",
                     display: "flex",
                     flexDirection: "column",
                     gap: 6,
@@ -1232,7 +1385,7 @@ export default function AdminAttendance() {
                       alignItems: "center",
                       gap: 10,
                       fontSize: 13,
-                      color: "#A9A5A0",
+                      color: "var(--text-secondary)",
                     }}
                   >
                     <svg
@@ -1240,7 +1393,7 @@ export default function AdminAttendance() {
                       height="14"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="#7A7670"
+                      stroke="var(--text-muted)"
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -1257,7 +1410,7 @@ export default function AdminAttendance() {
                         alignItems: "center",
                         gap: 10,
                         fontSize: 13,
-                        color: "#A9A5A0",
+                        color: "var(--text-secondary)",
                       }}
                     >
                       <svg
@@ -1265,7 +1418,7 @@ export default function AdminAttendance() {
                         height="14"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="#7A7670"
+                        stroke="var(--text-muted)"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -1283,7 +1436,7 @@ export default function AdminAttendance() {
                         alignItems: "center",
                         gap: 10,
                         fontSize: 13,
-                        color: "#A9A5A0",
+                        color: "var(--text-secondary)",
                       }}
                     >
                       <svg
@@ -1291,7 +1444,7 @@ export default function AdminAttendance() {
                         height="14"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="#7A7670"
+                        stroke="var(--text-muted)"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -1311,7 +1464,7 @@ export default function AdminAttendance() {
                   <div
                     style={{
                       padding: "14px 20px",
-                      borderBottom: "1px solid #333840",
+                      borderBottom: "1px solid var(--border)",
                     }}
                   >
                     <div
@@ -1319,7 +1472,7 @@ export default function AdminAttendance() {
                         fontFamily: "'Work Sans', sans-serif",
                         fontSize: 11,
                         fontWeight: 700,
-                        color: "#7A7670",
+                        color: "var(--text-muted)",
                         letterSpacing: "1px",
                         textTransform: "uppercase",
                         marginBottom: 10,
@@ -1329,20 +1482,9 @@ export default function AdminAttendance() {
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {(s.keyThemes || []).map((t, i) => (
-                        <span
-                          key={i}
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 500,
-                            color: "#EDEAE5",
-                            background: "#272C35",
-                            padding: "4px 10px",
-                            borderRadius: 12,
-                            border: "1px solid #333840",
-                          }}
-                        >
+                        <Tag key={i} minimal round>
                           {t}
-                        </span>
+                        </Tag>
                       ))}
                     </div>
                   </div>
@@ -1353,7 +1495,7 @@ export default function AdminAttendance() {
                   <div
                     style={{
                       padding: "14px 20px",
-                      borderBottom: "1px solid #333840",
+                      borderBottom: "1px solid var(--border)",
                     }}
                   >
                     <div
@@ -1361,7 +1503,7 @@ export default function AdminAttendance() {
                         fontFamily: "'Work Sans', sans-serif",
                         fontSize: 11,
                         fontWeight: 700,
-                        color: "#7A7670",
+                        color: "var(--text-muted)",
                         letterSpacing: "1px",
                         textTransform: "uppercase",
                         marginBottom: 10,
@@ -1380,7 +1522,7 @@ export default function AdminAttendance() {
                           style={{
                             fontSize: 14,
                             fontWeight: 600,
-                            color: "#EDEAE5",
+                            color: "var(--text-primary)",
                             lineHeight: 1.3,
                           }}
                         >
@@ -1390,7 +1532,7 @@ export default function AdminAttendance() {
                           <div
                             style={{
                               fontSize: 12,
-                              color: "#A9A5A0",
+                              color: "var(--text-muted)",
                               marginTop: 2,
                             }}
                           >
@@ -1406,7 +1548,7 @@ export default function AdminAttendance() {
                 <div
                   style={{
                     padding: "14px 20px",
-                    borderBottom: s.url ? "1px solid #333840" : "none",
+                    borderBottom: s.url ? "1px solid var(--border)" : "none",
                   }}
                 >
                   <div
@@ -1414,7 +1556,7 @@ export default function AdminAttendance() {
                       fontFamily: "'Work Sans', sans-serif",
                       fontSize: 11,
                       fontWeight: 700,
-                      color: "#7A7670",
+                      color: "var(--text-muted)",
                       letterSpacing: "1px",
                       textTransform: "uppercase",
                       marginBottom: 10,
@@ -1428,8 +1570,8 @@ export default function AdminAttendance() {
                       style={{
                         fontSize: 10,
                         fontWeight: 700,
-                        color: "#E8976B",
-                        background: "rgba(232,151,107,0.12)",
+                        color: "var(--accent-deep)",
+                        background: "var(--accent-soft)",
                         padding: "1px 7px",
                         borderRadius: 10,
                         letterSpacing: 0,
@@ -1440,7 +1582,9 @@ export default function AdminAttendance() {
                     </span>
                   </div>
                   {sessionAttendees.length === 0 ? (
-                    <p style={{ color: "#7A7670", fontSize: 13 }}>{t("admin.noOneAssigned")}</p>
+                    <p style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                      {t("admin.noOneAssigned")}
+                    </p>
                   ) : (
                     <div
                       style={{
@@ -1487,7 +1631,7 @@ export default function AdminAttendance() {
                             <span
                               style={{
                                 fontSize: 13,
-                                color: "#EDEAE5",
+                                color: "var(--text-primary)",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -1495,29 +1639,7 @@ export default function AdminAttendance() {
                             >
                               {getMemberName(m)}
                             </span>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 600,
-                                letterSpacing: "0.3px",
-                                padding: "2px 8px",
-                                borderRadius: 10,
-                                flexShrink: 0,
-                                ...(m.attendanceMode === "online"
-                                  ? {
-                                      color: "#7BA4D4",
-                                      background: "rgba(123,164,212,0.1)",
-                                      border: "1px solid rgba(123,164,212,0.2)",
-                                    }
-                                  : {
-                                      color: "#6BBBAD",
-                                      background: "rgba(107,187,173,0.1)",
-                                      border: "1px solid rgba(107,187,173,0.2)",
-                                    }),
-                              }}
-                            >
-                              {m.attendanceMode === "online" ? "Online" : "Onsite"}
-                            </span>
+                            <ModeBadge mode={m.attendanceMode || "onsite"} />
                           </div>
                         </div>
                       ))}
@@ -1537,23 +1659,23 @@ export default function AdminAttendance() {
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 8,
-                        background: "#272C35",
-                        color: "#A9A5A0",
+                        background: "var(--surface-warm)",
+                        color: "var(--text-secondary)",
                         textAlign: "center",
                         padding: "10px 14px",
                         fontSize: 13,
-                        border: "1px solid #333840",
+                        border: "1px solid var(--border)",
                         borderRadius: 6,
                         textDecoration: "none",
                         transition: "all 120ms ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.color = "#EDEAE5";
-                        e.currentTarget.style.borderColor = "#7A7670";
+                        e.currentTarget.style.color = "var(--text-primary)";
+                        e.currentTarget.style.borderColor = "var(--text-muted)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.color = "#A9A5A0";
-                        e.currentTarget.style.borderColor = "#333840";
+                        e.currentTarget.style.color = "var(--text-secondary)";
+                        e.currentTarget.style.borderColor = "var(--border)";
                       }}
                     >
                       {t("admin.viewOfficialPage")}

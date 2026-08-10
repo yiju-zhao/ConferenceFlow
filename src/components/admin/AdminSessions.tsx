@@ -1,9 +1,19 @@
 import { useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  Button,
+  Callout,
+  Card,
+  Classes,
+  Dialog,
+  FormGroup,
+  InputGroup,
+} from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import { apiFetch } from "../../lib/api";
 import { useConferenceSessions } from "../../hooks/useConferenceSessions";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 
 interface SessionForm {
   id?: string;
@@ -100,17 +110,55 @@ const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 - If session_id matches an existing session, it will be overwritten
 `;
 
+const thStyle: CSSProperties = {
+  padding: 12,
+  borderBottom: "1px solid var(--border)",
+  textAlign: "left",
+  color: "var(--text-secondary)",
+  fontSize: 12,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  fontWeight: 600,
+};
+const tdStyle: CSSProperties = {
+  padding: 12,
+  borderTop: "1px solid var(--border)",
+  fontSize: 14,
+};
+
+const guideHeadingStyle: CSSProperties = {
+  color: "var(--accent-admin)",
+  fontSize: 13,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  margin: "0 0 8px",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+};
+
+const guidePreStyle: CSSProperties = {
+  background: "var(--surface-warm)",
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: 12,
+  fontSize: 12,
+  fontFamily: "monospace",
+  overflowX: "auto",
+  color: "var(--text-primary)",
+  margin: 0,
+};
+
 function SessionField({ label, field, type = "text", value, onChange }: SessionFieldProps) {
   return (
-    <div className="mb-3">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
-      <input
+    <FormGroup label={label}>
+      <InputGroup
         type={type}
         value={value || ""}
         onChange={(e) => onChange(field, e.target.value)}
-        className="w-full bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none transition-colors"
       />
-    </div>
+    </FormGroup>
   );
 }
 
@@ -207,21 +255,42 @@ export default function AdminSessions() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-1 h-6 rounded-full bg-admin-teal"></div>
-        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+        <div style={{ width: 4, height: 24, borderRadius: 9999, background: "var(--accent)" }} />
+        <h2
+          style={{
+            fontFamily: "'Work Sans', sans-serif",
+            color: "var(--text-primary)",
+            fontSize: 18,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            margin: 0,
+          }}
+        >
           {t("admin.sessionManagement")}
         </h2>
       </div>
-      <div className="flex gap-3 mb-4 flex-wrap items-center">
-        <input
-          type="text"
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          marginBottom: 16,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <InputGroup
+          leftIcon={IconNames.SEARCH}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("calendar.searchSessions")}
-          className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm w-64 focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none transition-colors"
+          style={{ width: 256 }}
         />
-        <button
+        <Button
+          intent="primary"
+          icon={IconNames.PLUS}
+          text={t("admin.addSession")}
           onClick={() =>
             setEditModal({
               mode: "add",
@@ -238,373 +307,374 @@ export default function AdminSessions() {
               },
             })
           }
-          className="bg-admin-teal text-white px-4 py-2.5 text-xs font-headline uppercase tracking-wider hover:bg-admin-teal-deep transition-all duration-150 rounded-lg shadow-sm hover:shadow"
-        >
-          {t("admin.addSession")}
-        </button>
-        <button
+        />
+        <Button
+          outlined
+          icon={IconNames.UPLOAD}
+          text={uploading ? t("admin.uploadingJson") : t("admin.uploadJson")}
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="bg-white border border-[#E8E4DF] text-secondary px-4 py-2.5 text-xs font-headline uppercase tracking-wider hover:border-admin-teal/30 hover:text-on-surface transition-all duration-150 disabled:opacity-50 rounded-lg"
-        >
-          {uploading ? t("admin.uploadingJson") : t("admin.uploadJson")}
-        </button>
+        />
         <input
           ref={fileInputRef}
           type="file"
           accept=".json"
           onChange={handleBulkUpload}
-          className="hidden"
+          style={{ display: "none" }}
         />
-        <button
+        <Button
+          minimal
+          icon={IconNames.HELP}
+          text={t("admin.formatGuide")}
           onClick={() => setShowFormatGuide(true)}
-          className="text-secondary text-xs hover:text-admin-teal transition-colors underline"
-        >
-          {t("admin.formatGuide")}
-        </button>
-        <span className="text-secondary text-xs">
+        />
+        <span style={{ color: "var(--text-secondary)", fontSize: 12, marginLeft: "auto" }}>
           {sessions.length} {t("admin.sessionsTotal")}
         </span>
       </div>
       {uploadResult && (
-        <div
-          className={`p-3 mb-4 text-sm rounded-lg ${uploadResult.error ? "bg-red-500/10 text-red-600 border border-red-200" : "bg-[#27AE60]/10 text-[#27AE60] border border-[#27AE60]/20"}`}
+        <Callout
+          intent={uploadResult.error ? "danger" : "success"}
+          style={{ marginBottom: 16 }}
         >
-          {uploadResult.error
-            ? `${t("admin.uploadFailed")}${uploadResult.error}`
-            : `${uploadResult.message}${uploadResult.errors?.length ? ` (${uploadResult.errors.length} errors)` : ""}`}
-          <button
-            onClick={() => setUploadResult(null)}
-            className="ml-3 opacity-50 hover:opacity-100"
-          >
-            ×
-          </button>
-        </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>
+              {uploadResult.error
+                ? `${t("admin.uploadFailed")}${uploadResult.error}`
+                : `${uploadResult.message}${uploadResult.errors?.length ? ` (${uploadResult.errors.length} errors)` : ""}`}
+            </span>
+            <Button minimal small icon={IconNames.CROSS} onClick={() => setUploadResult(null)} />
+          </div>
+        </Callout>
       )}
-      <div className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr className="text-left text-secondary text-xs uppercase tracking-wider bg-[#F7F5F2]">
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.code")}</th>
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.title")}</th>
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.date")}</th>
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.time")}</th>
-              <th className="p-3 border-b border-[#E8E4DF]">{t("admin.room")}</th>
-              <th className="p-3 w-32 border-b border-[#E8E4DF]">{t("admin.actions")}</th>
+            <tr style={{ background: "var(--surface-warm)" }}>
+              <th style={thStyle}>{t("admin.code")}</th>
+              <th style={thStyle}>{t("admin.title")}</th>
+              <th style={thStyle}>{t("admin.date")}</th>
+              <th style={thStyle}>{t("admin.time")}</th>
+              <th style={thStyle}>{t("admin.room")}</th>
+              <th style={{ ...thStyle, width: 128 }}>{t("admin.actions")}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((s) => (
-              <tr
-                key={s.id}
-                className="border-t border-[#E8E4DF] hover:bg-[#FAFAF8] transition-colors"
-              >
-                <td className="p-3 text-admin-teal font-mono text-xs">{s.code}</td>
-                <td className="p-3 text-on-surface">{s.title}</td>
-                <td className="p-3 text-secondary">{s.date}</td>
-                <td className="p-3 text-secondary">
+              <tr key={s.id}>
+                <td
+                  style={{
+                    ...tdStyle,
+                    color: "var(--accent-admin)",
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                  }}
+                >
+                  {s.code}
+                </td>
+                <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{s.title}</td>
+                <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>{s.date}</td>
+                <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>
                   {s.start}–{s.end}
                 </td>
-                <td className="p-3 text-secondary">{s.room}</td>
-                <td className="p-3">
-                  <button
+                <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>{s.room}</td>
+                <td style={tdStyle}>
+                  <Button
+                    minimal
+                    small
+                    icon={IconNames.EDIT}
+                    text={t("admin.edit")}
                     onClick={() => setEditModal({ mode: "edit", session: { ...s } })}
-                    className="text-admin-teal text-xs uppercase tracking-wider mr-3 hover:underline"
-                  >
-                    {t("admin.edit")}
-                  </button>
-                  <button
+                  />
+                  <Button
+                    minimal
+                    small
+                    intent="danger"
+                    icon={IconNames.TRASH}
+                    text={deleting === s.id ? "..." : t("common.delete")}
                     onClick={() => handleDelete(s.id)}
                     disabled={deleting === s.id}
-                    className="text-secondary text-xs uppercase tracking-wider hover:text-red-600 disabled:opacity-50"
-                  >
-                    {deleting === s.id ? "..." : t("common.delete")}
-                  </button>
+                  />
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-secondary text-sm">
+                <td
+                  colSpan={6}
+                  style={{
+                    padding: 24,
+                    textAlign: "center",
+                    color: "var(--text-secondary)",
+                    fontSize: 14,
+                  }}
+                >
                   {search ? t("admin.noSessionsMatchSearch") : t("admin.noSessionsYet")}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
-      {editModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setEditModal(null)}
-        >
-          <div
-            className="bg-white w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-xl shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-admin-teal h-1 rounded-t-xl"></div>
-            <div className="p-6">
-              <h3 className="font-headline text-on-surface font-bold text-base mb-4 uppercase">
-                {editModal.mode === "add" ? t("admin.addSession") : t("admin.editSession")}
-              </h3>
+      </Card>
+
+      <Dialog
+        isOpen={editModal !== null}
+        onClose={() => setEditModal(null)}
+        title={editModal?.mode === "add" ? t("admin.addSession") : t("admin.editSession")}
+        icon={editModal?.mode === "add" ? IconNames.PLUS : IconNames.EDIT}
+        style={{ width: 520 }}
+      >
+        {editModal && (
+          <>
+            <div className={Classes.DIALOG_BODY}>
               <SessionField
                 label={t("admin.sessionCode")}
                 field="code"
-                value={editModal?.session?.code}
+                value={editModal.session.code}
                 onChange={handleFieldChange}
               />
               <SessionField
                 label={t("admin.title")}
                 field="title"
-                value={editModal?.session?.title}
+                value={editModal.session.title}
                 onChange={handleFieldChange}
               />
               <SessionField
                 label={t("admin.date")}
                 field="date"
                 type="date"
-                value={editModal?.session?.date}
+                value={editModal.session.date}
                 onChange={handleFieldChange}
               />
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <SessionField
-                    label={t("admin.startTime")}
-                    field="start"
+              <div style={{ display: "flex", gap: 12 }}>
+                <FormGroup label={t("admin.startTime")} style={{ flex: 1 }}>
+                  <InputGroup
                     type="time"
-                    value={editModal?.session?.start}
-                    onChange={handleFieldChange}
+                    value={editModal.session.start || ""}
+                    onChange={(e) => handleFieldChange("start", e.target.value)}
                   />
-                </div>
-                <div className="flex-1">
-                  <SessionField
-                    label={t("admin.endTime")}
-                    field="end"
+                </FormGroup>
+                <FormGroup label={t("admin.endTime")} style={{ flex: 1 }}>
+                  <InputGroup
                     type="time"
-                    value={editModal?.session?.end}
-                    onChange={handleFieldChange}
+                    value={editModal.session.end || ""}
+                    onChange={(e) => handleFieldChange("end", e.target.value)}
                   />
-                </div>
+                </FormGroup>
               </div>
               <SessionField
                 label={t("admin.room")}
                 field="room"
-                value={editModal?.session?.room}
+                value={editModal.session.room}
                 onChange={handleFieldChange}
               />
               <SessionField
                 label={t("admin.format")}
                 field="format"
-                value={editModal?.session?.format}
+                value={editModal.session.format}
                 onChange={handleFieldChange}
               />
               <SessionField
                 label={t("admin.topic")}
                 field="mainTopic"
-                value={editModal?.session?.mainTopic}
+                value={editModal.session.mainTopic}
                 onChange={handleFieldChange}
               />
               <SessionField
                 label={t("admin.url")}
                 field="url"
-                value={editModal?.session?.url}
+                value={editModal.session.url}
                 onChange={handleFieldChange}
               />
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={() => setEditModal(null)}
-                  className="flex-1 bg-white border border-[#E8E4DF] p-2.5 text-secondary text-sm uppercase tracking-wider hover:text-on-surface hover:border-admin-teal/30 rounded-lg transition-all"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
+            </div>
+            <div className={Classes.DIALOG_FOOTER}>
+              <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+                <Button onClick={() => setEditModal(null)} text={t("common.cancel")} />
+                <Button
+                  intent="primary"
                   onClick={handleSaveSession}
-                  className="flex-1 bg-admin-teal text-white p-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg shadow-sm hover:shadow transition-all"
-                >
-                  {editModal.mode === "add" ? t("admin.create") : t("common.save")}
-                </button>
+                  text={editModal.mode === "add" ? t("admin.create") : t("common.save")}
+                />
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Dialog>
 
-      {/* Format Guide Modal */}
-      {showFormatGuide && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowFormatGuide(false)}
-        >
-          <div
-            className="bg-white w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-admin-teal h-1 rounded-t-xl"></div>
-            <div className="bg-admin-teal px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-              <h3 className="text-on-primary font-headline font-bold text-base uppercase tracking-wider">
-                {t("admin.jsonFormatGuide")}
-              </h3>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(FORMAT_GUIDE_MD);
-                    setMdCopied(true);
-                    setTimeout(() => setMdCopied(false), 2000);
-                  }}
-                  className="text-on-primary/70 hover:text-on-primary text-xs font-headline uppercase tracking-wider bg-white/15 px-3 py-1 rounded-md transition-colors"
-                >
-                  {mdCopied ? t("admin.copied") : t("admin.copyAsMarkdown")}
-                </button>
-                <button
-                  onClick={() => setShowFormatGuide(false)}
-                  className="text-on-primary/60 hover:text-on-primary text-lg"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
+      {/* Format Guide Dialog */}
+      <Dialog
+        isOpen={showFormatGuide}
+        onClose={() => setShowFormatGuide(false)}
+        title={t("admin.jsonFormatGuide")}
+        icon={IconNames.HELP}
+        style={{ width: 720 }}
+      >
+        <div className={Classes.DIALOG_BODY} style={{ fontSize: 13, lineHeight: 1.7 }}>
+          <p style={{ color: "var(--text-secondary)", marginTop: 0 }}>
+            {t("admin.formatGuideDesc")}
+          </p>
+
+          <div style={{ marginBottom: 20 }}>
+            <h4 style={guideHeadingStyle}>
+              <span
+                style={{
+                  width: 4,
+                  height: 16,
+                  borderRadius: 9999,
+                  background: "var(--accent-admin)",
+                  display: "inline-block",
+                }}
+              />
+              {t("admin.requiredFields")}
+            </h4>
             <div
-              className="px-6 py-5"
               style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: 13,
-                lineHeight: 1.7,
-                color: "#1a1c1c",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                overflow: "hidden",
               }}
             >
-              <p className="text-secondary text-sm mb-4">{t("admin.formatGuideDesc")}</p>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "var(--surface-warm)" }}>
+                    <th style={thStyle}>Field</th>
+                    <th style={thStyle}>Format</th>
+                    <th style={thStyle}>Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ ...tdStyle, fontFamily: "monospace", color: "var(--accent-admin)" }}>
+                      title
+                    </td>
+                    <td style={{ ...tdStyle, color: "var(--text-primary)" }}>string</td>
+                    <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>
+                      "Keynote: Future of AI"
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...tdStyle, fontFamily: "monospace", color: "var(--accent-admin)" }}>
+                      date
+                    </td>
+                    <td style={{ ...tdStyle, color: "var(--text-primary)" }}>YYYY-MM-DD</td>
+                    <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>"2026-03-18"</td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...tdStyle, fontFamily: "monospace", color: "var(--accent-admin)" }}>
+                      start
+                    </td>
+                    <td style={{ ...tdStyle, color: "var(--text-primary)" }}>HH:MM (24h)</td>
+                    <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>"09:00"</td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...tdStyle, fontFamily: "monospace", color: "var(--accent-admin)" }}>
+                      end
+                    </td>
+                    <td style={{ ...tdStyle, color: "var(--text-primary)" }}>HH:MM (24h)</td>
+                    <td style={{ ...tdStyle, color: "var(--text-secondary)" }}>"10:30"</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-              <div className="mb-5">
-                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div>{" "}
-                  {t("admin.requiredFields")}
-                </h4>
-                <div className="border border-[#E8E4DF] rounded-lg overflow-hidden">
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-[#F7F5F2]">
-                        <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline border-b border-[#E8E4DF]">
-                          Field
-                        </th>
-                        <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline border-b border-[#E8E4DF]">
-                          Format
-                        </th>
-                        <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline border-b border-[#E8E4DF]">
-                          Example
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">title</td>
-                        <td className="p-2">string</td>
-                        <td className="p-2 text-secondary">"Keynote: Future of AI"</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">date</td>
-                        <td className="p-2">YYYY-MM-DD</td>
-                        <td className="p-2 text-secondary">"2026-03-18"</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">start</td>
-                        <td className="p-2">HH:MM (24h)</td>
-                        <td className="p-2 text-secondary">"09:00"</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">end</td>
-                        <td className="p-2">HH:MM (24h)</td>
-                        <td className="p-2 text-secondary">"10:30"</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          <div style={{ marginBottom: 20 }}>
+            <h4 style={guideHeadingStyle}>
+              <span
+                style={{
+                  width: 4,
+                  height: 16,
+                  borderRadius: 9999,
+                  background: "var(--accent-admin)",
+                  display: "inline-block",
+                }}
+              />
+              {t("admin.optionalFields")}
+            </h4>
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                overflow: "hidden",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: "var(--surface-warm)" }}>
+                    <th style={thStyle}>Field</th>
+                    <th style={thStyle}>Description</th>
+                    <th style={thStyle}>Alias</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ["session_id", 'Unique code (e.g. "S62911"). Used as document ID.', "code"],
+                    ["room", "Room or venue name", "location"],
+                    ["speakers", "Array of speaker objects", "—"],
+                    ["format", '"In-Person", "Virtual", "Both"', "—"],
+                    ["recording", '"Yes" or "No"', "—"],
+                    ["session_type", '"Talk", "Panel", "Keynote", "Workshop"', "sessionType"],
+                    ["topic", "Primary topic/category", "mainTopic"],
+                    ["url", "Link to official session page", "—"],
+                    ["key_themes", "Array of topic tags for filtering", "keyThemes"],
+                  ].map(([field, desc, alias]) => (
+                    <tr key={field}>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          fontFamily: "monospace",
+                          color: "var(--accent-admin)",
+                        }}
+                      >
+                        {field}
+                      </td>
+                      <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{desc}</td>
+                      <td
+                        style={{
+                          ...tdStyle,
+                          color: "var(--text-secondary)",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {alias}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-              <div className="mb-5">
-                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div>{" "}
-                  {t("admin.optionalFields")}
-                </h4>
-                <div className="border border-[#E8E4DF] rounded-lg overflow-hidden">
-                  <table className="w-full text-xs border-collapse">
-                    <thead>
-                      <tr className="bg-[#F7F5F2]">
-                        <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline border-b border-[#E8E4DF]">
-                          Field
-                        </th>
-                        <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline border-b border-[#E8E4DF]">
-                          Description
-                        </th>
-                        <th className="text-left p-2 text-secondary uppercase tracking-wider font-headline border-b border-[#E8E4DF]">
-                          Alias
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">session_id</td>
-                        <td className="p-2">Unique code (e.g. "S62911"). Used as document ID.</td>
-                        <td className="p-2 text-secondary font-mono">code</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">room</td>
-                        <td className="p-2">Room or venue name</td>
-                        <td className="p-2 text-secondary font-mono">location</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">speakers</td>
-                        <td className="p-2">Array of speaker objects</td>
-                        <td className="p-2">—</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">format</td>
-                        <td className="p-2">"In-Person", "Virtual", "Both"</td>
-                        <td className="p-2">—</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">recording</td>
-                        <td className="p-2">"Yes" or "No"</td>
-                        <td className="p-2">—</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">session_type</td>
-                        <td className="p-2">"Talk", "Panel", "Keynote", "Workshop"</td>
-                        <td className="p-2 text-secondary font-mono">sessionType</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">topic</td>
-                        <td className="p-2">Primary topic/category</td>
-                        <td className="p-2 text-secondary font-mono">mainTopic</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">url</td>
-                        <td className="p-2">Link to official session page</td>
-                        <td className="p-2">—</td>
-                      </tr>
-                      <tr className="border-t border-[#E8E4DF]">
-                        <td className="p-2 font-mono text-admin-teal">key_themes</td>
-                        <td className="p-2">Array of topic tags for filtering</td>
-                        <td className="p-2 text-secondary font-mono">keyThemes</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          <div style={{ marginBottom: 20 }}>
+            <h4 style={guideHeadingStyle}>
+              <span
+                style={{
+                  width: 4,
+                  height: 16,
+                  borderRadius: 9999,
+                  background: "var(--accent-admin)",
+                  display: "inline-block",
+                }}
+              />
+              {t("admin.speakerObject")}
+            </h4>
+            <pre style={guidePreStyle}>{`{ "name": "Dr. Jane Smith", "title": "Chief Scientist", "company": "NVIDIA" }`}</pre>
+          </div>
 
-              <div className="mb-5">
-                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div>{" "}
-                  {t("admin.speakerObject")}
-                </h4>
-                <pre className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg p-3 text-xs font-mono overflow-x-auto">{`{ "name": "Dr. Jane Smith", "title": "Chief Scientist", "company": "NVIDIA" }`}</pre>
-              </div>
-
-              <div className="mb-5">
-                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div>{" "}
-                  {t("admin.completeExample")}
-                </h4>
-                <pre className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{`[
+          <div style={{ marginBottom: 20 }}>
+            <h4 style={guideHeadingStyle}>
+              <span
+                style={{
+                  width: 4,
+                  height: 16,
+                  borderRadius: 9999,
+                  background: "var(--accent-admin)",
+                  display: "inline-block",
+                }}
+              />
+              {t("admin.completeExample")}
+            </h4>
+            <pre style={{ ...guidePreStyle, whiteSpace: "pre-wrap" }}>{`[
   {
     "session_id": "S62911",
     "title": "NVIDIA AI Factory Architecture Deep Dive",
@@ -623,26 +693,50 @@ export default function AdminSessions() {
     "key_themes": ["AI", "Infrastructure", "Data Center"]
   }
 ]`}</pre>
-              </div>
+          </div>
 
-              <div className="mb-2">
-                <h4 className="font-headline font-bold text-sm uppercase tracking-wider text-admin-teal mb-2 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-admin-teal"></div>{" "}
-                  {t("admin.minimalExample")}
-                </h4>
-                <pre className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{`[
+          <div style={{ marginBottom: 8 }}>
+            <h4 style={guideHeadingStyle}>
+              <span
+                style={{
+                  width: 4,
+                  height: 16,
+                  borderRadius: 9999,
+                  background: "var(--accent-admin)",
+                  display: "inline-block",
+                }}
+              />
+              {t("admin.minimalExample")}
+            </h4>
+            <pre style={{ ...guidePreStyle, whiteSpace: "pre-wrap" }}>{`[
   { "title": "Morning Keynote", "date": "2026-03-18", "start": "09:00", "end": "10:00" },
   { "title": "Lunch Workshop", "date": "2026-03-18", "start": "12:00", "end": "13:00" }
 ]`}</pre>
-              </div>
+          </div>
 
-              <div className="mt-4 p-3 bg-[#F7F5F2] border border-[#E8E4DF] rounded-lg text-secondary text-xs">
-                <strong>{t("admin.note")}:</strong> {t("admin.formatGuideNote")}
-              </div>
-            </div>
+          <Callout style={{ marginTop: 16 }}>
+            <strong>{t("admin.note")}:</strong> {t("admin.formatGuideNote")}
+          </Callout>
+        </div>
+        <div className={Classes.DIALOG_FOOTER}>
+          <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+            <Button
+              icon={IconNames.CLIPBOARD}
+              text={mdCopied ? t("admin.copied") : t("admin.copyAsMarkdown")}
+              onClick={() => {
+                navigator.clipboard.writeText(FORMAT_GUIDE_MD);
+                setMdCopied(true);
+                setTimeout(() => setMdCopied(false), 2000);
+              }}
+            />
+            <Button
+              intent="primary"
+              text={t("common.close")}
+              onClick={() => setShowFormatGuide(false)}
+            />
           </div>
         </div>
-      )}
+      </Dialog>
     </div>
   );
 }

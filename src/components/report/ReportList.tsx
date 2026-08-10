@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   collection,
@@ -11,12 +11,28 @@ import {
   setDoc,
   deleteDoc,
 } from "firebase/firestore";
+import {
+  Button,
+  Card,
+  Tag,
+  Icon,
+  Popover,
+  Menu,
+  MenuItem,
+  MenuDivider,
+  Dialog,
+  Switch,
+  InputGroup,
+  Classes,
+} from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import { db } from "../../firebase";
 import { parseReportId, generateSummaryId } from "../../lib/reportUtils";
 import type { ParsedReportId } from "../../lib/reportUtils";
 import { formatWeekday } from "../../i18n/dateUtils";
 import { useAuth } from "../../contexts/AuthContext";
-import UserAvatar from "../UserAvatar";
+import AppNavbar from "../shell/AppNavbar";
+import { SectionAccentProvider } from "../shell/SectionAccent";
 import type { Report, Session } from "../../types";
 
 type ListReport = Report & ParsedReportId;
@@ -31,7 +47,6 @@ interface ReportCardProps {
   confId: string;
   dateContent: ReactNode;
   metaContent: ReactNode;
-  linkText: string;
   deleteConfirmId: string | null;
   onArchive: (id: string) => void;
   onUnarchive: (id: string) => void;
@@ -45,7 +60,6 @@ function ReportCard({
   confId,
   dateContent,
   metaContent,
-  linkText,
   deleteConfirmId,
   onArchive,
   onUnarchive,
@@ -54,57 +68,117 @@ function ReportCard({
   onDeleteCancel,
 }: ReportCardProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const isArchived = report.status === "archived";
+  const isSummary = report.id.startsWith("summary-");
+  const statusIntent =
+    report.status === "published" ? "success" : report.status === "archived" ? "warning" : "none";
+  const statusLabel =
+    report.status === "published"
+      ? t("reportList.statusPublished")
+      : report.status === "archived"
+        ? t("reportList.statusArchived")
+        : t("reportList.statusDraft");
 
   return (
-    <div className="report-card" style={isArchived ? { opacity: 0.6 } : undefined}>
-      <div className="report-card-main">
-        <div className="report-card-date">{dateContent}</div>
-        <div className="report-card-meta">{metaContent}</div>
-      </div>
-      <div className="report-card-right">
-        <button
-          className="report-archive-btn"
-          onClick={() => (isArchived ? onUnarchive(report.id) : onArchive(report.id))}
-        >
-          {isArchived ? t("reportList.unarchive") : t("reportList.archive")}
-        </button>
+    <div
+      style={{
+        borderLeft: "3px solid var(--accent-report)",
+        borderRadius: "4px 3px 3px 4px",
+        background: "var(--surface)",
+        boxShadow: "0 1px 2px rgba(95,107,124,.12), 0 0 0 1px rgba(95,107,124,.10)",
+        opacity: isArchived ? 0.6 : undefined,
+      }}
+    >
+      <Card
+        interactive
+        onClick={() => navigate(`/conference/${confId}/report/${report.id}`)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "14px 16px",
+          background: "transparent",
+          boxShadow: "none",
+          borderRadius: "0 3px 3px 0",
+        }}
+      >
+        <Icon
+          icon={isSummary ? IconNames.JOIN_TABLE : IconNames.DOCUMENT}
+          size={20}
+          style={{ color: "var(--accent)", flexShrink: 0 }}
+        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, flex: 1 }}>
+          <span
+            style={{
+              fontFamily: "'Work Sans', sans-serif",
+              fontWeight: 700,
+              fontSize: 15,
+              color: "var(--text-primary)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {dateContent}
+          </span>
+          <span
+            style={{
+              fontSize: 12,
+              fontFamily: "'DM Mono', monospace",
+              color: "var(--text-muted)",
+            }}
+          >
+            {metaContent}
+          </span>
+        </div>
+        <Tag minimal intent={statusIntent}>
+          {statusLabel}
+        </Tag>
+        <Button
+          small
+          minimal
+          text={isArchived ? t("reportList.unarchive") : t("reportList.archive")}
+          onClick={(e) => {
+            e.stopPropagation();
+            isArchived ? onUnarchive(report.id) : onArchive(report.id);
+          }}
+        />
         {isArchived &&
           (deleteConfirmId === report.id ? (
             <span
-              style={{
-                display: "inline-flex",
-                gap: 4,
-                alignItems: "center",
-              }}
+              style={{ display: "inline-flex", gap: 4, alignItems: "center" }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <span style={{ fontSize: 11, color: "#CF0A2C" }}>
+              <span style={{ fontSize: 11, color: "var(--accent)" }}>
                 {t("reportList.confirmDelete")}
               </span>
-              <button
-                className="report-archive-btn"
-                style={{ color: "#CF0A2C", fontWeight: 700 }}
+              <Button
+                small
+                minimal
+                intent="danger"
+                text={t("common.delete")}
                 onClick={() => onDelete(report.id)}
-              >
-                {t("common.delete")}
-              </button>
-              <button className="report-archive-btn" onClick={onDeleteCancel}>
-                {t("common.cancel")}
-              </button>
+              />
+              <Button small minimal text={t("common.cancel")} onClick={onDeleteCancel} />
             </span>
           ) : (
-            <button
-              className="report-archive-btn"
-              style={{ color: "#CF0A2C" }}
-              onClick={() => onDeleteConfirm(report.id)}
-            >
-              {t("common.delete")}
-            </button>
+            <Button
+              small
+              minimal
+              intent="danger"
+              text={t("common.delete")}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteConfirm(report.id);
+              }}
+            />
           ))}
-        <Link to={`/conference/${confId}/report/${report.id}`} className="report-card-view-btn">
-          {linkText} &rarr;
-        </Link>
-      </div>
+        <Icon icon={IconNames.CHEVRON_RIGHT} size={16} style={{ color: "var(--text-muted)" }} />
+      </Card>
     </div>
   );
 }
@@ -265,129 +339,164 @@ export default function ReportList() {
     }
   };
 
+  const dateLabelStyle: React.CSSProperties = {
+    display: "block",
+    fontFamily: "'Work Sans', sans-serif",
+    fontSize: 11,
+    fontWeight: 600,
+    color: "var(--text-muted)",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  };
+
   return (
-    <div className="min-h-screen bg-[#F7F5F2]">
-      {/* Header bar */}
-      <div className="bg-gradient-to-r from-[#1a1a1a] to-[#333] px-6 py-3.5">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Link
-              to={`/conference/${confId}`}
-              className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                letterSpacing: "0.8px",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
-            >
-              {t("reportList.backToSchedule")}
-            </Link>
-            <h1
-              className="font-headline text-white text-lg font-bold"
-              style={{ letterSpacing: "0.3px" }}
-            >
-              {t("reportList.reportManagement")}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <button
-              className={`font-headline text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors ${showArchived ? "bg-white/30 text-white" : "text-white/70 hover:text-white"}`}
-              style={{ letterSpacing: "0.8px" }}
-              onClick={() => setShowArchived(!showArchived)}
-            >
-              {showArchived ? t("reportList.hideArchived") : t("reportList.showArchived")}
-            </button>
-            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
-          </div>
-        </div>
-      </div>
-
-      {/* Action bar */}
-      <div className="bg-white border-b border-[#E8E4DF]">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex justify-end items-center gap-2">
-          <button
-            className="bg-[#1a1a1a]/10 text-[#1a1a1a] px-4 py-2 text-xs font-headline uppercase tracking-wider rounded-md hover:bg-[#1a1a1a] hover:text-white transition-all duration-200"
-            onClick={openSummaryDatePicker}
-            disabled={creatingSummary}
+    <SectionAccentProvider accent="report">
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        <AppNavbar showConfTabs />
+        <div
+          style={{
+            maxWidth: 760,
+            margin: "0 auto",
+            padding: "24px 20px 56px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+          }}
+        >
+          {/* Status row + actions */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
+            }}
           >
-            {creatingSummary ? t("reportList.creating") : t("reportList.createSummary")}
-          </button>
-          <div style={{ position: "relative" }}>
-            <button
-              className="bg-[#1a1a1a] text-white px-4 py-2 text-xs font-headline uppercase tracking-wider rounded-md hover:opacity-80 transition-opacity"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              disabled={allSessionDates.length === 0}
-            >
-              {t("reportList.createDailyReport")}
-            </button>
-            {showDatePicker && allSessionDates.length > 0 && (
-              <div className="create-report-dropdown">
-                <div className="create-report-dropdown-label">{t("reportList.selectDate")}</div>
-                {allSessionDates.map((date) => {
-                  const weekday = formatWeekday(new Date(date + "T00:00"));
-                  const count = allSessions.filter((s) => s.date === date).length;
-                  const hasReport = reportedDates.has(date);
-                  return (
-                    <button
-                      key={date}
-                      className="create-report-dropdown-item"
-                      onClick={() => handleCreateReport(date)}
-                    >
-                      <span className="font-mono" style={{ fontWeight: 600 }}>
-                        {date}
-                      </span>
-                      <span style={{ color: "#888" }}>{weekday}</span>
-                      <span
-                        style={{
-                          color: "#aaa",
-                          fontSize: 11,
-                          marginLeft: "auto",
-                        }}
-                      >
-                        {hasReport ? t("reportList.alreadyCreated") : `${count} sessions`}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-6xl mx-auto p-8">
-        <div className="report-list-cards">
-          {displayReports.length === 0 ? (
-            <p
+            <div
               style={{
-                color: "#AAAAAA",
-                textAlign: "center",
-                padding: "48px 0",
+                fontFamily: "'Work Sans', sans-serif",
+                fontWeight: 600,
+                fontSize: 12,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--text-muted)",
+                opacity: 0.55,
               }}
             >
-              {t("reportList.noReports")}
-            </p>
-          ) : (
-            displayReports.map((r) => {
-              const isSummary = r.id.startsWith("summary-");
+              {displayReports.length} {t("reportList.reportCount")}
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Switch
+                checked={showArchived}
+                onChange={() => setShowArchived(!showArchived)}
+                label={showArchived ? t("reportList.hideArchived") : t("reportList.showArchived")}
+                style={{ marginBottom: 0 }}
+              />
+              <Button
+                icon={IconNames.JOIN_TABLE}
+                text={creatingSummary ? t("reportList.creating") : t("reportList.createSummary")}
+                onClick={openSummaryDatePicker}
+                disabled={creatingSummary}
+              />
+              <Popover
+                isOpen={showDatePicker}
+                onInteraction={(nextOpen) => setShowDatePicker(nextOpen)}
+                placement="bottom-end"
+                content={
+                  <Menu>
+                    <MenuDivider title={t("reportList.selectDate")} />
+                    {allSessionDates.map((date) => {
+                      const weekday = formatWeekday(new Date(date + "T00:00"));
+                      const count = allSessions.filter((s) => s.date === date).length;
+                      const hasReport = reportedDates.has(date);
+                      return (
+                        <MenuItem
+                          key={date}
+                          icon={IconNames.CALENDAR}
+                          text={
+                            <span>
+                              <span style={{ fontWeight: 600 }}>{date}</span>{" "}
+                              <span style={{ color: "var(--text-muted)" }}>{weekday}</span>
+                            </span>
+                          }
+                          labelElement={
+                            hasReport ? t("reportList.alreadyCreated") : `${count} sessions`
+                          }
+                          onClick={() => handleCreateReport(date)}
+                        />
+                      );
+                    })}
+                  </Menu>
+                }
+              >
+                <Button
+                  intent="primary"
+                  icon={IconNames.PLUS}
+                  text={t("reportList.createDailyReport")}
+                  disabled={allSessionDates.length === 0}
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                />
+              </Popover>
+            </div>
+          </div>
 
-              if (isSummary) {
+          {/* Report cards */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {displayReports.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--text-muted)",
+                  textAlign: "center",
+                  padding: "48px 0",
+                }}
+              >
+                {t("reportList.noReports")}
+              </p>
+            ) : (
+              displayReports.map((r) => {
+                const isSummary = r.id.startsWith("summary-");
+
+                if (isSummary) {
+                  return (
+                    <ReportCard
+                      key={r.id}
+                      report={r}
+                      confId={confId}
+                      dateContent={
+                        <>
+                          <Tag minimal intent="danger" style={{ borderRadius: 6, fontWeight: 700 }}>
+                            {t("reportList.summaryBadge")}
+                          </Tag>
+                          {r.title}
+                        </>
+                      }
+                      metaContent={<span>{(r.sourceReports || []).join(", ")}</span>}
+                      deleteConfirmId={deleteConfirmId}
+                      onArchive={archiveReport}
+                      onUnarchive={unarchiveReport}
+                      onDelete={handleDeleteReport}
+                      onDeleteConfirm={setDeleteConfirmId}
+                      onDeleteCancel={() => setDeleteConfirmId(null)}
+                    />
+                  );
+                }
+
+                const weekday = formatWeekday(new Date(r.date + "T00:00"));
                 return (
                   <ReportCard
                     key={r.id}
                     report={r}
                     confId={confId}
                     dateContent={
-                      <span className="summary-badge">{t("reportList.summaryBadge")}</span>
+                      <>
+                        {r.date}{" "}
+                        <span style={{ fontWeight: 400, color: "var(--text-muted)" }}>
+                          {weekday}
+                        </span>
+                      </>
                     }
-                    metaContent={
-                      <span style={{ fontSize: 12, color: "#888" }}>
-                        {(r.sourceReports || []).join(", ")}
-                      </span>
-                    }
-                    linkText={t("reportList.manageSummary")}
+                    metaContent={<span>{Object.keys(r.sessions || {}).length} sessions</span>}
                     deleteConfirmId={deleteConfirmId}
                     onArchive={archiveReport}
                     onUnarchive={unarchiveReport}
@@ -396,206 +505,56 @@ export default function ReportList() {
                     onDeleteCancel={() => setDeleteConfirmId(null)}
                   />
                 );
-              }
-
-              const weekday = formatWeekday(new Date(r.date + "T00:00"));
-              return (
-                <ReportCard
-                  key={r.id}
-                  report={r}
-                  confId={confId}
-                  dateContent={
-                    <>
-                      {r.date} <span style={{ fontWeight: 400, color: "#888" }}>{weekday}</span>
-                    </>
-                  }
-                  metaContent={
-                    <span style={{ fontSize: 12, color: "#888" }}>
-                      {Object.keys(r.sessions || {}).length} sessions
-                    </span>
-                  }
-                  linkText={t("reportList.viewReport")}
-                  deleteConfirmId={deleteConfirmId}
-                  onArchive={archiveReport}
-                  onUnarchive={unarchiveReport}
-                  onDelete={handleDeleteReport}
-                  onDeleteConfirm={setDeleteConfirmId}
-                  onDeleteCancel={() => setDeleteConfirmId(null)}
-                />
-              );
-            })
-          )}
+              })
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ── Summary Date Picker Modal ─────────────────────────── */}
-      {showSummaryDatePicker && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 200,
-            background: "rgba(0,0,0,0.4)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onClick={() => setShowSummaryDatePicker(false)}
+        {/* Summary date-range picker */}
+        <Dialog
+          isOpen={showSummaryDatePicker}
+          onClose={() => setShowSummaryDatePicker(false)}
+          title={t("reportList.summaryDateRange")}
+          icon={IconNames.JOIN_TABLE}
+          style={{ width: 400 }}
         >
-          <div
-            style={{
-              background: "#fff",
-              maxWidth: 400,
-              width: "90vw",
-              borderRadius: 12,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-              overflow: "hidden",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              style={{
-                background: "#1a1a1a",
-                padding: "14px 24px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "Work Sans, sans-serif",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  color: "#fff",
-                  letterSpacing: "0.3px",
-                }}
-              >
-                {t("reportList.summaryDateRange")}
-              </span>
-              <button
-                style={{
-                  background: "rgba(255,255,255,0.18)",
-                  border: "none",
-                  borderRadius: 4,
-                  width: 28,
-                  height: 28,
-                  cursor: "pointer",
-                  color: "#fff",
-                  fontSize: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                onClick={() => setShowSummaryDatePicker(false)}
-              >
-                ×
-              </button>
+          <div className={Classes.DIALOG_BODY}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <label style={dateLabelStyle}>
+                {t("reportList.startDate")}
+                <InputGroup
+                  type="date"
+                  value={summaryDateStart}
+                  onChange={(e) => setSummaryDateStart(e.target.value)}
+                  style={{ marginTop: 6 }}
+                />
+              </label>
+              <label style={dateLabelStyle}>
+                {t("reportList.endDate")}
+                <InputGroup
+                  type="date"
+                  value={summaryDateEnd}
+                  onChange={(e) => setSummaryDateEnd(e.target.value)}
+                  style={{ marginTop: 6 }}
+                />
+              </label>
             </div>
-            <div style={{ padding: "24px 24px 0" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <label
-                  style={{
-                    fontFamily: "Work Sans, sans-serif",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "#888",
-                    letterSpacing: "1px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {t("reportList.startDate")}
-                  <input
-                    type="date"
-                    value={summaryDateStart}
-                    onChange={(e) => setSummaryDateStart(e.target.value)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      marginTop: 6,
-                      padding: "10px 12px",
-                      border: "1px solid #E8E4DF",
-                      borderRadius: 6,
-                      fontSize: 14,
-                      background: "#F7F5F2",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-                <label
-                  style={{
-                    fontFamily: "Work Sans, sans-serif",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "#888",
-                    letterSpacing: "1px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {t("reportList.endDate")}
-                  <input
-                    type="date"
-                    value={summaryDateEnd}
-                    onChange={(e) => setSummaryDateEnd(e.target.value)}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      marginTop: 6,
-                      padding: "10px 12px",
-                      border: "1px solid #E8E4DF",
-                      borderRadius: 6,
-                      fontSize: 14,
-                      background: "#F7F5F2",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </label>
-              </div>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-                padding: "20px 24px 24px",
-              }}
-            >
-              <button
-                style={{
-                  fontFamily: "Work Sans, sans-serif",
-                  padding: "8px 18px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  letterSpacing: "0.5px",
-                  background: "none",
-                  border: "1px solid #E8E4DF",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  color: "#888",
-                  textTransform: "uppercase",
-                }}
-                onClick={() => setShowSummaryDatePicker(false)}
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                className="btn-accent"
-                style={{
-                  padding: "8px 20px",
-                  fontSize: 12,
-                  fontFamily: "Work Sans, sans-serif",
-                  letterSpacing: "0.5px",
-                }}
+          </div>
+          <div className={Classes.DIALOG_FOOTER}>
+            <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+              <Button onClick={() => setShowSummaryDatePicker(false)}>{t("common.cancel")}</Button>
+              <Button
+                intent="primary"
                 disabled={!summaryDateStart || !summaryDateEnd}
+                loading={creatingSummary}
                 onClick={() => handleCreateSummary(summaryDateStart, summaryDateEnd)}
               >
                 {t("reportList.confirmCreate")}
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        </Dialog>
+      </div>
+    </SectionAccentProvider>
   );
 }

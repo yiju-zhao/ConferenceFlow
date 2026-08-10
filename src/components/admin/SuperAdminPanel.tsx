@@ -1,11 +1,24 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { collection, onSnapshot } from "firebase/firestore";
+import {
+  Button,
+  Callout,
+  Card,
+  Classes,
+  Dialog,
+  FormGroup,
+  InputGroup,
+  SegmentedControl,
+  Tag,
+} from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
-import UserAvatar from "../UserAvatar";
+import AppNavbar from "../shell/AppNavbar";
+import { SectionAccentProvider } from "../shell/SectionAccent";
 import type { Conference, ConferenceVisibility } from "../../types";
 
 interface ConferenceCreateForm {
@@ -16,32 +29,8 @@ interface ConferenceCreateForm {
   visibility: ConferenceVisibility;
 }
 
-interface FieldProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  placeholder?: string;
-}
-
-function Field({ label, value, onChange, type = "text", placeholder = "" }: FieldProps) {
-  return (
-    <div className="mb-3">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none transition-colors"
-      />
-    </div>
-  );
-}
-
 export default function SuperAdminPanel() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { isSuperAdmin } = useAuth();
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -87,154 +76,203 @@ export default function SuperAdminPanel() {
 
   if (!isSuperAdmin) {
     return (
-      <div className="min-h-screen bg-[#F7F5F2] flex items-center justify-center">
-        <p className="text-admin-teal font-headline uppercase">{t("admin.superAdminRequired")}</p>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "var(--bg)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <p
+          style={{
+            color: "var(--accent-admin)",
+            fontFamily: "'Work Sans', sans-serif",
+            textTransform: "uppercase",
+          }}
+        >
+          {t("admin.superAdminRequired")}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F5F2]">
-      <div className="bg-gradient-to-r from-admin-teal-deep to-admin-teal px-6 py-3.5">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1
-            className="font-headline text-white text-lg font-bold"
-            style={{ letterSpacing: "0.3px" }}
-          >
-            {t("admin.adminPanel")}
-          </h1>
-          <div className="flex items-center gap-2.5">
-            <Link
-              to="/dashboard"
-              className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                letterSpacing: "0.8px",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
+    <SectionAccentProvider accent="admin">
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        <AppNavbar />
+        <div style={{ maxWidth: 1152, margin: "0 auto", padding: 32 }}>
+          {message && (
+            <Callout
+              intent={message.startsWith("Error") ? "danger" : "success"}
+              style={{ marginBottom: 16 }}
             >
-              {t("dashboard.dashboard")}
-            </Link>
-            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
-          </div>
-        </div>
-      </div>
-      <div className="max-w-6xl mx-auto p-8">
-        {message && (
-          <div
-            className={`p-3 mb-4 text-sm rounded-lg ${message.startsWith("Error") ? "bg-red-500/10 text-red-600 border border-red-200" : "bg-[#27AE60]/10 text-[#27AE60] border border-[#27AE60]/20"}`}
-          >
-            {message}
-            <button onClick={() => setMessage("")} className="ml-3 opacity-50 hover:opacity-100">
-              ×
-            </button>
-          </div>
-        )}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-6 rounded-full bg-admin-teal"></div>
-              <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
-                {t("admin.allConferences")} ({conferences.length})
-              </h2>
-            </div>
-            <button
-              onClick={() => setShowCreate(!showCreate)}
-              className="bg-admin-teal text-white px-4 py-2.5 text-xs font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg transition-all duration-150 shadow-sm hover:shadow"
-            >
-              {t("admin.createConference")}
-            </button>
-          </div>
-          {showCreate && (
-            <div className="bg-white border border-[#E8E4DF] rounded-lg p-6 mb-4">
-              <h3 className="font-headline text-on-surface font-bold text-sm mb-3 uppercase">
-                {t("admin.newConference")}
-              </h3>
-              <Field
-                label={t("admin.conferenceName")}
-                value={createForm.name}
-                onChange={(v) => setCreateForm({ ...createForm, name: v })}
-                placeholder={t("admin.conferenceName")}
+              {message}
+              <Button
+                minimal
+                small
+                icon={IconNames.CROSS}
+                onClick={() => setMessage("")}
+                style={{ marginLeft: 12, verticalAlign: "middle" }}
               />
-              <Field
-                label={t("admin.description")}
-                value={createForm.description}
-                onChange={(v) => setCreateForm({ ...createForm, description: v })}
-                placeholder={t("admin.description")}
-              />
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Field
-                    label={t("admin.startDate")}
-                    value={createForm.startDate}
-                    onChange={(v) => setCreateForm({ ...createForm, startDate: v })}
-                    type="date"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Field
-                    label={t("admin.endDate")}
-                    value={createForm.endDate}
-                    onChange={(v) => setCreateForm({ ...createForm, endDate: v })}
-                    type="date"
-                  />
-                </div>
-              </div>
-              <div className="mb-3">
-                <label className="block text-secondary text-xs uppercase tracking-wider mb-2">
-                  {t("admin.visibility")}
-                </label>
-                <div className="flex gap-3">
-                  {(["public", "private"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setCreateForm({ ...createForm, visibility: v })}
-                      className={`px-4 py-1.5 text-xs font-headline uppercase tracking-wider transition-all duration-150 rounded-full ${createForm.visibility === v ? "bg-admin-teal text-white" : "bg-white border border-[#E8E4DF] text-secondary hover:border-admin-teal/30"}`}
-                    >
-                      {v === "public" ? t("admin.public") : t("admin.private")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={handleCreate}
-                disabled={
-                  creating || !createForm.name || !createForm.startDate || !createForm.endDate
-                }
-                className="bg-admin-teal text-white px-6 py-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep rounded-lg disabled:opacity-50 shadow-sm hover:shadow transition-all"
-              >
-                {creating ? t("admin.creating") : t("common.confirm")}
-              </button>
-            </div>
+            </Callout>
           )}
-          {conferences.map((conf) => (
+          <section>
             <div
-              key={conf.id}
-              className="bg-white border border-[#E8E4DF] rounded-lg overflow-hidden mb-3 hover:shadow-sm transition-all duration-200"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 16,
+              }}
             >
-              <div className="flex items-stretch">
-                <div className="w-1 bg-admin-teal flex-shrink-0"></div>
-                <div className="flex-1 p-4 flex justify-between items-center">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div
+                  style={{ width: 4, height: 24, borderRadius: 9999, background: "var(--accent)" }}
+                />
+                <h2
+                  style={{
+                    fontFamily: "'Work Sans', sans-serif",
+                    color: "var(--text-primary)",
+                    fontSize: 18,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    margin: 0,
+                  }}
+                >
+                  {t("admin.allConferences")} ({conferences.length})
+                </h2>
+              </div>
+              <Button
+                intent="primary"
+                icon={IconNames.PLUS}
+                onClick={() => setShowCreate(true)}
+                text={t("admin.createConference")}
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {conferences.map((conf) => (
+                <Card
+                  key={conf.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "14px 16px",
+                    borderLeft: "3px solid var(--accent)",
+                  }}
+                >
                   <div>
-                    <div className="text-on-surface font-bold text-sm">{conf.name}</div>
-                    <div className="text-secondary text-xs mt-1">
-                      {conf.startDate} — {conf.endDate} · {conf.visibility}
+                    <div
+                      style={{
+                        color: "var(--text-primary)",
+                        fontWeight: 700,
+                        fontSize: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      {conf.name}
+                      <Tag minimal intent={conf.visibility === "public" ? "success" : "warning"}>
+                        {conf.visibility}
+                      </Tag>
+                    </div>
+                    <div style={{ color: "var(--text-secondary)", fontSize: 12, marginTop: 4 }}>
+                      {conf.startDate} — {conf.endDate}
                       {conf.joinCode && ` · Code: ${conf.joinCode}`}
                     </div>
                   </div>
                   <Link
                     to={`/conference/${conf.id}/admin/settings`}
-                    className="text-admin-teal text-xs uppercase tracking-wider hover:underline"
+                    style={{
+                      color: "var(--accent)",
+                      fontSize: 12,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      textDecoration: "none",
+                    }}
                   >
                     {t("admin.manage")}
                   </Link>
-                </div>
-              </div>
+                </Card>
+              ))}
             </div>
-          ))}
-        </section>
+          </section>
+        </div>
+
+        <Dialog
+          isOpen={showCreate}
+          onClose={() => setShowCreate(false)}
+          title={t("admin.newConference")}
+          icon={IconNames.PLUS}
+          style={{ width: 480 }}
+        >
+          <div className={Classes.DIALOG_BODY}>
+            <FormGroup label={t("admin.conferenceName")}>
+              <InputGroup
+                value={createForm.name}
+                placeholder={t("admin.conferenceName")}
+                onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+              />
+            </FormGroup>
+            <FormGroup label={t("admin.description")}>
+              <InputGroup
+                value={createForm.description}
+                placeholder={t("admin.description")}
+                onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+              />
+            </FormGroup>
+            <div style={{ display: "flex", gap: 12 }}>
+              <FormGroup label={t("admin.startDate")} style={{ flex: 1 }}>
+                <InputGroup
+                  type="date"
+                  value={createForm.startDate}
+                  onChange={(e) => setCreateForm({ ...createForm, startDate: e.target.value })}
+                />
+              </FormGroup>
+              <FormGroup label={t("admin.endDate")} style={{ flex: 1 }}>
+                <InputGroup
+                  type="date"
+                  value={createForm.endDate}
+                  onChange={(e) => setCreateForm({ ...createForm, endDate: e.target.value })}
+                />
+              </FormGroup>
+            </div>
+            <FormGroup label={t("admin.visibility")}>
+              <div>
+                <SegmentedControl
+                  small
+                  options={[
+                    { label: t("admin.public"), value: "public" },
+                    { label: t("admin.private"), value: "private" },
+                  ]}
+                  value={createForm.visibility}
+                  onValueChange={(v) =>
+                    setCreateForm({ ...createForm, visibility: v as ConferenceVisibility })
+                  }
+                />
+              </div>
+            </FormGroup>
+          </div>
+          <div className={Classes.DIALOG_FOOTER}>
+            <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+              <Button onClick={() => setShowCreate(false)} text={t("common.cancel")} />
+              <Button
+                intent="primary"
+                loading={creating}
+                disabled={
+                  creating || !createForm.name || !createForm.startDate || !createForm.endDate
+                }
+                onClick={handleCreate}
+                text={creating ? t("admin.creating") : t("common.confirm")}
+              />
+            </div>
+          </div>
+        </Dialog>
       </div>
-    </div>
+    </SectionAccentProvider>
   );
 }

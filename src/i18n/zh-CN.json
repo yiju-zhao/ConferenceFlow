@@ -22,6 +22,7 @@
   "auth": {
     "signIn": "登录",
     "signInToAccount": "登录您的账户",
+    "tagline": "会议日程协作与日报生产",
     "signingIn": "登录中...",
     "email": "邮箱",
     "emailPlaceholder": "you@example.com",
@@ -47,6 +48,7 @@
   },
   "dashboard": {
     "myConferences": "我的会议",
+    "active": "进行中",
     "conference": "个会议",
     "conferences": "个会议",
     "noUpcoming": "暂无即将举行的会议。请浏览下方发现区加入会议。",
@@ -412,7 +414,7 @@
     "clickImportToStart": "点击上方「导入日程」按钮开始",
     "firebaseNotReady": "Firebase 尚未完成登录，请稍候再试。\n错误：{{error}}",
     "toggleAttendance": "切换 {{name}} 参与状态",
-    "backToDashboard": "\u2190 仪表盘",
+    "backToDashboard": "← 仪表盘",
     "schedule": "日程",
     "selectSession": "选择一个 session 查看详情",
     "removeFromSchedule": "从日程中移除",
@@ -430,6 +432,7 @@
     "noSessionsAvailable": "暂无可用 session",
     "am": "上午",
     "pm": "下午",
+    "mine": "我的",
     "inPerson": "线下",
     "virtual": "线上"
   },
@@ -445,8 +448,8 @@
     "hideArchived": "隐藏归档",
     "showArchived": "显示归档",
     "creating": "创建中...",
-    "createSummary": "+ 创建总结稿",
-    "createDailyReport": "+ 创建日报",
+    "createSummary": "创建总结稿",
+    "createDailyReport": "创建日报",
     "selectDate": "选择日期",
     "alreadyCreated": "已创建",
     "noReports": "暂无日报，点击「创建日报」开始",
@@ -461,6 +464,10 @@
     "endDate": "结束日期",
     "confirmCreate": "确认创建",
     "downloadHtml": "下载 HTML",
-    "print": "打印"
+    "print": "打印",
+    "reportCount": "份报告",
+    "statusDraft": "草稿",
+    "statusPublished": "已发布",
+    "statusArchived": "已归档"
   }
 }

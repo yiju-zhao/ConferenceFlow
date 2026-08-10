@@ -22,6 +22,7 @@
   "auth": {
     "signIn": "Sign In",
     "signInToAccount": "Sign in to your account",
+    "tagline": "Conference schedule collaboration & daily briefing",
     "signingIn": "Signing in...",
     "email": "Email",
     "emailPlaceholder": "you@example.com",
@@ -47,6 +48,7 @@
   },
   "dashboard": {
     "myConferences": "My Conferences",
+    "active": "In progress",
     "conference": "conference",
     "conferences": "conferences",
     "noUpcoming": "No upcoming conferences. Browse the discover section below to join one.",
@@ -430,6 +432,7 @@
     "noSessionsAvailable": "No sessions available",
     "am": "AM",
     "pm": "PM",
+    "mine": "Mine",
     "inPerson": "IN-PERSON",
     "virtual": "VIRTUAL"
   },
@@ -445,8 +448,8 @@
     "hideArchived": "Hide archived",
     "showArchived": "Show archived",
     "creating": "Creating...",
-    "createSummary": "+ Create Summary",
-    "createDailyReport": "+ Create Report",
+    "createSummary": "Create Summary",
+    "createDailyReport": "Create Report",
     "selectDate": "Select date",
     "alreadyCreated": "Created",
     "noReports": "No reports yet. Click \"Create Report\" to get started.",
@@ -461,6 +464,10 @@
     "endDate": "End Date",
     "confirmCreate": "Confirm Create",
     "downloadHtml": "Download HTML",
-    "print": "Print"
+    "print": "Print",
+    "reportCount": "reports",
+    "statusDraft": "Draft",
+    "statusPublished": "Published",
+    "statusArchived": "Archived"
   }
 }
