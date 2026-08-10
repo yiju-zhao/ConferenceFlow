@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { doc, onSnapshot } from "firebase/firestore";
+import {
+  Button,
+  Callout,
+  Card,
+  FormGroup,
+  InputGroup,
+  SegmentedControl,
+  TextArea,
+} from "@blueprintjs/core";
+import { IconNames } from "@blueprintjs/icons";
 import { db } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
@@ -14,47 +24,6 @@ interface ConferenceSettingsForm {
   endDate?: string;
   visibility?: ConferenceVisibility;
   joinCode?: string;
-}
-
-interface SettingsFieldProps {
-  label: string;
-  field: string;
-  type?: string;
-  placeholder?: string;
-  value: string | undefined;
-  onChange: (field: string, value: string) => void;
-}
-
-function SettingsField({
-  label,
-  field,
-  type = "text",
-  placeholder = "",
-  value,
-  onChange,
-}: SettingsFieldProps) {
-  return (
-    <div className="mb-4">
-      <label className="block text-secondary text-xs uppercase tracking-wider mb-1">{label}</label>
-      {type === "textarea" ? (
-        <textarea
-          value={value || ""}
-          onChange={(e) => onChange(field, e.target.value)}
-          placeholder={placeholder}
-          rows={3}
-          className="w-full bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none resize-none transition-colors"
-        />
-      ) : (
-        <input
-          type={type}
-          value={value || ""}
-          onChange={(e) => onChange(field, e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none transition-colors"
-        />
-      )}
-    </div>
-  );
 }
 
 export default function AdminSettings() {
@@ -104,7 +73,8 @@ export default function AdminSettings() {
     }
   };
 
-  if (!conf) return <div className="text-secondary text-sm">{t("common.loading")}</div>;
+  if (!conf)
+    return <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>{t("common.loading")}</div>;
 
   const handleFieldChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -112,143 +82,154 @@ export default function AdminSettings() {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-1 h-6 rounded-full bg-admin-teal"></div>
-        <h2 className="font-headline text-on-surface text-lg font-bold uppercase tracking-wider">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
+        <div style={{ width: 4, height: 24, borderRadius: 9999, background: "var(--accent)" }} />
+        <h2
+          style={{
+            fontFamily: "'Work Sans', sans-serif",
+            color: "var(--text-primary)",
+            fontSize: 18,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            margin: 0,
+          }}
+        >
           {t("admin.conferenceSettings")}
         </h2>
       </div>
-      <div className="bg-white border border-[#E8E4DF] rounded-lg p-6 max-w-2xl">
-        <SettingsField
-          label={t("admin.conferenceName")}
-          field="name"
-          placeholder={t("admin.conferenceName")}
-          value={form.name}
-          onChange={handleFieldChange}
-        />
-        <SettingsField
-          label={t("admin.description")}
-          field="description"
-          type="textarea"
-          placeholder={t("admin.description")}
-          value={form.description}
-          onChange={handleFieldChange}
-        />
-        <SettingsField
-          label={t("admin.startDate")}
-          field="startDate"
-          type="date"
-          value={form.startDate}
-          onChange={handleFieldChange}
-        />
-        <SettingsField
-          label={t("admin.endDate")}
-          field="endDate"
-          type="date"
-          value={form.endDate}
-          onChange={handleFieldChange}
-        />
-        <div className="mb-4">
-          <label className="block text-secondary text-xs uppercase tracking-wider mb-2">
-            {t("admin.visibility")}
-          </label>
-          <div className="flex gap-3">
-            {(["public", "private"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setForm({ ...form, visibility: v })}
-                className={`px-4 py-2 text-sm font-headline uppercase tracking-wider transition-all duration-150 rounded-lg ${form.visibility === v ? "bg-admin-teal text-white" : "bg-white border border-[#E8E4DF] text-secondary hover:border-admin-teal/30"}`}
-              >
-                {t(`admin.${v}`)}
-              </button>
-            ))}
-          </div>
+      <Card style={{ maxWidth: 672 }}>
+        <FormGroup label={t("admin.conferenceName")}>
+          <InputGroup
+            value={form.name || ""}
+            placeholder={t("admin.conferenceName")}
+            onChange={(e) => handleFieldChange("name", e.target.value)}
+          />
+        </FormGroup>
+        <FormGroup label={t("admin.description")}>
+          <TextArea
+            fill
+            rows={3}
+            value={form.description || ""}
+            placeholder={t("admin.description")}
+            style={{ resize: "none" }}
+            onChange={(e) => handleFieldChange("description", e.target.value)}
+          />
+        </FormGroup>
+        <div style={{ display: "flex", gap: 12 }}>
+          <FormGroup label={t("admin.startDate")} style={{ flex: 1 }}>
+            <InputGroup
+              type="date"
+              value={form.startDate || ""}
+              onChange={(e) => handleFieldChange("startDate", e.target.value)}
+            />
+          </FormGroup>
+          <FormGroup label={t("admin.endDate")} style={{ flex: 1 }}>
+            <InputGroup
+              type="date"
+              value={form.endDate || ""}
+              onChange={(e) => handleFieldChange("endDate", e.target.value)}
+            />
+          </FormGroup>
         </div>
+        <FormGroup label={t("admin.visibility")}>
+          <div>
+            <SegmentedControl
+              small
+              options={[
+                { label: t("admin.public"), value: "public" },
+                { label: t("admin.private"), value: "private" },
+              ]}
+              value={form.visibility || "public"}
+              onValueChange={(v) =>
+                setForm({ ...form, visibility: v as ConferenceVisibility })
+              }
+            />
+          </div>
+        </FormGroup>
         {form.visibility === "private" && (
-          <div className="mb-4">
-            <label className="block text-secondary text-xs uppercase tracking-wider mb-1">
-              {t("admin.joinCode")}
-            </label>
-            <div className="flex gap-2 items-center">
-              <input
-                type="text"
+          <FormGroup label={t("admin.joinCode")}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <InputGroup
                 value={form.joinCode || ""}
                 onChange={(e) => setForm({ ...form, joinCode: e.target.value.toUpperCase() })}
-                className="bg-[#F7F5F2] border border-[#E8E4DF] rounded-md px-3 py-2.5 text-on-surface text-sm font-mono focus:border-admin-teal focus:ring-1 focus:ring-admin-teal/20 focus:outline-none w-48 transition-colors"
+                style={{ width: 192, fontFamily: "'DM Mono', monospace" }}
               />
-              <span className="text-secondary text-xs">{t("admin.shareCodeHint")}</span>
+              <span style={{ color: "var(--text-secondary)", fontSize: 12 }}>
+                {t("admin.shareCodeHint")}
+              </span>
             </div>
-          </div>
+          </FormGroup>
         )}
-        <div className="flex items-center gap-4 mt-6">
-          <button
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 8 }}>
+          <Button
+            intent="primary"
+            icon={IconNames.FLOPPY_DISK}
+            loading={saving}
             onClick={handleSave}
-            disabled={saving}
-            className="bg-admin-teal text-white px-6 py-2.5 text-sm font-headline uppercase tracking-wider hover:bg-admin-teal-deep transition-all duration-150 disabled:opacity-50 rounded-lg shadow-sm hover:shadow"
-          >
-            {saving ? t("common.saving") : t("admin.saveChanges")}
-          </button>
+            text={saving ? t("common.saving") : t("admin.saveChanges")}
+          />
           {message && (
             <span
-              className={`text-sm ${message.startsWith("Error") ? "text-red-600" : "text-[#27AE60]"}`}
+              style={{
+                fontSize: 14,
+                color: message.startsWith("Error") ? "var(--error)" : "var(--success)",
+              }}
             >
               {message}
             </span>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Danger Zone — super admin only */}
       {isSuperAdmin && (
-        <div className="mt-10 max-w-2xl">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-1 h-6 rounded-full bg-red-600"></div>
-            <h2 className="font-headline text-red-600 text-lg font-bold uppercase tracking-wider">
-              {t("admin.dangerZone")}
-            </h2>
-          </div>
-          <div className="bg-white border border-[#E8E4DF] border-l-[3px] border-l-red-600 rounded-lg p-6">
-            <p className="text-on-surface text-sm mb-1 font-bold">{t("admin.deleteConference")}</p>
-            <p className="text-secondary text-xs mb-4">{t("admin.deleteConfirm")}</p>
-            {deleteConfirm ? (
-              <div className="flex items-center gap-3">
-                <span className="text-red-600 text-sm font-bold">{t("admin.areYouSure")}</span>
-                <button
-                  onClick={async () => {
-                    setDeleting(true);
-                    try {
-                      await apiFetch(`/api/conferences/${confId}`, {
-                        method: "DELETE",
-                      });
-                      navigate("/dashboard");
-                    } catch (err) {
-                      setMessage(`Error: ${err instanceof Error ? err.message : String(err)}`);
-                      setDeleting(false);
-                      setDeleteConfirm(false);
-                    }
-                  }}
-                  disabled={deleting}
-                  className="bg-red-600 text-white px-4 py-2 text-xs font-headline uppercase tracking-wider hover:bg-red-700 disabled:opacity-50 rounded-lg transition-colors"
-                >
-                  {deleting ? t("admin.deleting") : t("admin.yesDeleteConference")}
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(false)}
-                  className="bg-white border border-[#E8E4DF] text-secondary px-4 py-2 text-xs font-headline uppercase tracking-wider hover:text-on-surface rounded-lg transition-colors"
-                >
-                  {t("common.cancel")}
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setDeleteConfirm(true)}
-                className="bg-white border border-[#E8E4DF] text-red-600 px-4 py-2 text-xs font-headline uppercase tracking-wider hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors rounded-lg"
-              >
-                {t("admin.deleteConference")}
-              </button>
-            )}
-          </div>
-        </div>
+        <Callout
+          intent="danger"
+          icon={IconNames.TRASH}
+          title={t("admin.dangerZone")}
+          style={{ maxWidth: 672, marginTop: 40 }}
+        >
+          <p style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>
+            {t("admin.deleteConference")}
+          </p>
+          <p style={{ color: "var(--text-secondary)", fontSize: 12, margin: "0 0 16px" }}>
+            {t("admin.deleteConfirm")}
+          </p>
+          {deleteConfirm ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ color: "var(--error)", fontSize: 14, fontWeight: 700 }}>
+                {t("admin.areYouSure")}
+              </span>
+              <Button
+                intent="danger"
+                loading={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  try {
+                    await apiFetch(`/api/conferences/${confId}`, {
+                      method: "DELETE",
+                    });
+                    navigate("/dashboard");
+                  } catch (err) {
+                    setMessage(`Error: ${err instanceof Error ? err.message : String(err)}`);
+                    setDeleting(false);
+                    setDeleteConfirm(false);
+                  }
+                }}
+                text={deleting ? t("admin.deleting") : t("admin.yesDeleteConference")}
+              />
+              <Button onClick={() => setDeleteConfirm(false)} text={t("common.cancel")} />
+            </div>
+          ) : (
+            <Button
+              intent="danger"
+              outlined
+              onClick={() => setDeleteConfirm(true)}
+              text={t("admin.deleteConference")}
+            />
+          )}
+        </Callout>
       )}
     </div>
   );
