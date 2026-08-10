@@ -1,14 +1,15 @@
-import { NavLink, Outlet, useParams, Link, useNavigate } from "react-router-dom";
+import { Outlet, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "../../contexts/AuthContext";
+import { SegmentedControl } from "@blueprintjs/core";
 import { useMembership } from "../../hooks/useMembership";
-import UserAvatar from "../UserAvatar";
+import AppNavbar from "../shell/AppNavbar";
+import { SectionAccentProvider } from "../shell/SectionAccent";
 
 export default function AdminLayout() {
   const { confId } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isSuperAdmin } = useAuth();
+  const location = useLocation();
   const { isAdmin, loading } = useMembership(confId);
 
   const tabs = [
@@ -19,92 +20,105 @@ export default function AdminLayout() {
     { path: "reports", label: t("admin.reports") },
   ];
 
+  const activeTab =
+    tabs.find((tb) => location.pathname.includes(`/admin/${tb.path}`))?.path ?? "settings";
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F7F5F2] flex items-center justify-center">
-        <div className="text-secondary text-sm uppercase tracking-wider">{t("common.loading")}</div>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "var(--bg)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            color: "var(--text-muted)",
+            fontSize: 13,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            fontFamily: "'Work Sans', sans-serif",
+          }}
+        >
+          {t("common.loading")}
+        </div>
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#F7F5F2] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-admin-teal font-headline text-lg font-bold uppercase">
-            {t("admin.accessDenied")}
-          </p>
-          <p className="text-secondary text-sm mt-2">{t("admin.needAdminAccess")}</p>
-          <Link
-            to={`/conference/${confId}`}
-            className="text-admin-teal text-sm mt-4 inline-block hover:underline"
-          >
-            {t("admin.backToConference")}
-          </Link>
+      <SectionAccentProvider accent="admin">
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "var(--bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <p
+              style={{
+                color: "var(--accent-admin)",
+                fontFamily: "'Work Sans', sans-serif",
+                fontSize: 18,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                margin: 0,
+              }}
+            >
+              {t("admin.accessDenied")}
+            </p>
+            <p style={{ color: "var(--text-secondary)", fontSize: 13, marginTop: 8 }}>
+              {t("admin.needAdminAccess")}
+            </p>
+            <button
+              onClick={() => navigate(`/conference/${confId}`)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--accent-admin)",
+                fontSize: 13,
+                marginTop: 16,
+                textDecoration: "underline",
+              }}
+            >
+              {t("admin.backToConference")}
+            </button>
+          </div>
         </div>
-      </div>
+      </SectionAccentProvider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F5F2]">
-      <div className="bg-gradient-to-r from-admin-teal-deep to-admin-teal px-6 py-3.5">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1
-            className="font-headline text-white text-lg font-bold"
-            style={{ letterSpacing: "0.3px" }}
-          >
-            {t("admin.conferenceAdmin")}
-          </h1>
-          <div className="flex items-center gap-2.5">
-            <Link
-              to={`/conference/${confId}`}
-              className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                letterSpacing: "0.8px",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
-            >
-              {t("calendar.schedule")}
-            </Link>
-            {isSuperAdmin && (
-              <Link
-                to="/super-admin"
-                className="font-headline text-white text-xs font-semibold uppercase px-4 py-1.5 rounded transition-colors"
-                style={{
-                  background: "rgba(255,255,255,0.18)",
-                  letterSpacing: "0.8px",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.3)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.18)")}
-              >
-                {t("admin.adminPanel")}
-              </Link>
-            )}
-            <UserAvatar size={28} onSignOut={() => navigate("/login")} />
-          </div>
+    <SectionAccentProvider accent="admin">
+      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+        <AppNavbar showConfTabs />
+        <div
+          style={{
+            maxWidth: 1152,
+            margin: "0 auto",
+            padding: "24px 20px 56px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 16,
+          }}
+        >
+          <SegmentedControl
+            options={tabs.map((tb) => ({ label: tb.label, value: tb.path }))}
+            value={activeTab}
+            onValueChange={(v) => navigate(`/conference/${confId}/admin/${v}`)}
+          />
+          <Outlet />
         </div>
       </div>
-      <div className="bg-white border-b border-[#E8E4DF]">
-        <div className="max-w-6xl mx-auto flex">
-          {tabs.map((tab) => (
-            <NavLink
-              key={tab.path}
-              to={`/conference/${confId}/admin/${tab.path}`}
-              className={({ isActive }) =>
-                `px-6 h-11 flex items-center text-sm font-headline uppercase tracking-wider transition-colors duration-50 ${isActive ? "text-admin-teal border-b-[3px] border-admin-teal bg-admin-teal/5" : "text-secondary hover:text-on-surface border-b-[3px] border-transparent"}`
-              }
-            >
-              {tab.label}
-            </NavLink>
-          ))}
-        </div>
-      </div>
-      <div className="max-w-6xl mx-auto p-8">
-        <Outlet />
-      </div>
-    </div>
+    </SectionAccentProvider>
   );
 }
