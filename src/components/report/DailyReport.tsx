@@ -29,7 +29,13 @@ import { formatDateTime } from "../../i18n/dateUtils";
 import huaweiLogo from "../../assets/huawei_logo.png";
 import IntelCard, { topicSlug } from "./IntelCard";
 import SpeakersEditor from "./SpeakersEditor";
+import AddReportSessionDialog from "./AddReportSessionDialog";
 import SnapshotViewer from "./SnapshotViewer";
+import {
+  newSessionDraft,
+  selectedReportSessions,
+  sessionKey,
+} from "../../lib/ai-report/sessionSelection";
 import type {
   BlockField,
   Member,
@@ -76,7 +82,6 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const { user } = useAuth();
   const { isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
-  const [sessions, setSessions] = useState<DailySession[]>([]);
   const [allConferenceSessions, setAllConferenceSessions] = useState<Session[]>([]);
   const [members, setMembers] = useState<ResolvedMember[]>([]);
   const [reportData, setReportData] = useState<Report | null>(null);
@@ -108,6 +113,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     error: false,
   });
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
+  const [showAddSession, setShowAddSession] = useState(false);
 
   const [tocVisible, setTocVisible] = useState(true);
   const [openInlineMenu, setOpenInlineMenu] = useState<string | null>(null);
@@ -246,27 +252,18 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     });
   }, [user, confId]);
 
-  // Sessions (filtered by date + all for session picker)
+  // Conference calendar Sessions
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
       const all: Session[] = [];
-      const filtered: DailySession[] = [];
       snap.forEach((d) => {
         const data = d.data() as Session;
         all.push({ ...data, id: d.id });
-        if (data.date === date)
-          filtered.push({
-            ...(data as Omit<Session, "attendees">),
-            id: d.id,
-            attendees: new Set(data.attendees || []),
-          } as DailySession);
       });
-      filtered.sort((a, b) => a.start.localeCompare(b.start));
-      setSessions(filtered);
       setAllConferenceSessions(all);
     });
-  }, [user, date, confId]);
+  }, [user, confId]);
 
   // Report data
   useEffect(() => {
@@ -279,24 +276,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   // Auto-init report
   useEffect(() => {
-    if (!user || loading || reportData || initDone.current || sessions.length === 0) return;
+    if (!user || loading || reportData || initDone.current) return;
     initDone.current = true;
-    const sessionMap: Record<string, ReportSessionData> = {};
-    sessions.forEach((s) => {
-      sessionMap[s.code] = {
-        speakers:
-          s.speakers && s.speakers.length > 0
-            ? s.speakers.map((sp) => ({
-                name: sp.name || "",
-                position: sp.title || "",
-                company: sp.company || "",
-              }))
-            : [{ name: "", position: "", company: "" }],
-        takeaways: "",
-        insights: "",
-        illustration: "",
-      };
-    });
     setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       date,
       title: "",
@@ -305,11 +286,11 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       reflections: "",
       rumors: "",
       sitePhotos: [],
-      sessions: sessionMap,
+      sessions: {},
       topicOrder: [],
       status: "draft",
     }).catch(console.error);
-  }, [user, loading, reportData, sessions, reportId, date]);
+  }, [user, loading, reportData, reportId, date, confId]);
 
   // Keep sessionDataRef and reportDataRef in sync
   const sessionData = reportData?.sessions || {};
@@ -335,14 +316,21 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   const { activeUsers } = usePresence(confId, reportId);
 
-  const deletedSessionCodes = useMemo(
-    () => new Set(reportData?.deletedSessions || []),
-    [reportData],
-  );
-
   const activeSessions = useMemo(
-    () => sessions.filter((s) => !deletedSessionCodes.has(s.code)),
-    [sessions, deletedSessionCodes],
+    () =>
+      selectedReportSessions(
+        allConferenceSessions,
+        reportData?.sessions ?? {},
+        reportData?.deletedSessions ?? [],
+      ).map(
+        (session) =>
+          ({
+            ...session,
+            code: sessionKey(session),
+            attendees: new Set(session.attendees || []),
+          }) as DailySession,
+      ),
+    [allConferenceSessions, reportData?.sessions, reportData?.deletedSessions],
   );
 
   const topicsMap = useMemo(() => {
@@ -399,6 +387,26 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       });
     },
     [user, reportId, debouncedSave, viewMode],
+  );
+
+  const addReportSession = useCallback(
+    async (key: string) => {
+      if (!user || viewMode) return;
+      const session = allConferenceSessions.find((item) => sessionKey(item) === key);
+      if (!session) throw new Error("calendar Session not found");
+      const deletedSessions = (reportDataRef.current?.deletedSessions ?? []).filter(
+        (deleted) => deleted !== key,
+      );
+      await setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        {
+          sessions: { [key]: newSessionDraft(session) },
+          deletedSessions,
+        },
+        { merge: true },
+      );
+    },
+    [allConferenceSessions, confId, reportId, user, viewMode],
   );
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
@@ -988,7 +996,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     if (!reportData || collapsedInit.current) return;
     collapsedInit.current = true;
     const initial = new Set(
-      sessions
+      activeSessions
         .filter((s) => {
           const sd = reportData.sessions?.[s.code];
           return sd?.takeaways && sd.takeaways !== "";
@@ -996,7 +1004,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         .map((s) => s.code),
     );
     setCollapsedSessions(initial);
-  }, [reportData, sessions]);
+  }, [reportData, activeSessions]);
 
   const toggleCollapse = useCallback((code: string) => {
     setCollapsedSessions((prev) => {
@@ -1013,7 +1021,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     try {
       const updatedMap: Record<string, ReportSessionData> = {};
       let syncedCount = 0;
-      sessions.forEach((s) => {
+      activeSessions.forEach((s) => {
         const existing = sessionDataRef.current[s.code] || {};
         const info = SESSION_CATALOG.get(s.code);
         if (info && info.speakers && info.speakers.length > 0) {
@@ -1938,6 +1946,11 @@ ${clone.outerHTML}
           <h2 className="report-section-title" style={{ marginTop: 32 }}>
             {t("report.relatedTopics")}
           </h2>
+          {!viewMode && (
+            <button className="no-print btn-ghost" onClick={() => setShowAddSession(true)}>
+              {t("report.addSession")}
+            </button>
+          )}
 
           {noTopicSessions.map((session) => {
             const sd = sessionData[session.code] || {};
@@ -2025,7 +2038,7 @@ ${clone.outerHTML}
                         onUpdate={(newSpeakers) => saveSpeakers(session.code, newSpeakers)}
                         onAdd={() => addSpeaker(session.code)}
                         onRemove={(idx) => removeSpeaker(session.code, idx)}
-                        readOnly={viewMode}
+                        readOnly={viewMode || Boolean(reportData?.templateId)}
                       />
                     </div>
                     <div style={{ padding: "6px 20px 0" }}>
@@ -2276,6 +2289,7 @@ ${clone.outerHTML}
                             onUpdate={(newSpeakers) => saveSpeakers(session.code, newSpeakers)}
                             onAdd={() => addSpeaker(session.code)}
                             onRemove={(idx) => removeSpeaker(session.code, idx)}
+                            readOnly={viewMode || Boolean(reportData?.templateId)}
                           />
                         </div>
 
@@ -2719,6 +2733,19 @@ ${clone.outerHTML}
           {t("report.backToToc")}
         </a>
       )}
+
+      <AddReportSessionDialog
+        open={!viewMode && showAddSession}
+        sessions={allConferenceSessions}
+        selectedIds={new Set(activeSessions.map((session) => session.code))}
+        currentUid={user?.uid || ""}
+        onAdd={(key) => {
+          addReportSession(key)
+            .then(() => setShowAddSession(false))
+            .catch(console.error);
+        }}
+        onClose={() => setShowAddSession(false)}
+      />
 
       {/* Delete session — select session modal */}
       {!viewMode && showDeleteSelect && (
