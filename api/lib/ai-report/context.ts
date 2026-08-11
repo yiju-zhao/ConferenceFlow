@@ -1,0 +1,297 @@
+import type { Bucket } from "@google-cloud/storage";
+import type { Firestore } from "firebase-admin/firestore";
+import type {
+  GenerateRequest,
+  Report,
+  ReportTemplateVersion,
+  TemplateField,
+} from "../../../src/types";
+import { hashFieldMap, hashText } from "../../../src/lib/ai-report/hash";
+import {
+  assertTemplateVersion,
+  normalizeStoredFieldValue,
+  selectEligibleFields,
+} from "../../../src/lib/ai-report/templateContract";
+import { bucket, db } from "../firebase-admin.js";
+import { buildDailySourceBlocks, readReportFieldValue } from "./field-policy";
+import type { DailyGenerationInput } from "./generate-daily";
+import type { SessionGenerationInput } from "./generate-session";
+import { normalizeTranscriptSource, parseTranscript } from "./transcript-parser";
+
+export interface GenerationContextSource {
+  getReport(confId: string, reportId: string): Promise<Report | null>;
+  getTemplate(templateId: string, version: number): Promise<unknown | null>;
+  getMemberFocus(confId: string, uid: string): Promise<string>;
+  getCalendarSession(
+    confId: string,
+    calendarSessionId: string | undefined,
+    fallbackCode: string,
+  ): Promise<Record<string, unknown> | null>;
+  getTranscript(storagePath: string): Promise<Uint8Array>;
+}
+
+export type LoadedGenerationContext =
+  | { scope: "session"; input: SessionGenerationInput }
+  | { scope: "daily"; input: DailyGenerationInput };
+
+const PUBLIC_ERRORS = {
+  REPORT_NOT_FOUND: [404, "Report not found"],
+  TEMPLATE_NOT_BOUND: [409, "Report has no immutable template binding"],
+  TEMPLATE_NOT_FOUND: [404, "Bound template version not found"],
+  TEMPLATE_MISMATCH: [409, "Template identity/hash changed"],
+  SESSION_NOT_FOUND: [404, "Report Session or Calendar Session not found"],
+  TRANSCRIPT_REQUIRED: [400, "Session transcript is required"],
+  TRANSCRIPT_PATH_MISMATCH: [409, "Transcript path is outside the bound Session"],
+  TRANSCRIPT_HASH_MISMATCH: [409, "Transcript changed after reference creation"],
+  INVALID_TRANSCRIPT: [400, "Transcript encoding/format/size is invalid"],
+  FIELD_NOT_ELIGIBLE: [400, "Target field or requested mode is not allowed"],
+} as const;
+
+export type GenerationContextErrorCode = keyof typeof PUBLIC_ERRORS;
+
+export class GenerationContextError extends Error {
+  readonly status: number;
+  readonly publicMessage: string;
+
+  constructor(public readonly code: GenerationContextErrorCode) {
+    const [status, publicMessage] = PUBLIC_ERRORS[code];
+    super(publicMessage);
+    this.name = "GenerationContextError";
+    this.status = status;
+    this.publicMessage = publicMessage;
+  }
+}
+
+function safePathSegment(value: string): string {
+  return value.replace(/[^A-Za-z0-9._-]/g, "_");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function boundTemplate(report: Report, value: unknown): ReportTemplateVersion {
+  if (
+    typeof report.templateId !== "string" ||
+    report.templateId.length === 0 ||
+    !Number.isInteger(report.templateVersion) ||
+    (report.templateVersion ?? 0) <= 0 ||
+    typeof report.templateHash !== "string" ||
+    report.templateHash.length === 0
+  ) {
+    throw new GenerationContextError("TEMPLATE_NOT_BOUND");
+  }
+  let template: ReportTemplateVersion;
+  try {
+    template = assertTemplateVersion(value);
+  } catch {
+    throw new GenerationContextError("TEMPLATE_MISMATCH");
+  }
+  if (
+    template.templateId !== report.templateId ||
+    template.version !== report.templateVersion ||
+    template.templateHash !== report.templateHash
+  ) {
+    throw new GenerationContextError("TEMPLATE_MISMATCH");
+  }
+  return template;
+}
+
+function normalizedValues(
+  report: Report,
+  fields: TemplateField[],
+  sessionId?: string,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    fields.map((field) => [
+      field.id,
+      normalizeStoredFieldValue(field, readReportFieldValue(report, field.id, sessionId)),
+    ]),
+  );
+}
+
+function transcriptPrefix(confId: string, reportId: string, sessionId: string): string {
+  return `conference-transcripts/${safePathSegment(confId)}/${safePathSegment(reportId)}/${safePathSegment(sessionId)}/`;
+}
+
+function transcriptFormat(value: unknown): "txt" | "md" | "srt" | "vtt" {
+  if (value === "txt" || value === "md" || value === "srt" || value === "vtt") return value;
+  throw new GenerationContextError("INVALID_TRANSCRIPT");
+}
+
+function fixedCalendarContext(session: Record<string, unknown>): Record<string, unknown> {
+  const allowed = ["code", "title", "date", "start", "end", "room", "speakers"] as const;
+  return Object.fromEntries(
+    allowed.flatMap((key) => (session[key] === undefined ? [] : [[key, session[key]]])),
+  );
+}
+
+function sessionFromReport(report: Report, sessionId: string): Record<string, unknown> {
+  const session = report.sessions?.[sessionId];
+  if (!isRecord(session)) throw new GenerationContextError("SESSION_NOT_FOUND");
+  return session;
+}
+
+export async function loadGenerationContext(
+  {
+    confId,
+    reportId,
+    uid,
+    request,
+  }: { confId: string; reportId: string; uid: string; request: GenerateRequest },
+  source: GenerationContextSource = firebaseGenerationContextSource,
+): Promise<LoadedGenerationContext> {
+  const report = await source.getReport(confId, reportId);
+  if (!report) throw new GenerationContextError("REPORT_NOT_FOUND");
+  const templateVersion = report.templateVersion;
+  if (
+    typeof report.templateId !== "string" ||
+    report.templateId.length === 0 ||
+    !Number.isInteger(templateVersion) ||
+    (templateVersion ?? 0) <= 0 ||
+    typeof report.templateHash !== "string" ||
+    report.templateHash.length === 0
+  ) {
+    throw new GenerationContextError("TEMPLATE_NOT_BOUND");
+  }
+  const rawTemplate = await source.getTemplate(report.templateId, templateVersion as number);
+  if (!rawTemplate) throw new GenerationContextError("TEMPLATE_NOT_FOUND");
+  const template = boundTemplate(report, rawTemplate);
+  const focus = await source.getMemberFocus(confId, uid);
+
+  if (request.scope === "daily") {
+    const field = selectEligibleFields(template, "daily", request.mode).find(
+      (candidate) => candidate.id === request.targetFieldId,
+    );
+    if (!field) throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+    const values = normalizedValues(report, [field]);
+    return {
+      scope: "daily",
+      input: {
+        template,
+        field,
+        currentValue: values[field.id],
+        sourceBlocks: buildDailySourceBlocks(report, template.fields, field),
+        focus,
+        mode: request.mode,
+        instruction: request.instruction ?? "",
+        templateHash: template.templateHash,
+        baseFieldHashes: await hashFieldMap(values),
+      },
+    };
+  }
+
+  const fields = selectEligibleFields(template, "session", request.mode);
+  if (fields.length === 0) throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+  const session = sessionFromReport(report, request.sessionId);
+  const transcriptRef = session.transcriptRef;
+  if (!isRecord(transcriptRef)) throw new GenerationContextError("TRANSCRIPT_REQUIRED");
+  const storagePath = transcriptRef.storagePath;
+  if (
+    typeof storagePath !== "string" ||
+    !storagePath.startsWith(transcriptPrefix(confId, reportId, request.sessionId))
+  ) {
+    throw new GenerationContextError("TRANSCRIPT_PATH_MISMATCH");
+  }
+  if (typeof transcriptRef.contentHash !== "string" || !transcriptRef.contentHash) {
+    throw new GenerationContextError("TRANSCRIPT_REQUIRED");
+  }
+  const format = transcriptFormat(transcriptRef.format);
+  if (!storagePath.toLowerCase().endsWith(`.${format}`)) {
+    throw new GenerationContextError("INVALID_TRANSCRIPT");
+  }
+
+  let transcriptText: string;
+  let segments;
+  try {
+    transcriptText = normalizeTranscriptSource(
+      new TextDecoder("utf-8", { fatal: true }).decode(await source.getTranscript(storagePath)),
+    );
+    segments = parseTranscript(format, transcriptText);
+  } catch (error) {
+    if (error instanceof GenerationContextError) throw error;
+    throw new GenerationContextError("INVALID_TRANSCRIPT");
+  }
+  if ((await hashText(transcriptText)) !== transcriptRef.contentHash) {
+    throw new GenerationContextError("TRANSCRIPT_HASH_MISMATCH");
+  }
+
+  const values = normalizedValues(report, fields, request.sessionId);
+  let calendarContext: Record<string, unknown> = {};
+  if (fields.some((field) => field.ai.allowedSources.includes("calendar"))) {
+    const calendar = await source.getCalendarSession(
+      confId,
+      typeof session.calendarSessionId === "string" ? session.calendarSessionId : undefined,
+      request.sessionId,
+    );
+    if (!calendar) throw new GenerationContextError("SESSION_NOT_FOUND");
+    calendarContext = fixedCalendarContext(calendar);
+  }
+  return {
+    scope: "session",
+    input: {
+      template,
+      fields,
+      segments,
+      currentValues: values,
+      calendarContext,
+      focus,
+      mode: request.mode,
+      instruction: request.instruction ?? "",
+      templateHash: template.templateHash,
+      transcriptHash: transcriptRef.contentHash,
+      baseFieldHashes: await hashFieldMap(values),
+    },
+  };
+}
+
+export function createFirebaseGenerationContextSource(
+  firestore: Firestore,
+  storage: Bucket,
+): GenerationContextSource {
+  return {
+    async getReport(confId, reportId) {
+      const snapshot = await firestore
+        .collection("conferences")
+        .doc(confId)
+        .collection("dailyReports")
+        .doc(reportId)
+        .get();
+      return snapshot.exists ? ({ id: reportId, ...snapshot.data() } as Report) : null;
+    },
+    async getTemplate(templateId, version) {
+      const snapshot = await firestore
+        .collection("reportTemplates")
+        .doc(templateId)
+        .collection("versions")
+        .doc(String(version))
+        .get();
+      return snapshot.exists ? snapshot.data() : null;
+    },
+    async getMemberFocus(confId, uid) {
+      const snapshot = await firestore
+        .collection("conferences")
+        .doc(confId)
+        .collection("members")
+        .doc(uid)
+        .get();
+      const focus = snapshot.exists ? snapshot.data()?.aiFocus : undefined;
+      return typeof focus === "string" ? focus : "";
+    },
+    async getCalendarSession(confId, calendarSessionId, fallbackCode) {
+      const snapshot = await firestore
+        .collection("conferences")
+        .doc(confId)
+        .collection("sessions")
+        .doc(calendarSessionId ?? fallbackCode)
+        .get();
+      return snapshot.exists ? (snapshot.data() as Record<string, unknown>) : null;
+    },
+    async getTranscript(storagePath) {
+      const [bytes] = await storage.file(storagePath).download();
+      return new Uint8Array(bytes);
+    },
+  };
+}
+
+export const firebaseGenerationContextSource = createFirebaseGenerationContextSource(db, bucket);
