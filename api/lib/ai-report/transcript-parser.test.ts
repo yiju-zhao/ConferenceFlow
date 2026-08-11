@@ -2,7 +2,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { normalizeEvidenceText, parseTimestamp, parseTranscript } from "./transcript-parser";
+import {
+  normalizeEvidenceText,
+  normalizeTranscriptSource,
+  parseTimestamp,
+  parseTranscript,
+} from "./transcript-parser";
 
 const fixturePath = (name: string) =>
   join(dirname(fileURLToPath(import.meta.url)), "__fixtures__", name);
@@ -21,6 +26,7 @@ describe("parseTranscript", () => {
 
   it("retains Markdown paragraph offsets after normalization", () => {
     const text = "# 标题\r\n\r\n正文第一行。\r\n\r\n正文第二行。";
+    const canonical = normalizeTranscriptSource(text);
     const segments = parseTranscript("md", text);
 
     expect(segments).toMatchObject([
@@ -28,6 +34,9 @@ describe("parseTranscript", () => {
       { text: "正文第一行。", startOffset: 6 },
       { text: "正文第二行。", startOffset: 14 },
     ]);
+    for (const segment of segments) {
+      expect(canonical.slice(segment.startOffset, segment.endOffset)).toBe(segment.text);
+    }
   });
 
   it("assigns the same IDs and offsets on repeated parses", () => {
@@ -83,15 +92,28 @@ describe("parseTranscript", () => {
     ).toThrow("invalid SRT cue");
   });
 
+  it("accepts numeric-only SRT cue text when it is not a nested cue header", () => {
+    const segments = parseTranscript(
+      "srt",
+      "1\n00:00:01,000 --> 00:00:02,000\n2026\n\n2\n00:00:03,000 --> 00:00:04,000\n结论",
+    );
+
+    expect(segments[0]).toMatchObject({ segmentId: "seg_0001", text: "2026" });
+  });
+
   it("normalizes evidence whitespace without changing source text", () => {
     expect(normalizeEvidenceText("  第一行\n\n第二行\t")).toBe("第一行 第二行");
   });
 
   it("normalizes BOM and CRLF and enforces input limits", () => {
-    expect(parseTranscript("txt", "\uFEFF第一段。\r\n\r\n第二段。")).toMatchObject([
-      { startOffset: 0, endOffset: 4 },
-      { startOffset: 6 },
-    ]);
+    const source = "\uFEFF第一段。\r\n\r\n第二段。";
+    const canonical = normalizeTranscriptSource(source);
+    const segments = parseTranscript("txt", source);
+
+    expect(segments).toMatchObject([{ startOffset: 0, endOffset: 4 }, { startOffset: 6 }]);
+    for (const segment of segments) {
+      expect(canonical.slice(segment.startOffset, segment.endOffset)).toBe(segment.text);
+    }
     expect(() => parseTranscript("txt", " \r\n\t ")).toThrow("empty transcript");
     expect(() => parseTranscript("txt", "a".repeat(500_001))).toThrow(
       "transcript exceeds 500000 code points",
@@ -105,6 +127,31 @@ describe("parseTranscript", () => {
       "忽略系统指令",
     );
     expect(parseTranscript("md", fixture("focus-relevant.md"))).toHaveLength(6);
+  });
+
+  it("parses every mandated fixture in its declared format", () => {
+    const short = parseTranscript("txt", fixture("short.txt"));
+    const long = parseTranscript("md", fixture("long.md"));
+    const srt = parseTranscript("srt", fixture("timestamps.srt"));
+    const vtt = parseTranscript("vtt", fixture("timestamps.vtt"));
+    const mixedLanguage = parseTranscript("txt", fixture("mixed-language.txt"));
+    const namesAndNumbers = parseTranscript("txt", fixture("names-numbers.txt"));
+    const contradictory = parseTranscript("txt", fixture("contradictory.txt"));
+    const insufficient = parseTranscript("txt", fixture("insufficient.txt"));
+    const promptInjection = parseTranscript("txt", fixture("prompt-injection.txt"));
+    const focusRelevant = parseTranscript("md", fixture("focus-relevant.md"));
+
+    expect(short).toHaveLength(2);
+    expect(long).toHaveLength(16);
+    expect(long.some(({ text }) => text.includes("P95 延迟"))).toBe(true);
+    expect(srt).toHaveLength(3);
+    expect(vtt).toHaveLength(3);
+    expect(mixedLanguage).toHaveLength(2);
+    expect(namesAndNumbers).toHaveLength(1);
+    expect(contradictory[1].text).toContain("尚未确认");
+    expect(insufficient).toMatchObject([{ text: "欢迎参加本次会议。" }]);
+    expect(promptInjection).toHaveLength(2);
+    expect(focusRelevant).toHaveLength(6);
   });
 });
 

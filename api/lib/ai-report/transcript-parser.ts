@@ -40,7 +40,12 @@ export function parseTimestamp(value: string): number {
   throw new Error("invalid timestamp");
 }
 
-function normalizeTranscript(text: string): string {
+/**
+ * Return the canonical source string used by parsing and source offsets.
+ * `TranscriptSegment.startOffset` and `endOffset` index this returned string,
+ * not the raw pre-normalization input.
+ */
+export function normalizeTranscriptSource(text: string): string {
   const normalized = text.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
   if (!normalized.trim()) throw new Error("empty transcript");
   if (Array.from(normalized).length > MAX_TRANSCRIPT_CODE_POINTS) {
@@ -133,7 +138,10 @@ function parseSrt(text: string): TranscriptSegment[] {
     const cueLines: string[] = [];
     while (index < lines.length && lines[index].trim()) {
       const current = lines[index];
-      if (/^\d+$/.test(current.trim())) throw new Error("invalid SRT cue");
+      const next = lines[index + 1]?.trim() ?? "";
+      if (/^\d+$/.test(current.trim()) && looksLikeCueTiming(next)) {
+        throw new Error("invalid SRT cue");
+      }
       if (looksLikeCueTiming(current)) throw new Error("invalid SRT cue");
       cueLines.push(current);
       index += 1;
@@ -202,7 +210,7 @@ function parseVtt(text: string): TranscriptSegment[] {
 }
 
 export function parseTranscript(format: TranscriptFormat, text: string): TranscriptSegment[] {
-  const normalized = normalizeTranscript(text);
+  const normalized = normalizeTranscriptSource(text);
   switch (format) {
     case "txt":
     case "md":

@@ -59,3 +59,56 @@ npm run build
 ## Concerns
 
 None. Parser consumers/evidence validation are intentionally outside this task.
+
+## Fix Round 1 — review findings
+
+### Findings addressed
+
+- SRT cue text containing only a number is accepted; only a numeric line immediately followed by a timestamp line is treated as nested cue syntax.
+- Exported `normalizeTranscriptSource` is the canonical BOM/CRLF normalization and validation function used by `parseTranscript`. Its documentation defines TXT/MD offsets as indexes into its returned canonical string, with slice-equality assertions for BOM/CRLF and Markdown.
+- Added semantic parsing coverage for all ten exact fixtures, including `long.md`, `contradictory.txt`, and `insufficient.txt`.
+
+### Files changed
+
+- `api/lib/ai-report/transcript-parser.ts`
+- `api/lib/ai-report/transcript-parser.test.ts`
+- This report (`task-7-report.md`)
+
+### RED
+
+Command:
+
+```bash
+npm run test:run -- api/lib/ai-report/transcript-parser.test.ts
+```
+
+Result: 3 of 15 tests failed as expected: `normalizeTranscriptSource is not a function` in the new canonical-offset assertions, and `invalid SRT cue` for the new numeric-only cue test.
+
+### GREEN and final gates
+
+```bash
+npm run test:run -- api/lib/ai-report/transcript-parser.test.ts
+# Test Files  1 passed (1)
+# Tests  15 passed (15)
+
+npx prettier --check api/lib/ai-report/transcript-parser.ts api/lib/ai-report/transcript-parser.test.ts
+# All matched files use Prettier code style!
+
+npm run typecheck
+# tsc --noEmit exited 0
+
+npm run build
+# vite build exited 0; 2556 modules transformed
+
+npm run test:run
+# Test Files  14 passed (14)
+# Tests  75 passed (75)
+```
+
+### Self-review
+
+The parser now preserves valid numeric subtitle text while still rejecting the distinct nested-cue shape. Canonical normalization is a single exported function used by both callers and parsing, so source quote slicing is reproducible. Fixture coverage exercises every declared format and all ten mandated files. No LLM, RAG, logging, or scope expansion was introduced.
+
+### Concerns
+
+None.
