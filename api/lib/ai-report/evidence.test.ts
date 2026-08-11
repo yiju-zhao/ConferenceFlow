@@ -215,4 +215,88 @@ describe("transcript Evidence validation", () => {
     );
     expect(facts).toEqual([]);
   });
+
+  it("does not accept a Latin name before a hyphenated continuation", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "DeepSeek 团队确认",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "DeepSeek-2 团队确认" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "DeepSeek-2 团队确认",
+          normalizedText: "DeepSeek-2 团队确认",
+        },
+      ],
+    );
+    expect(facts).toEqual([]);
+  });
+
+  it("does not accept a Latin version token before a dotted continuation", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "GPT-4 发布",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "GPT-4.1 发布" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "GPT-4.1 发布",
+          normalizedText: "GPT-4.1 发布",
+        },
+      ],
+    );
+    expect(facts).toEqual([]);
+  });
+
+  it("accepts exact Latin tokens next to Chinese punctuation", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "DeepSeek 与 GPT-4 发布",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "DeepSeek，与 GPT-4。" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "DeepSeek，与 GPT-4。",
+          normalizedText: "DeepSeek，与 GPT-4。",
+        },
+      ],
+    );
+    expect(facts).toHaveLength(1);
+  });
+
+  it("supports exact internal Latin apostrophe and underscore token characters", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "O’Neil 与 Foo_Bar 确认",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "O’Neil 与 Foo_Bar 确认。" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "O’Neil 与 Foo_Bar 确认。",
+          normalizedText: "O’Neil 与 Foo_Bar 确认。",
+        },
+      ],
+    );
+    expect(facts).toHaveLength(1);
+  });
 });

@@ -46,7 +46,9 @@ function normalized(value: string): string {
  */
 function groundingTokens(claim: string): string[] {
   const tokens = new Set<string>();
-  for (const match of claim.matchAll(/\d+(?:\.\d+)?%?|\b[A-Z][A-Za-z]*(?:[-'][A-Za-z0-9]+)*/g)) {
+  for (const match of claim.matchAll(
+    /\d+(?:\.\d+)?%?|\b[A-Z][A-Za-z0-9]*(?:[-'’._][A-Za-z0-9]+)*/g,
+  )) {
     tokens.add(match[0]);
   }
   return [...tokens];
@@ -69,21 +71,30 @@ function quoteMatches(quote: string, sourceText: string): boolean {
 
 /**
  * Match a grounded token as a token, rather than as an arbitrary substring.
- * ASCII word characters (plus `%` and `.` for numeric values) delimit the
- * values that must not be confused with a larger number/name. Chinese text,
- * punctuation, and whitespace remain valid adjacent context.
+ * ASCII alphanumerics and underscores always continue a token. Hyphens,
+ * apostrophes, and dots continue a Latin token when followed by an ASCII
+ * alphanumeric (e.g. `DeepSeek-2` or `GPT-4.1`), while a standalone dot or
+ * dash remains ordinary adjacent punctuation. Chinese text and whitespace
+ * remain valid adjacent context.
  */
 function containsGroundedToken(text: string, token: string): boolean {
   const numeric = /^\d/.test(token);
-  const boundary = numeric ? /[A-Za-z0-9_%\.]/ : /[A-Za-z0-9]/;
+  const isAsciiAlphanumeric = (value: string): boolean => /[A-Za-z0-9]/.test(value);
+  const continuesAt = (index: number, direction: -1 | 1): boolean => {
+    if (index < 0 || index >= text.length) return false;
+    const value = text[index];
+    if (isAsciiAlphanumeric(value) || value === "_") return true;
+    if (numeric && value === "%") return true;
+    if (value !== "." && value !== "-" && value !== "'" && value !== "’") return false;
+    const adjacent = text[index + direction];
+    return adjacent !== undefined && isAsciiAlphanumeric(adjacent);
+  };
   let fromIndex = 0;
   while (fromIndex <= text.length - token.length) {
     const index = text.indexOf(token, fromIndex);
     if (index < 0) return false;
-    const before = index > 0 ? text[index - 1] : "";
     const afterIndex = index + token.length;
-    const after = afterIndex < text.length ? text[afterIndex] : "";
-    if (!boundary.test(before) && !boundary.test(after)) return true;
+    if (!continuesAt(index - 1, -1) && !continuesAt(afterIndex, 1)) return true;
     fromIndex = index + 1;
   }
   return false;
