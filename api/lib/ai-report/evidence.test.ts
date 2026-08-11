@@ -110,4 +110,109 @@ describe("transcript Evidence validation", () => {
       ),
     ).toEqual([]);
   });
+
+  it("does not accept a percentage token inside a larger percentage", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "成本降低 30%",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "成本降低 130%" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "成本降低 130%",
+          normalizedText: "成本降低 130%",
+        },
+      ],
+    );
+    expect(facts).toEqual([]);
+  });
+
+  it("does not accept a capitalized Latin token inside a longer name", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "Deep 团队发布报告",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "DeepSeek 团队发布报告" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "DeepSeek 团队发布报告",
+          normalizedText: "DeepSeek 团队发布报告",
+        },
+      ],
+    );
+    expect(facts).toEqual([]);
+  });
+
+  it("accepts exact numeric and name tokens next to Chinese text and punctuation", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "推理成本降低 30%，DeepSeek 团队确认",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "推理成本降低 30%，DeepSeek 团队确认。" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "推理成本降低 30%，DeepSeek 团队确认。",
+          normalizedText: "推理成本降低 30%，DeepSeek 团队确认。",
+        },
+      ],
+    );
+    expect(facts).toHaveLength(1);
+  });
+
+  it("grounds decimals, years, and multiword Latin names as complete tokens", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "版本 3.14 于 2024 年由 Open AI 发布",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "版本 3.14，于 2024 年由 Open AI 发布。" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "版本 3.14，于 2024 年由 Open AI 发布。",
+          normalizedText: "版本 3.14，于 2024 年由 Open AI 发布。",
+        },
+      ],
+    );
+    expect(facts).toHaveLength(1);
+  });
+
+  it("rejects decimal and year superstrings", () => {
+    const facts = validateTranscriptFacts(
+      [
+        {
+          claim: "比例 3.1%（2024 年）",
+          kind: "explicit",
+          fieldHints: [],
+          supports: [{ segmentId: "seg_0001", quote: "比例 13.1%（20240 年）" }],
+        },
+      ],
+      [
+        {
+          segmentId: "seg_0001",
+          text: "比例 13.1%（20240 年）",
+          normalizedText: "比例 13.1%（20240 年）",
+        },
+      ],
+    );
+    expect(facts).toEqual([]);
+  });
 });

@@ -67,9 +67,31 @@ function quoteMatches(quote: string, sourceText: string): boolean {
   return candidate.length > 0 && normalized(sourceText).includes(candidate);
 }
 
+/**
+ * Match a grounded token as a token, rather than as an arbitrary substring.
+ * ASCII word characters (plus `%` and `.` for numeric values) delimit the
+ * values that must not be confused with a larger number/name. Chinese text,
+ * punctuation, and whitespace remain valid adjacent context.
+ */
+function containsGroundedToken(text: string, token: string): boolean {
+  const numeric = /^\d/.test(token);
+  const boundary = numeric ? /[A-Za-z0-9_%\.]/ : /[A-Za-z0-9]/;
+  let fromIndex = 0;
+  while (fromIndex <= text.length - token.length) {
+    const index = text.indexOf(token, fromIndex);
+    if (index < 0) return false;
+    const before = index > 0 ? text[index - 1] : "";
+    const afterIndex = index + token.length;
+    const after = afterIndex < text.length ? text[afterIndex] : "";
+    if (!boundary.test(before) && !boundary.test(after)) return true;
+    fromIndex = index + 1;
+  }
+  return false;
+}
+
 function supportsAllGroundingTokens(claim: string, quotes: string[]): boolean {
   const joined = normalized(quotes.join(" "));
-  return groundingTokens(claim).every((token) => joined.includes(token));
+  return groundingTokens(claim).every((token) => containsGroundedToken(joined, token));
 }
 
 /**
