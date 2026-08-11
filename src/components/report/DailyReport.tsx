@@ -31,7 +31,10 @@ import IntelCard, { topicSlug } from "./IntelCard";
 import SpeakersEditor from "./SpeakersEditor";
 import AddReportSessionDialog from "./AddReportSessionDialog";
 import AiFocusDialog from "./ai/AiFocusDialog";
+import AiFieldAction from "./ai/AiFieldAction";
+import SessionAiSection from "./ai/SessionAiSection";
 import SnapshotViewer from "./SnapshotViewer";
+import { useBoundReportTemplate } from "../../hooks/useBoundReportTemplate";
 import {
   readdReportSession,
   reportSessionSpeakers,
@@ -52,6 +55,7 @@ import type {
   ReportSpeaker,
   Session,
   SitePhoto,
+  TemplateFieldValue,
 } from "../../types";
 
 // A conference session scoped to a single day's report. `attendees` is
@@ -141,7 +145,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const reportContainerRef = useRef<HTMLDivElement>(null);
   const initDone = useRef(false);
   const collapsedInit = useRef(false);
-  const { debouncedSave, saveState } = useDebouncedSave(600);
+  const { debouncedSave, flushPending, saveState } = useDebouncedSave(600);
 
   const saveAiFocus = useCallback(
     async (nextFocus: string) => {
@@ -312,6 +316,22 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const sessionData = reportData?.sessions || {};
   sessionDataRef.current = sessionData;
   reportDataRef.current = reportData;
+  const { template, error: templateError } = useBoundReportTemplate(reportData);
+  const fieldById = useMemo(
+    () => new Map(template?.fields.map((field) => [field.id, field]) ?? []),
+    [template],
+  );
+  const titleField = fieldById.get("title");
+  const summaryPointsField = fieldById.get("summaryPoints");
+  const rumorsField = fieldById.get("rumors");
+  const sessionAiFields =
+    template?.fields.filter(
+      (field) =>
+        field.scope === "session" &&
+        field.ai.enabled &&
+        field.type !== "fixed" &&
+        field.type !== "image",
+    ) ?? [];
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const memberMap = useMemo(() => {
@@ -395,14 +415,17 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     (field: string, value: unknown) => {
       if (!user || viewMode) return;
       debouncedSave(field, () => {
-        setDoc(
+        return setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
           { [field]: value },
           { merge: true },
-        ).catch(console.error);
+        ).catch((error: unknown) => {
+          console.error(error);
+          throw error;
+        });
       });
     },
-    [user, reportId, debouncedSave, viewMode],
+    [user, reportId, debouncedSave, viewMode, confId],
   );
 
   const addReportSession = useCallback(
@@ -503,7 +526,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       const data: ReportSnapshotData = {
         title: rd.title || "",
         summaryPoints: rd.summaryPoints || [],
-        sessions: sessionDataRef.current || {},
+        sessions: Object.fromEntries(
+          Object.entries(sessionDataRef.current || {}).map(([sessionId, value]) => {
+            const { transcriptRef: _transcriptRef, ...snapshotSession } = value;
+            return [sessionId, snapshotSession];
+          }),
+        ),
         topicOrder: rd.topicOrder || [],
         deletedSessions: rd.deletedSessions || [],
         onsiteInfo: rd.onsiteInfo || "",
@@ -561,9 +589,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   const saveSessionField = useCallback(
     (code: string, field: string, value: unknown) => {
-      if (!user) return;
+      if (!user || viewMode) return;
       debouncedSave(`${code}.${field}`, () => {
-        setDoc(
+        return setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
           {
             sessions: {
@@ -575,10 +603,45 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
             },
           },
           { merge: true },
-        ).catch(console.error);
+        ).catch((error: unknown) => {
+          console.error(error);
+          throw error;
+        });
       });
     },
-    [user, reportId, debouncedSave, confId],
+    [user, reportId, debouncedSave, confId, viewMode],
+  );
+
+  const saveAiDailyField = useCallback(
+    async (fieldId: string, value: TemplateFieldValue) => {
+      if (!user || viewMode) throw new Error("report is read-only");
+      await setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        { [fieldId]: value },
+        { merge: true },
+      );
+    },
+    [confId, reportId, user, viewMode],
+  );
+
+  const saveAiSessionFields = useCallback(
+    async (sessionId: string, values: Record<string, TemplateFieldValue>) => {
+      if (!user || viewMode) throw new Error("report is read-only");
+      await setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        {
+          sessions: {
+            [sessionId]: {
+              ...values,
+              lastEditedBy: user.uid,
+              lastEditedAt: Date.now(),
+            },
+          },
+        },
+        { merge: true },
+      );
+    },
+    [confId, reportId, user, viewMode],
   );
 
   // Speakers: save whole array debounced
@@ -1688,6 +1751,11 @@ ${clone.outerHTML}
           </div>
         </div>
       )}
+      {!viewMode && templateError && (
+        <p className="no-print ai-report-error" role="status">
+          {t("report.ai.templateError")}
+        </p>
+      )}
 
       {/* ── Floating formatting toolbar (appears on text selection) ── */}
       {!viewMode && floatingToolbar && (
@@ -1869,6 +1937,19 @@ ${clone.outerHTML}
                 </span>
               )}
             </h1>
+            {template && titleField && user && (
+              <AiFieldAction
+                confId={confId}
+                reportId={reportId}
+                templateHash={template.templateHash}
+                field={titleField}
+                focus={membership?.aiFocus ?? ""}
+                getCurrentValue={() => reportDataRef.current?.title}
+                flushPending={flushPending}
+                onSave={(value) => saveAiDailyField("title", value)}
+                readOnly={viewMode}
+              />
+            )}
           </div>
           <img
             src={huaweiLogo}
@@ -1975,6 +2056,19 @@ ${clone.outerHTML}
           {/* Summary */}
           <div className="report-summary">
             <h2 className="report-section-title">{t("report.corePoints")}</h2>
+            {template && summaryPointsField && user && (
+              <AiFieldAction
+                confId={confId}
+                reportId={reportId}
+                templateHash={template.templateHash}
+                field={summaryPointsField}
+                focus={membership?.aiFocus ?? ""}
+                getCurrentValue={() => reportDataRef.current?.summaryPoints}
+                flushPending={flushPending}
+                onSave={(value) => saveAiDailyField("summaryPoints", value)}
+                readOnly={viewMode}
+              />
+            )}
             <BulletEditor
               points={reportData?.summaryPoints}
               onSave={(pts) => saveField("summaryPoints", pts)}
@@ -2136,6 +2230,27 @@ ${clone.outerHTML}
                       />
                     </div>
                     <div className="report-session-body">
+                      {template && user && (
+                        <SessionAiSection
+                          confId={confId}
+                          reportId={reportId}
+                          sessionId={session.code}
+                          templateHash={template.templateHash}
+                          fields={sessionAiFields}
+                          focus={membership?.aiFocus ?? ""}
+                          uid={user.uid}
+                          transcriptRef={sd.transcriptRef}
+                          flushPending={flushPending}
+                          getLatestValues={() =>
+                            (reportDataRef.current?.sessions?.[session.code] ?? {}) as Record<
+                              string,
+                              unknown
+                            >
+                          }
+                          onSaveFields={saveAiSessionFields}
+                          readOnly={viewMode}
+                        />
+                      )}
                       <div className="report-field-block">
                         <h4 className="report-field-heading report-field-heading--highlight">
                           {t("report.keyTakeaways")}
@@ -2384,6 +2499,27 @@ ${clone.outerHTML}
 
                         {/* Body: takeaways & insights */}
                         <div className="report-session-body">
+                          {template && user && (
+                            <SessionAiSection
+                              confId={confId}
+                              reportId={reportId}
+                              sessionId={session.code}
+                              templateHash={template.templateHash}
+                              fields={sessionAiFields}
+                              focus={membership?.aiFocus ?? ""}
+                              uid={user.uid}
+                              transcriptRef={sd.transcriptRef}
+                              flushPending={flushPending}
+                              getLatestValues={() =>
+                                (reportDataRef.current?.sessions?.[session.code] ?? {}) as Record<
+                                  string,
+                                  unknown
+                                >
+                              }
+                              onSaveFields={saveAiSessionFields}
+                              readOnly={viewMode}
+                            />
+                          )}
                           <div className="report-field-block">
                             <h4 className="report-field-heading report-field-heading--highlight">
                               {t("report.keyTakeaways")}
@@ -2611,6 +2747,19 @@ ${clone.outerHTML}
           <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>
             {t("report.rumors")}
           </h2>
+          {template && rumorsField && user && (
+            <AiFieldAction
+              confId={confId}
+              reportId={reportId}
+              templateHash={template.templateHash}
+              field={rumorsField}
+              focus={membership?.aiFocus ?? ""}
+              getCurrentValue={() => reportDataRef.current?.rumors}
+              flushPending={flushPending}
+              onSave={(value) => saveAiDailyField("rumors", value)}
+              readOnly={viewMode}
+            />
+          )}
           <EditableField
             value={reportData?.rumors || ""}
             onSave={(html) => saveField("rumors", html)}
