@@ -268,6 +268,7 @@ describe("generateSessionCandidate", () => {
       expect.objectContaining({ focus: "关注成本", instruction: "优先写成本" }),
     );
     expect(evidence[0].content).toContain("只输出合法 JSON");
+    expect(evidence[0].content).toContain("所有输出必须使用中文");
     expect(writing[0].content).toContain("所有生成内容必须使用中文");
   });
 
