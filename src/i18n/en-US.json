@@ -231,6 +231,13 @@
     "searchAllSessions": "Search all schedule",
     "alreadyAdded": "Already added",
     "noMatchingSessions": "No matching Sessions",
+    "ai": {
+      "aiFocus": "My Focus",
+      "aiFocusDescription": "AI will prioritize these directions, but will not invent facts from them.",
+      "saveAiFocus": "Save Focus",
+      "aiFocusSaveFailed": "Could not save focus. Please try again.",
+      "noAiFocus": "No focus set yet"
+    },
     "shareReport": "Share Report",
     "sharing": "Sharing...",
     "generating": "Generating...",

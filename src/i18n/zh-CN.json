@@ -231,6 +231,13 @@
     "searchAllSessions": "搜索全部日程",
     "alreadyAdded": "已添加",
     "noMatchingSessions": "没有匹配的 Session",
+    "ai": {
+      "aiFocus": "我的关注方向",
+      "aiFocusDescription": "AI 会优先关注这些方向，但不会据此创造事实。",
+      "saveAiFocus": "保存关注方向",
+      "aiFocusSaveFailed": "关注方向保存失败，请重试。",
+      "noAiFocus": "尚未设置关注方向"
+    },
     "shareReport": "分享日报",
     "sharing": "分享中...",
     "generating": "生成中...",

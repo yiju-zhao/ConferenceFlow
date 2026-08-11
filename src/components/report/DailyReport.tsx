@@ -30,6 +30,7 @@ import huaweiLogo from "../../assets/huawei_logo.png";
 import IntelCard, { topicSlug } from "./IntelCard";
 import SpeakersEditor from "./SpeakersEditor";
 import AddReportSessionDialog from "./AddReportSessionDialog";
+import AiFocusDialog from "./ai/AiFocusDialog";
 import SnapshotViewer from "./SnapshotViewer";
 import {
   readdReportSession,
@@ -81,7 +82,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const viewMode =
     viewModeProp || new URLSearchParams(window.location.search).get("preview") === "1";
   const { user } = useAuth();
-  const { isAdmin: isConfAdmin } = useMembership(confId);
+  const { membership, isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
   const [allConferenceSessions, setAllConferenceSessions] = useState<Session[]>([]);
   const [members, setMembers] = useState<ResolvedMember[]>([]);
@@ -115,6 +116,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   });
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
   const [showAddSession, setShowAddSession] = useState(false);
+  const [showAiFocus, setShowAiFocus] = useState(false);
 
   const [tocVisible, setTocVisible] = useState(true);
   const [openInlineMenu, setOpenInlineMenu] = useState<string | null>(null);
@@ -139,6 +141,18 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const initDone = useRef(false);
   const collapsedInit = useRef(false);
   const { debouncedSave, saveState } = useDebouncedSave(600);
+
+  const saveAiFocus = useCallback(
+    async (nextFocus: string) => {
+      if (!user) return;
+      await setDoc(
+        doc(db, "conferences", confId, "members", user.uid),
+        { aiFocus: nextFocus },
+        { merge: true },
+      );
+    },
+    [confId, user],
+  );
 
   // Lock body scroll when history panel is open
   useEffect(() => {
@@ -1457,6 +1471,24 @@ ${clone.outerHTML}
               {t("common.save")}
             </button>
 
+            <button
+              onClick={() => setShowAiFocus(true)}
+              title={membership?.aiFocus || t("report.ai.noAiFocus")}
+              style={{
+                padding: "5px 14px",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                background: "#333",
+                color: "#ccc",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {t("report.ai.aiFocus")}
+            </button>
+
             {/* ② Preview — primary action, visually distinct */}
             <button
               onClick={() =>
@@ -1762,6 +1794,13 @@ ${clone.outerHTML}
           ))}
         </div>
       )}
+
+      <AiFocusDialog
+        open={showAiFocus}
+        value={membership?.aiFocus ?? ""}
+        onSave={saveAiFocus}
+        onClose={() => setShowAiFocus(false)}
+      />
 
       {/* ── Share Modal ──────────────────────────────────────────── */}
       {!viewMode && shareUrl && (
