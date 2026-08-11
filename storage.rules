@@ -1,11 +1,14 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    function isApprovedMember(confId) {
+    function canAccessConferenceTranscript(confId) {
       return request.auth != null
-        && firestore.get(
-          /databases/(default)/documents/conferences/$(confId)/members/$(request.auth.uid)
-        ).data.status == "approved";
+        && (
+          request.auth.token.globalRole == "super_admin"
+          || firestore.get(
+            /databases/(default)/documents/conferences/$(confId)/members/$(request.auth.uid)
+          ).data.status == "approved"
+        );
     }
 
     match /published-reports/{allPaths=**} {
@@ -27,7 +30,7 @@ service firebase.storage {
     }
 
     match /conference-transcripts/{confId}/{reportId}/{sessionId}/{fileName} {
-      allow read, write: if isApprovedMember(confId);
+      allow read, write: if canAccessConferenceTranscript(confId);
     }
   }
 }

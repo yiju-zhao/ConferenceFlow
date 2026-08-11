@@ -159,6 +159,146 @@ describe("generateSessionCandidate", () => {
     expect(sourceData(0).fields).toEqual([{ id: "insights", description: "insights 描述" }]);
   });
 
+  it("withholds a repeated append bullet while retaining an unrelated valid field", async () => {
+    const takeaways = field("takeaways", {
+      type: "bullet_list",
+      ai: { allowedModes: ["append"] },
+    });
+    const insights = field("insights", { ai: { allowedModes: ["append"] } });
+    mockDeepSeek
+      .mockResolvedValueOnce({
+        facts: [
+          {
+            claim: "推理成本降低 30%",
+            kind: "explicit",
+            fieldHints: [],
+            supports: [{ segmentId: "seg_0001", quote: "推理成本降低 30%" }],
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        fields: [
+          {
+            fieldId: "takeaways",
+            value: ["现有要点"],
+            factIds: ["fact_0001"],
+            draftSupports: [],
+          },
+          {
+            fieldId: "insights",
+            value: "新增分析",
+            factIds: ["fact_0001"],
+            draftSupports: [],
+          },
+        ],
+        insufficientFieldIds: [],
+      });
+
+    const result = await generateSessionCandidate(
+      makeInput({
+        fields: [takeaways, insights],
+        mode: "append",
+        currentValues: { takeaways: ["现有要点"], insights: "现有分析" },
+      }),
+    );
+
+    expect(result.candidate).toEqual([
+      expect.objectContaining({ fieldId: "insights", value: "新增分析" }),
+    ]);
+    expect(result.insufficientFieldIds).toEqual(["takeaways"]);
+  });
+
+  it.each(["现有内容", "现有内容以及新增内容"])(
+    "withholds append rich text that repeats current content: %s",
+    async (value) => {
+      const takeaways = field("takeaways", { ai: { allowedModes: ["append"] } });
+      mockDeepSeek
+        .mockResolvedValueOnce({
+          facts: [
+            {
+              claim: "推理成本降低 30%",
+              kind: "explicit",
+              fieldHints: [],
+              supports: [{ segmentId: "seg_0001", quote: "推理成本降低 30%" }],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          fields: [
+            {
+              fieldId: "takeaways",
+              value,
+              factIds: ["fact_0001"],
+              draftSupports: [],
+            },
+          ],
+          insufficientFieldIds: [],
+        });
+
+      const result = await generateSessionCandidate(
+        makeInput({
+          fields: [takeaways],
+          mode: "append",
+          currentValues: { takeaways: "现有内容" },
+        }),
+      );
+
+      expect(result.candidate).toEqual([]);
+      expect(result.insufficientFieldIds).toEqual(["takeaways"]);
+    },
+  );
+
+  it("accepts append output containing only new bullet and rich-text material", async () => {
+    const takeaways = field("takeaways", {
+      type: "bullet_list",
+      ai: { allowedModes: ["append"] },
+    });
+    const insights = field("insights", { ai: { allowedModes: ["append"] } });
+    mockDeepSeek
+      .mockResolvedValueOnce({
+        facts: [
+          {
+            claim: "推理成本降低 30%",
+            kind: "explicit",
+            fieldHints: [],
+            supports: [{ segmentId: "seg_0001", quote: "推理成本降低 30%" }],
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        fields: [
+          {
+            fieldId: "takeaways",
+            value: ["新增要点"],
+            factIds: ["fact_0001"],
+            draftSupports: [],
+          },
+          {
+            fieldId: "insights",
+            value: "新增分析",
+            factIds: ["fact_0001"],
+            draftSupports: [],
+          },
+        ],
+        insufficientFieldIds: [],
+      });
+
+    const result = await generateSessionCandidate(
+      makeInput({
+        fields: [takeaways, insights],
+        mode: "append",
+        currentValues: { takeaways: ["现有要点"], insights: "现有分析" },
+      }),
+    );
+
+    expect(messages(1)[0].content).toContain("只返回新增内容");
+    expect(result.candidate).toEqual([
+      expect.objectContaining({ fieldId: "takeaways", value: ["新增要点"] }),
+      expect.objectContaining({ fieldId: "insights", value: "新增分析" }),
+    ]);
+    expect(result.insufficientFieldIds).toEqual([]);
+  });
+
   it("withholds invalid Writing fields while retaining independently valid fields", async () => {
     mockDeepSeek
       .mockResolvedValueOnce({

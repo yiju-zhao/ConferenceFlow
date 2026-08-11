@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TranscriptSourceActions } from "../../../hooks/useTranscriptSource";
 import type { TranscriptRef } from "../../../types";
+import { useModalFocus } from "./useModalFocus";
 
 interface TranscriptControlProps {
   transcriptRef: TranscriptRef | null | undefined;
@@ -32,17 +33,57 @@ export default function TranscriptControl({
   const [sourceText, setSourceText] = useState<string | null>(null);
   const [replacementFile, setReplacementFile] = useState<File | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const dialogId = useId();
+  const replaceDialogRef = useRef<HTMLDivElement>(null);
+  const replaceCancelRef = useRef<HTMLButtonElement>(null);
+  const pasteDialogRef = useRef<HTMLDivElement>(null);
+  const pasteInputRef = useRef<HTMLTextAreaElement>(null);
+  const sourceDialogRef = useRef<HTMLDivElement>(null);
+  const sourceCloseRef = useRef<HTMLButtonElement>(null);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const deleteCancelRef = useRef<HTMLButtonElement>(null);
 
-  if (readOnly) return null;
-
-  const closePaste = () => {
+  const closePaste = useCallback(() => {
     setPasteOpen(false);
     setPasteText("");
-  };
+  }, []);
 
-  const closeSource = () => setSourceText(null);
+  const closeSource = useCallback(() => setSourceText(null), []);
 
-  const closeReplace = () => setReplacementFile(null);
+  const closeReplace = useCallback(() => setReplacementFile(null), []);
+
+  const closeDelete = useCallback(() => setDeleteOpen(false), []);
+
+  const onReplaceKeyDown = useModalFocus({
+    open: !readOnly && replacementFile !== null,
+    busy: actions.busy,
+    containerRef: replaceDialogRef,
+    initialFocusRef: replaceCancelRef,
+    onClose: closeReplace,
+  });
+  const onPasteKeyDown = useModalFocus({
+    open: !readOnly && pasteOpen,
+    busy: actions.busy,
+    containerRef: pasteDialogRef,
+    initialFocusRef: pasteInputRef,
+    onClose: closePaste,
+  });
+  const onSourceKeyDown = useModalFocus({
+    open: !readOnly && sourceText !== null,
+    busy: actions.busy,
+    containerRef: sourceDialogRef,
+    initialFocusRef: sourceCloseRef,
+    onClose: closeSource,
+  });
+  const onDeleteKeyDown = useModalFocus({
+    open: !readOnly && deleteOpen,
+    busy: actions.busy,
+    containerRef: deleteDialogRef,
+    initialFocusRef: deleteCancelRef,
+    onClose: closeDelete,
+  });
+
+  if (readOnly) return null;
 
   const saveFile = async (file: File) => {
     try {
@@ -73,7 +114,7 @@ export default function TranscriptControl({
   const remove = async () => {
     try {
       await actions.remove();
-      setDeleteOpen(false);
+      closeDelete();
       closeSource();
     } catch {
       // Keep the confirmation open so the user can retry.
@@ -134,18 +175,28 @@ export default function TranscriptControl({
       />
 
       {replacementFile && (
-        <div className="delete-confirm-overlay" onClick={closeReplace}>
+        <div className="delete-confirm-overlay" onClick={actions.busy ? undefined : closeReplace}>
           <div
             className="delete-confirm-modal"
             role="dialog"
+            ref={replaceDialogRef}
+            tabIndex={-1}
             aria-modal="true"
+            aria-labelledby={`${dialogId}-replace-title`}
+            aria-describedby={`${dialogId}-replace-description`}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={onReplaceKeyDown}
           >
-            <h3 className="delete-confirm-title">{t("report.ai.replaceTranscript")}</h3>
-            <p className="delete-confirm-desc">{replacementFile.name}</p>
+            <h3 id={`${dialogId}-replace-title`} className="delete-confirm-title">
+              {t("report.ai.replaceTranscript")}
+            </h3>
+            <p id={`${dialogId}-replace-description`} className="delete-confirm-desc">
+              {replacementFile.name}
+            </p>
             <div className="delete-confirm-actions">
               <button
                 type="button"
+                ref={replaceCancelRef}
                 className="delete-confirm-cancel"
                 onClick={closeReplace}
                 disabled={actions.busy}
@@ -166,15 +217,22 @@ export default function TranscriptControl({
       )}
 
       {pasteOpen && (
-        <div className="delete-confirm-overlay" onClick={closePaste}>
+        <div className="delete-confirm-overlay" onClick={actions.busy ? undefined : closePaste}>
           <div
             className="delete-confirm-modal"
             role="dialog"
+            ref={pasteDialogRef}
+            tabIndex={-1}
             aria-modal="true"
+            aria-labelledby={`${dialogId}-paste-title`}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={onPasteKeyDown}
           >
-            <h3 className="delete-confirm-title">{t("report.ai.pasteTranscript")}</h3>
+            <h3 id={`${dialogId}-paste-title`} className="delete-confirm-title">
+              {t("report.ai.pasteTranscript")}
+            </h3>
             <textarea
+              ref={pasteInputRef}
               aria-label={t("report.ai.pasteTranscript")}
               value={pasteText}
               onChange={(event) => setPasteText(event.target.value)}
@@ -204,17 +262,29 @@ export default function TranscriptControl({
       )}
 
       {sourceText !== null && (
-        <div className="delete-confirm-overlay" onClick={closeSource}>
+        <div className="delete-confirm-overlay" onClick={actions.busy ? undefined : closeSource}>
           <div
             className="delete-confirm-modal"
             role="dialog"
+            ref={sourceDialogRef}
+            tabIndex={-1}
             aria-modal="true"
+            aria-labelledby={`${dialogId}-source-title`}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={onSourceKeyDown}
           >
-            <h3 className="delete-confirm-title">{t("report.ai.transcript")}</h3>
+            <h3 id={`${dialogId}-source-title`} className="delete-confirm-title">
+              {t("report.ai.transcript")}
+            </h3>
             <pre>{sourceText}</pre>
             <div className="delete-confirm-actions">
-              <button type="button" className="delete-confirm-cancel" onClick={closeSource}>
+              <button
+                type="button"
+                ref={sourceCloseRef}
+                className="delete-confirm-cancel"
+                onClick={closeSource}
+                disabled={actions.busy}
+              >
                 {t("common.close")}
               </button>
             </div>
@@ -223,20 +293,30 @@ export default function TranscriptControl({
       )}
 
       {deleteOpen && (
-        <div className="delete-confirm-overlay" onClick={() => setDeleteOpen(false)}>
+        <div className="delete-confirm-overlay" onClick={actions.busy ? undefined : closeDelete}>
           <div
             className="delete-confirm-modal"
             role="dialog"
+            ref={deleteDialogRef}
+            tabIndex={-1}
             aria-modal="true"
+            aria-labelledby={`${dialogId}-delete-title`}
+            aria-describedby={`${dialogId}-delete-description`}
             onClick={(event) => event.stopPropagation()}
+            onKeyDown={onDeleteKeyDown}
           >
-            <h3 className="delete-confirm-title">{t("report.ai.deleteTranscript")}</h3>
-            <p className="delete-confirm-desc">{t("report.ai.deleteTranscriptDescription")}</p>
+            <h3 id={`${dialogId}-delete-title`} className="delete-confirm-title">
+              {t("report.ai.deleteTranscript")}
+            </h3>
+            <p id={`${dialogId}-delete-description`} className="delete-confirm-desc">
+              {t("report.ai.deleteTranscriptDescription")}
+            </p>
             <div className="delete-confirm-actions">
               <button
                 type="button"
+                ref={deleteCancelRef}
                 className="delete-confirm-cancel"
-                onClick={() => setDeleteOpen(false)}
+                onClick={closeDelete}
                 disabled={actions.busy}
               >
                 {t("common.cancel")}

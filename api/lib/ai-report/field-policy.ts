@@ -242,7 +242,15 @@ export function buildDailySourceBlocks(
 
   const sessions = report.sessions;
   if (!sessions || typeof sessions !== "object") return blocks;
+  const deletedSessions = new Set(
+    Array.isArray(report.deletedSessions)
+      ? report.deletedSessions.filter(
+          (sessionId): sessionId is string => typeof sessionId === "string",
+        )
+      : [],
+  );
   for (const sessionId of Object.keys(sessions).sort()) {
+    if (deletedSessions.has(sessionId)) continue;
     for (const field of fields) {
       if (
         field.id === targetId ||

@@ -7,6 +7,7 @@ import {
   readReportFieldValue,
   validateCandidateValue,
 } from "./field-policy";
+import { validateSourceSupports } from "./evidence";
 
 const policy: TemplateField["ai"] = {
   enabled: true,
@@ -124,5 +125,35 @@ describe("report source policy", () => {
     ]);
     expect(blocks.map((block) => block.text).join(" ")).not.toContain("第一段");
     expect(blocks.map((block) => block.text).join(" ")).not.toContain("secret.txt");
+  });
+
+  it("excludes retained report Sessions marked deleted from daily source and Evidence", () => {
+    const fields: TemplateField[] = [
+      { ...textField, id: "summary", ai: { ...textField.ai, allowedSources: ["report_content"] } },
+      { ...textField, id: "takeaways", scope: "session" },
+    ];
+    const report = {
+      deletedSessions: ["S1"],
+      sessions: {
+        S1: { takeaways: "已删除 Session 的内容" },
+        S2: { takeaways: "仍在日报中的内容" },
+      },
+    } as unknown as Report;
+
+    const blocks = buildDailySourceBlocks(report, fields, "summary");
+
+    expect(blocks).toEqual([
+      {
+        sourceId: "session:S2:takeaways",
+        sourceType: "report_field",
+        text: "仍在日报中的内容",
+      },
+    ]);
+    expect(
+      validateSourceSupports(
+        [{ sourceId: "session:S1:takeaways", quote: "已删除 Session 的内容" }],
+        blocks,
+      ),
+    ).toEqual([]);
   });
 });

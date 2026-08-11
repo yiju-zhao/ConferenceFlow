@@ -62,20 +62,28 @@ export default function SessionAiSection({
   const [selectedMode, setSelectedMode] = useState<GenerationMode>("rewrite");
   const [localError, setLocalError] = useState<string | null>(null);
   const [adopting, setAdopting] = useState(false);
-  const eligibleFields = fields.filter(
-    (field) =>
-      field.scope === "session" &&
-      field.ai.enabled &&
-      field.type !== "fixed" &&
-      field.type !== "image" &&
-      field.ai.allowedModes.length > 0,
+  const eligibleFields = useMemo(
+    () =>
+      fields.filter(
+        (field) =>
+          field.scope === "session" &&
+          field.ai.enabled &&
+          field.type !== "fixed" &&
+          field.type !== "image" &&
+          field.ai.allowedModes.length > 0,
+      ),
+    [fields],
   );
   const modes = useMemo(
     () =>
       (["rewrite", "append"] as const).filter((mode) =>
-        eligibleFields.every((field) => field.ai.allowedModes.includes(mode)),
+        eligibleFields.some((field) => field.ai.allowedModes.includes(mode)),
       ),
     [eligibleFields],
+  );
+  const targetFields = useMemo(
+    () => eligibleFields.filter((field) => field.ai.allowedModes.includes(selectedMode)),
+    [eligibleFields, selectedMode],
   );
   const template = useMemo<ReportTemplateVersion>(
     () => ({ templateId: "bound-report", version: 1, templateHash, fields: eligibleFields }),
@@ -123,7 +131,7 @@ export default function SessionAiSection({
     }
     const latestRaw = getLatestValues();
     const latest = Object.fromEntries(
-      eligibleFields.map((field) => [
+      targetFields.map((field) => [
         field.id,
         normalizeStoredFieldValue(field, latestRaw[field.id]),
       ]),
@@ -135,7 +143,7 @@ export default function SessionAiSection({
     }
     const values: Record<string, TemplateFieldValue> = {};
     for (const candidate of response.candidate) {
-      const field = eligibleFields.find((item) => item.id === candidate.fieldId);
+      const field = targetFields.find((item) => item.id === candidate.fieldId);
       if (!field) {
         setLocalError("候选内容无效，请重新生成。");
         return;

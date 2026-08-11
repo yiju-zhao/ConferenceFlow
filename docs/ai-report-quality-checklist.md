@@ -61,6 +61,14 @@ Use an authenticated non-production Firebase project, a Vercel API deployment,
 and two distinct approved member accounts. Do not use production transcripts or
 focus text.
 
+Before enabling the transcript UI, run the Firebase Storage Emulator against
+`conference-transcripts/{confId}/{reportId}/{sessionId}/{fileName}`. Verify both
+authorized cases independently: a token with `globalRole: "super_admin"` and no
+conference membership can read/write, and an approved conference member without
+the global claim can read/write. Also verify pending membership, membership in a
+different conference, and unauthenticated access are denied; no root catch-all
+rule may grant transcript access.
+
 1. As user A, set a focus, add one of My Sessions, upload VTT, generate, expand
    timestamps, adopt, refresh, and confirm only adopted fields remain.
 2. As user A, search the full calendar, add an unassigned Session, paste TXT,

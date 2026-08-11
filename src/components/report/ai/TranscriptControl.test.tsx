@@ -62,6 +62,67 @@ describe("TranscriptControl", () => {
     expect(actions.remove).toHaveBeenCalledOnce();
   });
 
+  it("labels, focuses, traps, and restores focus for the paste dialog", async () => {
+    const user = userEvent.setup();
+    const actions = transcriptActions();
+    const { rerender } = render(<TranscriptControl transcriptRef={null} actions={actions} />);
+    const launcher = screen.getByRole("button", { name: "粘贴转录文字" });
+
+    await user.click(launcher);
+
+    expect(screen.getByRole("dialog", { name: "粘贴转录文字" })).toBeInTheDocument();
+    const textbox = screen.getByRole("textbox", { name: "粘贴转录文字" });
+    expect(textbox).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "确认" })).toHaveFocus();
+    await user.tab();
+    expect(textbox).toHaveFocus();
+
+    rerender(<TranscriptControl transcriptRef={null} actions={{ ...actions, busy: true }} />);
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog", { name: "粘贴转录文字" })).toBeInTheDocument();
+
+    rerender(<TranscriptControl transcriptRef={null} actions={actions} />);
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "粘贴转录文字" })).not.toBeInTheDocument();
+    expect(launcher).toHaveFocus();
+  });
+
+  it("focuses the safe action in delete confirmation and restores its launcher", async () => {
+    const user = userEvent.setup();
+    render(<TranscriptControl transcriptRef={currentTranscript} actions={transcriptActions()} />);
+    const launcher = screen.getByRole("button", { name: "删除转录文字" });
+
+    await user.click(launcher);
+
+    expect(screen.getByRole("dialog", { name: "删除转录文字" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "取消" })).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "确认删除" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "删除转录文字" })).not.toBeInTheDocument();
+    expect(launcher).toHaveFocus();
+  });
+
+  it("labels and focuses the transcript view dialog", async () => {
+    const user = userEvent.setup();
+    render(
+      <TranscriptControl
+        transcriptRef={currentTranscript}
+        actions={transcriptActions({ loadText: vi.fn().mockResolvedValue("私有原文") })}
+      />,
+    );
+    const launcher = screen.getByRole("button", { name: "查看转录文字" });
+
+    await user.click(launcher);
+
+    expect(await screen.findByRole("dialog", { name: "转录文字" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "关闭" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "转录文字" })).not.toBeInTheDocument();
+    expect(launcher).toHaveFocus();
+  });
+
   it("requires confirmation before replacing the current private source", async () => {
     const user = userEvent.setup();
     const actions = transcriptActions();

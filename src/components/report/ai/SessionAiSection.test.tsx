@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../../i18n";
@@ -62,6 +62,11 @@ const insightsField: TemplateField = {
     evidenceRequired: true,
     allowedModes: ["rewrite"],
   },
+};
+const appendOnlyInsightsField: TemplateField = {
+  ...insightsField,
+  type: "bullet_list",
+  ai: { ...insightsField.ai, allowedModes: ["append"] },
 };
 const currentTranscript: TranscriptRef = {
   storagePath: "private/S101.txt",
@@ -135,6 +140,101 @@ describe("SessionAiSection", () => {
     expect(screen.getByRole("textbox", { name: "当前关注方向" })).toHaveValue("关注成本");
     await user.click(screen.getByRole("button", { name: "生成候选内容" }));
     expect(generate).toHaveBeenCalledWith({ scope: "session", sessionId: "S101", mode: "rewrite" });
+  });
+
+  it("offers the union of modes supported by mixed Session fields", async () => {
+    const user = userEvent.setup();
+    render(<SessionAiSection {...props({ fields: [takeawaysField, appendOnlyInsightsField] })} />);
+
+    await user.click(screen.getByRole("button", { name: "AI 生成 Session 内容" }));
+
+    expect(screen.getByRole("button", { name: "改写" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "追加" })).toBeEnabled();
+  });
+
+  it("adopts append candidates only for the append-capable subset", async () => {
+    const user = userEvent.setup();
+    const onSaveFields = vi.fn().mockResolvedValue(undefined);
+    const sectionProps = props({
+      fields: [takeawaysField, appendOnlyInsightsField],
+      getLatestValues: () => ({
+        takeaways: "不支持追加的协作者新值",
+        insights: ["现有分析"],
+      }),
+      onSaveFields,
+    });
+    const { rerender } = render(<SessionAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成 Session 内容" }));
+    await user.click(screen.getByRole("button", { name: "追加" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await waitFor(() =>
+      expect(generate).toHaveBeenCalledWith({
+        scope: "session",
+        sessionId: "S101",
+        mode: "append",
+      }),
+    );
+
+    generation.phase = "preview";
+    generation.response = {
+      candidate: [{ fieldId: "insights", value: ["新增分析"], evidenceIds: [] }],
+      insufficientFieldIds: [],
+      evidence: [],
+      context: {
+        templateHash: "template-v1",
+        transcriptHash: "transcript-v1",
+        baseFieldHashes: { insights: await hashFieldValue(["现有分析"]) },
+        focusUsed: "关注成本",
+      },
+    };
+    rerender(<SessionAiSection {...sectionProps} />);
+
+    await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
+
+    expect(onSaveFields).toHaveBeenCalledWith("S101", {
+      insights: ["现有分析", "新增分析"],
+    });
+    expect(onSaveFields.mock.calls[0][1]).not.toHaveProperty("takeaways");
+  });
+
+  it("does not adopt a candidate for a field unsupported by the selected mode", async () => {
+    const user = userEvent.setup();
+    const onSaveFields = vi.fn().mockResolvedValue(undefined);
+    const sectionProps = props({
+      fields: [takeawaysField, appendOnlyInsightsField],
+      getLatestValues: () => ({ takeaways: "现有收获", insights: ["现有分析"] }),
+      onSaveFields,
+    });
+    const { rerender } = render(<SessionAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成 Session 内容" }));
+    await user.click(screen.getByRole("button", { name: "追加" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await waitFor(() =>
+      expect(generate).toHaveBeenCalledWith({
+        scope: "session",
+        sessionId: "S101",
+        mode: "append",
+      }),
+    );
+
+    generation.phase = "preview";
+    generation.response = {
+      candidate: [{ fieldId: "takeaways", value: "不应采用", evidenceIds: [] }],
+      insufficientFieldIds: [],
+      evidence: [],
+      context: {
+        templateHash: "template-v1",
+        transcriptHash: "transcript-v1",
+        baseFieldHashes: { insights: await hashFieldValue(["现有分析"]) },
+        focusUsed: "关注成本",
+      },
+    };
+    rerender(<SessionAiSection {...sectionProps} />);
+
+    await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
+
+    expect(await screen.findByText("候选内容无效，请重新生成。")).toBeInTheDocument();
+    expect(onSaveFields).not.toHaveBeenCalled();
   });
 
   it("previews successful and insufficient Session fields", async () => {

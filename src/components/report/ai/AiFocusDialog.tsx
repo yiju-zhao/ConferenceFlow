@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useModalFocus } from "./useModalFocus";
 
 interface AiFocusDialogProps {
   open: boolean;
@@ -14,6 +15,15 @@ export default function AiFocusDialog({ open, value, onSave, onClose }: AiFocusD
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const wasOpen = useRef(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const focusInputRef = useRef<HTMLTextAreaElement>(null);
+  const onKeyDown = useModalFocus({
+    open,
+    busy: saving,
+    containerRef: dialogRef,
+    initialFocusRef: focusInputRef,
+    onClose,
+  });
 
   useEffect(() => {
     if (open && !wasOpen.current) {
@@ -39,21 +49,28 @@ export default function AiFocusDialog({ open, value, onSave, onClose }: AiFocusD
   };
 
   return (
-    <div className="delete-confirm-overlay" onClick={onClose}>
+    <div className="delete-confirm-overlay" onClick={saving ? undefined : onClose}>
       <div
         className="delete-confirm-modal"
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="ai-focus-dialog-title"
+        aria-describedby="ai-focus-dialog-description"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={onKeyDown}
       >
         <h3 id="ai-focus-dialog-title" className="delete-confirm-title">
           {t("report.ai.aiFocus")}
         </h3>
-        <p className="delete-confirm-desc">{t("report.ai.aiFocusDescription")}</p>
+        <p id="ai-focus-dialog-description" className="delete-confirm-desc">
+          {t("report.ai.aiFocusDescription")}
+        </p>
         <label htmlFor="ai-focus-input">{t("report.ai.aiFocus")}</label>
         <textarea
           id="ai-focus-input"
+          ref={focusInputRef}
           value={focus}
           onChange={(event) => setFocus(event.target.value)}
           rows={5}
@@ -65,10 +82,15 @@ export default function AiFocusDialog({ open, value, onSave, onClose }: AiFocusD
           </p>
         )}
         <div className="delete-confirm-actions">
-          <button className="delete-confirm-cancel" onClick={onClose} disabled={saving}>
+          <button
+            type="button"
+            className="delete-confirm-cancel"
+            onClick={onClose}
+            disabled={saving}
+          >
             {t("common.cancel")}
           </button>
-          <button className="delete-confirm-submit" onClick={save} disabled={saving}>
+          <button type="button" className="delete-confirm-submit" onClick={save} disabled={saving}>
             {t("report.ai.saveAiFocus")}
           </button>
         </div>
