@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-11
 
-**Status:** Approved in brainstorming; written specification pending user review
+**Status:** Approved
 
 **Target application:** ConferenceFlow
 
