@@ -9,6 +9,7 @@ type PendingEntry = {
 
 export function useDebouncedSave(delay = 600) {
   const pending = useRef<Record<string, PendingEntry>>({});
+  const inFlight = useRef(new Set<Promise<void>>());
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
@@ -24,11 +25,16 @@ export function useDebouncedSave(delay = 600) {
       if (!entry) return Promise.resolve();
       delete pending.current[key];
       clearTimeout(entry.timer);
-      return Promise.resolve()
-        .then(entry.callback)
-        .finally(() => {
-          if (Object.keys(pending.current).length === 0) markSaved();
-        });
+      const operation = Promise.resolve().then(entry.callback);
+      inFlight.current.add(operation);
+      const settle = () => {
+        inFlight.current.delete(operation);
+        if (Object.keys(pending.current).length === 0 && inFlight.current.size === 0) {
+          markSaved();
+        }
+      };
+      operation.then(settle, settle);
+      return operation;
     },
     [markSaved],
   );
@@ -47,14 +53,15 @@ export function useDebouncedSave(delay = 600) {
   );
 
   const flushPending = useCallback(async (): Promise<void> => {
-    const keys = Object.keys(pending.current);
-    await Promise.all(
-      keys.map((key) => {
+    while (Object.keys(pending.current).length > 0 || inFlight.current.size > 0) {
+      const inFlightPromises = [...inFlight.current];
+      const pendingPromises = Object.keys(pending.current).map((key) => {
         const entry = pending.current[key];
         if (entry) clearTimeout(entry.timer);
         return runEntry(key);
-      }),
-    );
+      });
+      await Promise.all([...inFlightPromises, ...pendingPromises]);
+    }
   }, [runEntry]);
 
   useEffect(
