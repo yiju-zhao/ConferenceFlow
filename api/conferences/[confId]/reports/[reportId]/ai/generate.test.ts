@@ -75,26 +75,54 @@ const candidateResponse = {
 };
 
 function request(body: unknown, method = "POST") {
+  const listeners = new Map<string, Array<() => void>>();
   return {
     method,
     body,
     query: { confId: "conf-1", reportId: "report-1" },
     headers: { authorization: "Bearer token", "x-request-id": "request-1" },
-    on: vi.fn(),
+    aborted: false,
+    on: vi.fn((event: string, listener: () => void) => {
+      listeners.set(event, [...(listeners.get(event) ?? []), listener]);
+    }),
+    removeListener: vi.fn((event: string, listener: () => void) => {
+      listeners.set(
+        event,
+        (listeners.get(event) ?? []).filter((candidate) => candidate !== listener),
+      );
+    }),
+    emit(event: string) {
+      for (const listener of listeners.get(event) ?? []) listener();
+    },
   } as any;
 }
 
 function response() {
+  const listeners = new Map<string, Array<() => void>>();
   const res = {
     statusCode: 200,
     body: undefined as unknown,
+    writableEnded: false,
     status(code: number) {
       this.statusCode = code;
       return this;
     },
     json(value: unknown) {
       this.body = value;
+      this.writableEnded = true;
       return this;
+    },
+    on: vi.fn((event: string, listener: () => void) => {
+      listeners.set(event, [...(listeners.get(event) ?? []), listener]);
+    }),
+    removeListener: vi.fn((event: string, listener: () => void) => {
+      listeners.set(
+        event,
+        (listeners.get(event) ?? []).filter((candidate) => candidate !== listener),
+      );
+    }),
+    emit(event: string) {
+      for (const listener of listeners.get(event) ?? []) listener();
     },
   };
   return res as any;
@@ -185,6 +213,43 @@ describe("POST /api/conferences/[confId]/reports/[reportId]/ai/generate", () => 
     expect(generateDailyMock).toHaveBeenCalledWith(dailyContext.input, expect.anything());
     expect(generateSessionMock).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(200);
+  });
+
+  it("cancels an in-flight generation when the response closes before completion", async () => {
+    const { DeepSeekRequestError } = await import("../../../../../lib/ai-report/deepseek.js");
+    let started!: () => void;
+    const generating = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    generateSessionMock.mockImplementation(async (_input, signal: AbortSignal) => {
+      started();
+      await new Promise((_, reject) => {
+        signal.addEventListener("abort", () =>
+          reject(new DeepSeekRequestError("cancelled", "CANCELLED", false)),
+        );
+      });
+    });
+    const req = request({ scope: "session", sessionId: "S101", mode: "rewrite" });
+    const res = response();
+    const result = handler(req, res);
+    await generating;
+    res.emit("close");
+    await result;
+    expect(res.statusCode).toBe(499);
+    expect(res.body).toEqual({ error: "Request cancelled", code: "CANCELLED", retryable: false });
+  });
+
+  it("does not pre-abort after a normal completed response closes", async () => {
+    let signal!: AbortSignal;
+    generateSessionMock.mockImplementation(async (_input, suppliedSignal: AbortSignal) => {
+      signal = suppliedSignal;
+      return candidateResponse;
+    });
+    const req = request({ scope: "session", sessionId: "S101", mode: "rewrite" });
+    const res = response();
+    await handler(req, res);
+    res.emit("close");
+    expect(signal.aborted).toBe(false);
   });
 
   it("returns a sanitized 500 for unexpected failures", async () => {

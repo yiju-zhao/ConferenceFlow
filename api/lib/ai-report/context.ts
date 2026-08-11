@@ -119,11 +119,49 @@ function transcriptFormat(value: unknown): "txt" | "md" | "srt" | "vtt" {
   throw new GenerationContextError("INVALID_TRANSCRIPT");
 }
 
+function publicString(value: unknown, maxLength = 256): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  if (
+    normalized.length === 0 ||
+    Array.from(normalized).length > maxLength ||
+    /[\u0000-\u001f\u007f]/.test(normalized)
+  ) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function publicSpeakers(value: unknown): Array<Record<string, string>> | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const speakers = value.slice(0, 50).flatMap((speaker) => {
+    if (!isRecord(speaker)) return [];
+    const publicSpeaker = Object.fromEntries(
+      (["name", "title", "company"] as const).flatMap((key) => {
+        const text = publicString(speaker[key]);
+        return text === undefined ? [] : [[key, text]];
+      }),
+    );
+    return Object.keys(publicSpeaker).length === 0 ? [] : [publicSpeaker];
+  });
+  return speakers.length > 0 ? speakers : undefined;
+}
+
 function fixedCalendarContext(session: Record<string, unknown>): Record<string, unknown> {
-  const allowed = ["code", "title", "date", "start", "end", "room", "speakers"] as const;
-  return Object.fromEntries(
-    allowed.flatMap((key) => (session[key] === undefined ? [] : [[key, session[key]]])),
+  const scalar = ["code", "title", "date", "start", "end", "room"] as const;
+  const context = Object.fromEntries(
+    scalar.flatMap((key) => {
+      const text = publicString(session[key]);
+      return text === undefined ? [] : [[key, text]];
+    }),
   );
+  const speakers = publicSpeakers(session.speakers);
+  return speakers === undefined ? context : { ...context, speakers };
+}
+
+function usableCalendarSessionId(value: unknown): string | undefined {
+  const id = publicString(value);
+  return id === undefined || id.includes("/") ? undefined : id;
 }
 
 function sessionFromReport(report: Report, sessionId: string): Record<string, unknown> {
@@ -202,12 +240,10 @@ export async function loadGenerationContext(
   }
 
   let transcriptText: string;
-  let segments;
   try {
     transcriptText = normalizeTranscriptSource(
       new TextDecoder("utf-8", { fatal: true }).decode(await source.getTranscript(storagePath)),
     );
-    segments = parseTranscript(format, transcriptText);
   } catch (error) {
     if (error instanceof GenerationContextError) throw error;
     throw new GenerationContextError("INVALID_TRANSCRIPT");
@@ -215,13 +251,19 @@ export async function loadGenerationContext(
   if ((await hashText(transcriptText)) !== transcriptRef.contentHash) {
     throw new GenerationContextError("TRANSCRIPT_HASH_MISMATCH");
   }
+  let segments;
+  try {
+    segments = parseTranscript(format, transcriptText);
+  } catch {
+    throw new GenerationContextError("INVALID_TRANSCRIPT");
+  }
 
   const values = normalizedValues(report, fields, request.sessionId);
   let calendarContext: Record<string, unknown> = {};
   if (fields.some((field) => field.ai.allowedSources.includes("calendar"))) {
     const calendar = await source.getCalendarSession(
       confId,
-      typeof session.calendarSessionId === "string" ? session.calendarSessionId : undefined,
+      usableCalendarSessionId(session.calendarSessionId),
       request.sessionId,
     );
     if (!calendar) throw new GenerationContextError("SESSION_NOT_FOUND");

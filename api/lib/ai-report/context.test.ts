@@ -77,7 +77,7 @@ function source(overrides: Partial<GenerationContextSource> = {}): GenerationCon
       start: "09:00",
       end: "10:00",
       room: "Hall A",
-      speakers: ["Ada"],
+      speakers: [{ name: "Ada", title: "Researcher", company: "Acme" }],
       attendees: ["private"],
     })),
     getTranscript: vi.fn(async () => new TextEncoder().encode("The speaker confirmed the launch.")),
@@ -113,7 +113,7 @@ describe("loadGenerationContext", () => {
           start: "09:00",
           end: "10:00",
           room: "Hall A",
-          speakers: ["Ada"],
+          speakers: [{ name: "Ada", title: "Researcher", company: "Acme" }],
         },
       },
     });
@@ -156,6 +156,83 @@ describe("loadGenerationContext", () => {
         source({ getTranscript: vi.fn(async () => new TextEncoder().encode("Changed")) }),
       ),
     ).rejects.toMatchObject({ code: "TRANSCRIPT_HASH_MISMATCH", status: 409 });
+  });
+
+  it("checks a changed transcript hash before parsing malformed content", async () => {
+    const changed = await report();
+    const reference = changed.sessions!.S101.transcriptRef!;
+    reference.format = "srt";
+    reference.storagePath = "conference-transcripts/conf-1/report-1/S101/file-1.srt";
+    reference.contentHash = await hashText("original valid source");
+
+    await expect(
+      loadGenerationContext(
+        { confId: "conf-1", reportId: "report-1", uid: "u1", request: sessionRequest },
+        source({
+          getReport: vi.fn(async () => changed),
+          getTranscript: vi.fn(async () => new TextEncoder().encode("not a valid SRT cue")),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "TRANSCRIPT_HASH_MISMATCH", status: 409 });
+  });
+
+  it("sanitizes calendar fields and speaker entries to public bounded values", async () => {
+    const loaded = await loadGenerationContext(
+      { confId: "conf-1", reportId: "report-1", uid: "u1", request: sessionRequest },
+      source({
+        getCalendarSession: vi.fn(async () => ({
+          code: { private: "member-1" },
+          title: "A safe public title",
+          date: "2026-08-11",
+          start: "09:00",
+          end: { recordingUrl: "private" },
+          room: "Hall A",
+          speakers: [
+            {
+              name: "Ada",
+              title: { memberId: "u1" },
+              company: "Acme",
+              attendees: ["u1"],
+            },
+            { name: "x".repeat(257) },
+            { recording: "https://private.example" },
+          ],
+        })),
+      }),
+    );
+    if (loaded.scope !== "session") throw new Error("wrong scope");
+    expect(loaded.input.calendarContext).toEqual({
+      title: "A safe public title",
+      date: "2026-08-11",
+      start: "09:00",
+      room: "Hall A",
+      speakers: [{ name: "Ada", company: "Acme" }],
+    });
+  });
+
+  it("uses the report session code when calendarSessionId is malformed", async () => {
+    const changed = await report();
+    changed.sessions!.S101.calendarSessionId = " \t ";
+    const read = source({ getReport: vi.fn(async () => changed) });
+    await loadGenerationContext(
+      { confId: "conf-1", reportId: "report-1", uid: "u1", request: sessionRequest },
+      read,
+    );
+    expect(read.getCalendarSession).toHaveBeenCalledWith("conf-1", undefined, "S101");
+  });
+
+  it("maps a missing fallback calendar session to SESSION_NOT_FOUND", async () => {
+    const changed = await report();
+    changed.sessions!.S101.calendarSessionId = "";
+    await expect(
+      loadGenerationContext(
+        { confId: "conf-1", reportId: "report-1", uid: "u1", request: sessionRequest },
+        source({
+          getReport: vi.fn(async () => changed),
+          getCalendarSession: vi.fn(async () => null),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "SESSION_NOT_FOUND", status: 404 });
   });
 
   it("builds daily source blocks and never reads Storage", async () => {

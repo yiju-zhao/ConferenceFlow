@@ -157,21 +157,36 @@ export function sendSanitizedGenerationError(
   return res.status(response.status).json(response.body);
 }
 
-function disconnectSignal(req: VercelRequest): AbortSignal {
+function disconnectSignal(
+  req: VercelRequest,
+  res: VercelResponse,
+): {
+  signal: AbortSignal;
+  dispose: () => void;
+} {
   const controller = new AbortController();
-  const abort = () => controller.abort();
-  if (req.aborted) abort();
-  req.on?.("aborted", abort);
-  req.on?.("close", () => {
-    if (req.aborted) abort();
-  });
-  return controller.signal;
+  const abortRequest = () => controller.abort();
+  const abortUnfinished = () => {
+    if (!res.writableEnded) controller.abort();
+  };
+  if (req.aborted) abortRequest();
+  req.on?.("aborted", abortRequest);
+  res.on?.("close", abortUnfinished);
+  req.socket?.on?.("close", abortUnfinished);
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      req.removeListener?.("aborted", abortRequest);
+      res.removeListener?.("close", abortUnfinished);
+      req.socket?.removeListener?.("close", abortUnfinished);
+    },
+  };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startedAt = Date.now();
   const requestId = requestIdFrom(req);
-  const signal = disconnectSignal(req);
+  const disconnect = disconnectSignal(req, res);
   let scope = "";
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -184,8 +199,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const context = await loadGenerationContext({ confId, reportId, uid: decoded.uid, request });
     const result =
       context.scope === "session"
-        ? await generateSessionCandidate(context.input, signal)
-        : await generateDailyCandidate(context.input, signal);
+        ? await generateSessionCandidate(context.input, disconnect.signal)
+        : await generateDailyCandidate(context.input, disconnect.signal);
     logGenerationMetadata({
       requestId,
       scope,
@@ -197,5 +212,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(result);
   } catch (error) {
     return sendSanitizedGenerationError(res, error, Date.now() - startedAt, requestId, scope);
+  } finally {
+    disconnect.dispose();
   }
 }
