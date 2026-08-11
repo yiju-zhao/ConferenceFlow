@@ -9,6 +9,17 @@ interface TranscriptControlProps {
   readOnly?: boolean;
 }
 
+const VALIDATION_ERROR_KEYS: Record<string, string> = {
+  "unsupported transcript format": "report.ai.unsupportedTranscriptFormat",
+  "transcript must be valid UTF-8": "report.ai.invalidTranscriptUtf8",
+  "empty transcript": "report.ai.emptyTranscript",
+  "transcript exceeds 500000 code points": "report.ai.oversizedTranscript",
+};
+
+function transcriptErrorKey(error: string): string {
+  return VALIDATION_ERROR_KEYS[error] ?? "report.ai.transcriptOperationFailed";
+}
+
 export default function TranscriptControl({
   transcriptRef,
   actions,
@@ -104,7 +115,7 @@ export default function TranscriptControl({
         </div>
       )}
       <p className="transcript-control-formats">{t("report.ai.transcriptFormats")}</p>
-      {actions.error && <p role="alert">{t("report.ai.transcriptOperationFailed")}</p>}
+      {actions.error && <p role="alert">{t(transcriptErrorKey(actions.error))}</p>}
       <input
         ref={fileInputRef}
         type="file"

@@ -248,6 +248,7 @@
       "deleteTranscriptDescription": "删除后将无法用于生成报告。",
       "transcriptFormats": "支持 .txt、.md、.srt、.vtt 格式，UTF-8 编码。",
       "privateSourceHint": "转录文字仅供本会议已批准成员使用，不会出现在公开报告中。",
+      "unsupportedTranscriptFormat": "仅支持 .txt、.md、.srt、.vtt 格式的转录文字。",
       "invalidTranscriptUtf8": "转录文字必须是有效的 UTF-8 编码。",
       "emptyTranscript": "转录文字不能为空。",
       "oversizedTranscript": "转录文字不能超过 500,000 个 Unicode 字符。",

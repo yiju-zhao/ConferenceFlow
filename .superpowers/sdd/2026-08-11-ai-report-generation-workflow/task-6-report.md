@@ -66,3 +66,39 @@ npm run build
 ## Concern
 
 This task provides the hook and control but intentionally does not mount them into `DailyReport`; that report/template integration belongs to a later workflow task.
+
+## Fix Round 1 — localized validation errors
+
+Review finding: the control previously translated every hook error to the generic operation-failure alert, leaving its validation-specific i18n strings unused.
+
+### Changed files
+
+- `src/components/report/ai/TranscriptControl.tsx`
+- `src/components/report/ai/TranscriptControl.test.tsx`
+- `src/i18n/zh-CN.json`
+- `src/i18n/en-US.json`
+
+### RED
+
+```bash
+npm run test:run -- src/components/report/ai/TranscriptControl.test.tsx
+```
+
+Result: 4 of 10 tests failed as expected. Unsupported format, invalid UTF-8, empty text, and oversize text each rendered the generic Chinese operation-failure message; the unknown storage-like error stayed generic.
+
+### GREEN
+
+`TranscriptControl` now maps only the four exact browser validation messages to bilingual correction keys. Any other error maps to `transcriptOperationFailed`, so provider and Storage details remain undisclosed.
+
+### Final verification
+
+```bash
+npm run test:run -- src/lib/ai-report/transcriptSource.test.ts src/hooks/useTranscriptSource.test.tsx src/components/report/ai/TranscriptControl.test.tsx
+# 3 passed, 20 passed
+
+npm run typecheck
+# tsc --noEmit exited 0
+
+npm run build
+# vite build exited 0; 2556 modules transformed
+```

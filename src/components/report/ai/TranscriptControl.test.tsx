@@ -76,6 +76,17 @@ describe("TranscriptControl", () => {
     expect(actions.saveFile).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    ["unsupported transcript format", "仅支持 .txt、.md、.srt、.vtt 格式的转录文字。"],
+    ["transcript must be valid UTF-8", "转录文字必须是有效的 UTF-8 编码。"],
+    ["empty transcript", "转录文字不能为空。"],
+    ["transcript exceeds 500000 code points", "转录文字不能超过 500,000 个 Unicode 字符。"],
+    ["storage/object-not-found: private detail", "转录文字操作失败，请重试。"],
+  ])("maps %s to a safe localized correction", (error, expected) => {
+    render(<TranscriptControl transcriptRef={null} actions={transcriptActions({ error })} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(expected);
+  });
+
   it("does not render in read-only or public mode", () => {
     const { container } = render(
       <TranscriptControl
