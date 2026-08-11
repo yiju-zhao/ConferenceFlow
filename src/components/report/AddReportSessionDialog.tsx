@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { mySessions, sessionKey } from "../../lib/ai-report/sessionSelection";
 import type { Session } from "../../types";
@@ -23,6 +23,15 @@ export default function AddReportSessionDialog({
   const { t } = useTranslation();
   const [view, setView] = useState<"mine" | "all">("mine");
   const [query, setQuery] = useState("");
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      setView("mine");
+      setQuery("");
+    }
+    wasOpen.current = open;
+  }, [open]);
 
   const results = useMemo(() => {
     const available = sessions.filter((session) => !selectedIds.has(sessionKey(session)));
@@ -36,11 +45,11 @@ export default function AddReportSessionDialog({
         session.title,
         session.date,
         session.room,
-        ...((session.speakers || []).flatMap((speaker) => [
+        ...(session.speakers || []).flatMap((speaker) => [
           speaker.name,
           speaker.title,
           speaker.company,
-        ])),
+        ]),
       ]
         .filter(Boolean)
         .join(" ")
@@ -67,19 +76,11 @@ export default function AddReportSessionDialog({
               ×
             </button>
           </div>
-          <div role="tablist" aria-label={t("report.addSession")}>
-            <button
-              role="tab"
-              aria-selected={view === "mine"}
-              onClick={() => setView("mine")}
-            >
+          <div aria-label={t("report.addSession")}>
+            <button aria-pressed={view === "mine"} onClick={() => setView("mine")}>
               {t("report.mySessions")}
             </button>
-            <button
-              role="tab"
-              aria-selected={view === "all"}
-              onClick={() => setView("all")}
-            >
+            <button aria-pressed={view === "all"} onClick={() => setView("all")}>
               {t("report.allSessions")}
             </button>
           </div>
@@ -111,7 +112,10 @@ export default function AddReportSessionDialog({
                       {session.room ? ` · ${session.room}` : ""}
                     </div>
                   </div>
-                  <button onClick={() => onAdd(key)} aria-label={`${t("common.add")} ${session.title}`}>
+                  <button
+                    onClick={() => onAdd(key)}
+                    aria-label={`${t("common.add")} ${session.title}`}
+                  >
                     {t("common.add")}
                   </button>
                 </div>

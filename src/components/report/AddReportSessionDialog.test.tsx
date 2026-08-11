@@ -45,18 +45,45 @@ describe("AddReportSessionDialog", () => {
       />,
     );
 
-    expect(screen.getByRole("tab", { name: "我的 Session" })).toHaveAttribute(
-      "aria-selected",
+    expect(screen.getByRole("button", { name: "我的 Session" })).toHaveAttribute(
+      "aria-pressed",
       "true",
     );
     expect(screen.getByText("A")).toBeInTheDocument();
     expect(screen.queryByText("B")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "全部日程" }));
+    await user.click(screen.getByRole("button", { name: "全部日程" }));
     await user.type(screen.getByRole("searchbox", { name: "搜索全部日程" }), "S102");
     await user.click(screen.getByRole("button", { name: "添加 B" }));
 
     expect(onAdd).toHaveBeenCalledOnce();
     expect(onAdd).toHaveBeenCalledWith("S102");
+  });
+
+  it("resets to My Sessions and clears the query whenever it reopens", async () => {
+    const user = userEvent.setup();
+    const props = {
+      sessions,
+      selectedIds: new Set<string>(),
+      currentUid: "u1",
+      onAdd: vi.fn(),
+      onClose: vi.fn(),
+    };
+    const { rerender } = render(<AddReportSessionDialog open {...props} />);
+
+    await user.click(screen.getByRole("button", { name: "全部日程" }));
+    await user.type(screen.getByRole("searchbox", { name: "搜索全部日程" }), "S102");
+    expect(screen.getByText("B")).toBeInTheDocument();
+
+    rerender(<AddReportSessionDialog open={false} {...props} />);
+    rerender(<AddReportSessionDialog open {...props} />);
+
+    expect(screen.getByRole("button", { name: "我的 Session" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByRole("searchbox", { name: "搜索全部日程" })).not.toBeInTheDocument();
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.queryByText("B")).not.toBeInTheDocument();
   });
 });

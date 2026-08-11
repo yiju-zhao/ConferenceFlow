@@ -32,7 +32,8 @@ import SpeakersEditor from "./SpeakersEditor";
 import AddReportSessionDialog from "./AddReportSessionDialog";
 import SnapshotViewer from "./SnapshotViewer";
 import {
-  newSessionDraft,
+  readdReportSession,
+  reportSessionSpeakers,
   selectedReportSessions,
   sessionKey,
 } from "../../lib/ai-report/sessionSelection";
@@ -394,14 +395,16 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       if (!user || viewMode) return;
       const session = allConferenceSessions.find((item) => sessionKey(item) === key);
       if (!session) throw new Error("calendar Session not found");
-      const deletedSessions = (reportDataRef.current?.deletedSessions ?? []).filter(
-        (deleted) => deleted !== key,
+      const update = readdReportSession(
+        reportDataRef.current?.sessions ?? {},
+        reportDataRef.current?.deletedSessions ?? [],
+        session,
       );
       await setDoc(
         doc(db, "conferences", confId, "dailyReports", reportId),
         {
-          sessions: { [key]: newSessionDraft(session) },
-          deletedSessions,
+          sessions: { [update.key]: update.draft },
+          deletedSessions: update.deletedSessions,
         },
         { merge: true },
       );
@@ -1961,17 +1964,7 @@ ${clone.outerHTML}
               !sd.insights?.replace(/<[^>]*>/g, "").trim()
             )
               return null;
-            const speakers =
-              sd.speakers ||
-              (sd.speaker
-                ? [
-                    {
-                      name: sd.speaker,
-                      position: "",
-                      company: sd.company || "",
-                    },
-                  ]
-                : [{ name: "", position: "", company: "" }]);
+            const speakers = reportSessionSpeakers(session, sd, Boolean(reportData?.templateId));
             const isCollapsed = collapsedSessions.has(session.code);
             return (
               <div key={session.code} id={`session-${session.code}`} className="report-session">
@@ -2198,18 +2191,11 @@ ${clone.outerHTML}
 
               {(topicsMap[topic] || []).map((session) => {
                 const sd = sessionData[session.code] || {};
-                // Graceful migration: old single-speaker format → new array format
-                const speakers =
-                  sd.speakers ||
-                  (sd.speaker
-                    ? [
-                        {
-                          name: sd.speaker,
-                          position: "",
-                          company: sd.company || "",
-                        },
-                      ]
-                    : [{ name: "", position: "", company: "" }]);
+                const speakers = reportSessionSpeakers(
+                  session,
+                  sd,
+                  Boolean(reportData?.templateId),
+                );
                 const contributorNames = Array.from(session.attendees)
                   .map((id) => memberMap[id])
                   .filter(Boolean);
