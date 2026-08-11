@@ -261,10 +261,15 @@ export async function loadGenerationContext(
   const values = normalizedValues(report, fields, request.sessionId);
   let calendarContext: Record<string, unknown> = {};
   if (fields.some((field) => field.ai.allowedSources.includes("calendar"))) {
+    const boundCalendarSessionId = usableCalendarSessionId(session.calendarSessionId);
+    const fallbackCalendarSessionId = usableCalendarSessionId(request.sessionId);
+    if (!boundCalendarSessionId && !fallbackCalendarSessionId) {
+      throw new GenerationContextError("SESSION_NOT_FOUND");
+    }
     const calendar = await source.getCalendarSession(
       confId,
-      usableCalendarSessionId(session.calendarSessionId),
-      request.sessionId,
+      boundCalendarSessionId,
+      fallbackCalendarSessionId ?? boundCalendarSessionId!,
     );
     if (!calendar) throw new GenerationContextError("SESSION_NOT_FOUND");
     calendarContext = fixedCalendarContext(calendar);

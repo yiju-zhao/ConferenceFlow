@@ -235,6 +235,37 @@ describe("loadGenerationContext", () => {
     ).rejects.toMatchObject({ code: "SESSION_NOT_FOUND", status: 404 });
   });
 
+  it.each(["S/101", "S\u0001", ""])(
+    "rejects an unusable fallback calendar document ID (%j) without reading the adapter",
+    async (sessionId) => {
+      const changed = await report();
+      const original = changed.sessions!.S101;
+      changed.sessions = {
+        [sessionId]: {
+          ...original,
+          calendarSessionId: "invalid/calendar/id",
+          transcriptRef: {
+            ...original.transcriptRef!,
+            storagePath: `conference-transcripts/conf-1/report-1/${sessionId.replace(/[^A-Za-z0-9._-]/g, "_")}/file-1.txt`,
+          },
+        },
+      };
+      const read = source({ getReport: vi.fn(async () => changed) });
+      await expect(
+        loadGenerationContext(
+          {
+            confId: "conf-1",
+            reportId: "report-1",
+            uid: "u1",
+            request: { scope: "session", sessionId, mode: "rewrite" },
+          },
+          read,
+        ),
+      ).rejects.toMatchObject({ code: "SESSION_NOT_FOUND", status: 404 });
+      expect(read.getCalendarSession).not.toHaveBeenCalled();
+    },
+  );
+
   it("builds daily source blocks and never reads Storage", async () => {
     const read = source();
     const loaded = await loadGenerationContext(
