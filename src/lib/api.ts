@@ -3,6 +3,18 @@ import type { ApiFetchOptions } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code?: string,
+    public readonly retryable = false,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   options: ApiFetchOptions = {},
@@ -24,7 +36,12 @@ export async function apiFetch<T = unknown>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(error.error || `API error: ${response.status}`);
+    throw new ApiError(
+      error.error || response.statusText || `API error: ${response.status}`,
+      response.status,
+      error.code,
+      error.retryable === true,
+    );
   }
 
   return response.json() as Promise<T>;
