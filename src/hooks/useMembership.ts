@@ -22,6 +22,8 @@ export function useMembership(confId: string | undefined) {
         attendanceMode: "onsite",
         colorIndex: 0,
       };
+      setMembership(superAdminMembership);
+      setLoading(false);
       const memberRef = doc(db, "conferences", confId, "members", user.uid);
       return onSnapshot(memberRef, (snap) => {
         const aiFocus = snap.exists()

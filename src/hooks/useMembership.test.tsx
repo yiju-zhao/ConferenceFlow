@@ -45,6 +45,15 @@ it("keeps super-admin access while reflecting that admin's own focus document", 
     "members",
     "super-admin",
   ]);
+  expect(result.current).toMatchObject({
+    isAdmin: true,
+    isApproved: true,
+    membership: {
+      id: "super-admin",
+      role: "admin",
+      status: "approved",
+    },
+  });
 
   act(() => {
     firestoreState.listener?.({
