@@ -1,4 +1,5 @@
 import type { Timestamp } from "firebase/firestore";
+import type { TranscriptRef } from "./ai-report";
 
 export type GlobalRole = "user" | "super_admin";
 export type AuthProvider = "email" | "google";
@@ -65,6 +66,7 @@ export interface Member {
   // writers but older docs may carry them. Optional → reads stay type-safe.
   userId?: string;
   mode?: AttendanceMode;
+  aiFocus?: string;
 }
 
 /** The recurring `{ id: snap.id, ...snap.data() }` shape. */
@@ -130,6 +132,8 @@ export interface ReportSessionData {
   lastEditedAt?: number;
   speaker?: string; // legacy single-speaker field
   company?: string; // legacy
+  transcriptRef?: TranscriptRef | null;
+  calendarSessionId?: string;
 }
 
 /** A session id + free-text fallback chosen via the session picker. */
@@ -276,4 +280,7 @@ export interface Report {
   citations?: unknown[]; // written as [] by ReportList; not read by components
   onsiteEvents?: unknown[]; // written as [] by ReportList; not read by components
   sourceReports?: string[]; // read defensively by ReportList; no current writer
+  templateId?: string;
+  templateVersion?: number;
+  templateHash?: string;
 }
