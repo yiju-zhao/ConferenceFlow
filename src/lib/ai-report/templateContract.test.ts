@@ -4,6 +4,7 @@ import {
   normalizeStoredFieldValue,
   selectEligibleFields,
 } from "./templateContract";
+import type { TemplateField } from "../../types";
 
 const template = {
   templateId: "daily-brief",
@@ -46,7 +47,50 @@ describe("template contract", () => {
   });
 
   it("selects only enabled, non-fixed fields that support the mode", () => {
-    expect(selectEligibleFields(assertTemplateVersion(template), "session", "append")).toEqual([
+    const fields = [
+      ...template.fields,
+      {
+        id: "disabledRichText",
+        label: "未启用",
+        description: "未启用的富文本字段",
+        type: "rich_text",
+        scope: "session",
+        ai: {
+          enabled: false,
+          allowedSources: ["transcript"],
+          evidenceRequired: true,
+          allowedModes: ["append"],
+        },
+      },
+      {
+        id: "dailyRichText",
+        label: "每日结论",
+        description: "错误作用域的富文本字段",
+        type: "rich_text",
+        scope: "daily",
+        ai: {
+          enabled: true,
+          allowedSources: ["report_content"],
+          evidenceRequired: true,
+          allowedModes: ["append"],
+        },
+      },
+      {
+        id: "fixedAppend",
+        label: "固定字段",
+        description: "固定类型字段",
+        type: "fixed",
+        scope: "session",
+        ai: {
+          enabled: true,
+          allowedSources: ["transcript"],
+          evidenceRequired: false,
+          allowedModes: ["append"],
+        },
+      },
+    ] as unknown as Parameters<typeof selectEligibleFields>[0]["fields"];
+    const eligibleTemplate = { ...template, fields } as Parameters<typeof selectEligibleFields>[0];
+    expect(selectEligibleFields(eligibleTemplate, "session", "append")).toEqual([
       expect.objectContaining({ id: "takeaways" }),
     ]);
   });
@@ -65,6 +109,12 @@ describe("template contract", () => {
   it("normalizes absent stored values by template type", () => {
     const valid = assertTemplateVersion(template);
     expect(normalizeStoredFieldValue(valid.fields[0], undefined)).toBe("");
+    const bulletField = { ...valid.fields[0], type: "bullet_list" } as TemplateField;
+    expect(normalizeStoredFieldValue(bulletField, undefined)).toEqual([]);
+    expect(normalizeStoredFieldValue(bulletField, ["保留", 3, null, "另一条"])).toEqual([
+      "保留",
+      "另一条",
+    ]);
   });
 
   it("requires Firestore-safe field IDs", () => {
@@ -113,6 +163,13 @@ describe("template contract", () => {
     ai.allowedSources = ["transcript"];
     ai.allowedModes = ["append", "append"];
     expect(() => assertTemplateVersion(invalid)).toThrow("duplicate AI mode");
+  });
+
+  it("rejects duplicate field IDs", () => {
+    const invalid = structuredClone(template) as unknown as Record<string, unknown>;
+    const fields = invalid.fields as Array<Record<string, unknown>>;
+    fields.push(structuredClone(fields[0]));
+    expect(() => assertTemplateVersion(invalid)).toThrow("duplicate template field: takeaways");
   });
 
   it("requires positive integer limits with a valid item range", () => {
