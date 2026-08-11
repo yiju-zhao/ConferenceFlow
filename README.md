@@ -74,10 +74,14 @@ Vercel project settings):
 FIREBASE_PROJECT_ID=...
 FIREBASE_CLIENT_EMAIL=...
 FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n
+FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+DEEPSEEK_API_KEY=<server-secret>
 ```
 
 > Keep the `\n` escapes in `FIREBASE_PRIVATE_KEY` — the app converts them to real
-> newlines at runtime.
+> newlines at runtime. `FIREBASE_STORAGE_BUCKET` and `DEEPSEEK_API_KEY` are
+> server-only environment variables. AI generation always uses the fixed
+> `deepseek-v4-flash` model.
 
 Optional:
 
@@ -97,6 +101,8 @@ super-admin set-role endpoint for this).
 | `npm run build`        | Production build                     |
 | `npm run preview`      | Preview the production build locally |
 | `npm run typecheck`    | `tsc --noEmit` (type-check the app)  |
+| `npm run test`         | Run the Vitest test suite in watch mode |
+| `npm run test:run`     | Run the Vitest test suite once       |
 | `npm run format`       | Format the codebase with Prettier    |
 | `npm run format:check` | Verify Prettier formatting           |
 
