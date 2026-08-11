@@ -32,6 +32,7 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
   const activeRequestIdentityRef = useRef<string | null>(null);
   const lastRequestRef = useRef<{ identity: string; request: GenerateRequest } | null>(null);
   const identityRef = useRef(identity);
+  const stateIdentityRef = useRef(identity);
   const mountedRef = useRef(true);
   identityRef.current = identity;
 
@@ -45,12 +46,17 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
   }, []);
 
   useEffect(() => {
-    if (activeRequestIdentityRef.current !== identity) {
-      controllerRef.current?.abort();
-      controllerRef.current = null;
-      activeRequestIdentityRef.current = null;
-    }
+    const hasNewIdentityState =
+      activeRequestIdentityRef.current === identity ||
+      lastRequestRef.current?.identity === identity ||
+      stateIdentityRef.current === identity;
+    if (hasNewIdentityState) return;
+
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    activeRequestIdentityRef.current = null;
     lastRequestRef.current = null;
+    stateIdentityRef.current = identity;
     setStateIdentity(identity);
     setPhase("idle");
     setResponse(null);
@@ -63,7 +69,8 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
     controllerRef.current = null;
     activeRequestIdentityRef.current = null;
     lastRequestRef.current = null;
-    setStateIdentity(identityRef.current);
+    stateIdentityRef.current = identityRef.current;
+    setStateIdentity(stateIdentityRef.current);
     setPhase("idle");
     setResponse(null);
     setError(null);
@@ -83,6 +90,7 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
       controllerRef.current = controller;
       activeRequestIdentityRef.current = requestIdentity;
       lastRequestRef.current = { identity: requestIdentity, request };
+      stateIdentityRef.current = requestIdentity;
       setStateIdentity(requestIdentity);
       setPhase("generating");
       setResponse(null);

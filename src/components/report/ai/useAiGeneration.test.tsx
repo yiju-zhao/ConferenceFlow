@@ -1,5 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
-import { StrictMode } from "react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
+import { StrictMode, useLayoutEffect } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GenerateRequest, GenerateResponse } from "../../../types";
 
@@ -43,6 +43,35 @@ const sessionRequest: GenerateRequest = {
   sessionId: "session-1",
   mode: "rewrite",
 };
+
+function GenerateAfterRebind({
+  active,
+  generate,
+}: {
+  active: boolean;
+  generate: (request: GenerateRequest) => Promise<void>;
+}) {
+  useLayoutEffect(() => {
+    if (active) void generate(sessionRequest);
+  }, [active, generate]);
+  return null;
+}
+
+function RebindHarness({
+  confId,
+  reportId,
+  startGeneration,
+  onState,
+}: {
+  confId: string;
+  reportId: string;
+  startGeneration: boolean;
+  onState: (state: ReturnType<typeof useAiGeneration>) => void;
+}) {
+  const state = useAiGeneration(confId, reportId);
+  onState(state);
+  return <GenerateAfterRebind active={startGeneration} generate={state.generate} />;
+}
 
 describe("useAiGeneration", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -185,5 +214,44 @@ describe("useAiGeneration", () => {
 
     await act(async () => resolveOldRequest(candidateResponse));
     expect(result.current).toMatchObject({ phase: "idle", response: null });
+  });
+
+  it("preserves a new-identity generation started by a descendant layout effect", async () => {
+    let resolveNewRequest!: (response: GenerateResponse) => void;
+    apiFetchMock.mockReturnValueOnce(
+      new Promise<GenerateResponse>((resolve) => {
+        resolveNewRequest = resolve;
+      }),
+    );
+    apiFetchMock.mockResolvedValueOnce(candidateResponse);
+    let latest!: ReturnType<typeof useAiGeneration>;
+    const onState = (state: ReturnType<typeof useAiGeneration>) => {
+      latest = state;
+    };
+    const { rerender } = render(
+      <RebindHarness
+        confId="conf-1"
+        reportId="report-1"
+        startGeneration={false}
+        onState={onState}
+      />,
+    );
+
+    rerender(
+      <RebindHarness confId="conf-2" reportId="report-2" startGeneration onState={onState} />,
+    );
+    await waitFor(() => expect(apiFetchMock).toHaveBeenCalledOnce());
+    expect(latest.phase).toBe("generating");
+
+    await act(async () => resolveNewRequest(candidateResponse));
+    await waitFor(() =>
+      expect(latest).toMatchObject({ phase: "preview", response: candidateResponse }),
+    );
+
+    await act(async () => latest.regenerate());
+    expect(apiFetchMock).toHaveBeenCalledTimes(2);
+    expect(apiFetchMock.mock.calls[1]?.[0]).toBe(
+      "/api/conferences/conf-2/reports/report-2/ai/generate",
+    );
   });
 });
