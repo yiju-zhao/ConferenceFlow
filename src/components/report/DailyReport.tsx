@@ -38,6 +38,7 @@ import {
   selectedReportSessions,
   sessionKey,
 } from "../../lib/ai-report/sessionSelection";
+import { requireAuthenticatedUserId } from "../../lib/ai-report/memberFocus";
 import type {
   BlockField,
   Member,
@@ -144,9 +145,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   const saveAiFocus = useCallback(
     async (nextFocus: string) => {
-      if (!user) return;
+      const userId = requireAuthenticatedUserId(user);
       await setDoc(
-        doc(db, "conferences", confId, "members", user.uid),
+        doc(db, "conferences", confId, "members", userId),
         { aiFocus: nextFocus },
         { merge: true },
       );

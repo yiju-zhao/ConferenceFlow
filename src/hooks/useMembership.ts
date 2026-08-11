@@ -15,15 +15,21 @@ export function useMembership(confId: string | undefined) {
       return;
     }
     if (isSuperAdmin) {
-      setMembership({
+      const superAdminMembership: Member = {
         id: user.uid,
         role: "admin",
         status: "approved",
         attendanceMode: "onsite",
         colorIndex: 0,
+      };
+      const memberRef = doc(db, "conferences", confId, "members", user.uid);
+      return onSnapshot(memberRef, (snap) => {
+        const aiFocus = snap.exists()
+          ? (snap.data() as Pick<Member, "aiFocus">).aiFocus
+          : undefined;
+        setMembership({ ...superAdminMembership, ...(aiFocus === undefined ? {} : { aiFocus }) });
+        setLoading(false);
       });
-      setLoading(false);
-      return;
     }
     const memberRef = doc(db, "conferences", confId, "members", user.uid);
     const unsubscribe = onSnapshot(memberRef, (snap) => {
