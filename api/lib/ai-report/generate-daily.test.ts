@@ -213,6 +213,179 @@ describe("generateDailyCandidate", () => {
     expect(result.evidence).toEqual([]);
     expect(mockDeepSeek).toHaveBeenCalledTimes(1);
   });
+
+  it("rejects append output that repeats an existing bullet item", async () => {
+    const target = field("summaryPoints", { ai: { allowedModes: ["rewrite", "append"] } });
+    mockDeepSeek.mockResolvedValue({
+      fieldId: "summaryPoints",
+      value: ["现有要点", "新增要点"],
+      supports: [{ sourceId: "session:S101:takeaways", quote: "推理成本下降 30%" }],
+      insufficient: false,
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        field: target,
+        mode: "append",
+        currentValue: ["现有要点"],
+        template: { ...makeInput().template, fields: [target] },
+      }),
+    );
+
+    expect(result.candidate).toEqual([]);
+    expect(result.insufficientFieldIds).toEqual(["summaryPoints"]);
+    expect(mockDeepSeek).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts append output containing only new bullet items", async () => {
+    const target = field("summaryPoints", { ai: { allowedModes: ["rewrite", "append"] } });
+    mockDeepSeek.mockResolvedValue({
+      fieldId: "summaryPoints",
+      value: ["新增要点"],
+      supports: [{ sourceId: "session:S101:takeaways", quote: "推理成本下降 30%" }],
+      insufficient: false,
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        field: target,
+        mode: "append",
+        currentValue: ["现有要点"],
+        template: { ...makeInput().template, fields: [target] },
+      }),
+    );
+
+    expect(result.candidate).toMatchObject([
+      { fieldId: "summaryPoints", value: ["新增要点"], evidenceIds: ["daily_ev_0001"] },
+    ]);
+  });
+
+  it.each(["现有内容", "现有内容以及新增内容"])(
+    "rejects append rich-text output that includes existing text: %s",
+    async (value) => {
+      const target = field("summaryPoints", {
+        type: "rich_text",
+        ai: { allowedModes: ["rewrite", "append"], maxLength: 200 },
+      });
+      mockDeepSeek.mockResolvedValue({
+        fieldId: "summaryPoints",
+        value,
+        supports: [{ sourceId: "session:S101:takeaways", quote: "推理成本下降 30%" }],
+        insufficient: false,
+      });
+
+      const result = await generateDailyCandidate(
+        makeInput({
+          field: target,
+          mode: "append",
+          currentValue: "现有内容",
+          template: { ...makeInput().template, fields: [target] },
+        }),
+      );
+
+      expect(result.candidate).toEqual([]);
+      expect(result.insufficientFieldIds).toEqual(["summaryPoints"]);
+    },
+  );
+
+  it("accepts append rich-text output containing only new text", async () => {
+    const target = field("summaryPoints", {
+      type: "rich_text",
+      ai: { allowedModes: ["rewrite", "append"], maxLength: 200 },
+    });
+    mockDeepSeek.mockResolvedValue({
+      fieldId: "summaryPoints",
+      value: "新增内容",
+      supports: [{ sourceId: "session:S101:takeaways", quote: "推理成本下降 30%" }],
+      insufficient: false,
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        field: target,
+        mode: "append",
+        currentValue: "现有内容",
+        template: { ...makeInput().template, fields: [target] },
+      }),
+    );
+
+    expect(result.candidate).toMatchObject([
+      { fieldId: "summaryPoints", value: "新增内容", evidenceIds: ["daily_ev_0001"] },
+    ]);
+  });
+
+  it("uses the immutable template field for eligibility and prompt policy", async () => {
+    const canonical = field("summaryPoints", {
+      description: "模板权威描述",
+      ai: { allowedModes: ["rewrite"], enabled: false },
+    });
+    const callerField = field("summaryPoints", {
+      description: "调用方篡改描述",
+      ai: { allowedModes: ["rewrite", "append"], enabled: true },
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        field: callerField,
+        mode: "append",
+        template: { ...makeInput().template, fields: [canonical] },
+      }),
+    );
+
+    expect(result.candidate).toEqual([]);
+    expect(result.insufficientFieldIds).toEqual(["summaryPoints"]);
+    expect(mockDeepSeek).not.toHaveBeenCalled();
+  });
+
+  it("does not let a same-ID caller field enable forbidden append or sources", async () => {
+    const canonical = field("summaryPoints", {
+      ai: { allowedModes: ["rewrite"], allowedSources: ["transcript"] },
+    });
+    const callerField = field("summaryPoints", {
+      ai: { allowedModes: ["rewrite", "append"], allowedSources: ["report_content"] },
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        field: callerField,
+        mode: "append",
+        template: { ...makeInput().template, fields: [canonical] },
+      }),
+    );
+
+    expect(result.candidate).toEqual([]);
+    expect(result.insufficientFieldIds).toEqual(["summaryPoints"]);
+    expect(mockDeepSeek).not.toHaveBeenCalled();
+  });
+
+  it("validates the model value against the immutable template field", async () => {
+    const canonical = field("summaryPoints", {
+      description: "模板权威描述",
+      ai: { maxLength: 4 },
+    });
+    const callerField = field("summaryPoints", { ai: { maxLength: 200 } });
+    mockDeepSeek.mockResolvedValue({
+      fieldId: "summaryPoints",
+      value: ["超过模板限制"],
+      supports: [{ sourceId: "session:S101:takeaways", quote: "推理成本下降 30%" }],
+      insufficient: false,
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        field: callerField,
+        template: { ...makeInput().template, fields: [canonical] },
+      }),
+    );
+
+    expect(result.candidate).toEqual([]);
+    expect(result.insufficientFieldIds).toEqual(["summaryPoints"]);
+    expect(mockDeepSeek).toHaveBeenCalledTimes(1);
+    expect(sourceData().targetField).toMatchObject({
+      id: "summaryPoints",
+      description: "模板权威描述",
+    });
+  });
 });
 
 describe("decodeDailyWritingModelOutput", () => {

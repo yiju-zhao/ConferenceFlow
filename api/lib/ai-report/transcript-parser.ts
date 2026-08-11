@@ -1,3 +1,7 @@
+import { normalizeEvidenceText } from "./source-text";
+
+export { normalizeEvidenceText } from "./source-text";
+
 export type TranscriptFormat = "txt" | "md" | "srt" | "vtt";
 
 export interface TranscriptSegment {
@@ -12,11 +16,6 @@ export interface TranscriptSegment {
 
 const MAX_TRANSCRIPT_CODE_POINTS = 500_000;
 const TIMESTAMP_RANGE = /^(\S+)\s*-->\s*(\S+)(?:\s+.*)?$/;
-
-/** Normalize only whitespace so the original segment text remains available for evidence quotes. */
-export function normalizeEvidenceText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
 
 /** Parse a single SRT (comma) or VTT (dot) timestamp into milliseconds. */
 export function parseTimestamp(value: string): number {

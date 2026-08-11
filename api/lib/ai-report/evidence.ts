@@ -1,5 +1,5 @@
 import type { TranscriptSegment } from "./transcript-parser";
-import { normalizeEvidenceText } from "./transcript-parser";
+import { normalizeEvidenceText } from "./source-text";
 
 export interface RawFact {
   claim: string;
