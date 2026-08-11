@@ -122,7 +122,8 @@ async function requestAttempt<T>(
     }
 
     if (!response.ok) {
-      const retryable = response.status === 429 || response.status >= 500;
+      const retryable =
+        response.status === 429 || (response.status >= 500 && response.status < 600);
       throw requestError("HTTP", retryable, response.status);
     }
 
@@ -130,6 +131,10 @@ async function requestAttempt<T>(
     try {
       payload = await response.json();
     } catch {
+      if (callerCancelled || isCallerCancelled(callerSignal)) {
+        throw requestError("CANCELLED", false);
+      }
+      if (timedOut) throw requestError("TIMEOUT", true);
       throw requestError("INVALID_JSON", true, response.status);
     }
 

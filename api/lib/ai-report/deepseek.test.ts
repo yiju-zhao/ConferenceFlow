@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeepSeekRequestError, requestDeepSeekJson, type DeepSeekMessage } from "./deepseek";
 
 const mockFetch = vi.fn<typeof fetch>();
-const mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+const originalFetch = globalThis.fetch;
+let mockConsoleError: ReturnType<typeof vi.spyOn> | null = null;
 const identityJson = (value: unknown) => value;
 const messages: DeepSeekMessage[] = [{ role: "user", content: "Return JSON" }];
 
@@ -27,9 +28,22 @@ function okDeepSeekResponse(content: string): Response {
   );
 }
 
+function deferredBodyResponse(init: RequestInit | undefined, rejection: unknown): Response {
+  const response = okDeepSeekResponse('{"facts":[]}');
+  Object.defineProperty(response, "json", {
+    configurable: true,
+    value: () =>
+      new Promise<unknown>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(rejection), { once: true });
+      }),
+  });
+  return response;
+}
+
 describe("requestDeepSeekJson", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockConsoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     globalThis.fetch = mockFetch;
     process.env.DEEPSEEK_API_KEY = "test-secret";
   });
@@ -37,6 +51,8 @@ describe("requestDeepSeekJson", () => {
   afterEach(() => {
     delete process.env.DEEPSEEK_API_KEY;
     vi.useRealTimers();
+    mockConsoleError?.mockRestore();
+    globalThis.fetch = originalFetch;
   });
 
   it("requests fixed-model JSON output without logging source content", async () => {
@@ -68,7 +84,7 @@ describe("requestDeepSeekJson", () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
-  it.each([429, 500, 503])("retries status %s only once", async (status) => {
+  it.each([429, 500, 503, 599])("retries status %s only once", async (status) => {
     mockFetch.mockResolvedValue(new Response("private response body", { status }));
 
     await expect(requestDeepSeekJson(messages, identityJson)).rejects.toMatchObject({
@@ -109,6 +125,17 @@ describe("requestDeepSeekJson", () => {
     await expect(requestDeepSeekJson(messages, identityJson)).rejects.toMatchObject({
       code: "HTTP",
       status: 400,
+      retryable: false,
+    });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry a status above the HTTP 5xx range", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 600 } as Response);
+
+    await expect(requestDeepSeekJson(messages, identityJson)).rejects.toMatchObject({
+      code: "HTTP",
+      status: 600,
       retryable: false,
     });
     expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -179,5 +206,39 @@ describe("requestDeepSeekJson", () => {
 
     await result;
     expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves timeout classification while consuming a response body", async () => {
+    vi.useFakeTimers();
+    mockFetch.mockImplementation((_input, init) =>
+      Promise.resolve(
+        deferredBodyResponse(init, new DOMException("private body detail", "AbortError")),
+      ),
+    );
+
+    const request = requestDeepSeekJson(messages, identityJson);
+    const result = expect(request).rejects.toMatchObject({ code: "TIMEOUT", retryable: true });
+    await vi.advanceTimersByTimeAsync(45_000);
+    await vi.advanceTimersByTimeAsync(45_000);
+
+    await result;
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves caller cancellation while consuming a response body", async () => {
+    const controller = new AbortController();
+    mockFetch.mockImplementation((_input, init) =>
+      Promise.resolve(
+        deferredBodyResponse(init, new DOMException("private body detail", "AbortError")),
+      ),
+    );
+
+    const request = requestDeepSeekJson(messages, identityJson, controller.signal);
+    await Promise.resolve();
+    await Promise.resolve();
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ code: "CANCELLED", retryable: false });
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });
