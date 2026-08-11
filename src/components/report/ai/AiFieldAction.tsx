@@ -3,7 +3,12 @@ import { useTranslation } from "react-i18next";
 import { applyCandidateValue, candidateIsCurrent } from "../../../lib/ai-report/applyCandidate";
 import { hashFieldValue } from "../../../lib/ai-report/hash";
 import { normalizeStoredFieldValue } from "../../../lib/ai-report/templateContract";
-import type { GenerationMode, ReportTemplateVersion, TemplateField, TemplateFieldValue } from "../../../types";
+import type {
+  GenerationMode,
+  ReportTemplateVersion,
+  TemplateField,
+  TemplateFieldValue,
+} from "../../../types";
 import AiCandidateModal from "./AiCandidateModal";
 import AiGenerationDialog, { type AiGenerationSetup } from "./AiGenerationDialog";
 import { useAiGeneration } from "./useAiGeneration";

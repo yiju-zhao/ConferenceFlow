@@ -6,11 +6,7 @@ import type {
   ReportTemplateVersion,
   TemplateField,
 } from "../../../src/types";
-import {
-  buildSessionDraftBlocks,
-  validateCandidateValue,
-  type SourceBlock,
-} from "./field-policy";
+import { buildSessionDraftBlocks, validateCandidateValue, type SourceBlock } from "./field-policy";
 import {
   validateSourceSupports,
   validateTranscriptFacts,
@@ -197,7 +193,10 @@ function eligibleSessionFields(fields: TemplateField[], mode: GenerationMode): T
   });
 }
 
-function evidenceMessages(input: SessionGenerationInput, fields: TemplateField[]): DeepSeekMessage[] {
+function evidenceMessages(
+  input: SessionGenerationInput,
+  fields: TemplateField[],
+): DeepSeekMessage[] {
   return [
     { role: "system", content: EVIDENCE_SYSTEM },
     {
@@ -205,7 +204,8 @@ function evidenceMessages(input: SessionGenerationInput, fields: TemplateField[]
       content: [
         "SOURCE_DATA_START",
         JSON.stringify({
-          outputSchema: "{ facts: [{ claim, kind, fieldHints, supports: [{ segmentId, quote }] }] }",
+          outputSchema:
+            "{ facts: [{ claim, kind, fieldHints, supports: [{ segmentId, quote }] }] }",
           fields: fields.map(({ id, description }) => ({ id, description })),
           segments: input.segments,
         }),
@@ -254,7 +254,11 @@ function filterFactHints(facts: ValidatedFact[], targetIds: Set<string>): Valida
   }));
 }
 
-function canGround(field: TemplateField, facts: ValidatedFact[], draftBlocks: SourceBlock[]): boolean {
+function canGround(
+  field: TemplateField,
+  facts: ValidatedFact[],
+  draftBlocks: SourceBlock[],
+): boolean {
   return (
     (field.ai.allowedSources.includes("transcript") && facts.length > 0) ||
     (field.ai.allowedSources.includes("current_draft") && draftBlocks.length > 0)
@@ -296,7 +300,10 @@ export async function generateSessionCandidate(
     decodeEvidenceModelOutput,
     signal,
   );
-  const facts = filterFactHints(validateTranscriptFacts(rawEvidence.facts, input.segments), targetIds);
+  const facts = filterFactHints(
+    validateTranscriptFacts(rawEvidence.facts, input.segments),
+    targetIds,
+  );
   const draftBlocks = buildSessionDraftBlocks(targets, input.currentValues, input.mode);
   const insufficient = new Set<string>();
   const writingTargets = targets.filter((field) => {
@@ -392,7 +399,13 @@ export async function generateSessionCandidate(
     if (fieldsById.has(fieldId) && !candidateById.has(fieldId)) insufficient.add(fieldId);
   }
 
-  return response([...candidateById.values()], insufficient, [...evidenceById.values()], targets, input);
+  return response(
+    [...candidateById.values()],
+    insufficient,
+    [...evidenceById.values()],
+    targets,
+    input,
+  );
 }
 
 function response(

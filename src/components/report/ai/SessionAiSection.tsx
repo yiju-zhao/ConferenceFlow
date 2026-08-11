@@ -123,7 +123,10 @@ export default function SessionAiSection({
     }
     const latestRaw = getLatestValues();
     const latest = Object.fromEntries(
-      eligibleFields.map((field) => [field.id, normalizeStoredFieldValue(field, latestRaw[field.id])]),
+      eligibleFields.map((field) => [
+        field.id,
+        normalizeStoredFieldValue(field, latestRaw[field.id]),
+      ]),
     ) as Record<string, TemplateFieldValue>;
     const latestHashes = await hashFieldMap(latest);
     if (!candidateIsCurrent(response.context.baseFieldHashes, latestHashes)) {
@@ -137,7 +140,12 @@ export default function SessionAiSection({
         setLocalError("候选内容无效，请重新生成。");
         return;
       }
-      values[field.id] = applyCandidateValue(latest[field.id], candidate.value, field.type, selectedMode);
+      values[field.id] = applyCandidateValue(
+        latest[field.id],
+        candidate.value,
+        field.type,
+        selectedMode,
+      );
     }
     if (Object.keys(values).length === 0) return;
     setAdopting(true);

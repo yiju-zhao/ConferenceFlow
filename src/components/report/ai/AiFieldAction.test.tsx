@@ -50,7 +50,10 @@ async function preview(base = ["旧值"]) {
   generation.phase = "preview";
   generation.response = {
     ...response(),
-    context: { ...response().context, baseFieldHashes: { summaryPoints: await hashFieldValue(base) } },
+    context: {
+      ...response().context,
+      baseFieldHashes: { summaryPoints: await hashFieldValue(base) },
+    },
   };
 }
 
@@ -72,23 +75,52 @@ describe("AiFieldAction", () => {
     const user = userEvent.setup();
     let releaseFlush!: () => void;
     const flushPending = vi.fn(
-      () => new Promise<void>((resolve) => {
-        releaseFlush = resolve;
-      }),
+      () =>
+        new Promise<void>((resolve) => {
+          releaseFlush = resolve;
+        }),
     );
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v1" field={summaryPointsField} focus="关注成本" getCurrentValue={() => []} flushPending={flushPending} onSave={vi.fn()} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus="关注成本"
+        getCurrentValue={() => []}
+        flushPending={flushPending}
+        onSave={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: "AI 生成" }));
     await user.click(screen.getByRole("button", { name: "生成候选内容" }));
     expect(flushPending).toHaveBeenCalledOnce();
     expect(generate).not.toHaveBeenCalled();
     releaseFlush();
-    await vi.waitFor(() => expect(generate).toHaveBeenCalledWith({ scope: "daily", targetFieldId: "summaryPoints", mode: "rewrite" }));
+    await vi.waitFor(() =>
+      expect(generate).toHaveBeenCalledWith({
+        scope: "daily",
+        targetFieldId: "summaryPoints",
+        mode: "rewrite",
+      }),
+    );
   });
 
   it("does not call generation when flushing manual edits fails", async () => {
     const user = userEvent.setup();
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v1" field={summaryPointsField} focus="" getCurrentValue={() => []} flushPending={() => Promise.reject(new Error("保存失败"))} onSave={vi.fn()} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus=""
+        getCurrentValue={() => []}
+        flushPending={() => Promise.reject(new Error("保存失败"))}
+        onSave={vi.fn()}
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: "AI 生成" }));
     await user.click(screen.getByRole("button", { name: "生成候选内容" }));
@@ -100,7 +132,18 @@ describe("AiFieldAction", () => {
     const user = userEvent.setup();
     await preview();
     const onSave = vi.fn();
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v1" field={summaryPointsField} focus="" getCurrentValue={() => ["旧值"]} flushPending={() => Promise.resolve()} onSave={onSave} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus=""
+        getCurrentValue={() => ["旧值"]}
+        flushPending={() => Promise.resolve()}
+        onSave={onSave}
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: "取消" }));
     expect(onSave).not.toHaveBeenCalled();
@@ -110,7 +153,18 @@ describe("AiFieldAction", () => {
     const user = userEvent.setup();
     await preview();
     const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v1" field={summaryPointsField} focus="" getCurrentValue={() => ["旧值"]} flushPending={() => Promise.resolve()} onSave={onSave} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus=""
+        getCurrentValue={() => ["旧值"]}
+        flushPending={() => Promise.resolve()}
+        onSave={onSave}
+      />,
+    );
 
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     await vi.waitFor(() => expect(onSave).toHaveBeenCalledWith(["新的要点"]));
@@ -125,7 +179,16 @@ describe("AiFieldAction", () => {
     generate.mockImplementation(async () => {
       await preview(["旧值"]);
     });
-    const actionProps = { confId: "conf-1", reportId: "r1", templateHash: "template-v1", field: summaryPointsField, focus: "", getCurrentValue: () => ["旧值"], flushPending: () => Promise.resolve(), onSave };
+    const actionProps = {
+      confId: "conf-1",
+      reportId: "r1",
+      templateHash: "template-v1",
+      field: summaryPointsField,
+      focus: "",
+      getCurrentValue: () => ["旧值"],
+      flushPending: () => Promise.resolve(),
+      onSave,
+    };
     const { rerender } = render(<AiFieldAction {...actionProps} />);
 
     await user.click(screen.getByRole("button", { name: "AI 生成" }));
@@ -140,7 +203,18 @@ describe("AiFieldAction", () => {
     const user = userEvent.setup();
     await preview(["旧值"]);
     const onSave = vi.fn();
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v1" field={summaryPointsField} focus="关注成本" getCurrentValue={() => ["协作者新值"]} flushPending={() => Promise.resolve()} onSave={onSave} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus="关注成本"
+        getCurrentValue={() => ["协作者新值"]}
+        flushPending={() => Promise.resolve()}
+        onSave={onSave}
+      />,
+    );
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     expect(await screen.findByText("内容已被修改，请重新生成。")).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
@@ -150,7 +224,18 @@ describe("AiFieldAction", () => {
     const user = userEvent.setup();
     await preview();
     const onSave = vi.fn();
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v2" field={summaryPointsField} focus="" getCurrentValue={() => ["旧值"]} flushPending={() => Promise.resolve()} onSave={onSave} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v2"
+        field={summaryPointsField}
+        focus=""
+        getCurrentValue={() => ["旧值"]}
+        flushPending={() => Promise.resolve()}
+        onSave={onSave}
+      />,
+    );
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     expect(await screen.findByText("内容已被修改，请重新生成。")).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
@@ -161,14 +246,36 @@ describe("AiFieldAction", () => {
     generation.phase = "preview";
     generation.response = { ...response(), candidate: [], insufficientFieldIds: ["summaryPoints"] };
     const onSave = vi.fn();
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v1" field={summaryPointsField} focus="" getCurrentValue={() => ["旧值"]} flushPending={() => Promise.resolve()} onSave={onSave} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus=""
+        getCurrentValue={() => ["旧值"]}
+        flushPending={() => Promise.resolve()}
+        onSave={onSave}
+      />,
+    );
     expect(screen.getByText("材料不足：核心要点")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     expect(onSave).not.toHaveBeenCalled();
   });
 
   it("does not render for a field whose AI policy is disabled", () => {
-    render(<AiFieldAction confId="conf-1" reportId="r1" templateHash="template-v1" field={{ ...summaryPointsField, ai: { ...summaryPointsField.ai, enabled: false } }} focus="" getCurrentValue={() => []} flushPending={() => Promise.resolve()} onSave={vi.fn()} />);
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={{ ...summaryPointsField, ai: { ...summaryPointsField.ai, enabled: false } }}
+        focus=""
+        getCurrentValue={() => []}
+        flushPending={() => Promise.resolve()}
+        onSave={vi.fn()}
+      />,
+    );
     expect(screen.queryByRole("button", { name: "AI 生成" })).not.toBeInTheDocument();
   });
 });

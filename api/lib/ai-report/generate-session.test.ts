@@ -175,7 +175,12 @@ describe("generateSessionCandidate", () => {
         fields: [
           { fieldId: "unknown", value: "忽略", factIds: ["fact_0001"], draftSupports: [] },
           { fieldId: "insights", value: ["错误类型"], factIds: ["fact_0001"], draftSupports: [] },
-          { fieldId: "takeaways", value: "过长".repeat(100), factIds: ["fact_0001"], draftSupports: [] },
+          {
+            fieldId: "takeaways",
+            value: "过长".repeat(100),
+            factIds: ["fact_0001"],
+            draftSupports: [],
+          },
           {
             fieldId: "takeaways",
             value: "引用未知事实。",
@@ -209,28 +214,29 @@ describe("generateSessionCandidate", () => {
   it("exposes current Draft only for fields that permit it and rejects its use elsewhere", async () => {
     const takeaways = field("takeaways", { ai: { allowedSources: ["transcript"] } });
     const insights = field("insights", { ai: { allowedSources: ["current_draft"] } });
-    mockDeepSeek
-      .mockResolvedValueOnce({ facts: [] })
-      .mockResolvedValueOnce({
-        fields: [
-          {
-            fieldId: "takeaways",
-            value: "不允许的草稿引用。",
-            factIds: [],
-            draftSupports: [{ sourceId: "draft:insights", quote: "可用草稿" }],
-          },
-          {
-            fieldId: "insights",
-            value: "可用草稿。",
-            factIds: [],
-            draftSupports: [{ sourceId: "draft:insights", quote: "可用草稿" }],
-          },
-        ],
-        insufficientFieldIds: [],
-      });
+    mockDeepSeek.mockResolvedValueOnce({ facts: [] }).mockResolvedValueOnce({
+      fields: [
+        {
+          fieldId: "takeaways",
+          value: "不允许的草稿引用。",
+          factIds: [],
+          draftSupports: [{ sourceId: "draft:insights", quote: "可用草稿" }],
+        },
+        {
+          fieldId: "insights",
+          value: "可用草稿。",
+          factIds: [],
+          draftSupports: [{ sourceId: "draft:insights", quote: "可用草稿" }],
+        },
+      ],
+      insufficientFieldIds: [],
+    });
 
     const result = await generateSessionCandidate(
-      makeInput({ fields: [takeaways, insights], currentValues: { takeaways: "不应发送", insights: "可用草稿" } }),
+      makeInput({
+        fields: [takeaways, insights],
+        currentValues: { takeaways: "不应发送", insights: "可用草稿" },
+      }),
     );
 
     expect(sourceData(1).currentDraft).toEqual([
@@ -249,7 +255,10 @@ describe("generateSessionCandidate", () => {
 
     await generateSessionCandidate(
       makeInput({
-        fields: [field("takeaways", { ai: { evidenceRequired: false } }), field("insights", { ai: { evidenceRequired: false } })],
+        fields: [
+          field("takeaways", { ai: { evidenceRequired: false } }),
+          field("insights", { ai: { evidenceRequired: false } }),
+        ],
       }),
     );
 
@@ -263,7 +272,11 @@ describe("generateSessionCandidate", () => {
     expect(evidence[0].content).not.toContain("优先写成本");
     expect(writing[0].content).not.toContain("关注成本");
     expect(writing[0].content).not.toContain("优先写成本");
-    expect(sourceData(0).segments).toEqual(expect.arrayContaining([expect.objectContaining({ text: expect.stringContaining(TRANSCRIPT_INJECTION) })]));
+    expect(sourceData(0).segments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ text: expect.stringContaining(TRANSCRIPT_INJECTION) }),
+      ]),
+    );
     expect(sourceData(1)).toEqual(
       expect.objectContaining({ focus: "关注成本", instruction: "优先写成本" }),
     );
@@ -277,7 +290,10 @@ describe("generateSessionCandidate", () => {
       .mockResolvedValueOnce({ facts: [] })
       .mockResolvedValueOnce({ fields: [], insufficientFieldIds: ["takeaways", "insights"] });
     const input = makeInput({
-      fields: [field("takeaways", { ai: { evidenceRequired: false } }), field("insights", { ai: { evidenceRequired: false } })],
+      fields: [
+        field("takeaways", { ai: { evidenceRequired: false } }),
+        field("insights", { ai: { evidenceRequired: false } }),
+      ],
     });
     const before = structuredClone(input);
 

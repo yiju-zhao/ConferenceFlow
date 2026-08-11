@@ -7,7 +7,5 @@ export default function PageContainer({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={`mx-auto w-full max-w-[1280px] px-5 py-6 ${className}`}>{children}</div>
-  );
+  return <div className={`mx-auto w-full max-w-[1280px] px-5 py-6 ${className}`}>{children}</div>;
 }

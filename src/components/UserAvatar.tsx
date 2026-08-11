@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Popover, Menu, MenuItem, MenuDivider, Switch, InputGroup, Button } from "@blueprintjs/core";
+import {
+  Popover,
+  Menu,
+  MenuItem,
+  MenuDivider,
+  Switch,
+  InputGroup,
+  Button,
+} from "@blueprintjs/core";
 import { IconNames } from "@blueprintjs/icons";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -150,16 +158,36 @@ export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
                 </div>
               </div>
             ) : (
-              <Button minimal small icon={IconNames.EDIT} text={t("avatar.editName")} onClick={handleEdit} />
+              <Button
+                minimal
+                small
+                icon={IconNames.EDIT}
+                text={t("avatar.editName")}
+                onClick={handleEdit}
+              />
             )}
           </div>
 
           {/* Setting rows (controls must stay interactive inside the popover) */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "8px 16px",
+            }}
+          >
             <span style={{ fontSize: 14 }}>{t("avatar.language")}</span>
             <LanguageSwitcher variant="badge" />
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "8px 16px",
+            }}
+          >
             <span style={{ fontSize: 14 }}>{t("avatar.darkMode")}</span>
             <Switch checked={dark} onChange={toggleDark} />
           </div>
@@ -170,7 +198,12 @@ export default function UserAvatar({ size = 32, onSignOut }: UserAvatarProps) {
               <MenuItem icon={IconNames.CROWN} text={t("avatar.adminPanel")} onClick={goAdmin} />
             )}
             <MenuDivider />
-            <MenuItem icon={IconNames.LOG_OUT} text={t("avatar.signOut")} intent="danger" onClick={handleSignOut} />
+            <MenuItem
+              icon={IconNames.LOG_OUT}
+              text={t("avatar.signOut")}
+              intent="danger"
+              onClick={handleSignOut}
+            />
           </Menu>
         </div>
       }
