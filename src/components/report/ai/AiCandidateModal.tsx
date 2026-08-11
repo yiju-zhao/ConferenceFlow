@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type {
   CandidateEvidence,
@@ -7,8 +7,10 @@ import type {
   ReportTemplateVersion,
   TemplateFieldValue,
 } from "../../../types";
+import { useModalFocus } from "./useModalFocus";
 
 interface AiCandidateModalProps {
+  open?: boolean;
   template: ReportTemplateVersion;
   response: GenerateResponse | null;
   request?: GenerateRequest;
@@ -47,6 +49,7 @@ function CandidateValue({ value }: { value: TemplateFieldValue }) {
 }
 
 export default function AiCandidateModal({
+  open = true,
   template,
   response,
   request,
@@ -58,34 +61,52 @@ export default function AiCandidateModal({
   onCancel,
 }: AiCandidateModalProps) {
   const { t } = useTranslation();
-  const [openEvidenceIds, setOpenEvidenceIds] = useState<Set<string>>(() => new Set());
+  const [openEvidence, setOpenEvidence] = useState<{
+    response: GenerateResponse | null;
+    fieldIds: Set<string>;
+  }>(() => ({ response: null, fieldIds: new Set() }));
+  const dialogRef = useRef<HTMLElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const onKeyDown = useModalFocus({
+    open,
+    busy,
+    containerRef: dialogRef,
+    initialFocusRef: closeRef,
+    onClose: onCancel,
+  });
   const labels = new Map(template.fields.map((field) => [field.id, field.label]));
   const evidenceById = new Map(
     (response?.evidence || []).map((evidence) => [evidence.id, evidence]),
   );
 
   const toggleEvidence = (fieldId: string) => {
-    setOpenEvidenceIds((openIds) => {
-      const next = new Set(openIds);
+    setOpenEvidence((current) => {
+      const next = current.response === response ? new Set(current.fieldIds) : new Set<string>();
       if (next.has(fieldId)) next.delete(fieldId);
       else next.add(fieldId);
-      return next;
+      return { response, fieldIds: next };
     });
   };
+
+  if (!open) return null;
 
   return (
     <div className="ai-report-overlay" onClick={busy ? undefined : onCancel}>
       <section
         className="ai-report-dialog ai-report-candidate-modal"
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="ai-candidate-title"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={onKeyDown}
       >
         <header className="ai-report-dialog-header">
           <h2 id="ai-candidate-title">{t("report.ai.candidate")}</h2>
           <button
             className="ai-report-action"
+            ref={closeRef}
             onClick={onCancel}
             disabled={busy}
             aria-label={t("common.close")}
@@ -125,7 +146,8 @@ export default function AiCandidateModal({
               const fieldEvidence = field.evidenceIds
                 .map((id) => evidenceById.get(id))
                 .filter((evidence): evidence is CandidateEvidence => evidence !== undefined);
-              const evidenceOpen = openEvidenceIds.has(field.fieldId);
+              const evidenceOpen =
+                openEvidence.response === response && openEvidence.fieldIds.has(field.fieldId);
               return (
                 <article className="ai-report-candidate-field" key={field.fieldId}>
                   <h3>{labels.get(field.fieldId) || field.fieldId}</h3>

@@ -22,13 +22,18 @@ function isAbortError(error: unknown) {
 }
 
 export function useAiGeneration(confId: string, reportId: string): UseAiGenerationResult {
+  const identity = `${confId}\u0000${reportId}`;
   const [phase, setPhase] = useState<GenerationPhase>("idle");
   const [response, setResponse] = useState<GenerateResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retryable, setRetryable] = useState(false);
+  const [stateIdentity, setStateIdentity] = useState(identity);
   const controllerRef = useRef<AbortController | null>(null);
-  const lastRequestRef = useRef<GenerateRequest | null>(null);
+  const activeRequestIdentityRef = useRef<string | null>(null);
+  const lastRequestRef = useRef<{ identity: string; request: GenerateRequest } | null>(null);
+  const identityRef = useRef(identity);
   const mountedRef = useRef(true);
+  identityRef.current = identity;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -39,10 +44,26 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
     };
   }, []);
 
+  useEffect(() => {
+    if (activeRequestIdentityRef.current !== identity) {
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      activeRequestIdentityRef.current = null;
+    }
+    lastRequestRef.current = null;
+    setStateIdentity(identity);
+    setPhase("idle");
+    setResponse(null);
+    setError(null);
+    setRetryable(false);
+  }, [identity]);
+
   const reset = useCallback(() => {
     controllerRef.current?.abort();
     controllerRef.current = null;
+    activeRequestIdentityRef.current = null;
     lastRequestRef.current = null;
+    setStateIdentity(identityRef.current);
     setPhase("idle");
     setResponse(null);
     setError(null);
@@ -51,11 +72,18 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
 
   const generate = useCallback(
     async (request: GenerateRequest) => {
-      if (controllerRef.current) return;
+      const requestIdentity = identity;
+      if (controllerRef.current) {
+        if (activeRequestIdentityRef.current === requestIdentity) return;
+        controllerRef.current.abort();
+        controllerRef.current = null;
+      }
 
       const controller = new AbortController();
       controllerRef.current = controller;
-      lastRequestRef.current = request;
+      activeRequestIdentityRef.current = requestIdentity;
+      lastRequestRef.current = { identity: requestIdentity, request };
+      setStateIdentity(requestIdentity);
       setPhase("generating");
       setResponse(null);
       setError(null);
@@ -70,11 +98,21 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
             signal: controller.signal,
           },
         );
-        if (!mountedRef.current || controllerRef.current !== controller) return;
+        if (
+          !mountedRef.current ||
+          identityRef.current !== requestIdentity ||
+          controllerRef.current !== controller
+        )
+          return;
         setResponse(nextResponse);
         setPhase("preview");
       } catch (caught) {
-        if (!mountedRef.current || controllerRef.current !== controller || isAbortError(caught))
+        if (
+          !mountedRef.current ||
+          identityRef.current !== requestIdentity ||
+          controllerRef.current !== controller ||
+          isAbortError(caught)
+        )
           return;
         setResponse(null);
         setPhase("error");
@@ -83,6 +121,7 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
       } finally {
         if (controllerRef.current === controller) {
           controllerRef.current = null;
+          activeRequestIdentityRef.current = null;
         }
       }
     },
@@ -90,10 +129,20 @@ export function useAiGeneration(confId: string, reportId: string): UseAiGenerati
   );
 
   const regenerate = useCallback(async () => {
-    if (lastRequestRef.current) {
-      await generate(lastRequestRef.current);
+    if (lastRequestRef.current?.identity === identityRef.current) {
+      await generate(lastRequestRef.current.request);
     }
   }, [generate]);
 
-  return { phase, response, error, retryable, generate, regenerate, cancel: reset, reset };
+  const current = stateIdentity === identity;
+  return {
+    phase: current ? phase : "idle",
+    response: current ? response : null,
+    error: current ? error : null,
+    retryable: current ? retryable : false,
+    generate,
+    regenerate,
+    cancel: reset,
+    reset,
+  };
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { GenerationMode } from "../../../types";
+import { useModalFocus } from "./useModalFocus";
 
 export interface AiGenerationSetup {
   mode: GenerationMode;
@@ -33,6 +34,15 @@ export default function AiGenerationDialog({
   const [instruction, setInstruction] = useState("");
   const wasOpen = useRef(false);
   const modesKey = availableModes.join(",");
+  const dialogRef = useRef<HTMLElement>(null);
+  const rewriteRef = useRef<HTMLButtonElement>(null);
+  const onKeyDown = useModalFocus({
+    open,
+    busy,
+    containerRef: dialogRef,
+    initialFocusRef: rewriteRef,
+    onClose,
+  });
 
   useEffect(() => {
     if (open && !wasOpen.current) {
@@ -54,9 +64,12 @@ export default function AiGenerationDialog({
       <section
         className="ai-report-dialog"
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="ai-generation-title"
         onClick={(event) => event.stopPropagation()}
+        onKeyDown={onKeyDown}
       >
         <header className="ai-report-dialog-header">
           <h2 id="ai-generation-title">{t("report.ai.generate")}</h2>
@@ -73,6 +86,7 @@ export default function AiGenerationDialog({
           <span>{t("report.ai.generationMode")}</span>
           <button
             type="button"
+            ref={rewriteRef}
             aria-pressed={mode === "rewrite"}
             onClick={() => setMode("rewrite")}
             disabled={busy || !availableModes.includes("rewrite")}

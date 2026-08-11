@@ -146,4 +146,69 @@ describe("AiCandidateModal", () => {
       }),
     ).toBe("session-1");
   });
+
+  it("keeps evidence closed for a replacement response with the same field ID", async () => {
+    const user = userEvent.setup();
+    const replacement: GenerateResponse = {
+      ...response,
+      candidate: [{ ...response.candidate[0], value: ["新的候选结论"] }],
+      evidence: [{ ...response.evidence[0], quote: "新的证据不应自动显示。" }],
+    };
+    const { rerender } = render(
+      <AiCandidateModal
+        template={template}
+        response={response}
+        busy={false}
+        onAdopt={vi.fn()}
+        onRegenerate={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "查看证据" }));
+    expect(screen.getByText("在同样精度下，推理成本降低约 30%。")).toBeInTheDocument();
+
+    rerender(
+      <AiCandidateModal
+        template={template}
+        response={replacement}
+        busy={false}
+        onAdopt={vi.fn()}
+        onRegenerate={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("新的证据不应自动显示。")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查看证据" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("focuses the candidate modal, closes on Escape, and restores focus", async () => {
+    const user = userEvent.setup();
+    const launcher = document.createElement("button");
+    launcher.textContent = "查看候选";
+    document.body.append(launcher);
+    launcher.focus();
+    const onCancel = vi.fn();
+    const props = {
+      template,
+      response,
+      busy: false,
+      onAdopt: vi.fn(),
+      onRegenerate: vi.fn(),
+      onCancel,
+    };
+    const { rerender } = render(<AiCandidateModal open {...props} />);
+
+    expect(screen.getByRole("button", { name: "关闭" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(onCancel).toHaveBeenCalledOnce();
+
+    rerender(<AiCandidateModal open={false} {...props} />);
+    expect(launcher).toHaveFocus();
+    launcher.remove();
+  });
 });

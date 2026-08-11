@@ -155,4 +155,35 @@ describe("useAiGeneration", () => {
 
     expect(result.current).toMatchObject({ phase: "preview", response: candidateResponse });
   });
+
+  it("clears and aborts work when the report identity changes", async () => {
+    let resolveOldRequest!: (response: GenerateResponse) => void;
+    apiFetchMock.mockResolvedValueOnce(candidateResponse).mockReturnValueOnce(
+      new Promise<GenerateResponse>((resolve) => {
+        resolveOldRequest = resolve;
+      }),
+    );
+    const { result, rerender } = renderHook(
+      ({ confId, reportId }: { confId: string; reportId: string }) =>
+        useAiGeneration(confId, reportId),
+      { initialProps: { confId: "conf-1", reportId: "report-1" } },
+    );
+
+    await act(async () => result.current.generate(sessionRequest));
+    expect(result.current.response).toEqual(candidateResponse);
+
+    act(() => void result.current.generate(sessionRequest));
+    await waitFor(() => expect(apiFetchMock).toHaveBeenCalledTimes(2));
+    rerender({ confId: "conf-2", reportId: "report-2" });
+
+    expect(result.current).toMatchObject({
+      phase: "idle",
+      response: null,
+      error: null,
+      retryable: false,
+    });
+
+    await act(async () => resolveOldRequest(candidateResponse));
+    expect(result.current).toMatchObject({ phase: "idle", response: null });
+  });
 });

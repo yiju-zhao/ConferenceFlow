@@ -83,4 +83,32 @@ describe("AiGenerationDialog", () => {
     expect(screen.getByRole("button", { name: "改写" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("textbox", { name: "生成说明（可选）" })).toHaveValue("");
   });
+
+  it("focuses setup, traps Tab, closes on Escape, and restores focus", async () => {
+    const user = userEvent.setup();
+    const launcher = document.createElement("button");
+    launcher.textContent = "启动生成";
+    document.body.append(launcher);
+    launcher.focus();
+    const onClose = vi.fn();
+    const props = {
+      availableModes: ["rewrite", "append"] as const,
+      focus: "关注成本",
+      busy: false,
+      onGenerate: vi.fn(),
+      onClose,
+    };
+    const { rerender } = render(<AiGenerationDialog open {...props} />);
+
+    expect(screen.getByRole("button", { name: "改写" })).toHaveFocus();
+    screen.getByRole("button", { name: "生成候选内容" }).focus();
+    await user.tab();
+    expect(screen.getByRole("button", { name: "关闭" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledOnce();
+
+    rerender(<AiGenerationDialog open={false} {...props} />);
+    expect(launcher).toHaveFocus();
+    launcher.remove();
+  });
 });
