@@ -1,13 +1,36 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Published reports are publicly readable (share links work without auth)
+    function canAccessConferenceTranscript(confId) {
+      return request.auth != null
+        && (
+          request.auth.token.globalRole == "super_admin"
+          || firestore.get(
+            /databases/(default)/documents/conferences/$(confId)/members/$(request.auth.uid)
+          ).data.status == "approved"
+        );
+    }
+
     match /published-reports/{allPaths=**} {
       allow read;
+      allow write: if request.auth != null;
     }
-    // Everything else requires authentication
-    match /{allPaths=**} {
+
+    match /illustrations/{allPaths=**} {
       allow read, write: if request.auth != null;
+    }
+
+    match /sitePhotos/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Legacy ConferenceReport summary uploads; kept explicit so it cannot grant transcript access.
+    match /public/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /conference-transcripts/{confId}/{reportId}/{sessionId}/{fileName} {
+      allow read, write: if canAccessConferenceTranscript(confId);
     }
   }
 }
