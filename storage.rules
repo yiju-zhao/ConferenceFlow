@@ -32,5 +32,9 @@ service firebase.storage {
     match /conference-transcripts/{confId}/{reportId}/{sessionId}/{fileName} {
       allow read, write: if canAccessConferenceTranscript(confId);
     }
+
+    match /conference-transcripts/{confId}/{reportId}/blocks/{targetFieldId}/{blockId}/{fileName} {
+      allow read, write: if canAccessConferenceTranscript(confId);
+    }
   }
 }

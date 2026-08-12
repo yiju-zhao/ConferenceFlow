@@ -30,6 +30,12 @@ describe("transcript Storage policy", () => {
     );
   });
 
+  it("protects nested Block Transcript objects with conference membership", () => {
+    expect(rules).toMatch(
+      /match \/conference-transcripts\/\{confId\}\/\{reportId\}\/blocks\/\{targetFieldId\}\/\{blockId\}\/\{fileName\}[\s\S]*allow read, write: if canAccessConferenceTranscript\(confId\);/,
+    );
+  });
+
   it("has no root catch-all that could bypass transcript authorization", () => {
     expect(rules).not.toMatch(/match\s+\/\{[^}]+=\*\*\}\s*\{/);
   });
