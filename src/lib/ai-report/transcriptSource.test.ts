@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildTranscriptStoragePath, prepareTranscript } from "./transcriptSource";
+import {
+  buildBlockTranscriptStoragePath,
+  buildTranscriptStoragePath,
+  prepareTranscript,
+} from "./transcriptSource";
 
 describe("transcript source validation", () => {
   it("normalizes UTF-8 line endings and hashes the normalized text", async () => {
@@ -36,5 +40,18 @@ describe("transcript source validation", () => {
     expect(buildTranscriptStoragePath("conf-1", "2026-08-11", "S/101", "id-1", "txt")).toBe(
       "conference-transcripts/conf-1/2026-08-11/S_101/id-1.txt",
     );
+  });
+
+  it("builds an isolated sanitized Block Transcript path", () => {
+    expect(
+      buildBlockTranscriptStoragePath(
+        "conf/1",
+        "report 1",
+        "rumorsBlocks",
+        "block/1",
+        "file 1",
+        "vtt",
+      ),
+    ).toBe("conference-transcripts/conf_1/report_1/blocks/rumorsBlocks/block_1/file_1.vtt");
   });
 });

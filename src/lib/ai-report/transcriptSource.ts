@@ -1,4 +1,4 @@
-import type { TranscriptFormat } from "../../types";
+import type { AiBlockField, TranscriptFormat } from "../../types";
 import { hashText } from "./hash";
 
 const FORMATS = new Set<TranscriptFormat>(["txt", "md", "srt", "vtt"]);
@@ -40,6 +40,25 @@ export function buildTranscriptStoragePath(
     safePathSegment(confId),
     safePathSegment(reportId),
     safePathSegment(sessionId),
+    `${safePathSegment(fileId)}.${format}`,
+  ].join("/");
+}
+
+export function buildBlockTranscriptStoragePath(
+  confId: string,
+  reportId: string,
+  targetFieldId: AiBlockField,
+  blockId: string,
+  fileId: string,
+  format: TranscriptFormat,
+): string {
+  return [
+    "conference-transcripts",
+    safePathSegment(confId),
+    safePathSegment(reportId),
+    "blocks",
+    safePathSegment(targetFieldId),
+    safePathSegment(blockId),
     `${safePathSegment(fileId)}.${format}`,
   ].join("/");
 }
