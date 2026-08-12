@@ -214,6 +214,69 @@ describe("generateDailyCandidate", () => {
     expect(mockDeepSeek).toHaveBeenCalledTimes(1);
   });
 
+  it("retains current_draft as Evidence when the target allows it", async () => {
+    const target = field("summaryPoints", {
+      ai: { allowedSources: ["report_content", "current_draft"] },
+    });
+    mockDeepSeek.mockResolvedValue({
+      fieldId: "summaryPoints",
+      value: ["已有核心要点"],
+      supports: [{ sourceId: "draft:summaryPoints", quote: "已有核心要点" }],
+      insufficient: false,
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        field: target,
+        template: { ...makeInput().template, fields: [target] },
+        sourceBlocks: [
+          {
+            sourceId: "draft:summaryPoints",
+            sourceType: "current_draft",
+            text: "已有核心要点",
+          },
+        ],
+      }),
+    );
+
+    expect(result.evidence).toMatchObject([
+      {
+        sourceType: "current_draft",
+        sourceId: "draft:summaryPoints",
+        quote: "已有核心要点",
+      },
+    ]);
+    expect(messages()[0].content).toContain(
+      "current_draft sourceId 在目标字段允许时可以作为事实来源",
+    );
+  });
+
+  it("treats current_draft support as insufficient when the target disallows it", async () => {
+    mockDeepSeek.mockResolvedValue({
+      fieldId: "summaryPoints",
+      value: ["已有核心要点"],
+      supports: [{ sourceId: "draft:summaryPoints", quote: "已有核心要点" }],
+      insufficient: false,
+    });
+
+    const result = await generateDailyCandidate(
+      makeInput({
+        sourceBlocks: [
+          {
+            sourceId: "draft:summaryPoints",
+            sourceType: "current_draft",
+            text: "已有核心要点",
+          },
+        ],
+      }),
+    );
+
+    expect(result.candidate).toEqual([]);
+    expect(result.insufficientFieldIds).toEqual(["summaryPoints"]);
+    expect(result.evidence).toEqual([]);
+    expect(mockDeepSeek).not.toHaveBeenCalled();
+  });
+
   it("rejects append output that repeats an existing bullet item", async () => {
     const target = field("summaryPoints", { ai: { allowedModes: ["rewrite", "append"] } });
     mockDeepSeek.mockResolvedValue({

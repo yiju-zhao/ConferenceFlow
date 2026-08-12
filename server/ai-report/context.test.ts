@@ -33,7 +33,7 @@ const template: ReportTemplateVersion = {
       scope: "daily",
       ai: {
         enabled: true,
-        allowedSources: ["report_content", "user_focus"],
+        allowedSources: ["report_content", "current_draft", "user_focus"],
         evidenceRequired: true,
         allowedModes: ["rewrite"],
       },
@@ -276,6 +276,16 @@ describe("loadGenerationContext", () => {
       scope: "daily",
       input: { currentValue: ["Existing summary"], baseFieldHashes: expect.any(Object) },
     });
+    if (loaded.scope !== "daily") throw new Error("wrong scope");
+    expect(loaded.input.sourceBlocks).toEqual(
+      expect.arrayContaining([
+        {
+          sourceId: "draft:summaryPoints",
+          sourceType: "current_draft",
+          text: "Existing summary",
+        },
+      ]),
+    );
     expect(read.getTranscript).not.toHaveBeenCalled();
   });
 

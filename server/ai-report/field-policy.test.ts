@@ -134,6 +134,36 @@ describe("report source policy", () => {
     expect(blocks.map((block) => block.text).join(" ")).not.toContain("不应作为日报来源");
   });
 
+  it("includes the target draft only when current_draft is allowed", () => {
+    const target: TemplateField = {
+      ...bulletField,
+      id: "summaryPoints",
+      ai: { ...bulletField.ai, allowedSources: ["report_content", "current_draft"] },
+    };
+    const rumors: TemplateField = { ...textField, id: "rumors" };
+    const report = {
+      summaryPoints: ["已有核心要点"],
+      rumors: "其他日报内容",
+    } as unknown as Report;
+
+    expect(buildDailySourceBlocks(report, [target, rumors], target)).toEqual(
+      expect.arrayContaining([
+        {
+          sourceId: "draft:summaryPoints",
+          sourceType: "current_draft",
+          text: "已有核心要点",
+        },
+      ]),
+    );
+    expect(
+      buildDailySourceBlocks(
+        report,
+        [{ ...target, ai: { ...target.ai, allowedSources: ["report_content"] } }, rumors],
+        target.id,
+      ).map((block) => block.sourceId),
+    ).not.toContain("draft:summaryPoints");
+  });
+
   it("excludes retained report Sessions marked deleted from daily source and Evidence", () => {
     const fields: TemplateField[] = [
       { ...textField, id: "summary", ai: { ...textField.ai, allowedSources: ["report_content"] } },
