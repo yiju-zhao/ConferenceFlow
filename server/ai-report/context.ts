@@ -219,6 +219,8 @@ export async function loadGenerationContext(
     };
   }
 
+  if (request.scope === "block") throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+
   const fields = selectEligibleFields(template, "session", request.mode);
   if (fields.length === 0) throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
   const session = sessionFromReport(report, request.sessionId);

@@ -1,4 +1,5 @@
 import type {
+  AiBlockField,
   AiSource,
   GenerationMode,
   GenerationScope,
@@ -7,6 +8,7 @@ import type {
   TemplateFieldType,
   TemplateFieldValue,
 } from "../../types";
+import { AI_BLOCK_FIELDS } from "../../types";
 
 const FIELD_TYPES = new Set<TemplateFieldType>([
   "rich_text",
@@ -23,6 +25,7 @@ const AI_SOURCES = new Set<AiSource>([
   "report_content",
 ]);
 const GENERATION_MODES = new Set<GenerationMode>(["rewrite", "append"]);
+const AI_BLOCK_FIELD_IDS = new Set<AiBlockField>(AI_BLOCK_FIELDS);
 
 const RESERVED_AI_FIELD_IDS = {
   daily: new Set([
@@ -57,6 +60,7 @@ const RESERVED_AI_FIELD_IDS = {
     "calendarSessionId",
     "transcriptRef",
   ]),
+  block: new Set<string>(),
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -97,8 +101,11 @@ export function assertTemplateVersion(value: unknown): ReportTemplateVersion {
     ) {
       throw new Error("invalid template field");
     }
-    if (field.scope !== "session" && field.scope !== "daily") {
+    if (field.scope !== "session" && field.scope !== "daily" && field.scope !== "block") {
       throw new Error(`invalid field scope: ${field.id}`);
+    }
+    if (field.scope === "block" && !AI_BLOCK_FIELD_IDS.has(field.id as AiBlockField)) {
+      throw new Error(`invalid AI Block field: ${field.id}`);
     }
     if (ids.has(field.id)) throw new Error(`duplicate template field: ${field.id}`);
     ids.add(field.id);
