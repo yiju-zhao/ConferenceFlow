@@ -35,6 +35,7 @@ import AiFieldAction from "./ai/AiFieldAction";
 import SessionAiSection from "./ai/SessionAiSection";
 import SnapshotViewer from "./SnapshotViewer";
 import { useBoundReportTemplate } from "../../hooks/useBoundReportTemplate";
+import { useDefaultReportTemplateBinding } from "../../hooks/useDefaultReportTemplateBinding";
 import {
   readdReportSession,
   reportSessionSpeakers,
@@ -42,6 +43,8 @@ import {
   sessionKey,
 } from "../../lib/ai-report/sessionSelection";
 import { requireAuthenticatedUserId } from "../../lib/ai-report/memberFocus";
+import { blocksWithoutTranscripts } from "../../lib/ai-report/reportBlocks";
+import { INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING } from "../../lib/ai-report/templates/industryConferenceDailyReport";
 import type {
   BlockField,
   Member,
@@ -125,6 +128,13 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   const [tocVisible, setTocVisible] = useState(true);
   const [openInlineMenu, setOpenInlineMenu] = useState<string | null>(null);
+
+  useDefaultReportTemplateBinding({
+    confId,
+    reportId,
+    report: reportData,
+    enabled: Boolean(user) && !viewMode,
+  });
 
   useEffect(() => {
     const el = document.getElementById("report-toc");
@@ -305,10 +315,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       onsiteInfo: "",
       reflections: "",
       rumors: "",
+      rumorsBlocks: [],
       sitePhotos: [],
       sessions: {},
       topicOrder: [],
       status: "draft",
+      ...INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING,
     }).catch(console.error);
   }, [user, loading, reportData, reportId, date, confId]);
 
@@ -537,8 +549,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         onsiteInfo: rd.onsiteInfo || "",
         reflections: rd.reflections || "",
         rumors: rd.rumors || "",
-        onsiteInfoBlocks: rd.onsiteInfoBlocks || [],
-        reflectionsBlocks: rd.reflectionsBlocks || [],
+        onsiteInfoBlocks: blocksWithoutTranscripts(rd.onsiteInfoBlocks || []),
+        reflectionsBlocks: blocksWithoutTranscripts(rd.reflectionsBlocks || []),
+        rumorsBlocks: blocksWithoutTranscripts(rd.rumorsBlocks || []),
       };
       const hash = JSON.stringify(data);
       // Skip auto snapshots when content hasn't changed since last snapshot

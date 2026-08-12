@@ -4,6 +4,9 @@ import { stripHtml } from "../../lib/diffUtils";
 import { formatDateTime } from "../../i18n/dateUtils";
 import type { Report, ReportSnapshot } from "../../types";
 
+const BLOCK_DIFF_FIELDS = ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks"] as const;
+type BlockDiffField = (typeof BLOCK_DIFF_FIELDS)[number];
+
 interface SnapshotViewerProps {
   snapshot: ReportSnapshot;
   currentData: Report | null;
@@ -111,12 +114,13 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
       })}
 
       {/* Block-based section diffs */}
-      {(
-        [
-          { field: "onsiteInfoBlocks", label: t("report.onsiteInfoBlocks") },
-          { field: "reflectionsBlocks", label: t("report.reflectionsBlocks") },
-        ] as { field: "onsiteInfoBlocks" | "reflectionsBlocks"; label: string }[]
-      ).map(({ field, label }) => {
+      {BLOCK_DIFF_FIELDS.map((field: BlockDiffField) => {
+        const label =
+          field === "onsiteInfoBlocks"
+            ? t("report.onsiteInfoBlocks")
+            : field === "reflectionsBlocks"
+              ? t("report.reflectionsBlocks")
+              : t("report.rumors");
         const snapshotBlocks = data?.[field] || [];
         const currentBlocks = currentData?.[field] || [];
 
