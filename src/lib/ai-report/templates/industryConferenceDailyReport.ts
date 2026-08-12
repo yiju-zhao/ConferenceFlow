@@ -1,5 +1,13 @@
 import type { ReportTemplateVersion, TemplateField } from "../../../types";
 
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    for (const child of Object.values(value)) deepFreeze(child);
+  }
+  return value;
+}
+
 const fields: TemplateField[] = [
   {
     id: "date",
@@ -154,10 +162,10 @@ const definition = {
   fields,
 } as const;
 
-export const INDUSTRY_CONFERENCE_DAILY_REPORT_V1: ReportTemplateVersion = {
+export const INDUSTRY_CONFERENCE_DAILY_REPORT_V1: ReportTemplateVersion = deepFreeze({
   ...definition,
   templateHash: "1b4acdc448b2d84f9b21c788b91b0c961e61cc721fa2ef921f7aaaab419c4d99",
-};
+});
 
 export const INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING = {
   templateId: INDUSTRY_CONFERENCE_DAILY_REPORT_V1.templateId,

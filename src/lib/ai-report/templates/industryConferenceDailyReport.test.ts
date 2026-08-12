@@ -57,4 +57,44 @@ describe("industry conference daily report V1", () => {
       templateHash: INDUSTRY_CONFERENCE_DAILY_REPORT_V1.templateHash,
     });
   });
+
+  it("freezes the published template root", () => {
+    expect(Object.isFrozen(INDUSTRY_CONFERENCE_DAILY_REPORT_V1)).toBe(true);
+    expect(() => {
+      INDUSTRY_CONFERENCE_DAILY_REPORT_V1.templateId = "changed";
+    }).toThrow(TypeError);
+  });
+
+  it("freezes the published fields array and field objects", () => {
+    const [firstField] = INDUSTRY_CONFERENCE_DAILY_REPORT_V1.fields;
+
+    expect(Object.isFrozen(INDUSTRY_CONFERENCE_DAILY_REPORT_V1.fields)).toBe(true);
+    expect(Object.isFrozen(firstField)).toBe(true);
+    expect(() => {
+      INDUSTRY_CONFERENCE_DAILY_REPORT_V1.fields.push(firstField);
+    }).toThrow(TypeError);
+    expect(() => {
+      firstField.label = "changed";
+    }).toThrow(TypeError);
+  });
+
+  it("freezes AI policies and nested arrays without changing the committed hash", async () => {
+    const ai = INDUSTRY_CONFERENCE_DAILY_REPORT_V1.fields.find((field) => field.id === "title")!.ai;
+
+    expect(Object.isFrozen(ai)).toBe(true);
+    expect(Object.isFrozen(ai.allowedSources)).toBe(true);
+    expect(Object.isFrozen(ai.allowedModes)).toBe(true);
+    expect(() => {
+      ai.instruction = "changed";
+    }).toThrow(TypeError);
+    expect(() => {
+      ai.allowedSources.push("calendar");
+    }).toThrow(TypeError);
+    expect(() => {
+      ai.allowedModes.push("append");
+    }).toThrow(TypeError);
+    await expect(hashTemplateDefinition(INDUSTRY_CONFERENCE_DAILY_REPORT_V1)).resolves.toBe(
+      INDUSTRY_CONFERENCE_DAILY_REPORT_V1.templateHash,
+    );
+  });
 });
