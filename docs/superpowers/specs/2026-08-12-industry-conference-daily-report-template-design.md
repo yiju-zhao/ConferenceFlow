@@ -113,7 +113,7 @@ Every field has a Chinese label and a non-empty description. Every AI-enabled fi
 | `date` | daily | fixed | none | none | — |
 | `title` | daily | short_text | rewrite | report content, current draft, user focus | 60 characters |
 | `summaryPoints` | daily | bullet_list | rewrite, append | report content, current draft, user focus | 3–5 items |
-| `speakers` | session | fixed | none | calendar | — |
+| `speakers` | session | fixed | none | none | — |
 | `takeaways` | session | rich_text | rewrite, append | Transcript, current draft, calendar, user focus | 3,000 characters |
 | `insights` | session | rich_text | rewrite, append | Transcript, current draft, calendar, user focus | 3,000 characters |
 | `illustrations` | session | image | none | none | — |
