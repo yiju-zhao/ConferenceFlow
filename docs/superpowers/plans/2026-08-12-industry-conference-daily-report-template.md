@@ -1418,18 +1418,9 @@ npx firebase-tools deploy --only storage --project gtc-2026-session-daal
 
 Confirm the command targets `gtc-2026-session-daal` before accepting success. Do not deploy Firestore rules, Functions, Hosting, or any other Firebase resource.
 
-- [ ] **Step 6: Perform an authenticated preview smoke test**
+- [ ] **Step 6: Push the reviewed branch and wait for Vercel Preview**
 
-After the existing PR's Vercel preview is ready, verify one editable report end to end:
-
-1. A new report binds to `industry-conference-daily-report@1`; a fully unbound legacy report migrates legacy `rumors` once without losing it.
-2. Each of the three dynamic sections supports heading and body insertion.
-3. One Block can generate from draft only, Transcript only, and both; the candidate preview shows Evidence and the current user's focus.
-4. Rewrite and append affect only that Block; heading offers rewrite only.
-5. Refresh preserves adopted content and private Transcript controls.
-6. View/print/export and snapshot history expose no Transcript reference or text.
-
-- [ ] **Step 7: Push and update the existing PR**
+After all task-owned gates and the final whole-branch review pass, fast-forward the temporary implementation branch into the existing PR branch, then run:
 
 ```bash
 git status --short --branch
@@ -1438,4 +1429,17 @@ git push
 gh pr status
 ```
 
-Push only after all task-owned gates pass. Update the existing PR description with the template identity, three independent Block flows, migration rule, privacy behavior, tests, template publication result, Storage deployment result, and smoke-test evidence. Do not merge the PR.
+Wait for the pushed commit's Vercel Preview to become ready. Do not create a second PR or merge the existing PR.
+
+- [ ] **Step 7: Perform the authenticated smoke test and update the PR**
+
+On that Vercel Preview, verify one editable report end to end:
+
+1. A new report binds to `industry-conference-daily-report@1`; a fully unbound legacy report migrates legacy `rumors` once without losing it.
+2. Each of the three dynamic sections supports heading and body insertion.
+3. One Block can generate from draft only, Transcript only, and both; the candidate preview shows Evidence and the current user's focus.
+4. Rewrite and append affect only that Block; heading offers rewrite only.
+5. Refresh preserves adopted content and private Transcript controls.
+6. View/print/export and snapshot history expose no Transcript reference or text.
+
+If the smoke test finds a code defect, fix it on the implementation branch, rerun the affected and repository gates, review the fix diff, fast-forward the PR branch again, push, and repeat the smoke test. After success, update the existing PR description with the template identity, three independent Block flows, migration rule, privacy behavior, tests, template publication result, Storage deployment result, and smoke-test evidence. Do not merge the PR.
