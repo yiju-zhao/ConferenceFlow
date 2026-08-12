@@ -197,6 +197,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const request = parseGenerateRequest(req.body);
     scope = request.scope;
     const context = await loadGenerationContext({ confId, reportId, uid: decoded.uid, request });
+    if (context.scope === "block") {
+      throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+    }
     const result =
       context.scope === "session"
         ? await generateSessionCandidate(context.input, disconnect.signal)

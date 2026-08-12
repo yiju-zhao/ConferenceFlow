@@ -1,11 +1,14 @@
 import type { Bucket } from "@google-cloud/storage";
 import type { Firestore } from "firebase-admin/firestore";
 import type {
+  AiBlockField,
   GenerateRequest,
+  GenerationMode,
   Report,
   ReportTemplateVersion,
   TemplateField,
 } from "../../src/types";
+import { blockContentHashKey } from "../../src/lib/ai-report/blockTarget";
 import { hashFieldMap, hashText } from "../../src/lib/ai-report/hash";
 import {
   assertTemplateVersion,
@@ -16,7 +19,27 @@ import { bucket, db } from "../../api/lib/firebase-admin.js";
 import { buildDailySourceBlocks, readReportFieldValue } from "./field-policy";
 import type { DailyGenerationInput } from "./generate-daily";
 import type { SessionGenerationInput } from "./generate-session";
-import { normalizeTranscriptSource, parseTranscript } from "./transcript-parser";
+import {
+  normalizeTranscriptSource,
+  parseTranscript,
+  type TranscriptSegment,
+} from "./transcript-parser";
+
+export interface BlockGenerationInput {
+  template: ReportTemplateVersion;
+  field: TemplateField;
+  targetFieldId: AiBlockField;
+  blockId: string;
+  blockKind: "heading" | "body";
+  currentValue: string;
+  segments: TranscriptSegment[];
+  focus: string;
+  mode: GenerationMode;
+  instruction: string;
+  templateHash: string;
+  transcriptHash?: string;
+  baseFieldHashes: Record<string, string>;
+}
 
 export interface GenerationContextSource {
   getReport(confId: string, reportId: string): Promise<Report | null>;
@@ -32,7 +55,8 @@ export interface GenerationContextSource {
 
 export type LoadedGenerationContext =
   | { scope: "session"; input: SessionGenerationInput }
-  | { scope: "daily"; input: DailyGenerationInput };
+  | { scope: "daily"; input: DailyGenerationInput }
+  | { scope: "block"; input: BlockGenerationInput };
 
 const PUBLIC_ERRORS = {
   REPORT_NOT_FOUND: [404, "Report not found"],
@@ -40,8 +64,11 @@ const PUBLIC_ERRORS = {
   TEMPLATE_NOT_FOUND: [404, "Bound template version not found"],
   TEMPLATE_MISMATCH: [409, "Template identity/hash changed"],
   SESSION_NOT_FOUND: [404, "Report Session or Calendar Session not found"],
-  TRANSCRIPT_REQUIRED: [400, "Session transcript is required"],
+  BLOCK_NOT_FOUND: [404, "Report Block not found"],
+  BLOCK_DUPLICATE: [409, "Report Block identity is ambiguous"],
+  TRANSCRIPT_REQUIRED: [400, "A required generation source is missing"],
   TRANSCRIPT_PATH_MISMATCH: [409, "Transcript path is outside the bound Session"],
+  BLOCK_TRANSCRIPT_PATH_MISMATCH: [409, "Transcript path is outside the bound Block"],
   TRANSCRIPT_HASH_MISMATCH: [409, "Transcript changed after reference creation"],
   INVALID_TRANSCRIPT: [400, "Transcript encoding/format/size is invalid"],
   FIELD_NOT_ELIGIBLE: [400, "Target field or requested mode is not allowed"],
@@ -112,6 +139,15 @@ function normalizedValues(
 
 function transcriptPrefix(confId: string, reportId: string, sessionId: string): string {
   return `conference-transcripts/${safePathSegment(confId)}/${safePathSegment(reportId)}/${safePathSegment(sessionId)}/`;
+}
+
+function blockTranscriptPrefix(
+  confId: string,
+  reportId: string,
+  targetFieldId: AiBlockField,
+  blockId: string,
+): string {
+  return `conference-transcripts/${safePathSegment(confId)}/${safePathSegment(reportId)}/blocks/${safePathSegment(targetFieldId)}/${safePathSegment(blockId)}/`;
 }
 
 function transcriptFormat(value: unknown): "txt" | "md" | "srt" | "vtt" {
@@ -219,7 +255,93 @@ export async function loadGenerationContext(
     };
   }
 
-  if (request.scope === "block") throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+  if (request.scope === "block") {
+    const field = selectEligibleFields(template, "block", request.mode).find(
+      (candidate) => candidate.id === request.targetFieldId,
+    );
+    if (!field) throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+
+    const blocks = report[request.targetFieldId];
+    const matches = Array.isArray(blocks)
+      ? blocks.filter((block) => isRecord(block) && block.id === request.blockId)
+      : [];
+    if (matches.length === 0) throw new GenerationContextError("BLOCK_NOT_FOUND");
+    if (matches.length > 1) throw new GenerationContextError("BLOCK_DUPLICATE");
+
+    const block = matches[0];
+    if (block.type !== "heading" && block.type !== "body") {
+      throw new GenerationContextError("BLOCK_NOT_FOUND");
+    }
+    if (block.type === "heading" && request.mode === "append") {
+      throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+    }
+    const normalizedContent = normalizeStoredFieldValue(field, block.content);
+    const currentValue = typeof normalizedContent === "string" ? normalizedContent : "";
+    const transcriptRef = block.transcriptRef;
+    let segments: TranscriptSegment[] = [];
+    let transcriptHash: string | undefined;
+
+    if (transcriptRef !== undefined && transcriptRef !== null) {
+      if (!isRecord(transcriptRef)) throw new GenerationContextError("INVALID_TRANSCRIPT");
+      const storagePath = transcriptRef.storagePath;
+      if (
+        typeof storagePath !== "string" ||
+        !storagePath.startsWith(
+          blockTranscriptPrefix(confId, reportId, request.targetFieldId, request.blockId),
+        )
+      ) {
+        throw new GenerationContextError("BLOCK_TRANSCRIPT_PATH_MISMATCH");
+      }
+      if (typeof transcriptRef.contentHash !== "string" || !transcriptRef.contentHash) {
+        throw new GenerationContextError("TRANSCRIPT_REQUIRED");
+      }
+      const format = transcriptFormat(transcriptRef.format);
+      if (!storagePath.toLowerCase().endsWith(`.${format}`)) {
+        throw new GenerationContextError("INVALID_TRANSCRIPT");
+      }
+
+      let transcriptText: string;
+      try {
+        transcriptText = normalizeTranscriptSource(
+          new TextDecoder("utf-8", { fatal: true }).decode(await source.getTranscript(storagePath)),
+        );
+      } catch (error) {
+        if (error instanceof GenerationContextError) throw error;
+        throw new GenerationContextError("INVALID_TRANSCRIPT");
+      }
+      if ((await hashText(transcriptText)) !== transcriptRef.contentHash) {
+        throw new GenerationContextError("TRANSCRIPT_HASH_MISMATCH");
+      }
+      try {
+        segments = parseTranscript(format, transcriptText);
+      } catch {
+        throw new GenerationContextError("INVALID_TRANSCRIPT");
+      }
+      transcriptHash = transcriptRef.contentHash;
+    } else if (!currentValue.trim()) {
+      throw new GenerationContextError("TRANSCRIPT_REQUIRED");
+    }
+
+    const hashKey = blockContentHashKey(request.targetFieldId, request.blockId);
+    return {
+      scope: "block",
+      input: {
+        template,
+        field,
+        targetFieldId: request.targetFieldId,
+        blockId: request.blockId,
+        blockKind: block.type,
+        currentValue,
+        segments,
+        focus,
+        mode: request.mode,
+        instruction: request.instruction ?? "",
+        templateHash: template.templateHash,
+        ...(transcriptHash === undefined ? {} : { transcriptHash }),
+        baseFieldHashes: await hashFieldMap({ [hashKey]: currentValue }),
+      },
+    };
+  }
 
   const fields = selectEligibleFields(template, "session", request.mode);
   if (fields.length === 0) throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
