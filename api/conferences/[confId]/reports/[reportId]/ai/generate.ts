@@ -4,10 +4,10 @@ import { AuthError, requireMember } from "../../../../../lib/auth-middleware.js"
 import {
   GenerationContextError,
   loadGenerationContext,
-} from "../../../../../lib/ai-report/context.js";
-import { DeepSeekRequestError } from "../../../../../lib/ai-report/deepseek.js";
-import { generateDailyCandidate } from "../../../../../lib/ai-report/generate-daily.js";
-import { generateSessionCandidate } from "../../../../../lib/ai-report/generate-session.js";
+} from "../../../../../../server/ai-report/context.js";
+import { DeepSeekRequestError } from "../../../../../../server/ai-report/deepseek.js";
+import { generateDailyCandidate } from "../../../../../../server/ai-report/generate-daily.js";
+import { generateSessionCandidate } from "../../../../../../server/ai-report/generate-session.js";
 
 const MAX_ID_LENGTH = 256;
 const MAX_INSTRUCTION_CODE_POINTS = 4_000;

@@ -5,14 +5,14 @@ import type {
   Report,
   ReportTemplateVersion,
   TemplateField,
-} from "../../../src/types";
-import { hashFieldMap, hashText } from "../../../src/lib/ai-report/hash";
+} from "../../src/types";
+import { hashFieldMap, hashText } from "../../src/lib/ai-report/hash";
 import {
   assertTemplateVersion,
   normalizeStoredFieldValue,
   selectEligibleFields,
-} from "../../../src/lib/ai-report/templateContract";
-import { bucket, db } from "../firebase-admin.js";
+} from "../../src/lib/ai-report/templateContract";
+import { bucket, db } from "../../api/lib/firebase-admin.js";
 import { buildDailySourceBlocks, readReportFieldValue } from "./field-policy";
 import type { DailyGenerationInput } from "./generate-daily";
 import type { SessionGenerationInput } from "./generate-session";

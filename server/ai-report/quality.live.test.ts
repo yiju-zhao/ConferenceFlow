@@ -2,8 +2,8 @@
 
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { hashFieldMap, hashText } from "../../../src/lib/ai-report/hash";
-import type { GenerateResponse, ReportTemplateVersion, TranscriptFormat } from "../../../src/types";
+import { hashFieldMap, hashText } from "../../src/lib/ai-report/hash";
+import type { GenerateResponse, ReportTemplateVersion, TranscriptFormat } from "../../src/types";
 import { generateSessionCandidate } from "./generate-session";
 import { parseTranscript } from "./transcript-parser";
 

@@ -5,7 +5,7 @@ import type {
   GenerationMode,
   ReportTemplateVersion,
   TemplateField,
-} from "../../../src/types";
+} from "../../src/types";
 import { buildSessionDraftBlocks, validateCandidateValue, type SourceBlock } from "./field-policy";
 import {
   validateSourceSupports,

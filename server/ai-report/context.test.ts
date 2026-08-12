@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { hashFieldValue, hashText } from "../../../src/lib/ai-report/hash";
-import type { GenerateRequest, Report, ReportTemplateVersion } from "../../../src/types";
+import { hashFieldValue, hashText } from "../../src/lib/ai-report/hash";
+import type { GenerateRequest, Report, ReportTemplateVersion } from "../../src/types";
 import {
   createFirebaseGenerationContextSource,
   loadGenerationContext,

@@ -5,7 +5,7 @@ import type {
   GenerationMode,
   ReportTemplateVersion,
   TemplateField,
-} from "../../../src/types";
+} from "../../src/types";
 import { validateCandidateValue, type SourceBlock } from "./field-policy";
 import { validateSourceSupports } from "./evidence";
 import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek";

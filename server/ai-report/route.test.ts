@@ -9,7 +9,7 @@ const { requireMemberMock, loadContextMock, generateSessionMock, generateDailyMo
   }),
 );
 
-vi.mock("../../../../../lib/auth-middleware.js", () => ({
+vi.mock("../../api/lib/auth-middleware.js", () => ({
   AuthError: class AuthError extends Error {
     constructor(
       message: string,
@@ -20,7 +20,7 @@ vi.mock("../../../../../lib/auth-middleware.js", () => ({
   },
   requireMember: requireMemberMock,
 }));
-vi.mock("../../../../../lib/ai-report/context.js", () => ({
+vi.mock("./context.js", () => ({
   GenerationContextError: class GenerationContextError extends Error {
     constructor(
       public code: string,
@@ -32,13 +32,13 @@ vi.mock("../../../../../lib/ai-report/context.js", () => ({
   },
   loadGenerationContext: loadContextMock,
 }));
-vi.mock("../../../../../lib/ai-report/generate-session.js", () => ({
+vi.mock("./generate-session.js", () => ({
   generateSessionCandidate: generateSessionMock,
 }));
-vi.mock("../../../../../lib/ai-report/generate-daily.js", () => ({
+vi.mock("./generate-daily.js", () => ({
   generateDailyCandidate: generateDailyMock,
 }));
-vi.mock("../../../../../lib/ai-report/deepseek.js", () => ({
+vi.mock("./deepseek.js", () => ({
   DeepSeekRequestError: class DeepSeekRequestError extends Error {
     constructor(
       message: string,
@@ -50,7 +50,7 @@ vi.mock("../../../../../lib/ai-report/deepseek.js", () => ({
   },
 }));
 
-import handler from "./generate";
+import handler from "../../api/conferences/[confId]/reports/[reportId]/ai/generate";
 
 const sessionContext = {
   scope: "session" as const,
@@ -172,7 +172,7 @@ describe("POST /api/conferences/[confId]/reports/[reportId]/ai/generate", () => 
   });
 
   it("maps authentication errors without running generation", async () => {
-    const { AuthError } = await import("../../../../../lib/auth-middleware.js");
+    const { AuthError } = await import("../../api/lib/auth-middleware.js");
     requireMemberMock.mockRejectedValue(new AuthError("Approved membership required", 403));
     const res = response();
     await handler(request({ scope: "session", sessionId: "S101", mode: "rewrite" }), res);
@@ -182,7 +182,7 @@ describe("POST /api/conferences/[confId]/reports/[reportId]/ai/generate", () => 
   });
 
   it("maps typed context errors with their stable status", async () => {
-    const { GenerationContextError } = await import("../../../../../lib/ai-report/context.js");
+    const { GenerationContextError } = await import("./context.js");
     loadContextMock.mockRejectedValue(new GenerationContextError("TRANSCRIPT_HASH_MISMATCH"));
     const res = response();
     await handler(request({ scope: "session", sessionId: "S101", mode: "rewrite" }), res);
@@ -194,7 +194,7 @@ describe("POST /api/conferences/[confId]/reports/[reportId]/ai/generate", () => 
   });
 
   it("maps retryable model failures to a safe 502", async () => {
-    const { DeepSeekRequestError } = await import("../../../../../lib/ai-report/deepseek.js");
+    const { DeepSeekRequestError } = await import("./deepseek.js");
     generateSessionMock.mockRejectedValue(new DeepSeekRequestError("private", "TIMEOUT", true));
     const res = response();
     await handler(request({ scope: "session", sessionId: "S101", mode: "rewrite" }), res);
@@ -216,7 +216,7 @@ describe("POST /api/conferences/[confId]/reports/[reportId]/ai/generate", () => 
   });
 
   it("cancels an in-flight generation when the response closes before completion", async () => {
-    const { DeepSeekRequestError } = await import("../../../../../lib/ai-report/deepseek.js");
+    const { DeepSeekRequestError } = await import("./deepseek.js");
     let started!: () => void;
     const generating = new Promise<void>((resolve) => {
       started = resolve;

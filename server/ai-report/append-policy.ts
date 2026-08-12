@@ -1,4 +1,4 @@
-import type { TemplateField, TemplateFieldValue } from "../../../src/types";
+import type { TemplateField, TemplateFieldValue } from "../../src/types";
 import { htmlToPlainText } from "./field-policy";
 
 export const APPEND_ONLY_SYSTEM_INSTRUCTION =

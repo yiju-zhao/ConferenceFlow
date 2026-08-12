@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DeepSeekMessage } from "./deepseek";
-import type { TemplateField } from "../../../src/types";
+import type { TemplateField } from "../../src/types";
 
 const { mockDeepSeek } = vi.hoisted(() => ({
   mockDeepSeek: vi.fn(),

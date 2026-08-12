@@ -4,7 +4,7 @@ import type {
   TemplateField,
   TemplateFieldType,
   TemplateFieldValue,
-} from "../../../src/types";
+} from "../../src/types";
 
 export interface SourceBlock {
   sourceId: string;

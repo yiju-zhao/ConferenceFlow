@@ -43,7 +43,7 @@ The quality fixture test is intentionally skipped unless a reviewer explicitly
 approves live model usage and supplies a deliberate server-side key:
 
 ```bash
-RUN_LIVE_AI_EVAL=1 npm run test:run -- api/lib/ai-report/quality.live.test.ts
+RUN_LIVE_AI_EVAL=1 npm run test:run -- server/ai-report/quality.live.test.ts
 ```
 
 The live test checks that every returned candidate has Evidence IDs that resolve

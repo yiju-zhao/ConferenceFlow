@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Report } from "../../../src/types/firestore";
-import type { TemplateField } from "../../../src/types";
+import type { Report } from "../../src/types/firestore";
+import type { TemplateField } from "../../src/types";
 import {
   buildDailySourceBlocks,
   buildSessionDraftBlocks,

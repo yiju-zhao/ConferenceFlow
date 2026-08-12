@@ -166,7 +166,7 @@ optional live fixture evaluation is deliberately opt-in and may incur model
 usage:
 
 ```bash
-RUN_LIVE_AI_EVAL=1 npm run test:run -- api/lib/ai-report/quality.live.test.ts
+RUN_LIVE_AI_EVAL=1 npm run test:run -- server/ai-report/quality.live.test.ts
 ```
 
 ## Notes
