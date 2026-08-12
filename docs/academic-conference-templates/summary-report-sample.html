@@ -1,264 +1,713 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NeurIPS 2025 参会总结报告 — 样例</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Work+Sans:wght@500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --brand:#CF0A2C; --brand-dark:#a20513; --brand-soft:rgba(207,10,44,.08);
-    --text:#1a1c1c; --text-sec:#5f5e5e; --text-muted:#888; --line:#ececec;
-    --fs-label:11px; --fs-caption:13px; --fs-body:15px; --fs-heading:17px; --fs-title:20px; --fs-display:32px;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:#fff;color:var(--text);
-    font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;font-size:var(--fs-body);line-height:1.75;}
-  .container{max-width:920px;margin:0 auto;padding:40px 44px 64px;}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NeurIPS 2025 参会总结报告 — 样例</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Work+Sans:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --brand: #cf0a2c;
+        --brand-dark: #a20513;
+        --brand-soft: rgba(207, 10, 44, 0.08);
+        --text: #1a1c1c;
+        --text-sec: #5f5e5e;
+        --text-muted: #888;
+        --line: #ececec;
+        --fs-label: 11px;
+        --fs-caption: 13px;
+        --fs-body: 15px;
+        --fs-heading: 17px;
+        --fs-title: 20px;
+        --fs-display: 32px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #fff;
+        color: var(--text);
+        font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-size: var(--fs-body);
+        line-height: 1.75;
+      }
+      .container {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 40px 44px 64px;
+      }
 
-  .title-bar{padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:8px;}
-  .eyebrow{font-family:"Work Sans",sans-serif;font-size:var(--fs-label);font-weight:700;letter-spacing:3px;
-    text-transform:uppercase;color:var(--brand);margin-bottom:10px;}
-  .title-bar h1{margin:0;font-size:var(--fs-display);font-weight:700;line-height:1.2;}
-  .title-bar .sub{margin-top:8px;color:var(--text-muted);font-size:var(--fs-caption);}
+      .title-bar {
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 8px;
+      }
+      .eyebrow {
+        font-family: "Work Sans", sans-serif;
+        font-size: var(--fs-label);
+        font-weight: 700;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        color: var(--brand);
+        margin-bottom: 10px;
+      }
+      .title-bar h1 {
+        margin: 0;
+        font-size: var(--fs-display);
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .title-bar .sub {
+        margin-top: 8px;
+        color: var(--text-muted);
+        font-size: var(--fs-caption);
+      }
 
-  .sec-title{display:flex;align-items:baseline;gap:10px;font-size:var(--fs-heading);font-weight:700;
-    margin:44px 0 6px;padding-bottom:8px;border-bottom:2px solid var(--text);}
-  .sec-title .num{font-family:"Work Sans",sans-serif;color:var(--brand);font-size:var(--fs-caption);}
-  .sec-title .en{font-family:"Work Sans",sans-serif;font-size:var(--fs-caption);font-weight:600;color:var(--text-muted);
-    letter-spacing:1px;text-transform:uppercase;margin-left:auto;}
-  .req{font-family:"Work Sans",sans-serif;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
-    padding:2px 7px;border-radius:3px;vertical-align:middle;}
-  .req-must{background:var(--brand);color:#fff;}
-  .req-rec{background:#eef1f3;color:#5f5e5e;}
-  .req-opt{background:#f0f0f0;color:#999;}
-  .sec-intro{font-size:var(--fs-caption);color:var(--text-muted);margin:0 0 14px;}
+      .sec-title {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        font-size: var(--fs-heading);
+        font-weight: 700;
+        margin: 44px 0 6px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--text);
+      }
+      .sec-title .num {
+        font-family: "Work Sans", sans-serif;
+        color: var(--brand);
+        font-size: var(--fs-caption);
+      }
+      .sec-title .en {
+        font-family: "Work Sans", sans-serif;
+        font-size: var(--fs-caption);
+        font-weight: 600;
+        color: var(--text-muted);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-left: auto;
+      }
+      .req {
+        font-family: "Work Sans", sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 3px;
+        vertical-align: middle;
+      }
+      .req-must {
+        background: var(--brand);
+        color: #fff;
+      }
+      .req-rec {
+        background: #eef1f3;
+        color: #5f5e5e;
+      }
+      .req-opt {
+        background: #f0f0f0;
+        color: #999;
+      }
+      .sec-intro {
+        font-size: var(--fs-caption);
+        color: var(--text-muted);
+        margin: 0 0 14px;
+      }
 
-  /* overview grid */
-  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 24px;font-size:var(--fs-caption);}
-  .grid div{border-bottom:1px solid var(--line);padding:6px 0;}
-  .grid b{color:var(--text);}
-  table.cov{width:100%;border-collapse:collapse;font-size:var(--fs-caption);margin-top:8px;}
-  table.cov th{text-align:left;font-family:"Work Sans",sans-serif;text-transform:uppercase;letter-spacing:.5px;
-    color:var(--text-muted);border-bottom:1px solid var(--line);padding:8px 10px;}
-  table.cov td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top;}
+      /* overview grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px 24px;
+        font-size: var(--fs-caption);
+      }
+      .grid div {
+        border-bottom: 1px solid var(--line);
+        padding: 6px 0;
+      }
+      .grid b {
+        color: var(--text);
+      }
+      table.cov {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--fs-caption);
+        margin-top: 8px;
+      }
+      table.cov th {
+        text-align: left;
+        font-family: "Work Sans", sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--line);
+        padding: 8px 10px;
+      }
+      table.cov td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px 10px;
+        vertical-align: top;
+      }
 
-  /* exec summary */
-  .exec{background:var(--brand-soft);border-left:3px solid var(--brand);padding:18px 22px;}
-  .exec ol{margin:0;padding-left:22px;}
-  .exec li{margin:8px 0;}
-  .exec li b{color:var(--brand-dark);}
+      /* exec summary */
+      .exec {
+        background: var(--brand-soft);
+        border-left: 3px solid var(--brand);
+        padding: 18px 22px;
+      }
+      .exec ol {
+        margin: 0;
+        padding-left: 22px;
+      }
+      .exec li {
+        margin: 8px 0;
+      }
+      .exec li b {
+        color: var(--brand-dark);
+      }
 
-  .prose p{margin:0 0 10px;}
-  .prose b{color:var(--brand-dark);}
+      .prose p {
+        margin: 0 0 10px;
+      }
+      .prose b {
+        color: var(--brand-dark);
+      }
 
-  /* theme map */
-  .theme{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
-  .theme .arrow{font-family:"Work Sans",sans-serif;font-weight:700;font-size:var(--fs-caption);width:34px;flex-shrink:0;}
-  .up{color:#27AE60;} .flat{color:#888;} .down{color:#888;}
-  .theme .tname{font-weight:700;width:150px;flex-shrink:0;}
-  .theme .tdesc{font-size:var(--fs-caption);color:var(--text-sec);}
+      /* theme map */
+      .theme {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .theme .arrow {
+        font-family: "Work Sans", sans-serif;
+        font-weight: 700;
+        font-size: var(--fs-caption);
+        width: 34px;
+        flex-shrink: 0;
+      }
+      .up {
+        color: #27ae60;
+      }
+      .flat {
+        color: #888;
+      }
+      .down {
+        color: #888;
+      }
+      .theme .tname {
+        font-weight: 700;
+        width: 150px;
+        flex-shrink: 0;
+      }
+      .theme .tdesc {
+        font-size: var(--fs-caption);
+        color: var(--text-sec);
+      }
 
-  /* paper card */
-  .paper{border:1px solid var(--line);border-radius:6px;padding:16px 20px;margin:12px 0;}
-  .paper.award{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-soft);}
-  .paper-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
-  .paper-tag{font-family:"Work Sans",sans-serif;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
-    padding:2px 8px;border-radius:3px;background:#1a1c1c;color:#fff;}
-  .paper-title{font-size:var(--fs-title);font-weight:700;margin:0;flex:1;min-width:240px;line-height:1.35;}
-  .paper-auth{font-size:var(--fs-caption);color:var(--text-sec);margin:6px 0 0;}
-  .paper-body{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:14px;margin-top:12px;}
-  .paper-body .cell b{display:block;font-size:11px;color:var(--brand-dark);text-transform:uppercase;letter-spacing:.5px;
-    font-family:"Work Sans",sans-serif;margin-bottom:3px;}
-  .paper-body .cell{font-size:var(--fs-caption);color:var(--text);}
-  .paper-why{margin-top:12px;font-size:var(--fs-caption);background:#fafafa;border:1px solid var(--line);border-radius:4px;padding:10px 12px;}
-  .paper-why b{color:var(--brand-dark);}
+      /* paper card */
+      .paper {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 16px 20px;
+        margin: 12px 0;
+      }
+      .paper.award {
+        border-color: var(--brand);
+        box-shadow: 0 0 0 2px var(--brand-soft);
+      }
+      .paper-head {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .paper-tag {
+        font-family: "Work Sans", sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 3px;
+        background: #1a1c1c;
+        color: #fff;
+      }
+      .paper-title {
+        font-size: var(--fs-title);
+        font-weight: 700;
+        margin: 0;
+        flex: 1;
+        min-width: 240px;
+        line-height: 1.35;
+      }
+      .paper-auth {
+        font-size: var(--fs-caption);
+        color: var(--text-sec);
+        margin: 6px 0 0;
+      }
+      .paper-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.2fr;
+        gap: 14px;
+        margin-top: 12px;
+      }
+      .paper-body .cell b {
+        display: block;
+        font-size: 11px;
+        color: var(--brand-dark);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-family: "Work Sans", sans-serif;
+        margin-bottom: 3px;
+      }
+      .paper-body .cell {
+        font-size: var(--fs-caption);
+        color: var(--text);
+      }
+      .paper-why {
+        margin-top: 12px;
+        font-size: var(--fs-caption);
+        background: #fafafa;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 10px 12px;
+      }
+      .paper-why b {
+        color: var(--brand-dark);
+      }
 
-  /* implication cards */
-  .impl{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);}
-  .impl .cat{font-family:"Work Sans",sans-serif;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
-    width:90px;flex-shrink:0;padding-top:2px;}
-  .cat-inv{color:var(--brand);} .cat-adopt{color:#2980B9;} .cat-gap{color:#E67E22;} .cat-risk{color:#8E44AD;}
-  .impl .txt{font-size:var(--fs-body);}
+      /* implication cards */
+      .impl {
+        display: flex;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .impl .cat {
+        font-family: "Work Sans", sans-serif;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        width: 90px;
+        flex-shrink: 0;
+        padding-top: 2px;
+      }
+      .cat-inv {
+        color: var(--brand);
+      }
+      .cat-adopt {
+        color: #2980b9;
+      }
+      .cat-gap {
+        color: #e67e22;
+      }
+      .cat-risk {
+        color: #8e44ad;
+      }
+      .impl .txt {
+        font-size: var(--fs-body);
+      }
 
-  table.fu{width:100%;border-collapse:collapse;font-size:var(--fs-caption);margin-top:8px;}
-  table.fu th{text-align:left;font-family:"Work Sans",sans-serif;text-transform:uppercase;letter-spacing:.5px;
-    color:var(--text-muted);border-bottom:1px solid var(--line);padding:8px 10px;}
-  table.fu td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top;}
-  table.fu td.owner{font-weight:600;color:var(--brand-dark);}
-  table.fu td.due{font-family:"Work Sans",sans-serif;color:var(--text-muted);white-space:nowrap;}
+      table.fu {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: var(--fs-caption);
+        margin-top: 8px;
+      }
+      table.fu th {
+        text-align: left;
+        font-family: "Work Sans", sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--line);
+        padding: 8px 10px;
+      }
+      table.fu td {
+        border-bottom: 1px solid var(--line);
+        padding: 8px 10px;
+        vertical-align: top;
+      }
+      table.fu td.owner {
+        font-weight: 600;
+        color: var(--brand-dark);
+      }
+      table.fu td.due {
+        font-family: "Work Sans", sans-serif;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
 
-  .footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);font-size:var(--fs-caption);color:var(--text-muted);text-align:center;}
-  .hint{font-style:italic;}
-</style>
-</head>
-<body>
-<div class="container">
+      .footer {
+        margin-top: 48px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        font-size: var(--fs-caption);
+        color: var(--text-muted);
+        text-align: center;
+      }
+      .hint {
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="title-bar">
+        <div class="eyebrow">NeurIPS 2025 · 参会总结报告 / CONFERENCE SUMMARY</div>
+        <h1>NeurIPS 2025 参会总结：效率转向与对齐工程化</h1>
+        <div class="sub">
+          会议日期：Dec 2–7, 2025 · Vancouver, Canada &nbsp;|&nbsp; 报告人：参会团队 &nbsp;|&nbsp;
+          呈送：领导团队
+        </div>
+      </div>
 
-  <div class="title-bar">
-    <div class="eyebrow">NeurIPS 2025 · 参会总结报告 / CONFERENCE SUMMARY</div>
-    <h1>NeurIPS 2025 参会总结：效率转向与对齐工程化</h1>
-    <div class="sub">会议日期：Dec 2–7, 2025 · Vancouver, Canada &nbsp;|&nbsp; 报告人：参会团队 &nbsp;|&nbsp; 呈送：领导团队</div>
-  </div>
+      <!-- 1 会议概览 -->
+      <h2 class="sec-title">
+        <span class="num">01</span> 会议概览
+        <span class="en">Conference Overview <span class="req req-must">必要</span></span>
+      </h2>
+      <div class="grid">
+        <div><b>会议：</b>NeurIPS 2025（第 39 届）</div>
+        <div><b>时间 / 地点：</b>Dec 2–7, 2025 · Vancouver</div>
+        <div><b>投稿 / 录用：</b>约 16,700 篇 / 4,340 篇</div>
+        <div><b>接收率：</b>约 26%</div>
+        <div><b>分轨：</b>Main · Workshops · Tutorials · Datasets &amp; Benchmarks</div>
+        <div><b>我方参会：</b>3 人（张三 / 李四 / 王五），覆盖高效训练、对齐、多模态三方向</div>
+      </div>
+      <table class="cov">
+        <thead>
+          <tr>
+            <th>方向</th>
+            <th>覆盖人</th>
+            <th>重点场次</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>高效训练 / 推理</td>
+            <td>张三、李四</td>
+            <td>Oral 3A、Workshop on Efficient ML</td>
+          </tr>
+          <tr>
+            <td>对齐与偏好优化</td>
+            <td>王五</td>
+            <td>Spotlight 5C、Poster Session 2</td>
+          </tr>
+          <tr>
+            <td>多模态 / 扩散</td>
+            <td>李四</td>
+            <td>Oral 7B、D&amp;B Track</td>
+          </tr>
+        </tbody>
+      </table>
 
-  <!-- 1 会议概览 -->
-  <h2 class="sec-title"><span class="num">01</span> 会议概览 <span class="en">Conference Overview <span class="req req-must">必要</span></span></h2>
-  <div class="grid">
-    <div><b>会议：</b>NeurIPS 2025（第 39 届）</div>
-    <div><b>时间 / 地点：</b>Dec 2–7, 2025 · Vancouver</div>
-    <div><b>投稿 / 录用：</b>约 16,700 篇 / 4,340 篇</div>
-    <div><b>接收率：</b>约 26%</div>
-    <div><b>分轨：</b>Main · Workshops · Tutorials · Datasets &amp; Benchmarks</div>
-    <div><b>我方参会：</b>3 人（张三 / 李四 / 王五），覆盖高效训练、对齐、多模态三方向</div>
-  </div>
-  <table class="cov">
-    <thead><tr><th>方向</th><th>覆盖人</th><th>重点场次</th></tr></thead>
-    <tbody>
-      <tr><td>高效训练 / 推理</td><td>张三、李四</td><td>Oral 3A、Workshop on Efficient ML</td></tr>
-      <tr><td>对齐与偏好优化</td><td>王五</td><td>Spotlight 5C、Poster Session 2</td></tr>
-      <tr><td>多模态 / 扩散</td><td>李四</td><td>Oral 7B、D&amp;B Track</td></tr>
-    </tbody>
-  </table>
+      <!-- 2 执行摘要 -->
+      <h2 class="sec-title">
+        <span class="num">02</span> 执行摘要 / 核心结论
+        <span class="en">Executive Summary <span class="req req-must">必要</span></span>
+      </h2>
+      <div class="exec">
+        <ol>
+          <li>
+            <b>叙事转向"效率"。</b>社区从"大力出奇迹"明确转向"用更少算力做同等 / 更大模型"——MoE
+            卸载、低比特量化、推测解码是三大抓手，多篇 oral 给出 2× 以上吞吐或 −40% 显存的硬数据。
+          </li>
+          <li>
+            <b>对齐正在"工程化、去参考模型化"。</b>DPO 系方法普遍去掉 SFT
+            参考模型，显存减半、门槛降低，对齐从"研究"变成可复用的"工程组件"。
+          </li>
+          <li>
+            <b>多模态统一架构收敛。</b>单一 Transformer
+            处理任意模态的路线压倒了专用编解码器，是中期架构赌注的方向。
+          </li>
+          <li>
+            <b>对我们的机会：</b>MoE 卸载 + 无参考偏好优化若落地，可直接压低我们大模型训练 /
+            对齐成本——这是可量化的硬收益。
+          </li>
+          <li>
+            <b>风险 / 缺口：</b>我们在 MoE 基础设施与统一多模态两条线上能力偏薄，存在被拉开 6–12
+            个月的风险。
+          </li>
+        </ol>
+      </div>
 
-  <!-- 2 执行摘要 -->
-  <h2 class="sec-title"><span class="num">02</span> 执行摘要 / 核心结论 <span class="en">Executive Summary <span class="req req-must">必要</span></span></h2>
-  <div class="exec">
-    <ol>
-      <li><b>叙事转向"效率"。</b>社区从"大力出奇迹"明确转向"用更少算力做同等 / 更大模型"——MoE 卸载、低比特量化、推测解码是三大抓手，多篇 oral 给出 2× 以上吞吐或 −40% 显存的硬数据。</li>
-      <li><b>对齐正在"工程化、去参考模型化"。</b>DPO 系方法普遍去掉 SFT 参考模型，显存减半、门槛降低，对齐从"研究"变成可复用的"工程组件"。</li>
-      <li><b>多模态统一架构收敛。</b>单一 Transformer 处理任意模态的路线压倒了专用编解码器，是中期架构赌注的方向。</li>
-      <li><b>对我们的机会：</b>MoE 卸载 + 无参考偏好优化若落地，可直接压低我们大模型训练 / 对齐成本——这是可量化的硬收益。</li>
-      <li><b>风险 / 缺口：</b>我们在 MoE 基础设施与统一多模态两条线上能力偏薄，存在被拉开 6–12 个月的风险。</li>
-    </ol>
-  </div>
+      <!-- 3 研究主题全景 -->
+      <h2 class="sec-title">
+        <span class="num">03</span> 研究主题全景
+        <span class="en">Theme Landscape <span class="req req-must">必要</span></span>
+      </h2>
+      <p class="sec-intro">主题地图（what）——哪些方向在涨 / 在退，代表论文见第 4 节。</p>
+      <div class="theme">
+        <span class="arrow up">▲ 涨</span><span class="tname">高效训练 / MoE</span
+        ><span class="tdesc"
+          >专家卸载、低比特量化、推测解码三路并进，目标都是降训练 / 推理边际成本。</span
+        >
+      </div>
+      <div class="theme">
+        <span class="arrow up">▲ 涨</span><span class="tname">对齐 / 偏好优化</span
+        ><span class="tdesc">"去 reference model"成新基线；自博弈 / 在线 DPO 方法激增。</span>
+      </div>
+      <div class="theme">
+        <span class="arrow up">▲ 涨</span><span class="tname">统一多模态架构</span
+        ><span class="tdesc">单一 Transformer 统一任意模态的路线压倒专用编解码器。</span>
+      </div>
+      <div class="theme">
+        <span class="arrow flat">— 平</span><span class="tname">Agents / 工具使用</span
+        ><span class="tdesc">仍是热点但增量放缓，集中在 benchmark 与评测而非新架构。</span>
+      </div>
+      <div class="theme">
+        <span class="arrow down">▼ 退</span><span class="tname">纯 scaling law 实证</span
+        ><span class="tdesc">"堆参数"类工作明显减少，让位于效率与方法创新。</span>
+      </div>
 
-  <!-- 3 研究主题全景 -->
-  <h2 class="sec-title"><span class="num">03</span> 研究主题全景 <span class="en">Theme Landscape <span class="req req-must">必要</span></span></h2>
-  <p class="sec-intro">主题地图（what）——哪些方向在涨 / 在退，代表论文见第 4 节。</p>
-  <div class="theme"><span class="arrow up">▲ 涨</span><span class="tname">高效训练 / MoE</span><span class="tdesc">专家卸载、低比特量化、推测解码三路并进，目标都是降训练 / 推理边际成本。</span></div>
-  <div class="theme"><span class="arrow up">▲ 涨</span><span class="tname">对齐 / 偏好优化</span><span class="tdesc">"去 reference model"成新基线；自博弈 / 在线 DPO 方法激增。</span></div>
-  <div class="theme"><span class="arrow up">▲ 涨</span><span class="tname">统一多模态架构</span><span class="tdesc">单一 Transformer 统一任意模态的路线压倒专用编解码器。</span></div>
-  <div class="theme"><span class="arrow flat">— 平</span><span class="tname">Agents / 工具使用</span><span class="tdesc">仍是热点但增量放缓，集中在 benchmark 与评测而非新架构。</span></div>
-  <div class="theme"><span class="arrow down">▼ 退</span><span class="tname">纯 scaling law 实证</span><span class="tdesc">"堆参数"类工作明显减少，让位于效率与方法创新。</span></div>
+      <!-- 4 重点论文精选 -->
+      <h2 class="sec-title">
+        <span class="num">04</span> 重点论文精选
+        <span class="en">Highlighted Papers <span class="req req-must">必要</span></span>
+      </h2>
+      <p class="sec-intro">从全会议精选 5 篇必读（含 best paper）。完整清单见附录。</p>
 
-  <!-- 4 重点论文精选 -->
-  <h2 class="sec-title"><span class="num">04</span> 重点论文精选 <span class="en">Highlighted Papers <span class="req req-must">必要</span></span></h2>
-  <p class="sec-intro">从全会议精选 5 篇必读（含 best paper）。完整清单见附录。</p>
+      <div class="paper award">
+        <div class="paper-head">
+          <span class="paper-tag" style="background: var(--brand)">Best Paper</span>
+          <h3 class="paper-title">
+            Sparse Routing at Trillion Scale: Memory-Efficient MoE via Expert Offloading
+          </h3>
+        </div>
+        <div class="paper-auth">MIT · DeepMind · 清华</div>
+        <div class="paper-body">
+          <div class="cell"><b>问题</b>万亿参数 MoE 显存墙</div>
+          <div class="cell"><b>方法</b>按路由热度的分层专家卸载 + 路由预取</div>
+          <div class="cell"><b>结果</b>1.8T on 256×A100，吞吐 2.3×、显存 −41%</div>
+        </div>
+        <div class="paper-why">
+          <b>为什么重要：</b>把"训得起万亿模型"的门槛显著下移，直接关系我们的训练成本。详见日报 Day
+          2。
+        </div>
+      </div>
 
-  <div class="paper award">
-    <div class="paper-head">
-      <span class="paper-tag" style="background:var(--brand);">Best Paper</span>
-      <h3 class="paper-title">Sparse Routing at Trillion Scale: Memory-Efficient MoE via Expert Offloading</h3>
+      <div class="paper">
+        <div class="paper-head">
+          <span class="paper-tag">Spotlight</span>
+          <h3 class="paper-title">Self-Play Preference Optimization without a Reference Model</h3>
+        </div>
+        <div class="paper-auth">Stanford · Anthropic</div>
+        <div class="paper-body">
+          <div class="cell"><b>问题</b>DPO 需 SFT 参考模型，显存翻倍</div>
+          <div class="cell"><b>方法</b>自博弈生成对比对 + 无参考长度归一损失</div>
+          <div class="cell"><b>结果</b>MT-Bench +0.31、显存 −48%、训练 1.4×</div>
+        </div>
+        <div class="paper-why">
+          <b>为什么重要：</b>可直接简化我们的对齐 pipeline，省掉一份参考模型副本。
+        </div>
+      </div>
+
+      <div class="paper">
+        <div class="paper-head">
+          <span class="paper-tag">Oral</span>
+          <h3 class="paper-title">QMoE-Lite: 2-bit 量化下保持推理质量的鲁棒校准</h3>
+        </div>
+        <div class="paper-auth">ETH Zürich · Meta FAIR</div>
+        <div class="paper-body">
+          <div class="cell"><b>问题</b>2-bit 量化质量崩塌</div>
+          <div class="cell"><b>方法</b>分层敏感度感知校准 + outlier 混合精度</div>
+          <div class="cell"><b>结果</b>70B 在 2-bit 下质量损失 &lt;1pt</div>
+        </div>
+        <div class="paper-why">
+          <b>为什么重要：</b>边缘 / 低成本推理场景可用；可与我们的 INT8 方案 AB。
+        </div>
+      </div>
+
+      <div class="paper">
+        <div class="paper-head">
+          <span class="paper-tag">Oral</span>
+          <h3 class="paper-title">One Transformer for All Modalities: Joint Token Routing</h3>
+        </div>
+        <div class="paper-auth">UC Berkeley · Microsoft Research</div>
+        <div class="paper-body">
+          <div class="cell"><b>问题</b>多模态需多套编解码器</div>
+          <div class="cell"><b>方法</b>跨模态联合 token 路由，单一主干</div>
+          <div class="cell"><b>结果</b>文 / 图 / 音 / 视频统一，6 项基准 SOTA 中 5 项</div>
+        </div>
+        <div class="paper-why">
+          <b>为什么重要：</b>代表多模态统一架构的收敛方向，是中期架构赌注。
+        </div>
+      </div>
+
+      <div class="paper">
+        <div class="paper-head">
+          <span class="paper-tag">D&amp;B</span>
+          <h3 class="paper-title">
+            RealBench: A Reproducibility-Oriented Benchmark for Efficient Training
+          </h3>
+        </div>
+        <div class="paper-auth">Mila · Hugging Face</div>
+        <div class="paper-body">
+          <div class="cell"><b>问题</b>效率方法难公平对比</div>
+          <div class="cell"><b>方法</b>统一硬件 / 预算下的标准化评测协议</div>
+          <div class="cell"><b>结果</b>复评 32 个效率方法，1/3 复现不到原报告</div>
+        </div>
+        <div class="paper-why"><b>为什么重要：</b>我们评估外部效率方案时应以此为对照基准。</div>
+      </div>
+
+      <!-- 5 关键趋势与信号 -->
+      <h2 class="sec-title">
+        <span class="num">05</span> 关键趋势与信号
+        <span class="en">Trends &amp; Signals <span class="req req-rec">推荐</span></span>
+      </h2>
+      <div class="prose">
+        <p>
+          <b>Benchmark 格局：</b>效率类工作开始被 RealBench 这类"可复现基准"统一口径，约 1/3
+          过去的效率声明无法复现——意味着我们引用外部效率数据时要打折扣，优先自测。
+        </p>
+        <p>
+          <b>SOTA 推进：</b>万亿 MoE 训练、2-bit 推理、无参考对齐三项的 SOTA
+          都被本次会议明显推高；统一多模态架构在 6 项基准中拿下 5 项 SOTA。
+        </p>
+        <p>
+          <b>资源 / 数据集：</b>Datasets &amp; Benchmarks
+          轨继续升温，尤其"可复现性"与"评测协议"类数据集；代码开源率仍高（重点论文 5/5 开源）。
+        </p>
+        <p>
+          <b>冒头子方向：</b>推测解码与 MoE 的结合、在线 / 自博弈
+          DPO、跨模态联合路由——三者明年大概率成为独立子赛道。
+        </p>
+      </div>
+
+      <!-- 6 对我们的启示与建议 -->
+      <h2 class="sec-title">
+        <span class="num">06</span> 对我们的启示与建议
+        <span class="en">Implications <span class="req req-must">必要</span></span>
+      </h2>
+      <div class="impl">
+        <span class="cat cat-inv">要投的方向</span
+        ><span class="txt"
+          ><b>MoE 基础设施</b
+          >与<b>统一多模态架构</b>——两者都是中期胜负手，我们目前能力偏薄，建议立项。</span
+        >
+      </div>
+      <div class="impl">
+        <span class="cat cat-adopt">可落地的方法</span
+        ><span class="txt"
+          ><b>无参考偏好优化</b>（省一份参考模型副本）与<b>2-bit 推理量化</b>（低成本 /
+          边缘场景）——工程门槛低、收益可量化，优先接入。</span
+        >
+      </div>
+      <div class="impl">
+        <span class="cat cat-gap">能力差距</span
+        ><span class="txt"
+          >MoE 训练栈、跨模态联合路由缺乏积累，存在被拉开
+          <b>6–12 个月</b>的风险；评测侧缺自有可复现基准。</span
+        >
+      </div>
+      <div class="impl">
+        <span class="cat cat-risk">风险</span
+        ><span class="txt"
+          >外部效率声明约 1/3
+          不可复现，决策前一律自测；统一架构路线若成主流，专用多模态栈有被淘汰风险。</span
+        >
+      </div>
+      <div class="impl">
+        <span class="cat cat-inv">招聘 / 合作</span
+        ><span class="txt"
+          >重点关注 MoE 系统、推测解码、对齐工程方向的人 /
+          实验室（MIT、Stanford、Berkeley、ETH）；今年现场这类人才抢手、开价偏高。</span
+        >
+      </div>
+
+      <!-- 7 待跟进事项 -->
+      <h2 class="sec-title">
+        <span class="num">07</span> 待跟进事项
+        <span class="en">Follow-ups <span class="req req-rec">推荐</span></span>
+      </h2>
+      <table class="fu">
+        <thead>
+          <tr>
+            <th>事项</th>
+            <th>类型</th>
+            <th>负责人</th>
+            <th>截止</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>复现 MoE 专家卸载，评估接入内部 100B+ 训练</td>
+            <td>复现实验</td>
+            <td class="owner">张三</td>
+            <td class="due">Dec 15</td>
+          </tr>
+          <tr>
+            <td>无参考偏好优化接入对齐 pipeline 做 A/B</td>
+            <td>工程接入</td>
+            <td class="owner">王五</td>
+            <td class="due">Dec 20</td>
+          </tr>
+          <tr>
+            <td>立项评估：MoE 基础设施 / 统一多模态架构</td>
+            <td>立项</td>
+            <td class="owner">张三 + 负责人</td>
+            <td class="due">Jan 15</td>
+          </tr>
+          <tr>
+            <td>用 RealBench 协议自测 3 个候选效率方案</td>
+            <td>评测</td>
+            <td class="owner">李四</td>
+            <td class="due">Dec 25</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 8 附录 -->
+      <h2 class="sec-title">
+        <span class="num">08</span> 附录
+        <span class="en">Appendix <span class="req req-opt">可选</span></span>
+      </h2>
+      <table class="cov">
+        <thead>
+          <tr>
+            <th>覆盖人</th>
+            <th>方向</th>
+            <th>覆盖场次（节选）</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>张三</td>
+            <td>高效训练 / 推理</td>
+            <td>Oral 3A-01 / 03、Spotlight 3A-04、Workshop Efficient ML</td>
+          </tr>
+          <tr>
+            <td>李四</td>
+            <td>多模态 / 量化 / 评测</td>
+            <td>Oral 7B-02、QMoE-Lite、D&amp;B RealBench</td>
+          </tr>
+          <tr>
+            <td>王五</td>
+            <td>对齐 / 偏好优化</td>
+            <td>Spotlight 5C-02、Poster Session 2</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="sec-intro" style="margin-top: 10px">
+        资源链接汇总：arXiv / GitHub / 项目主页 见各重点论文卡片与日报原文。
+      </p>
+
+      <div class="footer">
+        NeurIPS 2025 参会总结报告 · 参会团队出品 · 呈送领导团队 &nbsp;|&nbsp;
+        <span class="hint">本文件为设计样例，内容为虚构示例</span>
+      </div>
     </div>
-    <div class="paper-auth">MIT · DeepMind · 清华</div>
-    <div class="paper-body">
-      <div class="cell"><b>问题</b>万亿参数 MoE 显存墙</div>
-      <div class="cell"><b>方法</b>按路由热度的分层专家卸载 + 路由预取</div>
-      <div class="cell"><b>结果</b>1.8T on 256×A100，吞吐 2.3×、显存 −41%</div>
-    </div>
-    <div class="paper-why"><b>为什么重要：</b>把"训得起万亿模型"的门槛显著下移，直接关系我们的训练成本。详见日报 Day 2。</div>
-  </div>
-
-  <div class="paper">
-    <div class="paper-head">
-      <span class="paper-tag">Spotlight</span>
-      <h3 class="paper-title">Self-Play Preference Optimization without a Reference Model</h3>
-    </div>
-    <div class="paper-auth">Stanford · Anthropic</div>
-    <div class="paper-body">
-      <div class="cell"><b>问题</b>DPO 需 SFT 参考模型，显存翻倍</div>
-      <div class="cell"><b>方法</b>自博弈生成对比对 + 无参考长度归一损失</div>
-      <div class="cell"><b>结果</b>MT-Bench +0.31、显存 −48%、训练 1.4×</div>
-    </div>
-    <div class="paper-why"><b>为什么重要：</b>可直接简化我们的对齐 pipeline，省掉一份参考模型副本。</div>
-  </div>
-
-  <div class="paper">
-    <div class="paper-head">
-      <span class="paper-tag">Oral</span>
-      <h3 class="paper-title">QMoE-Lite: 2-bit 量化下保持推理质量的鲁棒校准</h3>
-    </div>
-    <div class="paper-auth">ETH Zürich · Meta FAIR</div>
-    <div class="paper-body">
-      <div class="cell"><b>问题</b>2-bit 量化质量崩塌</div>
-      <div class="cell"><b>方法</b>分层敏感度感知校准 + outlier 混合精度</div>
-      <div class="cell"><b>结果</b>70B 在 2-bit 下质量损失 &lt;1pt</div>
-    </div>
-    <div class="paper-why"><b>为什么重要：</b>边缘 / 低成本推理场景可用；可与我们的 INT8 方案 AB。</div>
-  </div>
-
-  <div class="paper">
-    <div class="paper-head">
-      <span class="paper-tag">Oral</span>
-      <h3 class="paper-title">One Transformer for All Modalities: Joint Token Routing</h3>
-    </div>
-    <div class="paper-auth">UC Berkeley · Microsoft Research</div>
-    <div class="paper-body">
-      <div class="cell"><b>问题</b>多模态需多套编解码器</div>
-      <div class="cell"><b>方法</b>跨模态联合 token 路由，单一主干</div>
-      <div class="cell"><b>结果</b>文 / 图 / 音 / 视频统一，6 项基准 SOTA 中 5 项</div>
-    </div>
-    <div class="paper-why"><b>为什么重要：</b>代表多模态统一架构的收敛方向，是中期架构赌注。</div>
-  </div>
-
-  <div class="paper">
-    <div class="paper-head">
-      <span class="paper-tag">D&amp;B</span>
-      <h3 class="paper-title">RealBench: A Reproducibility-Oriented Benchmark for Efficient Training</h3>
-    </div>
-    <div class="paper-auth">Mila · Hugging Face</div>
-    <div class="paper-body">
-      <div class="cell"><b>问题</b>效率方法难公平对比</div>
-      <div class="cell"><b>方法</b>统一硬件 / 预算下的标准化评测协议</div>
-      <div class="cell"><b>结果</b>复评 32 个效率方法，1/3 复现不到原报告</div>
-    </div>
-    <div class="paper-why"><b>为什么重要：</b>我们评估外部效率方案时应以此为对照基准。</div>
-  </div>
-
-  <!-- 5 关键趋势与信号 -->
-  <h2 class="sec-title"><span class="num">05</span> 关键趋势与信号 <span class="en">Trends &amp; Signals <span class="req req-rec">推荐</span></span></h2>
-  <div class="prose">
-    <p><b>Benchmark 格局：</b>效率类工作开始被 RealBench 这类"可复现基准"统一口径，约 1/3 过去的效率声明无法复现——意味着我们引用外部效率数据时要打折扣，优先自测。</p>
-    <p><b>SOTA 推进：</b>万亿 MoE 训练、2-bit 推理、无参考对齐三项的 SOTA 都被本次会议明显推高；统一多模态架构在 6 项基准中拿下 5 项 SOTA。</p>
-    <p><b>资源 / 数据集：</b>Datasets &amp; Benchmarks 轨继续升温，尤其"可复现性"与"评测协议"类数据集；代码开源率仍高（重点论文 5/5 开源）。</p>
-    <p><b>冒头子方向：</b>推测解码与 MoE 的结合、在线 / 自博弈 DPO、跨模态联合路由——三者明年大概率成为独立子赛道。</p>
-  </div>
-
-  <!-- 6 对我们的启示与建议 -->
-  <h2 class="sec-title"><span class="num">06</span> 对我们的启示与建议 <span class="en">Implications <span class="req req-must">必要</span></span></h2>
-  <div class="impl"><span class="cat cat-inv">要投的方向</span><span class="txt"><b>MoE 基础设施</b>与<b>统一多模态架构</b>——两者都是中期胜负手，我们目前能力偏薄，建议立项。</span></div>
-  <div class="impl"><span class="cat cat-adopt">可落地的方法</span><span class="txt"><b>无参考偏好优化</b>（省一份参考模型副本）与<b>2-bit 推理量化</b>（低成本 / 边缘场景）——工程门槛低、收益可量化，优先接入。</span></div>
-  <div class="impl"><span class="cat cat-gap">能力差距</span><span class="txt">MoE 训练栈、跨模态联合路由缺乏积累，存在被拉开 <b>6–12 个月</b>的风险；评测侧缺自有可复现基准。</span></div>
-  <div class="impl"><span class="cat cat-risk">风险</span><span class="txt">外部效率声明约 1/3 不可复现，决策前一律自测；统一架构路线若成主流，专用多模态栈有被淘汰风险。</span></div>
-  <div class="impl"><span class="cat cat-inv">招聘 / 合作</span><span class="txt">重点关注 MoE 系统、推测解码、对齐工程方向的人 / 实验室（MIT、Stanford、Berkeley、ETH）；今年现场这类人才抢手、开价偏高。</span></div>
-
-  <!-- 7 待跟进事项 -->
-  <h2 class="sec-title"><span class="num">07</span> 待跟进事项 <span class="en">Follow-ups <span class="req req-rec">推荐</span></span></h2>
-  <table class="fu">
-    <thead><tr><th>事项</th><th>类型</th><th>负责人</th><th>截止</th></tr></thead>
-    <tbody>
-      <tr><td>复现 MoE 专家卸载，评估接入内部 100B+ 训练</td><td>复现实验</td><td class="owner">张三</td><td class="due">Dec 15</td></tr>
-      <tr><td>无参考偏好优化接入对齐 pipeline 做 A/B</td><td>工程接入</td><td class="owner">王五</td><td class="due">Dec 20</td></tr>
-      <tr><td>立项评估：MoE 基础设施 / 统一多模态架构</td><td>立项</td><td class="owner">张三 + 负责人</td><td class="due">Jan 15</td></tr>
-      <tr><td>用 RealBench 协议自测 3 个候选效率方案</td><td>评测</td><td class="owner">李四</td><td class="due">Dec 25</td></tr>
-    </tbody>
-  </table>
-
-  <!-- 8 附录 -->
-  <h2 class="sec-title"><span class="num">08</span> 附录 <span class="en">Appendix <span class="req req-opt">可选</span></span></h2>
-  <table class="cov">
-    <thead><tr><th>覆盖人</th><th>方向</th><th>覆盖场次（节选）</th></tr></thead>
-    <tbody>
-      <tr><td>张三</td><td>高效训练 / 推理</td><td>Oral 3A-01 / 03、Spotlight 3A-04、Workshop Efficient ML</td></tr>
-      <tr><td>李四</td><td>多模态 / 量化 / 评测</td><td>Oral 7B-02、QMoE-Lite、D&amp;B RealBench</td></tr>
-      <tr><td>王五</td><td>对齐 / 偏好优化</td><td>Spotlight 5C-02、Poster Session 2</td></tr>
-    </tbody>
-  </table>
-  <p class="sec-intro" style="margin-top:10px;">资源链接汇总：arXiv / GitHub / 项目主页 见各重点论文卡片与日报原文。</p>
-
-  <div class="footer">NeurIPS 2025 参会总结报告 · 参会团队出品 · 呈送领导团队 &nbsp;|&nbsp; <span class="hint">本文件为设计样例，内容为虚构示例</span></div>
-</div>
-</body>
+  </body>
 </html>

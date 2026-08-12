@@ -74,10 +74,20 @@ Vercel project settings):
 FIREBASE_PROJECT_ID=...
 FIREBASE_CLIENT_EMAIL=...
 FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n
+FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+DEEPSEEK_API_KEY=<server-secret>
 ```
 
 > Keep the `\n` escapes in `FIREBASE_PRIVATE_KEY` — the app converts them to real
-> newlines at runtime.
+> newlines at runtime. `FIREBASE_STORAGE_BUCKET` and `DEEPSEEK_API_KEY` are
+> server-only environment variables. AI generation always uses the fixed
+> `deepseek-v4-flash` model.
+
+AI report generation requires both `FIREBASE_STORAGE_BUCKET` and
+`DEEPSEEK_API_KEY` only in the serverless environment. Never expose either
+secret to the client. Raw transcript text, member focus, Evidence, and
+unadopted candidates remain private to the generation flow and must not be
+written to client or server logs.
 
 Optional:
 
@@ -91,14 +101,16 @@ super-admin set-role endpoint for this).
 
 ### Scripts
 
-| Script                 | Description                          |
-| ---------------------- | ------------------------------------ |
-| `npm run dev`          | Start the Vite dev server            |
-| `npm run build`        | Production build                     |
-| `npm run preview`      | Preview the production build locally |
-| `npm run typecheck`    | `tsc --noEmit` (type-check the app)  |
-| `npm run format`       | Format the codebase with Prettier    |
-| `npm run format:check` | Verify Prettier formatting           |
+| Script                 | Description                             |
+| ---------------------- | --------------------------------------- |
+| `npm run dev`          | Start the Vite dev server               |
+| `npm run build`        | Production build                        |
+| `npm run preview`      | Preview the production build locally    |
+| `npm run typecheck`    | `tsc --noEmit` (type-check the app)     |
+| `npm run test`         | Run the Vitest test suite in watch mode |
+| `npm run test:run`     | Run the Vitest test suite once          |
+| `npm run format`       | Format the codebase with Prettier       |
+| `npm run format:check` | Verify Prettier formatting              |
 
 ## Project Structure
 
@@ -130,6 +142,32 @@ functions are compiled by Vercel at deploy time. Route rewrites are configured i
 
 Firebase Storage rules live in [`storage.rules`](storage.rules); deploy them with
 the Firebase CLI (`firebase deploy --only storage`).
+
+### AI report generation release and rollback
+
+Deploy `storage.rules` before enabling transcript UI, so the
+`conference-transcripts/{confId}/{reportId}/{sessionId}/{fileName}` boundary is
+in effect before users can upload a transcript. Configure
+`DEEPSEEK_API_KEY` and `FIREBASE_STORAGE_BUCKET` as server-side deployment
+variables, then verify the Vercel API deployment against a non-production
+Firebase project.
+
+AI controls appear only when a report is bound to a valid immutable template
+version at `reportTemplates/{templateId}/versions/{version}` with its matching
+template hash. Do not mutate a bound immutable version to disable the feature.
+Instead, safely disable AI generation by rolling back the UI/API deployment.
+Previously adopted report content remains ordinary editable report content.
+
+Candidates are ephemeral React state: they are never persisted and cannot be
+recovered after navigation. Before release, use the human checklist in
+[`docs/ai-report-quality-checklist.md`](docs/ai-report-quality-checklist.md),
+including its authenticated two-browser and public/export privacy checks. The
+optional live fixture evaluation is deliberately opt-in and may incur model
+usage:
+
+```bash
+RUN_LIVE_AI_EVAL=1 npm run test:run -- server/ai-report/quality.live.test.ts
+```
 
 ## Notes
 

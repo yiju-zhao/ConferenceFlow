@@ -4,4 +4,5 @@ dist
 *.local
 .claude/
 .superpowers/
+.worktrees/
 design/

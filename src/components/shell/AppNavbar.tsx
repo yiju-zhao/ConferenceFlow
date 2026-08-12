@@ -41,7 +41,13 @@ export default function AppNavbar({ showConfTabs = false }: { showConfTabs?: boo
           gap: 1,
         }}
       >
-        <span style={{ fontWeight: 800, letterSpacing: "-0.035em", color: "var(--text-primary, #1a1c1c)" }}>
+        <span
+          style={{
+            fontWeight: 800,
+            letterSpacing: "-0.035em",
+            color: "var(--text-primary, #1a1c1c)",
+          }}
+        >
           Conference
         </span>
         <span style={{ fontWeight: 400, letterSpacing: "0.01em", color: "#4A7FB5" }}>Flow</span>
@@ -56,11 +62,7 @@ export default function AppNavbar({ showConfTabs = false }: { showConfTabs?: boo
                 key={tb.key}
                 to={tb.to}
                 className={`bp6-button bp6-minimal bp6-small ${active ? "bp6-active" : ""}`}
-                style={
-                  active
-                    ? { color: hex, boxShadow: `inset 0 -2px 0 ${hex}` }
-                    : undefined
-                }
+                style={active ? { color: hex, boxShadow: `inset 0 -2px 0 ${hex}` } : undefined}
               >
                 {tb.label}
               </Link>

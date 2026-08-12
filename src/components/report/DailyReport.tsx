@@ -29,7 +29,19 @@ import { formatDateTime } from "../../i18n/dateUtils";
 import huaweiLogo from "../../assets/huawei_logo.png";
 import IntelCard, { topicSlug } from "./IntelCard";
 import SpeakersEditor from "./SpeakersEditor";
+import AddReportSessionDialog from "./AddReportSessionDialog";
+import AiFocusDialog from "./ai/AiFocusDialog";
+import AiFieldAction from "./ai/AiFieldAction";
+import SessionAiSection from "./ai/SessionAiSection";
 import SnapshotViewer from "./SnapshotViewer";
+import { useBoundReportTemplate } from "../../hooks/useBoundReportTemplate";
+import {
+  readdReportSession,
+  reportSessionSpeakers,
+  selectedReportSessions,
+  sessionKey,
+} from "../../lib/ai-report/sessionSelection";
+import { requireAuthenticatedUserId } from "../../lib/ai-report/memberFocus";
 import type {
   BlockField,
   Member,
@@ -43,6 +55,7 @@ import type {
   ReportSpeaker,
   Session,
   SitePhoto,
+  TemplateFieldValue,
 } from "../../types";
 
 // A conference session scoped to a single day's report. `attendees` is
@@ -74,9 +87,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const viewMode =
     viewModeProp || new URLSearchParams(window.location.search).get("preview") === "1";
   const { user } = useAuth();
-  const { isAdmin: isConfAdmin } = useMembership(confId);
+  const { membership, isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
-  const [sessions, setSessions] = useState<DailySession[]>([]);
   const [allConferenceSessions, setAllConferenceSessions] = useState<Session[]>([]);
   const [members, setMembers] = useState<ResolvedMember[]>([]);
   const [reportData, setReportData] = useState<Report | null>(null);
@@ -108,6 +120,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     error: false,
   });
   const [showDeleteSelect, setShowDeleteSelect] = useState(false);
+  const [showAddSession, setShowAddSession] = useState(false);
+  const [showAiFocus, setShowAiFocus] = useState(false);
 
   const [tocVisible, setTocVisible] = useState(true);
   const [openInlineMenu, setOpenInlineMenu] = useState<string | null>(null);
@@ -131,7 +145,19 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const reportContainerRef = useRef<HTMLDivElement>(null);
   const initDone = useRef(false);
   const collapsedInit = useRef(false);
-  const { debouncedSave, saveState } = useDebouncedSave(600);
+  const { debouncedSave, flushPending, saveState } = useDebouncedSave(600);
+
+  const saveAiFocus = useCallback(
+    async (nextFocus: string) => {
+      const userId = requireAuthenticatedUserId(user);
+      await setDoc(
+        doc(db, "conferences", confId, "members", userId),
+        { aiFocus: nextFocus },
+        { merge: true },
+      );
+    },
+    [confId, user],
+  );
 
   // Lock body scroll when history panel is open
   useEffect(() => {
@@ -246,27 +272,18 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     });
   }, [user, confId]);
 
-  // Sessions (filtered by date + all for session picker)
+  // Conference calendar Sessions
   useEffect(() => {
     if (!user) return;
     return onSnapshot(collection(db, "conferences", confId, "sessions"), (snap) => {
       const all: Session[] = [];
-      const filtered: DailySession[] = [];
       snap.forEach((d) => {
         const data = d.data() as Session;
         all.push({ ...data, id: d.id });
-        if (data.date === date)
-          filtered.push({
-            ...(data as Omit<Session, "attendees">),
-            id: d.id,
-            attendees: new Set(data.attendees || []),
-          } as DailySession);
       });
-      filtered.sort((a, b) => a.start.localeCompare(b.start));
-      setSessions(filtered);
       setAllConferenceSessions(all);
     });
-  }, [user, date, confId]);
+  }, [user, confId]);
 
   // Report data
   useEffect(() => {
@@ -279,24 +296,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   // Auto-init report
   useEffect(() => {
-    if (!user || loading || reportData || initDone.current || sessions.length === 0) return;
+    if (!user || loading || reportData || initDone.current) return;
     initDone.current = true;
-    const sessionMap: Record<string, ReportSessionData> = {};
-    sessions.forEach((s) => {
-      sessionMap[s.code] = {
-        speakers:
-          s.speakers && s.speakers.length > 0
-            ? s.speakers.map((sp) => ({
-                name: sp.name || "",
-                position: sp.title || "",
-                company: sp.company || "",
-              }))
-            : [{ name: "", position: "", company: "" }],
-        takeaways: "",
-        insights: "",
-        illustration: "",
-      };
-    });
     setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       date,
       title: "",
@@ -305,16 +306,32 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       reflections: "",
       rumors: "",
       sitePhotos: [],
-      sessions: sessionMap,
+      sessions: {},
       topicOrder: [],
       status: "draft",
     }).catch(console.error);
-  }, [user, loading, reportData, sessions, reportId, date]);
+  }, [user, loading, reportData, reportId, date, confId]);
 
   // Keep sessionDataRef and reportDataRef in sync
   const sessionData = reportData?.sessions || {};
   sessionDataRef.current = sessionData;
   reportDataRef.current = reportData;
+  const { template, error: templateError } = useBoundReportTemplate(reportData);
+  const fieldById = useMemo(
+    () => new Map(template?.fields.map((field) => [field.id, field]) ?? []),
+    [template],
+  );
+  const titleField = fieldById.get("title");
+  const summaryPointsField = fieldById.get("summaryPoints");
+  const rumorsField = fieldById.get("rumors");
+  const sessionAiFields =
+    template?.fields.filter(
+      (field) =>
+        field.scope === "session" &&
+        field.ai.enabled &&
+        field.type !== "fixed" &&
+        field.type !== "image",
+    ) ?? [];
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const memberMap = useMemo(() => {
@@ -335,14 +352,21 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   const { activeUsers } = usePresence(confId, reportId);
 
-  const deletedSessionCodes = useMemo(
-    () => new Set(reportData?.deletedSessions || []),
-    [reportData],
-  );
-
   const activeSessions = useMemo(
-    () => sessions.filter((s) => !deletedSessionCodes.has(s.code)),
-    [sessions, deletedSessionCodes],
+    () =>
+      selectedReportSessions(
+        allConferenceSessions,
+        reportData?.sessions ?? {},
+        reportData?.deletedSessions ?? [],
+      ).map(
+        (session) =>
+          ({
+            ...session,
+            code: sessionKey(session),
+            attendees: new Set(session.attendees || []),
+          }) as DailySession,
+      ),
+    [allConferenceSessions, reportData?.sessions, reportData?.deletedSessions],
   );
 
   const topicsMap = useMemo(() => {
@@ -391,14 +415,39 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     (field: string, value: unknown) => {
       if (!user || viewMode) return;
       debouncedSave(field, () => {
-        setDoc(
+        return setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
           { [field]: value },
           { merge: true },
-        ).catch(console.error);
+        ).catch((error: unknown) => {
+          console.error(error);
+          throw error;
+        });
       });
     },
-    [user, reportId, debouncedSave, viewMode],
+    [user, reportId, debouncedSave, viewMode, confId],
+  );
+
+  const addReportSession = useCallback(
+    async (key: string) => {
+      if (!user || viewMode) return;
+      const session = allConferenceSessions.find((item) => sessionKey(item) === key);
+      if (!session) throw new Error("calendar Session not found");
+      const update = readdReportSession(
+        reportDataRef.current?.sessions ?? {},
+        reportDataRef.current?.deletedSessions ?? [],
+        session,
+      );
+      await setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        {
+          sessions: { [update.key]: update.draft },
+          deletedSessions: update.deletedSessions,
+        },
+        { merge: true },
+      );
+    },
+    [allConferenceSessions, confId, reportId, user, viewMode],
   );
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
@@ -477,7 +526,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       const data: ReportSnapshotData = {
         title: rd.title || "",
         summaryPoints: rd.summaryPoints || [],
-        sessions: sessionDataRef.current || {},
+        sessions: Object.fromEntries(
+          Object.entries(sessionDataRef.current || {}).map(([sessionId, value]) => {
+            const { transcriptRef: _transcriptRef, ...snapshotSession } = value;
+            return [sessionId, snapshotSession];
+          }),
+        ),
         topicOrder: rd.topicOrder || [],
         deletedSessions: rd.deletedSessions || [],
         onsiteInfo: rd.onsiteInfo || "",
@@ -535,9 +589,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   const saveSessionField = useCallback(
     (code: string, field: string, value: unknown) => {
-      if (!user) return;
+      if (!user || viewMode) return;
       debouncedSave(`${code}.${field}`, () => {
-        setDoc(
+        return setDoc(
           doc(db, "conferences", confId, "dailyReports", reportId),
           {
             sessions: {
@@ -549,10 +603,45 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
             },
           },
           { merge: true },
-        ).catch(console.error);
+        ).catch((error: unknown) => {
+          console.error(error);
+          throw error;
+        });
       });
     },
-    [user, reportId, debouncedSave, confId],
+    [user, reportId, debouncedSave, confId, viewMode],
+  );
+
+  const saveAiDailyField = useCallback(
+    async (fieldId: string, value: TemplateFieldValue) => {
+      if (!user || viewMode) throw new Error("report is read-only");
+      await setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        { [fieldId]: value },
+        { merge: true },
+      );
+    },
+    [confId, reportId, user, viewMode],
+  );
+
+  const saveAiSessionFields = useCallback(
+    async (sessionId: string, values: Record<string, TemplateFieldValue>) => {
+      if (!user || viewMode) throw new Error("report is read-only");
+      await setDoc(
+        doc(db, "conferences", confId, "dailyReports", reportId),
+        {
+          sessions: {
+            [sessionId]: {
+              ...values,
+              lastEditedBy: user.uid,
+              lastEditedAt: Date.now(),
+            },
+          },
+        },
+        { merge: true },
+      );
+    },
+    [confId, reportId, user, viewMode],
   );
 
   // Speakers: save whole array debounced
@@ -988,7 +1077,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     if (!reportData || collapsedInit.current) return;
     collapsedInit.current = true;
     const initial = new Set(
-      sessions
+      activeSessions
         .filter((s) => {
           const sd = reportData.sessions?.[s.code];
           return sd?.takeaways && sd.takeaways !== "";
@@ -996,7 +1085,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         .map((s) => s.code),
     );
     setCollapsedSessions(initial);
-  }, [reportData, sessions]);
+  }, [reportData, activeSessions]);
 
   const toggleCollapse = useCallback((code: string) => {
     setCollapsedSessions((prev) => {
@@ -1013,7 +1102,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     try {
       const updatedMap: Record<string, ReportSessionData> = {};
       let syncedCount = 0;
-      sessions.forEach((s) => {
+      activeSessions.forEach((s) => {
         const existing = sessionDataRef.current[s.code] || {};
         const info = SESSION_CATALOG.get(s.code);
         if (info && info.speakers && info.speakers.length > 0) {
@@ -1446,6 +1535,24 @@ ${clone.outerHTML}
               {t("common.save")}
             </button>
 
+            <button
+              onClick={() => setShowAiFocus(true)}
+              title={membership?.aiFocus || t("report.ai.noAiFocus")}
+              style={{
+                padding: "5px 14px",
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: 0.5,
+                background: "#333",
+                color: "#ccc",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'Work Sans', sans-serif",
+              }}
+            >
+              {t("report.ai.aiFocus")}
+            </button>
+
             {/* ② Preview — primary action, visually distinct */}
             <button
               onClick={() =>
@@ -1644,6 +1751,11 @@ ${clone.outerHTML}
           </div>
         </div>
       )}
+      {!viewMode && templateError && (
+        <p className="no-print ai-report-error" role="status">
+          {t("report.ai.templateError")}
+        </p>
+      )}
 
       {/* ── Floating formatting toolbar (appears on text selection) ── */}
       {!viewMode && floatingToolbar && (
@@ -1752,6 +1864,13 @@ ${clone.outerHTML}
         </div>
       )}
 
+      <AiFocusDialog
+        open={showAiFocus}
+        value={membership?.aiFocus ?? ""}
+        onSave={saveAiFocus}
+        onClose={() => setShowAiFocus(false)}
+      />
+
       {/* ── Share Modal ──────────────────────────────────────────── */}
       {!viewMode && shareUrl && (
         <div
@@ -1818,6 +1937,19 @@ ${clone.outerHTML}
                 </span>
               )}
             </h1>
+            {template && titleField && user && (
+              <AiFieldAction
+                confId={confId}
+                reportId={reportId}
+                templateHash={template.templateHash}
+                field={titleField}
+                focus={membership?.aiFocus ?? ""}
+                getCurrentValue={() => reportDataRef.current?.title}
+                flushPending={flushPending}
+                onSave={(value) => saveAiDailyField("title", value)}
+                readOnly={viewMode}
+              />
+            )}
           </div>
           <img
             src={huaweiLogo}
@@ -1924,6 +2056,19 @@ ${clone.outerHTML}
           {/* Summary */}
           <div className="report-summary">
             <h2 className="report-section-title">{t("report.corePoints")}</h2>
+            {template && summaryPointsField && user && (
+              <AiFieldAction
+                confId={confId}
+                reportId={reportId}
+                templateHash={template.templateHash}
+                field={summaryPointsField}
+                focus={membership?.aiFocus ?? ""}
+                getCurrentValue={() => reportDataRef.current?.summaryPoints}
+                flushPending={flushPending}
+                onSave={(value) => saveAiDailyField("summaryPoints", value)}
+                readOnly={viewMode}
+              />
+            )}
             <BulletEditor
               points={reportData?.summaryPoints}
               onSave={(pts) => saveField("summaryPoints", pts)}
@@ -1938,6 +2083,11 @@ ${clone.outerHTML}
           <h2 className="report-section-title" style={{ marginTop: 32 }}>
             {t("report.relatedTopics")}
           </h2>
+          {!viewMode && (
+            <button className="no-print btn-ghost" onClick={() => setShowAddSession(true)}>
+              {t("report.addSession")}
+            </button>
+          )}
 
           {noTopicSessions.map((session) => {
             const sd = sessionData[session.code] || {};
@@ -1948,17 +2098,7 @@ ${clone.outerHTML}
               !sd.insights?.replace(/<[^>]*>/g, "").trim()
             )
               return null;
-            const speakers =
-              sd.speakers ||
-              (sd.speaker
-                ? [
-                    {
-                      name: sd.speaker,
-                      position: "",
-                      company: sd.company || "",
-                    },
-                  ]
-                : [{ name: "", position: "", company: "" }]);
+            const speakers = reportSessionSpeakers(session, sd, Boolean(reportData?.templateId));
             const isCollapsed = collapsedSessions.has(session.code);
             return (
               <div key={session.code} id={`session-${session.code}`} className="report-session">
@@ -2025,7 +2165,7 @@ ${clone.outerHTML}
                         onUpdate={(newSpeakers) => saveSpeakers(session.code, newSpeakers)}
                         onAdd={() => addSpeaker(session.code)}
                         onRemove={(idx) => removeSpeaker(session.code, idx)}
-                        readOnly={viewMode}
+                        readOnly={viewMode || Boolean(reportData?.templateId)}
                       />
                     </div>
                     <div style={{ padding: "6px 20px 0" }}>
@@ -2090,6 +2230,27 @@ ${clone.outerHTML}
                       />
                     </div>
                     <div className="report-session-body">
+                      {template && user && (
+                        <SessionAiSection
+                          confId={confId}
+                          reportId={reportId}
+                          sessionId={session.code}
+                          templateHash={template.templateHash}
+                          fields={sessionAiFields}
+                          focus={membership?.aiFocus ?? ""}
+                          uid={user.uid}
+                          transcriptRef={sd.transcriptRef}
+                          flushPending={flushPending}
+                          getLatestValues={() =>
+                            (reportDataRef.current?.sessions?.[session.code] ?? {}) as Record<
+                              string,
+                              unknown
+                            >
+                          }
+                          onSaveFields={saveAiSessionFields}
+                          readOnly={viewMode}
+                        />
+                      )}
                       <div className="report-field-block">
                         <h4 className="report-field-heading report-field-heading--highlight">
                           {t("report.keyTakeaways")}
@@ -2185,18 +2346,11 @@ ${clone.outerHTML}
 
               {(topicsMap[topic] || []).map((session) => {
                 const sd = sessionData[session.code] || {};
-                // Graceful migration: old single-speaker format → new array format
-                const speakers =
-                  sd.speakers ||
-                  (sd.speaker
-                    ? [
-                        {
-                          name: sd.speaker,
-                          position: "",
-                          company: sd.company || "",
-                        },
-                      ]
-                    : [{ name: "", position: "", company: "" }]);
+                const speakers = reportSessionSpeakers(
+                  session,
+                  sd,
+                  Boolean(reportData?.templateId),
+                );
                 const contributorNames = Array.from(session.attendees)
                   .map((id) => memberMap[id])
                   .filter(Boolean);
@@ -2276,6 +2430,7 @@ ${clone.outerHTML}
                             onUpdate={(newSpeakers) => saveSpeakers(session.code, newSpeakers)}
                             onAdd={() => addSpeaker(session.code)}
                             onRemove={(idx) => removeSpeaker(session.code, idx)}
+                            readOnly={viewMode || Boolean(reportData?.templateId)}
                           />
                         </div>
 
@@ -2344,6 +2499,27 @@ ${clone.outerHTML}
 
                         {/* Body: takeaways & insights */}
                         <div className="report-session-body">
+                          {template && user && (
+                            <SessionAiSection
+                              confId={confId}
+                              reportId={reportId}
+                              sessionId={session.code}
+                              templateHash={template.templateHash}
+                              fields={sessionAiFields}
+                              focus={membership?.aiFocus ?? ""}
+                              uid={user.uid}
+                              transcriptRef={sd.transcriptRef}
+                              flushPending={flushPending}
+                              getLatestValues={() =>
+                                (reportDataRef.current?.sessions?.[session.code] ?? {}) as Record<
+                                  string,
+                                  unknown
+                                >
+                              }
+                              onSaveFields={saveAiSessionFields}
+                              readOnly={viewMode}
+                            />
+                          )}
                           <div className="report-field-block">
                             <h4 className="report-field-heading report-field-heading--highlight">
                               {t("report.keyTakeaways")}
@@ -2571,6 +2747,19 @@ ${clone.outerHTML}
           <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>
             {t("report.rumors")}
           </h2>
+          {template && rumorsField && user && (
+            <AiFieldAction
+              confId={confId}
+              reportId={reportId}
+              templateHash={template.templateHash}
+              field={rumorsField}
+              focus={membership?.aiFocus ?? ""}
+              getCurrentValue={() => reportDataRef.current?.rumors}
+              flushPending={flushPending}
+              onSave={(value) => saveAiDailyField("rumors", value)}
+              readOnly={viewMode}
+            />
+          )}
           <EditableField
             value={reportData?.rumors || ""}
             onSave={(html) => saveField("rumors", html)}
@@ -2719,6 +2908,19 @@ ${clone.outerHTML}
           {t("report.backToToc")}
         </a>
       )}
+
+      <AddReportSessionDialog
+        open={!viewMode && showAddSession}
+        sessions={allConferenceSessions}
+        selectedIds={new Set(activeSessions.map((session) => session.code))}
+        currentUid={user?.uid || ""}
+        onAdd={(key) => {
+          addReportSession(key)
+            .then(() => setShowAddSession(false))
+            .catch(console.error);
+        }}
+        onClose={() => setShowAddSession(false)}
+      />
 
       {/* Delete session — select session modal */}
       {!viewMode && showDeleteSelect && (
