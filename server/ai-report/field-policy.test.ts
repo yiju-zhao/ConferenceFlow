@@ -98,6 +98,11 @@ describe("report source policy", () => {
     const fields: TemplateField[] = [
       { ...textField, id: "summary", ai: { ...textField.ai, allowedSources: ["report_content"] } },
       { ...textField, id: "rumors", ai: { ...textField.ai, allowedSources: ["report_content"] } },
+      {
+        ...textField,
+        id: "rumorsBlocks",
+        ai: { ...textField.ai, allowedSources: ["report_content"] },
+      },
       { ...textField, id: "fixedThing", type: "fixed", ai: { ...textField.ai, enabled: false } },
       {
         ...textField,
@@ -109,6 +114,7 @@ describe("report source policy", () => {
     const report = {
       summary: "<p>第一段 &amp; 第二段</p><p>第三&nbsp;段<br>第四 &quot;段&quot;</p>",
       rumors: "保留",
+      rumorsBlocks: ["不应作为日报来源"],
       sitePhotos: [{ image: "photo" }],
       aiFocus: "不应作为来源",
       status: "draft",
@@ -125,6 +131,7 @@ describe("report source policy", () => {
     ]);
     expect(blocks.map((block) => block.text).join(" ")).not.toContain("第一段");
     expect(blocks.map((block) => block.text).join(" ")).not.toContain("secret.txt");
+    expect(blocks.map((block) => block.text).join(" ")).not.toContain("不应作为日报来源");
   });
 
   it("excludes retained report Sessions marked deleted from daily source and Evidence", () => {

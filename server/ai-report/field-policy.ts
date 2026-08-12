@@ -27,6 +27,7 @@ const DAILY_METADATA_FIELDS = new Set([
   "deletedSessions",
   "onsiteInfoBlocks",
   "reflectionsBlocks",
+  "rumorsBlocks",
   "sections",
   "citations",
   "onsiteEvents",

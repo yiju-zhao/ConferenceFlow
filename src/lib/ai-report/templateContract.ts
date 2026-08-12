@@ -41,6 +41,7 @@ const RESERVED_AI_FIELD_IDS = {
     "deletedSessions",
     "onsiteInfoBlocks",
     "reflectionsBlocks",
+    "rumorsBlocks",
     "sections",
     "citations",
     "onsiteEvents",

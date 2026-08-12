@@ -161,6 +161,14 @@ describe("template contract", () => {
     expect(() => assertTemplateVersion(invalid)).toThrow("reserved AI field");
   });
 
+  it("rejects a daily rumorsBlocks AI field", () => {
+    const invalid = structuredClone(template) as unknown as Record<string, unknown>;
+    const field = (invalid.fields as Array<Record<string, unknown>>)[0];
+    field.id = "rumorsBlocks";
+    field.scope = "daily";
+    expect(() => assertTemplateVersion(invalid)).toThrow("reserved AI field: rumorsBlocks");
+  });
+
   it("requires valid field scopes", () => {
     const invalid = structuredClone(template) as unknown as Record<string, unknown>;
     (invalid.fields as Array<Record<string, unknown>>)[0].scope = "conference";
