@@ -1,9 +1,7 @@
 import type { Bucket } from "@google-cloud/storage";
 import type { Firestore } from "firebase-admin/firestore";
 import type {
-  AiBlockField,
   GenerateRequest,
-  GenerationMode,
   Report,
   ReportTemplateVersion,
   TemplateField,
@@ -18,6 +16,7 @@ import {
 } from "../../src/lib/ai-report/templateContract";
 import { bucket, db } from "../../api/lib/firebase-admin.js";
 import { buildDailySourceBlocks, readReportFieldValue } from "./field-policy";
+import type { BlockGenerationInput } from "./generate-block";
 import type { DailyGenerationInput } from "./generate-daily";
 import type { SessionGenerationInput } from "./generate-session";
 import {
@@ -25,22 +24,6 @@ import {
   parseTranscript,
   type TranscriptSegment,
 } from "./transcript-parser";
-
-export interface BlockGenerationInput {
-  template: ReportTemplateVersion;
-  field: TemplateField;
-  targetFieldId: AiBlockField;
-  blockId: string;
-  blockKind: "heading" | "body";
-  currentValue: string;
-  segments: TranscriptSegment[];
-  focus: string;
-  mode: GenerationMode;
-  instruction: string;
-  templateHash: string;
-  transcriptHash?: string;
-  baseFieldHashes: Record<string, string>;
-}
 
 export interface GenerationContextSource {
   getReport(confId: string, reportId: string): Promise<Report | null>;
