@@ -1,16 +1,24 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import type { GenerateRequest } from "../../../../../../src/types";
+import {
+  AI_BLOCK_FIELDS,
+  type AiBlockField,
+  type GenerateRequest,
+  type GenerateResponse,
+} from "../../../../../../src/types";
+import { isBlockTranscriptPathId } from "../../../../../../src/lib/ai-report/transcriptSource.js";
 import { AuthError, requireMember } from "../../../../../lib/auth-middleware.js";
 import {
   GenerationContextError,
   loadGenerationContext,
 } from "../../../../../../server/ai-report/context.js";
 import { DeepSeekRequestError } from "../../../../../../server/ai-report/deepseek.js";
+import { generateBlockCandidate } from "../../../../../../server/ai-report/generate-block.js";
 import { generateDailyCandidate } from "../../../../../../server/ai-report/generate-daily.js";
 import { generateSessionCandidate } from "../../../../../../server/ai-report/generate-session.js";
 
 const MAX_ID_LENGTH = 256;
 const MAX_INSTRUCTION_CODE_POINTS = 4_000;
+const BLOCK_FIELDS = new Set<AiBlockField>(AI_BLOCK_FIELDS);
 
 const CONTEXT_MESSAGES: Record<string, string> = {
   REPORT_NOT_FOUND: "Report not found",
@@ -18,8 +26,11 @@ const CONTEXT_MESSAGES: Record<string, string> = {
   TEMPLATE_NOT_FOUND: "Bound template version not found",
   TEMPLATE_MISMATCH: "Template identity/hash changed",
   SESSION_NOT_FOUND: "Report Session or Calendar Session not found",
-  TRANSCRIPT_REQUIRED: "Session transcript is required",
+  BLOCK_NOT_FOUND: "Report Block not found",
+  BLOCK_DUPLICATE: "Report Block identity is ambiguous",
+  TRANSCRIPT_REQUIRED: "A required generation source is missing",
   TRANSCRIPT_PATH_MISMATCH: "Transcript path is outside the bound Session",
+  BLOCK_TRANSCRIPT_PATH_MISMATCH: "Transcript path is outside the bound Block",
   TRANSCRIPT_HASH_MISMATCH: "Transcript changed after reference creation",
   INVALID_TRANSCRIPT: "Transcript encoding/format/size is invalid",
   FIELD_NOT_ELIGIBLE: "Target field or requested mode is not allowed",
@@ -55,7 +66,9 @@ function validSessionId(value: unknown): value is string {
 export function parseGenerateRequest(body: unknown): GenerateRequest {
   if (!isPlainRecord(body)) throw new RequestValidationError();
   const raw = body;
-  if (raw.scope !== "session" && raw.scope !== "daily") throw new RequestValidationError();
+  if (raw.scope !== "session" && raw.scope !== "daily" && raw.scope !== "block") {
+    throw new RequestValidationError();
+  }
   if (raw.mode !== "rewrite" && raw.mode !== "append") throw new RequestValidationError();
   if (raw.instruction !== undefined && typeof raw.instruction !== "string") {
     throw new RequestValidationError();
@@ -63,7 +76,9 @@ export function parseGenerateRequest(body: unknown): GenerateRequest {
   const allowed =
     raw.scope === "session"
       ? new Set(["scope", "sessionId", "mode", "instruction"])
-      : new Set(["scope", "targetFieldId", "mode", "instruction"]);
+      : raw.scope === "daily"
+        ? new Set(["scope", "targetFieldId", "mode", "instruction"])
+        : new Set(["scope", "targetFieldId", "blockId", "mode", "instruction"]);
   if (Object.keys(raw).some((key) => !allowed.has(key))) throw new RequestValidationError();
   const instruction = typeof raw.instruction === "string" ? raw.instruction.trim() : undefined;
   if (instruction !== undefined && Array.from(instruction).length > MAX_INSTRUCTION_CODE_POINTS) {
@@ -72,6 +87,22 @@ export function parseGenerateRequest(body: unknown): GenerateRequest {
   if (raw.scope === "session") {
     if (!validSessionId(raw.sessionId)) throw new RequestValidationError();
     return { scope: "session", sessionId: raw.sessionId.trim(), mode: raw.mode, instruction };
+  }
+  if (raw.scope === "block") {
+    if (
+      typeof raw.targetFieldId !== "string" ||
+      !BLOCK_FIELDS.has(raw.targetFieldId as AiBlockField) ||
+      !isBlockTranscriptPathId(raw.blockId)
+    ) {
+      throw new RequestValidationError();
+    }
+    return {
+      scope: "block",
+      targetFieldId: raw.targetFieldId as AiBlockField,
+      blockId: raw.blockId,
+      mode: raw.mode,
+      instruction,
+    };
   }
   if (
     typeof raw.targetFieldId !== "string" ||
@@ -196,14 +227,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const decoded = await requireMember(req, confId);
     const request = parseGenerateRequest(req.body);
     scope = request.scope;
-    const context = await loadGenerationContext({ confId, reportId, uid: decoded.uid, request });
-    if (context.scope === "block") {
-      throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
+    if (
+      request.scope === "block" &&
+      (!isBlockTranscriptPathId(confId) || !isBlockTranscriptPathId(reportId))
+    ) {
+      throw new RequestValidationError();
     }
-    const result =
-      context.scope === "session"
-        ? await generateSessionCandidate(context.input, disconnect.signal)
-        : await generateDailyCandidate(context.input, disconnect.signal);
+    const context = await loadGenerationContext({ confId, reportId, uid: decoded.uid, request });
+    let result: GenerateResponse;
+    switch (context.scope) {
+      case "session":
+        result = await generateSessionCandidate(context.input, disconnect.signal);
+        break;
+      case "daily":
+        result = await generateDailyCandidate(context.input, disconnect.signal);
+        break;
+      case "block":
+        result = await generateBlockCandidate(context.input, disconnect.signal);
+        break;
+    }
     logGenerationMetadata({
       requestId,
       scope,
