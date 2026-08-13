@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ReportBlock, TranscriptRef } from "../../types";
-import { blocksWithoutTranscripts, replaceReportBlock } from "./reportBlocks";
+import {
+  blocksWithoutTranscripts,
+  hasVisibleBlockContent,
+  replaceReportBlock,
+} from "./reportBlocks";
 
 const transcriptRef: TranscriptRef = {
   storagePath: "transcripts/b1.txt",
@@ -54,5 +58,15 @@ describe("replaceReportBlock", () => {
     expect(() => replaceReportBlock([body("b1", "A")], "missing", { content: "B" })).toThrow(
       "report Block not found",
     );
+  });
+});
+
+describe("hasVisibleBlockContent", () => {
+  it.each(["", "   \n\t", "<p><br></p>"])("rejects an empty editor value %#", (content) => {
+    expect(hasVisibleBlockContent(body("b1", content))).toBe(false);
+  });
+
+  it.each(["正文", "<p>正文</p>"])("accepts visible Block content %#", (content) => {
+    expect(hasVisibleBlockContent(body("b1", content))).toBe(true);
   });
 });

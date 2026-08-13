@@ -274,6 +274,9 @@
       "missingTranscript": "A transcript is required to generate a candidate.",
       "templateError": "The report template is unavailable, so a candidate cannot be generated.",
       "generationFailed": "Could not generate a candidate. Please try again.",
+      "missingBlockSource": "Add content to this block or upload a transcript first.",
+      "generateBlock": "Generate this block with AI",
+      "staleBlock": "This block or its transcript changed. Generate a new candidate.",
       "source": {
         "transcript": "Transcript",
         "report_field": "Report field",

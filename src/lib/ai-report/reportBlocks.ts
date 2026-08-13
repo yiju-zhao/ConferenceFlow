@@ -1,4 +1,9 @@
 import type { ReportBlock } from "../../types";
+import { htmlToPlainText } from "../../../server/ai-report/field-policy";
+
+export function hasVisibleBlockContent(block: ReportBlock): boolean {
+  return htmlToPlainText(block.content).trim().length > 0;
+}
 
 export function blocksWithoutTranscripts(blocks: ReportBlock[]): ReportBlock[] {
   return blocks.map(({ transcriptRef: _transcriptRef, ...block }) => block);
