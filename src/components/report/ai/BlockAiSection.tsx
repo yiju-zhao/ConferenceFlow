@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useBlockTranscriptSource } from "../../../hooks/useBlockTranscriptSource";
 import { applyCandidateValue, candidateIsCurrent } from "../../../lib/ai-report/applyCandidate";
@@ -9,7 +9,6 @@ import { normalizeStoredFieldValue } from "../../../lib/ai-report/templateContra
 import type {
   AiBlockField,
   GenerateRequest,
-  GenerationMode,
   ReportBlock,
   ReportTemplateVersion,
   TemplateField,
@@ -63,10 +62,20 @@ export default function BlockAiSection({
   });
   const generation = useAiGeneration(confId, reportId);
   const [setupOpen, setSetupOpen] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<GenerationMode>("rewrite");
   const [lastRequest, setLastRequest] = useState<GenerateRequest | undefined>();
   const [localError, setLocalError] = useState<string | null>(null);
   const [adopting, setAdopting] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const attemptRef = useRef(0);
+  const pendingRef = useRef(false);
+
+  useEffect(
+    () => () => {
+      attemptRef.current += 1;
+      pendingRef.current = false;
+    },
+    [],
+  );
 
   const eligible =
     field.id === targetFieldId &&
@@ -82,7 +91,25 @@ export default function BlockAiSection({
   );
   const hasSource = Boolean(block.transcriptRef) || hasVisibleBlockContent(block);
 
+  const beginPreparation = () => {
+    if (pendingRef.current) return null;
+    pendingRef.current = true;
+    const token = ++attemptRef.current;
+    setPreparing(true);
+    return token;
+  };
+
+  const finishPreparation = (token: number) => {
+    if (attemptRef.current !== token) return false;
+    pendingRef.current = false;
+    setPreparing(false);
+    return true;
+  };
+
   const close = () => {
+    attemptRef.current += 1;
+    pendingRef.current = false;
+    setPreparing(false);
     setSetupOpen(false);
     setLocalError(null);
     setLastRequest(undefined);
@@ -90,14 +117,17 @@ export default function BlockAiSection({
   };
 
   const generate = async (setup: AiGenerationSetup) => {
+    const token = beginPreparation();
+    if (token === null) return;
     setLocalError(null);
-    setSelectedMode(setup.mode);
     try {
       await flushPending();
     } catch {
+      if (!finishPreparation(token)) return;
       setLocalError(t("report.ai.generationFailed"));
       return;
     }
+    if (!finishPreparation(token)) return;
     const instruction = setup.instruction?.trim();
     const request: GenerateRequest = {
       scope: "block",
@@ -162,11 +192,16 @@ export default function BlockAiSection({
         setLocalError(t("report.ai.generationFailed"));
         return;
       }
+      const request = lastRequest;
+      if (!request || request.scope !== "block") {
+        setLocalError(t("report.ai.generationFailed"));
+        return;
+      }
       const result = applyCandidateValue(
         normalized,
         candidate.value,
         block.type === "heading" ? "short_text" : "rich_text",
-        selectedMode,
+        request.mode,
       );
       if (typeof result !== "string") {
         setLocalError(t("report.ai.generationFailed"));
@@ -183,13 +218,17 @@ export default function BlockAiSection({
   };
 
   const regenerate = async () => {
+    const token = beginPreparation();
+    if (token === null) return;
     setLocalError(null);
     try {
       await flushPending();
     } catch {
+      if (!finishPreparation(token)) return;
       setLocalError(t("report.ai.generationFailed"));
       return;
     }
+    if (!finishPreparation(token)) return;
     await generation.regenerate();
   };
 
@@ -210,12 +249,13 @@ export default function BlockAiSection({
         {t("report.ai.generateBlock")}
       </button>
       {!hasSource && <p>{t("report.ai.missingBlockSource")}</p>}
-      {localError && setupOpen && <p role="alert">{localError}</p>}
       <AiGenerationDialog
         open={setupOpen}
         availableModes={modes}
         focus={focus}
         busy={generation.phase === "generating"}
+        error={localError}
+        preparing={preparing}
         onGenerate={(setup) => void generate(setup)}
         onClose={close}
       />

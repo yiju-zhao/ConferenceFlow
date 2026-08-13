@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../../i18n";
@@ -82,6 +82,30 @@ describe("AiGenerationDialog", () => {
     rerender(<AiGenerationDialog open {...props} />);
     expect(screen.getByRole("button", { name: "改写" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("textbox", { name: "生成说明（可选）" })).toHaveValue("");
+  });
+
+  it("keeps cancellation available while preparing and renders errors inside the dialog", () => {
+    render(
+      <AiGenerationDialog
+        open
+        availableModes={["rewrite", "append"]}
+        focus="关注成本"
+        busy={false}
+        preparing
+        error="生成候选内容失败，请重试。"
+        onGenerate={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(screen.getByRole("button", { name: "改写" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "追加" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: "生成说明（可选）" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "生成中…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "取消" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "关闭" })).toBeEnabled();
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("生成候选内容失败，请重试。");
   });
 
   it("focuses setup, traps Tab, closes on Escape, and restores focus", async () => {

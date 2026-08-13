@@ -13,6 +13,8 @@ interface AiGenerationDialogProps {
   availableModes: readonly GenerationMode[];
   focus: string;
   busy: boolean;
+  error?: string | null;
+  preparing?: boolean;
   onGenerate: (setup: AiGenerationSetup) => void;
   onClose: () => void;
 }
@@ -26,6 +28,8 @@ export default function AiGenerationDialog({
   availableModes,
   focus,
   busy,
+  error = null,
+  preparing = false,
   onGenerate,
   onClose,
 }: AiGenerationDialogProps) {
@@ -58,6 +62,7 @@ export default function AiGenerationDialog({
     const trimmedInstruction = instruction.trim();
     onGenerate({ mode, ...(trimmedInstruction ? { instruction: trimmedInstruction } : {}) });
   };
+  const formBusy = busy || preparing;
 
   return (
     <div className="ai-report-overlay" onClick={busy ? undefined : onClose}>
@@ -89,7 +94,7 @@ export default function AiGenerationDialog({
             ref={rewriteRef}
             aria-pressed={mode === "rewrite"}
             onClick={() => setMode("rewrite")}
-            disabled={busy || !availableModes.includes("rewrite")}
+            disabled={formBusy || !availableModes.includes("rewrite")}
           >
             {t("report.ai.rewrite")}
           </button>
@@ -98,7 +103,7 @@ export default function AiGenerationDialog({
               type="button"
               aria-pressed={mode === "append"}
               onClick={() => setMode("append")}
-              disabled={busy}
+              disabled={formBusy}
             >
               {t("report.ai.append")}
             </button>
@@ -110,7 +115,7 @@ export default function AiGenerationDialog({
             id="ai-generation-instruction"
             value={instruction}
             onChange={(event) => setInstruction(event.target.value)}
-            disabled={busy}
+            disabled={formBusy}
             rows={3}
           />
         </label>
@@ -118,6 +123,11 @@ export default function AiGenerationDialog({
           {t("report.ai.currentFocus")}
           <textarea id="ai-generation-focus" value={focus} readOnly rows={3} />
         </label>
+        {error && (
+          <p className="ai-report-error" role="alert">
+            {error}
+          </p>
+        )}
         <footer className="ai-report-action-row">
           <button className="ai-report-action" type="button" onClick={onClose} disabled={busy}>
             {t("common.cancel")}
@@ -126,9 +136,9 @@ export default function AiGenerationDialog({
             className="ai-report-action ai-report-action-primary"
             type="button"
             onClick={submit}
-            disabled={busy}
+            disabled={formBusy}
           >
-            {busy ? t("report.ai.generating") : t("report.ai.generateCandidate")}
+            {formBusy ? t("report.ai.generating") : t("report.ai.generateCandidate")}
           </button>
         </footer>
       </section>

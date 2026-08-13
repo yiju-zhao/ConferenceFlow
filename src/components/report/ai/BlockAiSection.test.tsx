@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../../i18n";
@@ -35,6 +35,14 @@ const transcriptActions = {
   remove: vi.fn(),
 };
 const useBlockTranscriptSource = vi.fn((_options: unknown) => transcriptActions);
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
 
 vi.mock("./useAiGeneration", () => ({ useAiGeneration: () => generation }));
 vi.mock("../../../hooks/useBlockTranscriptSource", () => ({
@@ -134,7 +142,10 @@ describe("BlockAiSection", () => {
       error: null,
       retryable: false,
       regenerate: vi.fn().mockResolvedValue(undefined),
-      cancel: vi.fn(),
+      cancel: vi.fn(() => {
+        generation.phase = "idle";
+        generation.response = null;
+      }),
     });
   });
 
@@ -226,7 +237,7 @@ describe("BlockAiSection", () => {
     );
   });
 
-  it("keeps setup open and makes no API call when the initial flush fails", async () => {
+  it("shows an initial flush failure inside the active setup dialog", async () => {
     const user = userEvent.setup();
     render(
       <BlockAiSection
@@ -235,8 +246,105 @@ describe("BlockAiSection", () => {
     );
     await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
     await user.click(screen.getByRole("button", { name: "生成候选内容" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("生成候选内容失败，请重试。");
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "生成候选内容失败，请重试。",
+    );
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it("invalidates a pending initial flush when cancelled", async () => {
+    const user = userEvent.setup();
+    const firstFlush = deferred();
+    const flushPending = vi
+      .fn<() => Promise<void>>()
+      .mockReturnValueOnce(firstFlush.promise)
+      .mockResolvedValueOnce(undefined);
+    render(<BlockAiSection {...props({ flushPending })} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "追加" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await user.click(screen.getByRole("button", { name: "取消" }));
+
+    await act(async () => firstFlush.resolve());
+
+    expect(generate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await waitFor(() =>
+      expect(generate).toHaveBeenCalledWith({
+        scope: "block",
+        targetFieldId,
+        blockId: "b1",
+        mode: "rewrite",
+      }),
+    );
+  });
+
+  it("ignores a double submit while the initial flush is pending", async () => {
+    const pendingFlush = deferred();
+    const flushPending = vi.fn(() => pendingFlush.promise);
+    render(<BlockAiSection {...props({ flushPending })} />);
+    fireEvent.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    const submit = screen.getByRole("button", { name: "生成候选内容" });
+
+    fireEvent.click(submit);
+    fireEvent.click(submit);
+
+    expect(flushPending).toHaveBeenCalledOnce();
+    await act(async () => pendingFlush.resolve());
+    await waitFor(() => expect(generate).toHaveBeenCalledOnce());
+  });
+
+  it("keeps the winning generated request mode for adoption", async () => {
+    const user = userEvent.setup();
+    const pendingFlush = deferred();
+    const latest = body({ content: "<p>Latest</p>" });
+    const sectionProps = props({
+      flushPending: vi.fn(() => pendingFlush.promise),
+      getLatestBlock: () => latest,
+    });
+    const { rerender } = render(<BlockAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "追加" }));
+    const submit = screen.getByRole("button", { name: "生成候选内容" });
+    fireEvent.click(submit);
+    fireEvent.click(screen.getByRole("button", { name: "改写" }));
+    fireEvent.click(submit);
+    await act(async () => pendingFlush.resolve());
+    await waitFor(() =>
+      expect(generate).toHaveBeenCalledWith({
+        scope: "block",
+        targetFieldId,
+        blockId: "b1",
+        mode: "append",
+      }),
+    );
+    expect(generate).toHaveBeenCalledOnce();
+
+    await setPreview(latest, {
+      candidate: [{ fieldId: targetFieldId, value: "Candidate", evidenceIds: [] }],
+    });
+    rerender(<BlockAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
+    await waitFor(() =>
+      expect(sectionProps.onSaveContent).toHaveBeenCalledWith(
+        "<p>Latest</p><p><br></p><p>Candidate</p>",
+      ),
+    );
+  });
+
+  it("invalidates a pending initial flush on unmount", async () => {
+    const pendingFlush = deferred();
+    const flushPending = vi.fn(() => pendingFlush.promise);
+    const { unmount } = render(<BlockAiSection {...props({ flushPending })} />);
+    fireEvent.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    fireEvent.click(screen.getByRole("button", { name: "生成候选内容" }));
+
+    unmount();
+    await act(async () => pendingFlush.resolve());
+
     expect(generate).not.toHaveBeenCalled();
   });
 
@@ -268,6 +376,20 @@ describe("BlockAiSection", () => {
     expect(flushPending.mock.invocationCallOrder[0]).toBeLessThan(
       generation.regenerate.mock.invocationCallOrder[0],
     );
+  });
+
+  it("invalidates a pending regeneration flush when the candidate is cancelled", async () => {
+    const user = userEvent.setup();
+    const pendingFlush = deferred();
+    await setPreview();
+    render(<BlockAiSection {...props({ flushPending: vi.fn(() => pendingFlush.promise) })} />);
+    await user.click(screen.getByRole("button", { name: "重新生成" }));
+    await user.click(screen.getByRole("button", { name: "取消" }));
+
+    await act(async () => pendingFlush.resolve());
+
+    expect(generation.regenerate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it.each([
@@ -370,11 +492,15 @@ describe("BlockAiSection", () => {
   it("adopts a body rewrite as safe rich-text and passes only one string argument", async () => {
     const user = userEvent.setup();
     const latest = body();
+    const onSaveContent = vi.fn().mockResolvedValue(undefined);
+    const sectionProps = props({ getLatestBlock: () => latest, onSaveContent });
+    const { rerender } = render(<BlockAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
     await setPreview(latest, {
       candidate: [{ fieldId: targetFieldId, value: "new <b>", evidenceIds: [] }],
     });
-    const onSaveContent = vi.fn().mockResolvedValue(undefined);
-    render(<BlockAiSection {...props({ getLatestBlock: () => latest, onSaveContent })} />);
+    rerender(<BlockAiSection {...sectionProps} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     await waitFor(() => expect(onSaveContent).toHaveBeenCalledWith("<p>new &lt;b&gt;</p>"));
     expect(onSaveContent.mock.calls[0]).toHaveLength(1);
@@ -384,7 +510,6 @@ describe("BlockAiSection", () => {
   it("guards a pending adoption from duplicate saves", async () => {
     const user = userEvent.setup();
     const latest = body();
-    await setPreview(latest);
     let finishSave: (() => void) | undefined;
     const onSaveContent = vi.fn(
       () =>
@@ -392,7 +517,12 @@ describe("BlockAiSection", () => {
           finishSave = resolve;
         }),
     );
-    render(<BlockAiSection {...props({ getLatestBlock: () => latest, onSaveContent })} />);
+    const sectionProps = props({ getLatestBlock: () => latest, onSaveContent });
+    const { rerender } = render(<BlockAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await setPreview(latest);
+    rerender(<BlockAiSection {...sectionProps} />);
     const adopt = screen.getByRole("button", { name: "采纳候选内容" });
 
     await user.click(adopt);
@@ -428,13 +558,15 @@ describe("BlockAiSection", () => {
   it("adopts a heading as plain text and never exposes append", async () => {
     const user = userEvent.setup();
     const latest = body({ type: "heading", content: "Old heading" });
+    const onSaveContent = vi.fn().mockResolvedValue(undefined);
+    const sectionProps = props({ block: latest, getLatestBlock: () => latest, onSaveContent });
+    const { rerender } = render(<BlockAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
     await setPreview(latest, {
       candidate: [{ fieldId: targetFieldId, value: "Plain heading", evidenceIds: [] }],
     });
-    const onSaveContent = vi.fn().mockResolvedValue(undefined);
-    render(
-      <BlockAiSection {...props({ block: latest, getLatestBlock: () => latest, onSaveContent })} />,
-    );
+    rerender(<BlockAiSection {...sectionProps} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     await waitFor(() => expect(onSaveContent).toHaveBeenCalledWith("Plain heading"));
     expect(onSaveContent).not.toHaveBeenCalledWith(expect.stringContaining("<p>"));
@@ -446,9 +578,13 @@ describe("BlockAiSection", () => {
       content: undefined as unknown as string,
       transcriptRef: { ...transcriptRef, contentHash: "transcript-v2" },
     });
-    await setPreview(latest);
     const onSaveContent = vi.fn().mockResolvedValue(undefined);
-    render(<BlockAiSection {...props({ getLatestBlock: () => latest, onSaveContent })} />);
+    const sectionProps = props({ getLatestBlock: () => latest, onSaveContent });
+    const { rerender } = render(<BlockAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await setPreview(latest);
+    rerender(<BlockAiSection {...sectionProps} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     await waitFor(() => expect(onSaveContent).toHaveBeenCalledWith("<p>新的内容</p>"));
   });
@@ -456,15 +592,15 @@ describe("BlockAiSection", () => {
   it("keeps the candidate open with a safe error when saving fails", async () => {
     const user = userEvent.setup();
     const latest = body();
+    const sectionProps = props({
+      getLatestBlock: () => latest,
+      onSaveContent: vi.fn().mockRejectedValue(new Error("private backend detail")),
+    });
+    const { rerender } = render(<BlockAiSection {...sectionProps} />);
+    await user.click(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    await user.click(screen.getByRole("button", { name: "生成候选内容" }));
     await setPreview(latest);
-    render(
-      <BlockAiSection
-        {...props({
-          getLatestBlock: () => latest,
-          onSaveContent: vi.fn().mockRejectedValue(new Error("private backend detail")),
-        })}
-      />,
-    );
+    rerender(<BlockAiSection {...sectionProps} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("生成候选内容失败，请重试。");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
