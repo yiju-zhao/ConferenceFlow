@@ -5,25 +5,25 @@ import type {
   Report,
   ReportTemplateVersion,
   TemplateField,
-} from "../../src/types";
-import { blockContentHashKey } from "../../src/lib/ai-report/blockTarget";
-import { hashFieldMap, hashText } from "../../src/lib/ai-report/hash";
-import { parseBlockTranscriptStoragePath } from "../../src/lib/ai-report/transcriptSource";
+} from "../../src/types/index.js";
+import { blockContentHashKey } from "../../src/lib/ai-report/blockTarget.js";
+import { hashFieldMap, hashText } from "../../src/lib/ai-report/hash.js";
+import { parseBlockTranscriptStoragePath } from "../../src/lib/ai-report/transcriptSource.js";
 import {
   assertTemplateVersion,
   normalizeStoredFieldValue,
   selectEligibleFields,
-} from "../../src/lib/ai-report/templateContract";
+} from "../../src/lib/ai-report/templateContract.js";
 import { bucket, db } from "../../api/lib/firebase-admin.js";
-import { buildDailySourceBlocks, readReportFieldValue } from "./field-policy";
-import type { BlockGenerationInput } from "./generate-block";
-import type { DailyGenerationInput } from "./generate-daily";
-import type { SessionGenerationInput } from "./generate-session";
+import { buildDailySourceBlocks, readReportFieldValue } from "./field-policy.js";
+import type { BlockGenerationInput } from "./generate-block.js";
+import type { DailyGenerationInput } from "./generate-daily.js";
+import type { SessionGenerationInput } from "./generate-session.js";
 import {
   normalizeTranscriptSource,
   parseTranscript,
   type TranscriptSegment,
-} from "./transcript-parser";
+} from "./transcript-parser.js";
 
 export interface GenerationContextSource {
   getReport(confId: string, reportId: string): Promise<Report | null>;

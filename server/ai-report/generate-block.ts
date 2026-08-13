@@ -7,15 +7,15 @@ import {
   type GenerationMode,
   type ReportTemplateVersion,
   type TemplateField,
-} from "../../src/types";
-import { htmlToPlainText, validateCandidateValue, type SourceBlock } from "./field-policy";
-import { supportsAllGroundingTokens, validateSourceSupports } from "./evidence";
-import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek";
-import type { TranscriptSegment } from "./transcript-parser";
+} from "../../src/types/index.js";
+import { htmlToPlainText, validateCandidateValue, type SourceBlock } from "./field-policy.js";
+import { supportsAllGroundingTokens, validateSourceSupports } from "./evidence.js";
+import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek.js";
+import type { TranscriptSegment } from "./transcript-parser.js";
 import {
   APPEND_ONLY_SYSTEM_INSTRUCTION,
   appendCandidateRepeatsCurrentValue,
-} from "./append-policy";
+} from "./append-policy.js";
 
 const BLOCK_WRITING_SYSTEM = [
   "你是中文会议日报 Block 写作器。只输出合法 JSON，所有生成内容必须使用中文。",

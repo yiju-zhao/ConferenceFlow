@@ -1,5 +1,5 @@
-import { AI_BLOCK_FIELDS, type AiBlockField, type TranscriptFormat } from "../../types";
-import { hashText } from "./hash";
+import { AI_BLOCK_FIELDS, type AiBlockField, type TranscriptFormat } from "../../types/index.js";
+import { hashText } from "./hash.js";
 
 const FORMATS = new Set<TranscriptFormat>(["txt", "md", "srt", "vtt"]);
 const BLOCK_TRANSCRIPT_FIELDS = new Set<AiBlockField>(AI_BLOCK_FIELDS);

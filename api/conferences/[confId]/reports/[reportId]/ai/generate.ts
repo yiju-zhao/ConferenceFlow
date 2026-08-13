@@ -4,7 +4,7 @@ import {
   type AiBlockField,
   type GenerateRequest,
   type GenerateResponse,
-} from "../../../../../../src/types";
+} from "../../../../../../src/types/index.js";
 import { isBlockTranscriptPathId } from "../../../../../../src/lib/ai-report/transcriptSource.js";
 import { AuthError, requireMember } from "../../../../../lib/auth-middleware.js";
 import {

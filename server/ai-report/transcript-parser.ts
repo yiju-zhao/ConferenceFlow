@@ -1,6 +1,6 @@
-import { normalizeEvidenceText } from "./source-text";
+import { normalizeEvidenceText } from "./source-text.js";
 
-export { normalizeEvidenceText } from "./source-text";
+export { normalizeEvidenceText } from "./source-text.js";
 
 export type TranscriptFormat = "txt" | "md" | "srt" | "vtt";
 

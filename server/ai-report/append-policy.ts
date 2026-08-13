@@ -1,5 +1,5 @@
-import type { TemplateField, TemplateFieldValue } from "../../src/types";
-import { htmlToPlainText } from "./field-policy";
+import type { TemplateField, TemplateFieldValue } from "../../src/types/index.js";
+import { htmlToPlainText } from "./field-policy.js";
 
 export const APPEND_ONLY_SYSTEM_INSTRUCTION =
   "当 mode 为 append 时，只返回新增内容，不得重复现有字段值中的任何项目或段落。";

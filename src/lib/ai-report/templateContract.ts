@@ -7,8 +7,8 @@ import type {
   TemplateField,
   TemplateFieldType,
   TemplateFieldValue,
-} from "../../types";
-import { AI_BLOCK_FIELDS } from "../../types";
+} from "../../types/index.js";
+import { AI_BLOCK_FIELDS } from "../../types/index.js";
 
 const FIELD_TYPES = new Set<TemplateFieldType>([
   "rich_text",

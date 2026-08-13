@@ -5,14 +5,14 @@ import type {
   GenerationMode,
   ReportTemplateVersion,
   TemplateField,
-} from "../../src/types";
-import { validateCandidateValue, type SourceBlock } from "./field-policy";
-import { validateSourceSupports } from "./evidence";
-import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek";
+} from "../../src/types/index.js";
+import { validateCandidateValue, type SourceBlock } from "./field-policy.js";
+import { validateSourceSupports } from "./evidence.js";
+import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek.js";
 import {
   APPEND_ONLY_SYSTEM_INSTRUCTION,
   appendCandidateRepeatsCurrentValue,
-} from "./append-policy";
+} from "./append-policy.js";
 
 const DAILY_WRITING_SYSTEM = [
   "你是中文会议日报写作器。只输出合法 JSON，所有生成内容必须使用中文。",
