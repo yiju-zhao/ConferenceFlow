@@ -342,11 +342,12 @@ describe("loadGenerationContext", () => {
     expect(read.getTranscript).not.toHaveBeenCalled();
   });
 
-  it("loads a target-bound VTT Transcript with timestamps", async () => {
+  it("loads true Transcript-only VTT input with timestamps", async () => {
     const vtt = ["WEBVTT", "", "cue-1", "00:01.000 --> 00:03.500", "A timestamped source."].join(
       "\n",
     );
     const changed = await report();
+    changed.rumorsBlocks![0].content = "";
     changed.rumorsBlocks![0].transcriptRef = {
       storagePath: "conference-transcripts/conf-1/report-1/blocks/rumorsBlocks/b1/source-1.vtt",
       fileName: "source-1.vtt",
@@ -366,6 +367,10 @@ describe("loadGenerationContext", () => {
     );
 
     if (loaded.scope !== "block") throw new Error("wrong scope");
+    expect(loaded.input.currentValue).toBe("");
+    expect(loaded.input.baseFieldHashes).toEqual({
+      "block:rumorsBlocks:b1:content": await hashFieldValue(""),
+    });
     expect(loaded.input.transcriptHash).toBe(await hashText(vtt));
     expect(loaded.input.segments).toEqual([
       expect.objectContaining({
@@ -380,7 +385,7 @@ describe("loadGenerationContext", () => {
     );
   });
 
-  it("uses the exact sanitized Block target prefix", async () => {
+  it("rejects colliding sanitized Block identities before reading Storage", async () => {
     const transcript = "Bound private source";
     const changed = await report();
     changed.rumorsBlocks![0] = {
@@ -401,19 +406,106 @@ describe("loadGenerationContext", () => {
       getTranscript: vi.fn(async () => new TextEncoder().encode(transcript)),
     });
 
-    await loadGenerationContext(
-      {
-        confId: "conf/1",
-        reportId: "report/1",
-        uid: "u1",
-        request: { ...blockRequest, blockId: "b/1" },
-      },
-      read,
+    await expect(
+      loadGenerationContext(
+        {
+          confId: "conf/1",
+          reportId: "report/1",
+          uid: "u1",
+          request: { ...blockRequest, blockId: "b/1" },
+        },
+        read,
+      ),
+    ).rejects.toMatchObject({ code: "BLOCK_TRANSCRIPT_PATH_MISMATCH", status: 409 });
+    expect(read.getTranscript).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "extra path segment",
+      "conference-transcripts/conf-1/report-1/blocks/rumorsBlocks/b1/extra/source.txt",
+    ],
+    [
+      "missing path segment",
+      "conference-transcripts/conf-1/report-1/blocks/rumorsBlocks/source.txt",
+    ],
+    [
+      "encoded separator",
+      "conference-transcripts/conf-1/report-1/blocks/rumorsBlocks/b1/file%2F1.txt",
+    ],
+    [
+      "unknown field",
+      "conference-transcripts/conf-1/report-1/blocks/arbitraryBlocks/b1/source.txt",
+    ],
+  ])("rejects a Block Transcript with %s before reading Storage", async (_name, storagePath) => {
+    const changed = await report();
+    changed.rumorsBlocks![0].transcriptRef = {
+      storagePath,
+      fileName: "source.txt",
+      format: "txt",
+      contentHash: await hashText("private source"),
+      uploadedBy: "u1",
+      uploadedAt: 2,
+    };
+    const read = source({ getReport: vi.fn(async () => changed) });
+
+    await expect(
+      loadGenerationContext(
+        { confId: "conf-1", reportId: "report-1", uid: "u1", request: blockRequest },
+        read,
+      ),
+    ).rejects.toMatchObject({ code: "BLOCK_TRANSCRIPT_PATH_MISMATCH", status: 409 });
+    expect(read.getTranscript).not.toHaveBeenCalled();
+  });
+
+  it("rejects an encoded conference identity instead of accepting its sanitized alias", async () => {
+    const changed = await report();
+    changed.rumorsBlocks![0].transcriptRef = {
+      storagePath: "conference-transcripts/conf_2F1/report-1/blocks/rumorsBlocks/b1/source.txt",
+      fileName: "source.txt",
+      format: "txt",
+      contentHash: await hashText("private source"),
+      uploadedBy: "u1",
+      uploadedAt: 2,
+    };
+    const read = source({ getReport: vi.fn(async () => changed) });
+
+    await expect(
+      loadGenerationContext(
+        { confId: "conf%2F1", reportId: "report-1", uid: "u1", request: blockRequest },
+        read,
+      ),
+    ).rejects.toMatchObject({ code: "BLOCK_TRANSCRIPT_PATH_MISMATCH", status: 409 });
+    expect(read.getTranscript).not.toHaveBeenCalled();
+  });
+
+  it("preserves scalar rich-text content for both current value and stale hash", async () => {
+    const changed = await report();
+    changed.rumorsBlocks![0].content = "<p>Exact scalar draft</p>";
+    const loaded = await loadGenerationContext(
+      { confId: "conf-1", reportId: "report-1", uid: "u1", request: blockRequest },
+      source({ getReport: vi.fn(async () => changed) }),
     );
 
-    expect(read.getTranscript).toHaveBeenCalledWith(
-      "conference-transcripts/conf_1/report_1/blocks/rumorsBlocks/b_1/source.txt",
-    );
+    if (loaded.scope !== "block") throw new Error("wrong scope");
+    expect(loaded.input.currentValue).toBe("<p>Exact scalar draft</p>");
+    expect(loaded.input.baseFieldHashes).toEqual({
+      "block:rumorsBlocks:b1:content": await hashFieldValue("<p>Exact scalar draft</p>"),
+    });
+  });
+
+  it("rejects a bound non-rich-text Block policy instead of coercing scalar content", async () => {
+    const invalidTemplate = structuredClone(template);
+    invalidTemplate.fields[2].type = "bullet_list";
+    const read = source({ getTemplate: vi.fn(async () => invalidTemplate) });
+
+    await expect(
+      loadGenerationContext(
+        { confId: "conf-1", reportId: "report-1", uid: "u1", request: blockRequest },
+        read,
+      ),
+    ).rejects.toMatchObject({ code: "TEMPLATE_MISMATCH", status: 409 });
+    expect(read.getTranscript).not.toHaveBeenCalled();
   });
 
   it("rejects a missing Block without reading Storage", async () => {

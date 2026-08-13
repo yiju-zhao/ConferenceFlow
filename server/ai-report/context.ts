@@ -10,6 +10,7 @@ import type {
 } from "../../src/types";
 import { blockContentHashKey } from "../../src/lib/ai-report/blockTarget";
 import { hashFieldMap, hashText } from "../../src/lib/ai-report/hash";
+import { parseBlockTranscriptStoragePath } from "../../src/lib/ai-report/transcriptSource";
 import {
   assertTemplateVersion,
   normalizeStoredFieldValue,
@@ -141,15 +142,6 @@ function transcriptPrefix(confId: string, reportId: string, sessionId: string): 
   return `conference-transcripts/${safePathSegment(confId)}/${safePathSegment(reportId)}/${safePathSegment(sessionId)}/`;
 }
 
-function blockTranscriptPrefix(
-  confId: string,
-  reportId: string,
-  targetFieldId: AiBlockField,
-  blockId: string,
-): string {
-  return `conference-transcripts/${safePathSegment(confId)}/${safePathSegment(reportId)}/blocks/${safePathSegment(targetFieldId)}/${safePathSegment(blockId)}/`;
-}
-
 function transcriptFormat(value: unknown): "txt" | "md" | "srt" | "vtt" {
   if (value === "txt" || value === "md" || value === "srt" || value === "vtt") return value;
   throw new GenerationContextError("INVALID_TRANSCRIPT");
@@ -275,8 +267,10 @@ export async function loadGenerationContext(
     if (block.type === "heading" && request.mode === "append") {
       throw new GenerationContextError("FIELD_NOT_ELIGIBLE");
     }
-    const normalizedContent = normalizeStoredFieldValue(field, block.content);
-    const currentValue = typeof normalizedContent === "string" ? normalizedContent : "";
+    const currentValue = normalizeStoredFieldValue(field, block.content);
+    if (typeof currentValue !== "string") {
+      throw new GenerationContextError("TEMPLATE_MISMATCH");
+    }
     const transcriptRef = block.transcriptRef;
     let segments: TranscriptSegment[] = [];
     let transcriptHash: string | undefined;
@@ -284,11 +278,14 @@ export async function loadGenerationContext(
     if (transcriptRef !== undefined && transcriptRef !== null) {
       if (!isRecord(transcriptRef)) throw new GenerationContextError("INVALID_TRANSCRIPT");
       const storagePath = transcriptRef.storagePath;
+      const parsedPath =
+        typeof storagePath === "string" ? parseBlockTranscriptStoragePath(storagePath) : null;
       if (
-        typeof storagePath !== "string" ||
-        !storagePath.startsWith(
-          blockTranscriptPrefix(confId, reportId, request.targetFieldId, request.blockId),
-        )
+        !parsedPath ||
+        parsedPath.confId !== confId ||
+        parsedPath.reportId !== reportId ||
+        parsedPath.targetFieldId !== request.targetFieldId ||
+        parsedPath.blockId !== request.blockId
       ) {
         throw new GenerationContextError("BLOCK_TRANSCRIPT_PATH_MISMATCH");
       }
@@ -296,7 +293,7 @@ export async function loadGenerationContext(
         throw new GenerationContextError("TRANSCRIPT_REQUIRED");
       }
       const format = transcriptFormat(transcriptRef.format);
-      if (!storagePath.toLowerCase().endsWith(`.${format}`)) {
+      if (parsedPath.format !== format) {
         throw new GenerationContextError("INVALID_TRANSCRIPT");
       }
 

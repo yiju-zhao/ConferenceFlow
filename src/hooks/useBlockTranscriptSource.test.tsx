@@ -29,10 +29,10 @@ describe("useBlockTranscriptSource", () => {
     const commitReference = vi.fn(async (_next: TranscriptRef | null) => undefined);
     const { result } = renderHook(() =>
       useBlockTranscriptSource({
-        confId: "conf/1",
-        reportId: "report 1",
+        confId: "conf-1",
+        reportId: "report_1",
         targetFieldId: "rumorsBlocks",
-        blockId: "block/1",
+        blockId: "block.1",
         current: null,
         uid: "u1",
         commitReference,
@@ -46,7 +46,7 @@ describe("useBlockTranscriptSource", () => {
     expect(commitReference).toHaveBeenCalledWith(
       expect.objectContaining({
         storagePath: expect.stringMatching(
-          /^conference-transcripts\/conf_1\/report_1\/blocks\/rumorsBlocks\/block_1\/.+\.txt$/,
+          /^conference-transcripts\/conf-1\/report_1\/blocks\/rumorsBlocks\/block\.1\/[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.txt$/,
         ),
       }),
     );

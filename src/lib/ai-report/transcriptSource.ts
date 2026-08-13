@@ -1,8 +1,23 @@
-import type { AiBlockField, TranscriptFormat } from "../../types";
+import { AI_BLOCK_FIELDS, type AiBlockField, type TranscriptFormat } from "../../types";
 import { hashText } from "./hash";
 
 const FORMATS = new Set<TranscriptFormat>(["txt", "md", "srt", "vtt"]);
+const BLOCK_TRANSCRIPT_FIELDS = new Set<AiBlockField>(AI_BLOCK_FIELDS);
+export const BLOCK_TRANSCRIPT_PATH_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 export const MAX_TRANSCRIPT_CODE_POINTS = 500_000;
+
+export function isBlockTranscriptPathId(value: unknown): value is string {
+  return typeof value === "string" && BLOCK_TRANSCRIPT_PATH_ID_PATTERN.test(value);
+}
+
+export interface ParsedBlockTranscriptStoragePath {
+  confId: string;
+  reportId: string;
+  targetFieldId: AiBlockField;
+  blockId: string;
+  fileId: string;
+  format: TranscriptFormat;
+}
 
 export async function prepareTranscript(fileName: string, bytes: Uint8Array) {
   const extension = fileName.split(".").pop()?.toLowerCase() as TranscriptFormat | undefined;
@@ -52,13 +67,52 @@ export function buildBlockTranscriptStoragePath(
   fileId: string,
   format: TranscriptFormat,
 ): string {
+  if (
+    !isBlockTranscriptPathId(confId) ||
+    !isBlockTranscriptPathId(reportId) ||
+    !BLOCK_TRANSCRIPT_FIELDS.has(targetFieldId) ||
+    !isBlockTranscriptPathId(blockId) ||
+    !isBlockTranscriptPathId(fileId) ||
+    !FORMATS.has(format)
+  ) {
+    throw new Error("invalid Block Transcript path identity");
+  }
   return [
     "conference-transcripts",
-    safePathSegment(confId),
-    safePathSegment(reportId),
+    confId,
+    reportId,
     "blocks",
-    safePathSegment(targetFieldId),
-    safePathSegment(blockId),
-    `${safePathSegment(fileId)}.${format}`,
+    targetFieldId,
+    blockId,
+    `${fileId}.${format}`,
   ].join("/");
+}
+
+export function parseBlockTranscriptStoragePath(
+  path: string,
+): ParsedBlockTranscriptStoragePath | null {
+  const segments = path.split("/");
+  if (segments.length !== 7) return null;
+  const [root, confId, reportId, namespace, targetFieldId, blockId, fileName] = segments;
+  if (root !== "conference-transcripts" || namespace !== "blocks") return null;
+  if (
+    !isBlockTranscriptPathId(confId) ||
+    !isBlockTranscriptPathId(reportId) ||
+    !BLOCK_TRANSCRIPT_FIELDS.has(targetFieldId as AiBlockField) ||
+    !isBlockTranscriptPathId(blockId)
+  ) {
+    return null;
+  }
+  const fileMatch = /^(.+)\.(txt|md|srt|vtt)$/.exec(fileName);
+  if (!fileMatch) return null;
+  const [, fileId, format] = fileMatch;
+  if (!isBlockTranscriptPathId(fileId)) return null;
+  return {
+    confId,
+    reportId,
+    targetFieldId: targetFieldId as AiBlockField,
+    blockId,
+    fileId,
+    format: format as TranscriptFormat,
+  };
 }

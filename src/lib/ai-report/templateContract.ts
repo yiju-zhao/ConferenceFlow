@@ -105,8 +105,13 @@ export function assertTemplateVersion(value: unknown): ReportTemplateVersion {
     if (field.scope !== "session" && field.scope !== "daily" && field.scope !== "block") {
       throw new Error(`invalid field scope: ${field.id}`);
     }
-    if (field.scope === "block" && !AI_BLOCK_FIELD_IDS.has(field.id as AiBlockField)) {
-      throw new Error(`invalid AI Block field: ${field.id}`);
+    if (field.scope === "block") {
+      if (!AI_BLOCK_FIELD_IDS.has(field.id as AiBlockField)) {
+        throw new Error(`invalid AI Block field: ${field.id}`);
+      }
+      if (field.type !== "rich_text") {
+        throw new Error(`invalid AI Block field type: ${field.id}`);
+      }
     }
     if (ids.has(field.id)) throw new Error(`duplicate template field: ${field.id}`);
     ids.add(field.id);

@@ -78,6 +78,12 @@ describe("template contract", () => {
     ]);
   });
 
+  it.each(["short_text", "bullet_list", "fixed", "image"])("rejects %s at Block scope", (type) => {
+    const invalid = structuredClone({ ...template, fields: [...template.fields, blockField] });
+    (invalid.fields.at(-1) as unknown as Record<string, unknown>).type = type;
+    expect(() => assertTemplateVersion(invalid)).toThrow("invalid AI Block field type");
+  });
+
   it("selects only enabled, non-fixed fields that support the mode", () => {
     const fields = [
       ...template.fields,
