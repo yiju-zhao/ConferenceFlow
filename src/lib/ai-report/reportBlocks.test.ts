@@ -3,6 +3,8 @@ import type { ReportBlock, TranscriptRef } from "../../types";
 import {
   blocksWithoutTranscripts,
   hasVisibleBlockContent,
+  insertReportBlock,
+  removeReportBlock,
   replaceReportBlock,
 } from "./reportBlocks";
 
@@ -56,6 +58,72 @@ describe("replaceReportBlock", () => {
 
   it("rejects an update for a missing Block", () => {
     expect(() => replaceReportBlock([body("b1", "A")], "missing", { content: "B" })).toThrow(
+      "report Block not found",
+    );
+  });
+
+  it("rejects an adoption patch when server-latest content differs", () => {
+    expect(() =>
+      replaceReportBlock([body("b1", "new manual edit")], "b1", { content: "AI result" }, "old"),
+    ).toThrow("report Block content changed");
+  });
+
+  it("accepts an adoption patch when server-latest content matches", () => {
+    expect(replaceReportBlock([body("b1", "old")], "b1", { content: "AI result" }, "old")).toEqual([
+      body("b1", "AI result"),
+    ]);
+  });
+});
+
+describe("insertReportBlock", () => {
+  it("inserts at the start without changing sibling identity", () => {
+    const blocks = [body("b1", "A"), body("b2", "B")];
+    const inserted = body("new", "New");
+
+    const result = insertReportBlock(blocks, inserted, null);
+
+    expect(result).toEqual([inserted, ...blocks]);
+    expect(result[1]).toBe(blocks[0]);
+    expect(result[2]).toBe(blocks[1]);
+  });
+
+  it("inserts after exactly one anchor and preserves order", () => {
+    const blocks = [body("b1", "A"), body("b2", "B")];
+    const inserted = body("new", "New");
+
+    expect(insertReportBlock(blocks, inserted, "b1")).toEqual([blocks[0], inserted, blocks[1]]);
+  });
+
+  it("rejects missing and duplicate anchors", () => {
+    expect(() => insertReportBlock([body("b1", "A")], body("new", "New"), "missing")).toThrow(
+      "report Block anchor not found",
+    );
+    expect(() =>
+      insertReportBlock([body("b1", "A"), body("b1", "duplicate")], body("new", "New"), "b1"),
+    ).toThrow("report Block anchor not found");
+  });
+
+  it("rejects a duplicate new Block ID", () => {
+    expect(() => insertReportBlock([body("b1", "A")], body("b1", "New"), null)).toThrow(
+      "report Block already exists",
+    );
+  });
+});
+
+describe("removeReportBlock", () => {
+  it("removes exactly one target without changing sibling identity", () => {
+    const blocks = [body("b1", "A"), body("b2", "B"), body("b3", "C")];
+
+    const result = removeReportBlock(blocks, "b2");
+
+    expect(result).toEqual([blocks[0], blocks[2]]);
+    expect(result[0]).toBe(blocks[0]);
+    expect(result[1]).toBe(blocks[2]);
+  });
+
+  it("rejects missing and duplicate targets", () => {
+    expect(() => removeReportBlock([body("b1", "A")], "missing")).toThrow("report Block not found");
+    expect(() => removeReportBlock([body("b1", "A"), body("b1", "duplicate")], "b1")).toThrow(
       "report Block not found",
     );
   });

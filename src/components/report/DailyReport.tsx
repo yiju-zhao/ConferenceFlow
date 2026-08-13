@@ -46,7 +46,12 @@ import {
   sessionKey,
 } from "../../lib/ai-report/sessionSelection";
 import { requireAuthenticatedUserId } from "../../lib/ai-report/memberFocus";
-import { blocksWithoutTranscripts, replaceReportBlock } from "../../lib/ai-report/reportBlocks";
+import {
+  blocksWithoutTranscripts,
+  insertReportBlock,
+  removeReportBlock,
+  replaceReportBlock,
+} from "../../lib/ai-report/reportBlocks";
 import { INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING } from "../../lib/ai-report/templates/industryConferenceDailyReport";
 import type {
   BlockField,
@@ -469,14 +474,37 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   );
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
+  const persistBlockMutation = useCallback(
+    async (field: AiBlockField, mutate: (blocks: ReportBlock[]) => ReportBlock[]) => {
+      if (!user || viewMode) throw new Error("report is read-only");
+      const reportRef = doc(db, "conferences", confId, "dailyReports", reportId);
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(reportRef);
+        if (!snapshot.exists()) throw new Error("report not found");
+        const latest = snapshot.data() as Report;
+        const blocks = Array.isArray(latest[field]) ? latest[field] : [];
+        const next = mutate(blocks);
+        transaction.set(reportRef, { [field]: next }, { merge: true });
+      });
+    },
+    [confId, reportId, user, viewMode],
+  );
+
+  const persistBlockPatch = useCallback(
+    (field: AiBlockField, blockId: string, patch: Partial<ReportBlock>, expectedContent?: string) =>
+      persistBlockMutation(field, (blocks) =>
+        replaceReportBlock(blocks, blockId, patch, expectedContent),
+      ),
+    [persistBlockMutation],
+  );
+
   const removeBlock = useCallback(
     (field: BlockField, id: string) => {
-      saveField(
-        field,
-        (reportDataRef.current?.[field] || []).filter((b) => b.id !== id),
+      void persistBlockMutation(field, (blocks) => removeReportBlock(blocks, id)).catch(
+        () => undefined,
       );
     },
-    [saveField],
+    [persistBlockMutation],
   );
   const insertBlock = useCallback(
     (field: BlockField, type: ReportBlockType, afterId: string | null) => {
@@ -489,46 +517,25 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         lastEditedBy: user?.uid || "",
         lastEditedAt: Date.now(),
       };
-      const blocks = reportDataRef.current?.[field] || [];
-      const idx = afterId ? blocks.findIndex((b) => b.id === afterId) : -1;
-      const next = [...blocks];
-      next.splice(idx + 1, 0, newBlock);
-      saveField(field, next);
+      void persistBlockMutation(field, (blocks) =>
+        insertReportBlock(blocks, newBlock, afterId),
+      ).catch(() => undefined);
     },
-    [saveField, user],
+    [persistBlockMutation, user],
   );
   const updateBlockFields = useCallback(
     (field: BlockField, id: string, fields: Partial<ReportBlock>) => {
-      saveField(
-        field,
-        (reportDataRef.current?.[field] || []).map((b) => {
-          if (b.id !== id) return b;
-          return {
-            ...b,
-            ...fields,
-            lastEditedBy: user?.uid || b.lastEditedBy,
-            lastEditedAt: Date.now(),
-          };
+      if (!user || viewMode) return;
+      const patchKey = Object.keys(fields).sort().join(",");
+      debouncedSave(`block.${field}.${id}.${patchKey}`, () =>
+        persistBlockPatch(field, id, {
+          ...fields,
+          lastEditedBy: user.uid,
+          lastEditedAt: Date.now(),
         }),
       );
     },
-    [saveField, user],
-  );
-
-  const persistBlockPatch = useCallback(
-    async (field: AiBlockField, blockId: string, patch: Partial<ReportBlock>) => {
-      if (!user || viewMode) throw new Error("report is read-only");
-      const reportRef = doc(db, "conferences", confId, "dailyReports", reportId);
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(reportRef);
-        if (!snapshot.exists()) throw new Error("report not found");
-        const latest = snapshot.data() as Report;
-        const blocks = Array.isArray(latest[field]) ? latest[field] : [];
-        const next = replaceReportBlock(blocks, blockId, patch);
-        transaction.set(reportRef, { [field]: next }, { merge: true });
-      });
-    },
-    [confId, reportId, user, viewMode],
+    [debouncedSave, persistBlockPatch, user, viewMode],
   );
 
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
@@ -2630,13 +2637,19 @@ ${clone.outerHTML}
                       transcriptRef: next,
                     });
                   }}
-                  onSaveContent={(content) =>
-                    persistBlockPatch("onsiteInfoBlocks", block.id, {
-                      content,
-                      lastEditedBy: user.uid,
-                      lastEditedAt: Date.now(),
-                    })
-                  }
+                  onSaveContent={async (content) => {
+                    await flushPending();
+                    await persistBlockPatch(
+                      "onsiteInfoBlocks",
+                      block.id,
+                      {
+                        content,
+                        lastEditedBy: user.uid,
+                        lastEditedAt: Date.now(),
+                      },
+                      block.content,
+                    );
+                  }}
                   readOnly={blockReadOnly}
                 />
               ) : null
@@ -2684,13 +2697,19 @@ ${clone.outerHTML}
                       transcriptRef: next,
                     });
                   }}
-                  onSaveContent={(content) =>
-                    persistBlockPatch("reflectionsBlocks", block.id, {
-                      content,
-                      lastEditedBy: user.uid,
-                      lastEditedAt: Date.now(),
-                    })
-                  }
+                  onSaveContent={async (content) => {
+                    await flushPending();
+                    await persistBlockPatch(
+                      "reflectionsBlocks",
+                      block.id,
+                      {
+                        content,
+                        lastEditedBy: user.uid,
+                        lastEditedAt: Date.now(),
+                      },
+                      block.content,
+                    );
+                  }}
                   readOnly={blockReadOnly}
                 />
               ) : null
@@ -2736,13 +2755,19 @@ ${clone.outerHTML}
                     await flushPending();
                     await persistBlockPatch("rumorsBlocks", block.id, { transcriptRef: next });
                   }}
-                  onSaveContent={(content) =>
-                    persistBlockPatch("rumorsBlocks", block.id, {
-                      content,
-                      lastEditedBy: user.uid,
-                      lastEditedAt: Date.now(),
-                    })
-                  }
+                  onSaveContent={async (content) => {
+                    await flushPending();
+                    await persistBlockPatch(
+                      "rumorsBlocks",
+                      block.id,
+                      {
+                        content,
+                        lastEditedBy: user.uid,
+                        lastEditedAt: Date.now(),
+                      },
+                      block.content,
+                    );
+                  }}
                   readOnly={blockReadOnly}
                 />
               ) : null

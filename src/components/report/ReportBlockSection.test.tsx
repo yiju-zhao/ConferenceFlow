@@ -194,7 +194,8 @@ describe("ReportBlockSection", () => {
       "contenteditable",
     );
     expect(screen.queryByRole("button", { name: "×" })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "u1" } });
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("private-ai")).not.toBeInTheDocument();
     expect(onUpdate).not.toHaveBeenCalled();
     expect(renderAiControls).toHaveBeenNthCalledWith(
       1,
@@ -206,6 +207,103 @@ describe("ReportBlockSection", () => {
       expect.objectContaining({ id: "body-1" }),
       true,
     );
+  });
+
+  it("renders another user's body metadata statically without metadata or AI controls", () => {
+    const renderAiControls = vi.fn(() => <span data-testid="private-ai" />);
+    render(
+      <ReportBlockSection
+        {...props({
+          blocks: [
+            {
+              ...body,
+              ownerId: "u2",
+              contributorIds: ["u2"],
+              sourceSessions: [{ id: null, manual: "Private field notes" }],
+            },
+          ],
+          renderAiControls,
+        })}
+      />,
+    );
+    const card = screen.getByText("Body intelligence").closest(".intel-card") as HTMLElement;
+
+    expect(within(card).getByText("Private field notes")).toBeVisible();
+    expect(within(card).getAllByText("Other User")).toHaveLength(1);
+    expect(within(card).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("combobox")).not.toBeInTheDocument();
+    expect(card.querySelector(".intel-card-add-source")).not.toBeInTheDocument();
+    expect(card.querySelector(".intel-card-source-remove")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(card).queryByTestId("private-ai")).not.toBeInTheDocument();
+    expect(renderAiControls).toHaveBeenCalledTimes(1);
+    expect(renderAiControls).toHaveBeenCalledWith(expect.objectContaining({ id: "body-1" }), true);
+  });
+
+  it("renders body metadata statically without mutation or AI controls in view mode", () => {
+    const renderAiControls = vi.fn(() => <span data-testid="view-ai" />);
+    render(
+      <ReportBlockSection
+        {...props({
+          blocks: [body],
+          readOnly: true,
+          renderAiControls,
+        })}
+      />,
+    );
+    const card = screen.getByText("Body intelligence").closest(".intel-card") as HTMLElement;
+
+    expect(within(card).getByText("Field notes")).toBeVisible();
+    expect(within(card).getAllByText("Current User")).toHaveLength(1);
+    expect(within(card).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("combobox")).not.toBeInTheDocument();
+    expect(card.querySelector(".intel-card-add-source")).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(card).queryByTestId("view-ai")).not.toBeInTheDocument();
+    expect(renderAiControls).toHaveBeenCalledTimes(1);
+    expect(renderAiControls).toHaveBeenCalledWith(body, true);
+  });
+
+  it("preserves last-editor metadata for a read-only body without contributors", () => {
+    const now = Date.now();
+    render(
+      <ReportBlockSection
+        {...props({
+          blocks: [
+            {
+              ...body,
+              ownerId: "u2",
+              contributorIds: [],
+              sourceSessions: [],
+              lastEditedBy: "u1",
+              lastEditedAt: now,
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Current User · 0m ago")).toBeVisible();
+  });
+
+  it.each([
+    ["current owner", false],
+    ["admin", true],
+  ])("keeps source and contributor controls for the %s", (_label, isAdmin) => {
+    render(
+      <ReportBlockSection
+        {...props({
+          blocks: [{ ...body, ...(isAdmin ? { ownerId: "u2" } : {}) }],
+          isAdmin,
+        })}
+      />,
+    );
+    const card = screen.getByText("Body intelligence").closest(".intel-card") as HTMLElement;
+
+    expect(within(card).getByRole("textbox")).toBeInTheDocument();
+    expect(within(card).getByRole("combobox")).toBeInTheDocument();
+    expect(card.querySelector(".intel-card-add-source")).toBeInTheDocument();
+    expect(within(card).getByTestId("ai-body-1")).toBeInTheDocument();
   });
 
   it("lets an admin edit and delete another user's Blocks", () => {
@@ -297,9 +395,33 @@ describe("DailyReport Block integration", () => {
   it("builds the one-Block write from a transaction-fresh sibling array", () => {
     expect(source).toContain("const snapshot = await transaction.get(reportRef)");
     expect(source).toContain("const blocks = Array.isArray(latest[field]) ? latest[field] : []");
-    expect(source).toContain("const next = replaceReportBlock(blocks, blockId, patch)");
+    expect(source).toContain("const next = mutate(blocks)");
+    expect(source).toContain("replaceReportBlock(blocks, blockId, patch, expectedContent)");
     expect(source).toContain("transaction.set(reportRef, { [field]: next }, { merge: true })");
     expect(source).not.toContain("replaceReportBlock(reportDataRef");
+  });
+
+  it("routes every manual Block mutation through the transaction-fresh mutation callback", () => {
+    expect(source).toContain("const persistBlockMutation = useCallback(");
+    expect(source).toContain("const next = mutate(blocks)");
+    expect(source).toContain("insertReportBlock(blocks, newBlock, afterId)");
+    expect(source).toContain("removeReportBlock(blocks, id)");
+    expect(source).not.toMatch(/saveField\(\s*field,\s*\(reportDataRef\.current\?\.\[field\]/);
+    expect(source).not.toContain("const blocks = reportDataRef.current?.[field]");
+  });
+
+  it("debounces exact Block patches with stable property-specific keys", () => {
+    expect(source).toContain('Object.keys(fields).sort().join(",")');
+    expect(source).toContain("`block.${field}.${id}.${patchKey}`");
+    expect(source).toContain("persistBlockPatch(field, id, {");
+    expect(source).not.toContain("saveField(\n        field,");
+  });
+
+  it("flushes candidate saves before a content-preconditioned transaction", () => {
+    expect(source.match(/onSaveContent=\{async \(content\) => \{/g)).toHaveLength(3);
+    expect(source.match(/await flushPending\(\);/g)).toHaveLength(6);
+    expect(source.match(/block\.content,\s*\);/g)).toHaveLength(3);
+    expect(source.match(/transcriptRef: next/g)).toHaveLength(3);
   });
 
   it("flushes transcript edits and limits candidate adoption to content metadata", () => {

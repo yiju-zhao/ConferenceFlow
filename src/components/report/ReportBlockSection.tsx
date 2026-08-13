@@ -103,7 +103,7 @@ export default function ReportBlockSection({
                     ×
                   </button>
                 )}
-                {!readOnly && aiControls && (
+                {!blockReadOnly && aiControls && (
                   <div className="report-block-heading-ai no-print">{aiControls}</div>
                 )}
               </div>
@@ -123,7 +123,7 @@ export default function ReportBlockSection({
                 memberColorMap={memberColorMap}
                 isAdmin={isAdmin}
                 conferenceSessions={conferenceSessions}
-                aiControls={!readOnly ? aiControls : undefined}
+                aiControls={!blockReadOnly ? aiControls : undefined}
               />
             )}
             {!readOnly && (
