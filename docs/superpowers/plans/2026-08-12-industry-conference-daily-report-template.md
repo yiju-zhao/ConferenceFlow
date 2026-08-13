@@ -16,7 +16,11 @@
 - The three Block fields are exactly `onsiteInfoBlocks`, `reflectionsBlocks`, and `rumorsBlocks`.
 - Every Block generates independently; AI changes only that Block's `content`.
 - Each Block field owns one shared template `ai.instruction`; instructions are not copied into report data.
+- Every Block-scope template field has `type: "rich_text"`; the validator rejects every other field type at Block scope.
 - A Block may generate from its private Transcript, current draft, or both. If both are empty, do not call DeepSeek.
+- Block Transcript `confId`, `reportId`, `blockId`, and `fileId` values must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`; validate them without replacement, decoding, normalization, or re-encoding.
+- A Block Transcript object name has exactly seven path segments. Build and parse it through one shared utility, compare every identity exactly, and reject extra/missing segments, encoded separators, invalid extensions, and format disagreement before reading Storage.
+- Keep the existing Session Transcript namespace and legacy Session path normalization unchanged. V1 is unreleased, so do not add Block-path migration or dual-read behavior.
 - AI always returns an in-memory candidate with Evidence; it never directly writes report content.
 - Heading Blocks are rewrite-only, plain, single-line, and at most 60 Chinese characters. Body Blocks allow rewrite and append.
 - Transcript references and text must not enter snapshots, published HTML, exports, email HTML, or public Storage paths.
@@ -115,6 +119,15 @@ it("selects eligible Block fields by mode", () => {
     "onsiteInfoBlocks",
   ]);
 });
+
+it.each(["short_text", "bullet_list", "fixed", "image"])(
+  "rejects %s at Block scope",
+  (type) => {
+    const invalid = structuredClone({ ...template, fields: [...template.fields, blockField] });
+    (invalid.fields.at(-1) as Record<string, unknown>).type = type;
+    expect(() => assertTemplateVersion(invalid)).toThrow("invalid AI Block field type");
+  },
+);
 ```
 
 - [ ] **Step 2: Run the contract test and verify RED**
@@ -167,8 +180,13 @@ export interface ReportBlock {
 Add `rumorsBlocks?: ReportBlock[]` to `Report` and `ReportSnapshotData`. In `templateContract.ts`, allow the `block` scope and reject any Block ID outside a Set built from `AI_BLOCK_FIELDS`:
 
 ```ts
-if (field.scope === "block" && !AI_BLOCK_FIELD_IDS.has(field.id as AiBlockField)) {
-  throw new Error(`invalid AI Block field: ${field.id}`);
+if (field.scope === "block") {
+  if (!AI_BLOCK_FIELD_IDS.has(field.id as AiBlockField)) {
+    throw new Error(`invalid AI Block field: ${field.id}`);
+  }
+  if (field.type !== "rich_text") {
+    throw new Error(`invalid AI Block field type: ${field.id}`);
+  }
 }
 ```
 
@@ -625,17 +643,55 @@ git commit -m "feat(report): initialize template-bound daily reports"
 **Interfaces:**
 
 - Produces: `buildBlockTranscriptStoragePath(confId, reportId, targetFieldId, blockId, fileId, format)`.
+- Produces: `isBlockTranscriptPathId(value)` and `parseBlockTranscriptStoragePath(path)` as the single browser/server Block-path contract.
 - Produces: `usePrivateTranscriptSource({ current, uid, buildStoragePath, commitReference })`.
 - Preserves: existing `useTranscriptSource()` Session API.
 - Produces: `useBlockTranscriptSource()` with caller-injected Block persistence.
 
-- [ ] **Step 1: Write and run a failing Block-path test**
+- [ ] **Step 1: Write and run failing strict Block-path tests**
 
 ```ts
-it("builds an isolated sanitized Block Transcript path", () => {
+it("builds an exact Block Transcript path without transforming accepted IDs", () => {
   expect(
-    buildBlockTranscriptStoragePath("conf/1", "report 1", "rumorsBlocks", "block/1", "file 1", "vtt"),
-  ).toBe("conference-transcripts/conf_1/report_1/blocks/rumorsBlocks/block_1/file_1.vtt");
+    buildBlockTranscriptStoragePath(
+      "conf-1",
+      "report_1",
+      "rumorsBlocks",
+      "block.1",
+      "file-1",
+      "vtt",
+    ),
+  ).toBe("conference-transcripts/conf-1/report_1/blocks/rumorsBlocks/block.1/file-1.vtt");
+});
+
+it.each([
+  "",
+  ".",
+  "..",
+  "block/1",
+  "block%2F1",
+  "block 1",
+  "区块1",
+  `b${"x".repeat(128)}`,
+])("rejects an unsafe Block Transcript identity: %s", (value) => {
+  expect(isBlockTranscriptPathId(value)).toBe(false);
+  expect(() =>
+    buildBlockTranscriptStoragePath("conf-1", "report-1", "rumorsBlocks", value, "file-1", "vtt"),
+  ).toThrow("invalid Block Transcript path identity");
+});
+
+it("parses only the exact seven-segment Block Transcript path", () => {
+  const path = "conference-transcripts/conf-1/report-1/blocks/rumorsBlocks/block-1/file-1.vtt";
+  expect(parseBlockTranscriptStoragePath(path)).toEqual({
+    confId: "conf-1",
+    reportId: "report-1",
+    targetFieldId: "rumorsBlocks",
+    blockId: "block-1",
+    fileId: "file-1",
+    format: "vtt",
+  });
+  expect(parseBlockTranscriptStoragePath(`${path}/extra`)).toBeNull();
+  expect(parseBlockTranscriptStoragePath(path.replace("block-1", "block%2F1"))).toBeNull();
 });
 ```
 
@@ -643,11 +699,32 @@ it("builds an isolated sanitized Block Transcript path", () => {
 npx vitest run src/lib/ai-report/transcriptSource.test.ts
 ```
 
-Expected: FAIL because the path builder is absent.
+Expected: FAIL because the strict Block identity/parser contract is absent.
 
-- [ ] **Step 2: Implement the Block path builder**
+- [ ] **Step 2: Implement the authoritative strict Block path contract**
 
-Reuse `safePathSegment()` and return the exact seven-segment path asserted above. Accept only `AiBlockField` for `targetFieldId`.
+Do not reuse or change the legacy Session `safePathSegment()` behavior. Add:
+
+```ts
+export const BLOCK_TRANSCRIPT_PATH_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+export function isBlockTranscriptPathId(value: unknown): value is string {
+  return typeof value === "string" && BLOCK_TRANSCRIPT_PATH_ID_PATTERN.test(value);
+}
+
+export interface ParsedBlockTranscriptStoragePath {
+  confId: string;
+  reportId: string;
+  targetFieldId: AiBlockField;
+  blockId: string;
+  fileId: string;
+  format: TranscriptFormat;
+}
+```
+
+`buildBlockTranscriptStoragePath()` must validate all four ID segments, accept only an `AiBlockField` and `TranscriptFormat`, throw `invalid Block Transcript path identity` on failure, and interpolate accepted strings unchanged.
+
+`parseBlockTranscriptStoragePath()` must split on `/`, require exactly seven segments, require the fixed `conference-transcripts` and `blocks` literals, validate the four identity segments with the same predicate, validate the field through a Set built from `AI_BLOCK_FIELDS`, and parse only a final filename matching `^(.+)\.(txt|md|srt|vtt)$`. Return `null` for any invalid path. The final `fileId` must independently pass the strict ID predicate.
 
 - [ ] **Step 3: Write failing shared lifecycle tests**
 
@@ -852,6 +929,10 @@ git commit -m "feat(ai-report): use daily field drafts as evidence"
 
 - Create: `src/lib/ai-report/blockTarget.ts`
 - Create: `src/lib/ai-report/blockTarget.test.ts`
+- Modify: `src/lib/ai-report/templateContract.ts`
+- Modify: `src/lib/ai-report/templateContract.test.ts`
+- Modify: `src/lib/ai-report/transcriptSource.ts`
+- Modify: `src/lib/ai-report/transcriptSource.test.ts`
 - Modify: `server/ai-report/context.ts`
 - Modify: `server/ai-report/context.test.ts`
 
@@ -865,13 +946,13 @@ git commit -m "feat(ai-report): use daily field drafts as evidence"
 
 ```ts
 it("uses a collision-safe key for one Block content hash", () => {
-  expect(blockContentHashKey("rumorsBlocks", "block/1")).toBe(
-    "block:rumorsBlocks:block%2F1:content",
+  expect(blockContentHashKey("rumorsBlocks", "block.1")).toBe(
+    "block:rumorsBlocks:block.1:content",
   );
 });
 ```
 
-Add context tests for draft-only body input; valid VTT Transcript and timestamps; missing Block; duplicate Block ID; wrong field; append on heading; path mismatch; content-hash mismatch; and empty draft with no Transcript. Use:
+Add the Task 1 non-`rich_text` Block-field tests and Task 6 strict builder/parser matrix if they are not already present. Add context tests for draft-only body input; valid VTT Transcript and timestamps; a true Transcript-only input whose current draft is `""`; missing Block; duplicate Block ID; wrong field; append on heading; exact path mismatch; extra/missing path segments; encoded separators; extension/format mismatch; content-hash mismatch; and empty draft with no Transcript. Use:
 
 ```ts
 const request = {
@@ -926,16 +1007,19 @@ Define it in `context.ts` until Task 10 creates `generate-block.ts`, then move i
 2. Read `report[targetFieldId]` as an array and require exactly one matching `blockId`.
 3. Require `heading | body`; reject append for heading.
 4. Without `transcriptRef`, use `segments: []` and omit `transcriptHash`.
-5. With a reference, require the exact prefix `conference-transcripts/{safeConf}/{safeReport}/blocks/{safeField}/{safeBlock}/`, matching extension, UTF-8, content hash, and parser output.
-6. Hash normalized current `content` under `blockContentHashKey()`.
-7. Load only the triggering user's focus.
+5. Normalize the target Block's scalar `content` using the validated `rich_text` field policy, require a string result, and use that same string as `currentValue`.
+6. With a reference, parse `storagePath` through `parseBlockTranscriptStoragePath()` before reading the object. Reject unless it yields exactly the authoritative `confId`, `reportId`, `targetFieldId`, and `blockId`, and its parsed extension agrees with `transcriptRef.format`.
+7. Reject all malformed or ambiguous paths; do not use `startsWith()`, segment replacement, percent decoding, Unicode normalization, or a sanitized-prefix comparison.
+8. Only after identity validation, load UTF-8 bytes, verify content hash, and parse the Transcript while preserving SRT/VTT timestamps.
+9. Hash the normalized scalar `currentValue` under `blockContentHashKey()`.
+10. Load only the triggering user's focus.
 
 - [ ] **Step 6: Verify and commit Block context**
 
 ```bash
 npx vitest run src/lib/ai-report/blockTarget.test.ts server/ai-report/context.test.ts server/ai-report/transcript-parser.test.ts
 npm run typecheck
-git add src/lib/ai-report/blockTarget.ts src/lib/ai-report/blockTarget.test.ts server/ai-report/context.ts server/ai-report/context.test.ts
+git add src/lib/ai-report/blockTarget.ts src/lib/ai-report/blockTarget.test.ts src/lib/ai-report/templateContract.ts src/lib/ai-report/templateContract.test.ts src/lib/ai-report/transcriptSource.ts src/lib/ai-report/transcriptSource.test.ts server/ai-report/context.ts server/ai-report/context.test.ts
 git commit -m "feat(ai-report): load Block generation context"
 ```
 
@@ -1090,7 +1174,7 @@ it("accepts one exact Block generation request", () => {
 });
 ```
 
-Reject unknown Block fields, empty/control-character/overlong `blockId`, extra keys, wrong mode, and overlong instruction.
+Reject unknown Block fields, every `blockId` outside the exact strict Block Transcript identity grammar, extra keys, wrong mode, and overlong instruction. Add handler-boundary cases for slash, `%2F`, whitespace, Unicode, `.`, `..`, empty, and 129-character IDs. Add Block-scope cases where `confId` or `reportId` violates the same grammar.
 
 - [ ] **Step 2: Run route tests and verify RED**
 
@@ -1100,7 +1184,9 @@ npx vitest run server/ai-report/route.test.ts
 
 - [ ] **Step 3: Implement exact request parsing**
 
-Use an `AI_BLOCK_FIELDS` Set. For Block scope, allow exactly `scope`, `targetFieldId`, `blockId`, `mode`, and `instruction`. Reuse `validRouteId()` for a trimmed `blockId`. Never accept an arbitrary Firestore field name.
+Use an `AI_BLOCK_FIELDS` Set. For Block scope, allow exactly `scope`, `targetFieldId`, `blockId`, `mode`, and `instruction`. Require the original, untrimmed `blockId` to pass `isBlockTranscriptPathId()`; never normalize it or accept an arbitrary Firestore field name.
+
+After parsing a Block request, require the route `confId` and `reportId` to pass `isBlockTranscriptPathId()` before context loading. Keep the existing route-ID behavior for Session and daily requests. This intentionally means an imported Block/report with an unsafe identity remains manually editable but cannot use Block AI/Transcript until recreated with application-generated safe IDs.
 
 - [ ] **Step 4: Write a failing handler-dispatch test**
 
