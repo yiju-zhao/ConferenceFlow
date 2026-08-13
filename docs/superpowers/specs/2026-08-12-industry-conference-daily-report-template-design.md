@@ -4,6 +4,8 @@
 
 **Status:** Approved
 
+**Security revision:** 2026-08-13 — strict, collision-free Block Transcript identities approved
+
 **Target application:** ConferenceFlow
 
 **Template ID:** `industry-conference-daily-report`
@@ -91,7 +93,7 @@ The existing generation scope gains `block`:
 type GenerationScope = "session" | "daily" | "block";
 ```
 
-For a field with `scope: "block"`, `TemplateField.type` describes one target Block's `content`, not the containing Firestore array. V1 uses `rich_text` for all three dynamic section fields. This avoids a new field value type while keeping candidate values as `string | string[]`.
+For a field with `scope: "block"`, `TemplateField.type` describes one target Block's `content`, not the containing Firestore array. Every Block-scope field must use `type: "rich_text"`; the template validator rejects `short_text`, `bullet_list`, `fixed`, or `image` at Block scope. This guarantees that stored `ReportBlock.content` is normalized and hashed as one string. V1 uses `rich_text` for all three dynamic section fields and does not introduce a new field value type.
 
 Only these report fields may be AI-enabled with Block scope:
 
@@ -102,7 +104,7 @@ type AiBlockField =
   | "rumorsBlocks";
 ```
 
-The template validator rejects any other Block-scope ID. Existing reserved-field protections for daily and Session targets remain unchanged.
+The template validator rejects any other Block-scope ID or any non-`rich_text` Block field. Existing reserved-field protections for daily and Session targets remain unchanged.
 
 ## 6. V1 Fields
 
@@ -172,7 +174,31 @@ Block Transcript objects use a distinct private path namespace:
 conference-transcripts/{confId}/{reportId}/blocks/{targetFieldId}/{blockId}/{fileId}.{ext}
 ```
 
-All path segments are safely normalized. The client and server require the stored path to match the authenticated conference, report, target field, and Block. Existing `.txt`, `.md`, `.srt`, `.vtt`, UTF-8, size, content-hash, replacement, and deletion rules remain in force.
+Block Transcript identity segments are validated, never transformed. `confId`, `reportId`, `blockId`, and `fileId` must each match this exact ASCII grammar:
+
+```text
+^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+```
+
+This rule is injective because the accepted value itself becomes the Storage path segment: characters are never replaced, percent-decoded, Unicode-normalized, or encoded a second time. Values such as `b/1`, `b%2F1`, whitespace, Unicode identifiers, `.`, and `..` are rejected; `b_1` remains exactly `b_1`. `targetFieldId` must be one of the three `AiBlockField` literals, and `ext` must be exactly `txt`, `md`, `srt`, or `vtt`.
+
+One shared Block-path utility is authoritative for browser construction and server validation. The server splits a stored object name into exactly these seven segments and compares each identity segment exactly:
+
+```text
+1. conference-transcripts
+2. {confId}
+3. {reportId}
+4. blocks
+5. {targetFieldId}
+6. {blockId}
+7. {fileId}.{ext}
+```
+
+Extra subdirectories, missing segments, encoded separators, invalid IDs, and extension disagreements are rejected before the object is read. The existing Session Transcript namespace and its legacy path-normalization behavior remain unchanged.
+
+Conference IDs are Firebase-generated, report IDs are application-generated dates/summary IDs, and Block/file IDs are application-generated, so current creation paths already satisfy this grammar. Block Transcript V1 has not been released; no path migration or dual-read compatibility layer is required. If an imported legacy Block has an unsafe ID, it remains manually editable but must be recreated with a safe application-generated ID before it can own a Block Transcript.
+
+Existing `.txt`, `.md`, `.srt`, `.vtt`, UTF-8, size, content-hash, replacement, and deletion rules remain in force.
 
 Block Transcript references and source text are excluded from snapshots, candidate persistence, publishing, export, email HTML, and public report HTML.
 
@@ -275,11 +301,11 @@ The browser verifies `templateHash`, `blockTarget`, optional `transcriptHash`, a
 For a Block request, the authenticated server:
 
 1. Loads the report and its immutable template version.
-2. Validates that the target is one of the three Block fields and is AI-enabled with `scope: "block"`.
+2. Validates that the target is one of the three Block fields, is AI-enabled with `scope: "block"`, and has `type: "rich_text"`.
 3. Finds exactly one Block by `blockId` in that field.
 4. Verifies the requested mode, including rewrite-only headings.
-5. Normalizes the current `content` as the current-draft source.
-6. If a Transcript reference exists, verifies its bound path and content hash, then parses it into timestamp-preserving segments.
+5. Normalizes the scalar string `content` as the current-draft source and hashes that same normalized string for stale-candidate protection.
+6. If a Transcript reference exists, parses its Storage name into exactly seven segments, validates every strict identity, requires exact conference/report/field/Block equality, verifies format and content hash, then parses it into timestamp-preserving segments.
 7. Requires at least one non-empty factual source: current draft or Transcript.
 8. Loads only the triggering member's conference focus.
 9. Sends one structured prompt payload to DeepSeek.
@@ -331,6 +357,7 @@ Expected public errors include:
 - Block target or mode not eligible;
 - neither Transcript nor current draft contains usable source material;
 - Transcript path outside the bound Block;
+- invalid or ambiguous Block Transcript identity/path syntax;
 - Transcript encoding, format, size, or content hash invalid;
 - model timeout, invalid JSON, or unsupported Evidence;
 - template, Transcript, target Block, or report content changed after generation.
@@ -365,6 +392,9 @@ No new top-level page, template editor, AI status machine, or visual redesign is
 - The committed hash equals the canonical SHA-256 and changes when any field policy changes.
 - The publishing script creates, no-ops on equivalence, and refuses conflicting overwrite.
 - The validator accepts only the three approved Block field IDs.
+- The validator rejects every non-`rich_text` Block-scope field type.
+- The Block Transcript path builder accepts strict IDs without transformation and rejects slash, encoded-slash, whitespace, Unicode, dot-segment, empty, and overlength identities.
+- `b/1` is rejected while `b_1` maps only to `b_1`; no two accepted identities produce the same path.
 - Legacy compatibility is idempotent and never changes already-bound reports.
 - Legacy `rumors` becomes exactly one body Block only when needed.
 
@@ -376,6 +406,8 @@ No new top-level page, template editor, AI status machine, or visual redesign is
 - Daily `title` and `summaryPoints` generation can use their current drafts when the template allows `current_draft`.
 - Heading output is rewrite-only, plain text, and length-limited.
 - Evidence, prompt-injection defenses, path ownership, Transcript hashes, and stale-content hashes are enforced.
+- Stored Block Transcript paths must contain exactly seven segments with exact raw identity matches; extra segments and encoded separators are rejected.
+- Transcript-only Block context is tested with an empty current draft.
 - Adoption target identity cannot be replayed against a sibling Block.
 
 ### 16.3 UI and storage tests
