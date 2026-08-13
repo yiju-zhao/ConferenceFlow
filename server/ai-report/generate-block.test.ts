@@ -470,6 +470,41 @@ describe("generateBlockCandidate", () => {
     expect(result.insufficientFieldIds).toEqual(["rumorsBlocks"]);
   });
 
+  it("withholds a candidate whose grounding-sensitive tokens are absent from accepted quotes", async () => {
+    mockDeepSeek.mockResolvedValue(successfulOutput({ value: "Acme 的 GPT-5 产品预计增长 42%。" }));
+
+    const result = await generateBlockCandidate(makeInput());
+
+    expect(result.candidate).toEqual([]);
+    expect(result.evidence).toEqual([]);
+    expect(result.insufficientFieldIds).toEqual(["rumorsBlocks"]);
+  });
+
+  it("accepts grounding-sensitive tokens supported across accepted Evidence quotes", async () => {
+    mockDeepSeek.mockResolvedValue(
+      successfulOutput({
+        value: "Acme 的 GPT-5 产品预计增长 42%。",
+        supports: [
+          { sourceId: "draft:rumorsBlocks:b1", quote: "Acme 与 GPT-5" },
+          { sourceId: "draft:rumorsBlocks:b1", quote: "预计增长 42%" },
+        ],
+      }),
+    );
+
+    const result = await generateBlockCandidate(
+      makeInput({ currentValue: "现场记录：Acme 与 GPT-5；预计增长 42%。" }),
+    );
+
+    expect(result.candidate).toEqual([
+      expect.objectContaining({
+        fieldId: "rumorsBlocks",
+        value: "Acme 的 GPT-5 产品预计增长 42%。",
+        evidenceIds: ["block_ev_0001", "block_ev_0002"],
+      }),
+    ]);
+    expect(result.evidence.map((item) => item.quote)).toEqual(["Acme 与 GPT-5", "预计增长 42%"]);
+  });
+
   it.each([
     ["wrong type", ["不是字符串"]],
     ["empty body", "   "],

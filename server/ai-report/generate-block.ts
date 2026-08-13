@@ -9,7 +9,7 @@ import {
   type TemplateField,
 } from "../../src/types";
 import { htmlToPlainText, validateCandidateValue, type SourceBlock } from "./field-policy";
-import { validateSourceSupports } from "./evidence";
+import { supportsAllGroundingTokens, validateSourceSupports } from "./evidence";
 import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek";
 import type { TranscriptSegment } from "./transcript-parser";
 import {
@@ -270,6 +270,15 @@ export async function generateBlockCandidate(
   try {
     value = validateCandidateValue(written.value, validationTarget(input, target));
   } catch {
+    return insufficientResponse(input);
+  }
+  if (
+    typeof value !== "string" ||
+    !supportsAllGroundingTokens(
+      value,
+      validSupports.map((support) => support.quote),
+    )
+  ) {
     return insufficientResponse(input);
   }
   if (

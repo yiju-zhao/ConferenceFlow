@@ -100,7 +100,7 @@ function containsGroundedToken(text: string, token: string): boolean {
   return false;
 }
 
-function supportsAllGroundingTokens(claim: string, quotes: string[]): boolean {
+export function supportsAllGroundingTokens(claim: string, quotes: string[]): boolean {
   const joined = normalized(quotes.join(" "));
   return groundingTokens(claim).every((token) => containsGroundedToken(joined, token));
 }
