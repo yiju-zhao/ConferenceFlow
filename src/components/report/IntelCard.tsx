@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import type { ReactNode } from "react";
 import { COLORS } from "../../constants";
 import { SESSION_CATALOG } from "../../sessionCatalog";
 import { EditableField } from "./SharedEditors";
@@ -36,6 +37,7 @@ interface IntelCardProps {
   memberColorMap: Record<string, number>;
   isAdmin?: boolean;
   conferenceSessions?: Session[];
+  aiControls?: ReactNode;
 }
 
 export default function IntelCard({
@@ -49,6 +51,7 @@ export default function IntelCard({
   memberColorMap,
   isAdmin = false,
   conferenceSessions = [],
+  aiControls,
 }: IntelCardProps) {
   const { t } = useTranslation();
   const ph = placeholder || t("report.recordContent");
@@ -117,6 +120,7 @@ export default function IntelCard({
           readOnly={!isEditable}
         />
       </div>
+      {aiControls && <div className="intel-card-ai-controls no-print">{aiControls}</div>}
       {sources.map((src, i) => (
         <div key={i} className="intel-card-section intel-card-meta no-print">
           <span className="intel-card-label">

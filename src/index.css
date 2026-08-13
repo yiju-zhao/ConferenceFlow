@@ -119,10 +119,18 @@
 }
 
 /* ── Section accent scopes (SectionAccentProvider sets data-accent) ── */
-[data-accent="dash"] { --accent: var(--accent-dash); }
-[data-accent="cal"] { --accent: var(--accent-cal); }
-[data-accent="report"] { --accent: var(--accent-report); }
-[data-accent="admin"] { --accent: var(--accent-admin); }
+[data-accent="dash"] {
+  --accent: var(--accent-dash);
+}
+[data-accent="cal"] {
+  --accent: var(--accent-cal);
+}
+[data-accent="report"] {
+  --accent: var(--accent-report);
+}
+[data-accent="admin"] {
+  --accent: var(--accent-admin);
+}
 /* Derived tints follow the locally-resolved --accent */
 [data-accent="dash"],
 [data-accent="cal"],
@@ -3438,6 +3446,9 @@ input[type="checkbox"].gtc-check:checked::after {
 .onsite-category-remove:hover {
   color: var(--brand);
 }
+.report-block-heading-ai {
+  flex-shrink: 0;
+}
 
 .onsite-block-body {
   position: relative;
@@ -3533,6 +3544,9 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .intel-card-content {
   border-radius: 7px 7px 0 0;
+}
+.intel-card-ai-controls {
+  padding: 0 14px 10px;
 }
 .intel-card-section:last-child {
   border-radius: 0 0 7px 7px;
