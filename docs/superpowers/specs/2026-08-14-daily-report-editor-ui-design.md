@@ -140,8 +140,9 @@ output. The editor outline is marked `no-print` and exists only in edit mode.
   stale-content behavior remains unchanged.
 - Section-level commands such as Add Session and Add Block align to the right of their section
   heading rather than floating separately in the document flow.
-- Session headers present code, title, time, collapse, and overflow actions in one consistent row.
-  Destructive Session actions are not persistently exposed.
+- Session headers present code, title, time, and collapse in one consistent row. Session deletion
+  remains in the command bar’s More menu and keeps the existing selection/confirmation flow; no
+  second per-Session delete shortcut is introduced.
 - Editable field hover and focus states use the existing semantic border/surface tokens. Saving,
   saved, generating, disabled, and error feedback must be visibly distinct and accessible.
 - The selection formatting toolbar becomes a semantic surface popover with the shared border,
