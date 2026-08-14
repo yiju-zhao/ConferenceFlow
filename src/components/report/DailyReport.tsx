@@ -12,6 +12,7 @@ import {
   limit,
   deleteDoc,
   serverTimestamp,
+  runTransaction,
 } from "firebase/firestore";
 import { db, storage } from "../../firebase";
 import { useAuth } from "../../contexts/AuthContext";
@@ -21,20 +22,23 @@ import { COLORS, COLOR_PRESETS } from "../../constants";
 import { SESSION_CATALOG } from "../../sessionCatalog";
 import { parseReportId, generateId } from "../../lib/reportUtils";
 import { useDebouncedSave } from "../../hooks/useDebouncedSave";
-import { EditableField, InlineAddButton, BulletEditor } from "./SharedEditors";
+import { EditableField, BulletEditor } from "./SharedEditors";
 import { usePresence } from "./usePresence";
 import PresenceBar from "./PresenceBar";
 import { useTranslation } from "react-i18next";
 import { formatDateTime } from "../../i18n/dateUtils";
 import huaweiLogo from "../../assets/huawei_logo.png";
-import IntelCard, { topicSlug } from "./IntelCard";
+import { topicSlug } from "./IntelCard";
+import ReportBlockSection from "./ReportBlockSection";
 import SpeakersEditor from "./SpeakersEditor";
 import AddReportSessionDialog from "./AddReportSessionDialog";
 import AiFocusDialog from "./ai/AiFocusDialog";
 import AiFieldAction from "./ai/AiFieldAction";
+import BlockAiSection from "./ai/BlockAiSection";
 import SessionAiSection from "./ai/SessionAiSection";
 import SnapshotViewer from "./SnapshotViewer";
 import { useBoundReportTemplate } from "../../hooks/useBoundReportTemplate";
+import { useDefaultReportTemplateBinding } from "../../hooks/useDefaultReportTemplateBinding";
 import {
   readdReportSession,
   reportSessionSpeakers,
@@ -42,8 +46,16 @@ import {
   sessionKey,
 } from "../../lib/ai-report/sessionSelection";
 import { requireAuthenticatedUserId } from "../../lib/ai-report/memberFocus";
+import {
+  blocksWithoutTranscripts,
+  insertReportBlock,
+  removeReportBlock,
+  replaceReportBlock,
+} from "../../lib/ai-report/reportBlocks";
+import { INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING } from "../../lib/ai-report/templates/industryConferenceDailyReport";
 import type {
   BlockField,
+  AiBlockField,
   Member,
   Report,
   ReportBlock,
@@ -125,6 +137,13 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   const [tocVisible, setTocVisible] = useState(true);
   const [openInlineMenu, setOpenInlineMenu] = useState<string | null>(null);
+
+  useDefaultReportTemplateBinding({
+    confId,
+    reportId,
+    report: reportData,
+    enabled: Boolean(user) && !viewMode,
+  });
 
   useEffect(() => {
     const el = document.getElementById("report-toc");
@@ -305,10 +324,12 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       onsiteInfo: "",
       reflections: "",
       rumors: "",
+      rumorsBlocks: [],
       sitePhotos: [],
       sessions: {},
       topicOrder: [],
       status: "draft",
+      ...INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING,
     }).catch(console.error);
   }, [user, loading, reportData, reportId, date, confId]);
 
@@ -323,7 +344,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   );
   const titleField = fieldById.get("title");
   const summaryPointsField = fieldById.get("summaryPoints");
-  const rumorsField = fieldById.get("rumors");
+  const onsiteInfoBlocksField = fieldById.get("onsiteInfoBlocks");
+  const reflectionsBlocksField = fieldById.get("reflectionsBlocks");
+  const rumorsBlocksField = fieldById.get("rumorsBlocks");
   const sessionAiFields =
     template?.fields.filter(
       (field) =>
@@ -451,23 +474,37 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   );
 
   // ── Block helpers ─────────────────────────────────────────────────────────────
-  const updateBlock = useCallback(
-    (field: BlockField, id: string, content: string) => {
-      saveField(
-        field,
-        (reportDataRef.current?.[field] || []).map((b) => (b.id === id ? { ...b, content } : b)),
-      );
+  const persistBlockMutation = useCallback(
+    async (field: AiBlockField, mutate: (blocks: ReportBlock[]) => ReportBlock[]) => {
+      if (!user || viewMode) throw new Error("report is read-only");
+      const reportRef = doc(db, "conferences", confId, "dailyReports", reportId);
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(reportRef);
+        if (!snapshot.exists()) throw new Error("report not found");
+        const latest = snapshot.data() as Report;
+        const blocks = Array.isArray(latest[field]) ? latest[field] : [];
+        const next = mutate(blocks);
+        transaction.set(reportRef, { [field]: next }, { merge: true });
+      });
     },
-    [saveField],
+    [confId, reportId, user, viewMode],
   );
+
+  const persistBlockPatch = useCallback(
+    (field: AiBlockField, blockId: string, patch: Partial<ReportBlock>, expectedContent?: string) =>
+      persistBlockMutation(field, (blocks) =>
+        replaceReportBlock(blocks, blockId, patch, expectedContent),
+      ),
+    [persistBlockMutation],
+  );
+
   const removeBlock = useCallback(
     (field: BlockField, id: string) => {
-      saveField(
-        field,
-        (reportDataRef.current?.[field] || []).filter((b) => b.id !== id),
+      void persistBlockMutation(field, (blocks) => removeReportBlock(blocks, id)).catch(
+        () => undefined,
       );
     },
-    [saveField],
+    [persistBlockMutation],
   );
   const insertBlock = useCallback(
     (field: BlockField, type: ReportBlockType, afterId: string | null) => {
@@ -480,30 +517,25 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         lastEditedBy: user?.uid || "",
         lastEditedAt: Date.now(),
       };
-      const blocks = reportDataRef.current?.[field] || [];
-      const idx = afterId ? blocks.findIndex((b) => b.id === afterId) : -1;
-      const next = [...blocks];
-      next.splice(idx + 1, 0, newBlock);
-      saveField(field, next);
+      void persistBlockMutation(field, (blocks) =>
+        insertReportBlock(blocks, newBlock, afterId),
+      ).catch(() => undefined);
     },
-    [saveField, user],
+    [persistBlockMutation, user],
   );
   const updateBlockFields = useCallback(
     (field: BlockField, id: string, fields: Partial<ReportBlock>) => {
-      saveField(
-        field,
-        (reportDataRef.current?.[field] || []).map((b) => {
-          if (b.id !== id) return b;
-          return {
-            ...b,
-            ...fields,
-            lastEditedBy: user?.uid || b.lastEditedBy,
-            lastEditedAt: Date.now(),
-          };
+      if (!user || viewMode) return;
+      const patchKey = Object.keys(fields).sort().join(",");
+      debouncedSave(`block.${field}.${id}.${patchKey}`, () =>
+        persistBlockPatch(field, id, {
+          ...fields,
+          lastEditedBy: user.uid,
+          lastEditedAt: Date.now(),
         }),
       );
     },
-    [saveField, user],
+    [debouncedSave, persistBlockPatch, user, viewMode],
   );
 
   // ── Snapshot helpers ─────────────────────────────────────────────────────────
@@ -537,8 +569,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         onsiteInfo: rd.onsiteInfo || "",
         reflections: rd.reflections || "",
         rumors: rd.rumors || "",
-        onsiteInfoBlocks: rd.onsiteInfoBlocks || [],
-        reflectionsBlocks: rd.reflectionsBlocks || [],
+        onsiteInfoBlocks: blocksWithoutTranscripts(rd.onsiteInfoBlocks || []),
+        reflectionsBlocks: blocksWithoutTranscripts(rd.reflectionsBlocks || []),
+        rumorsBlocks: blocksWithoutTranscripts(rd.rumorsBlocks || []),
       };
       const hash = JSON.stringify(data);
       // Skip auto snapshots when content hasn't changed since last snapshot
@@ -2564,208 +2597,181 @@ ${clone.outerHTML}
 
         {/* Onsite Section */}
         <div className="report-onsite">
-          {/* 现场情报 */}
-          <h2 id="section-onsite-info" className="report-section-title" style={{ marginTop: 32 }}>
-            {t("report.onsiteInfo")}
-          </h2>
-          {(() => {
-            const blocks = reportData?.onsiteInfoBlocks || [];
-            const els = [
-              <InlineAddButton
-                key="add-start"
-                field="onsiteInfoBlocks"
-                afterId={null}
-                openKey={openInlineMenu}
-                onOpen={setOpenInlineMenu}
-                onInsert={insertBlock}
-              />,
-            ];
-            blocks.forEach((block) => {
-              if (block.type === "heading") {
-                els.push(
-                  <div
-                    key={block.id}
-                    id={`block-${block.id}`}
-                    className="onsite-category-header"
-                    style={{ marginTop: 8 }}
-                  >
-                    {viewMode ? (
-                      <span className="onsite-category-title">{block.content}</span>
-                    ) : (
-                      <span
-                        contentEditable
-                        suppressContentEditableWarning
-                        className="onsite-category-title"
-                        onBlur={(e) =>
-                          updateBlock(
-                            "onsiteInfoBlocks",
-                            block.id,
-                            e.currentTarget.textContent.trim(),
-                          )
-                        }
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          document.execCommand(
-                            "insertText",
-                            false,
-                            e.clipboardData.getData("text/plain"),
-                          );
-                        }}
-                      >
-                        {block.content}
-                      </span>
-                    )}
-                    <button
-                      className="onsite-category-remove no-print"
-                      onClick={() => removeBlock("onsiteInfoBlocks", block.id)}
-                    >
-                      ×
-                    </button>
-                  </div>,
-                );
-              } else {
-                els.push(
-                  <IntelCard
-                    key={block.id}
-                    block={block}
-                    members={members}
-                    onUpdate={(fields) => updateBlockFields("onsiteInfoBlocks", block.id, fields)}
-                    onRemove={() => removeBlock("onsiteInfoBlocks", block.id)}
-                    readOnly={viewMode}
-                    currentUid={user?.uid}
-                    memberColorMap={memberColorMap}
-                    isAdmin={isConfAdmin}
-                    conferenceSessions={allConferenceSessions}
-                  />,
-                );
-              }
-              els.push(
-                <InlineAddButton
-                  key={`add-${block.id}`}
-                  field="onsiteInfoBlocks"
-                  afterId={block.id}
-                  openKey={openInlineMenu}
-                  onOpen={setOpenInlineMenu}
-                  onInsert={insertBlock}
-                />,
-              );
-            });
-            return els;
-          })()}
-
-          {/* 圈内声音 */}
-          <h2 id="section-reflections" className="report-section-title" style={{ marginTop: 24 }}>
-            {t("report.reflections")}
-          </h2>
-          {(() => {
-            const blocks = reportData?.reflectionsBlocks || [];
-            const els = [
-              <InlineAddButton
-                key="add-start"
-                field="reflectionsBlocks"
-                afterId={null}
-                openKey={openInlineMenu}
-                onOpen={setOpenInlineMenu}
-                onInsert={insertBlock}
-              />,
-            ];
-            blocks.forEach((block) => {
-              if (block.type === "heading") {
-                els.push(
-                  <div
-                    key={block.id}
-                    id={`block-${block.id}`}
-                    className="onsite-category-header"
-                    style={{ marginTop: 8 }}
-                  >
-                    {viewMode ? (
-                      <span className="onsite-category-title">{block.content}</span>
-                    ) : (
-                      <span
-                        contentEditable
-                        suppressContentEditableWarning
-                        className="onsite-category-title"
-                        onBlur={(e) =>
-                          updateBlock(
-                            "reflectionsBlocks",
-                            block.id,
-                            e.currentTarget.textContent.trim(),
-                          )
-                        }
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          document.execCommand(
-                            "insertText",
-                            false,
-                            e.clipboardData.getData("text/plain"),
-                          );
-                        }}
-                      >
-                        {block.content}
-                      </span>
-                    )}
-                    <button
-                      className="onsite-category-remove no-print"
-                      onClick={() => removeBlock("reflectionsBlocks", block.id)}
-                    >
-                      ×
-                    </button>
-                  </div>,
-                );
-              } else {
-                els.push(
-                  <IntelCard
-                    key={block.id}
-                    block={block}
-                    members={members}
-                    placeholder={t("report.recordVoices")}
-                    onUpdate={(fields) => updateBlockFields("reflectionsBlocks", block.id, fields)}
-                    onRemove={() => removeBlock("reflectionsBlocks", block.id)}
-                    readOnly={viewMode}
-                    currentUid={user?.uid}
-                    memberColorMap={memberColorMap}
-                    isAdmin={isConfAdmin}
-                    conferenceSessions={allConferenceSessions}
-                  />,
-                );
-              }
-              els.push(
-                <InlineAddButton
-                  key={`add-${block.id}`}
-                  field="reflectionsBlocks"
-                  afterId={block.id}
-                  openKey={openInlineMenu}
-                  onOpen={setOpenInlineMenu}
-                  onInsert={insertBlock}
-                />,
-              );
-            });
-            return els;
-          })()}
-
-          {/* 深度研判 */}
-          <h2 id="section-rumors" className="report-section-title" style={{ marginTop: 24 }}>
-            {t("report.rumors")}
-          </h2>
-          {template && rumorsField && user && (
-            <AiFieldAction
-              confId={confId}
-              reportId={reportId}
-              templateHash={template.templateHash}
-              field={rumorsField}
-              focus={membership?.aiFocus ?? ""}
-              getCurrentValue={() => reportDataRef.current?.rumors}
-              flushPending={flushPending}
-              onSave={(value) => saveAiDailyField("rumors", value)}
-              readOnly={viewMode}
-            />
-          )}
-          <EditableField
-            value={reportData?.rumors || ""}
-            onSave={(html) => saveField("rumors", html)}
-            placeholder={t("report.deepAnalysis")}
-            minHeight={120}
+          <ReportBlockSection
+            sectionId="section-onsite-info"
+            title={t("report.onsiteInfo")}
+            titleStyle={{ marginTop: 32 }}
+            field="onsiteInfoBlocks"
+            blocks={reportData?.onsiteInfoBlocks || []}
+            members={members}
+            currentUid={user?.uid}
+            isAdmin={isConfAdmin}
             readOnly={viewMode}
+            memberColorMap={memberColorMap}
+            conferenceSessions={allConferenceSessions}
+            openInlineMenu={openInlineMenu}
+            onOpenInlineMenu={setOpenInlineMenu}
+            onInsert={insertBlock}
+            onUpdate={updateBlockFields}
+            onRemove={removeBlock}
+            renderAiControls={(block, blockReadOnly) =>
+              template && onsiteInfoBlocksField && user ? (
+                <BlockAiSection
+                  confId={confId}
+                  reportId={reportId}
+                  targetFieldId="onsiteInfoBlocks"
+                  templateHash={template.templateHash}
+                  field={onsiteInfoBlocksField}
+                  block={block}
+                  focus={membership?.aiFocus ?? ""}
+                  uid={user.uid}
+                  flushPending={flushPending}
+                  getLatestBlock={() =>
+                    reportDataRef.current?.onsiteInfoBlocks?.find(
+                      (candidate) => candidate.id === block.id,
+                    )
+                  }
+                  commitTranscript={async (next) => {
+                    await flushPending();
+                    await persistBlockPatch("onsiteInfoBlocks", block.id, {
+                      transcriptRef: next,
+                    });
+                  }}
+                  onSaveContent={async (content) => {
+                    await flushPending();
+                    await persistBlockPatch(
+                      "onsiteInfoBlocks",
+                      block.id,
+                      {
+                        content,
+                        lastEditedBy: user.uid,
+                        lastEditedAt: Date.now(),
+                      },
+                      block.content,
+                    );
+                  }}
+                  readOnly={blockReadOnly}
+                />
+              ) : null
+            }
+          />
+
+          <ReportBlockSection
+            sectionId="section-reflections"
+            title={t("report.reflections")}
+            titleStyle={{ marginTop: 24 }}
+            field="reflectionsBlocks"
+            blocks={reportData?.reflectionsBlocks || []}
+            members={members}
+            currentUid={user?.uid}
+            isAdmin={isConfAdmin}
+            readOnly={viewMode}
+            memberColorMap={memberColorMap}
+            conferenceSessions={allConferenceSessions}
+            bodyPlaceholder={t("report.recordVoices")}
+            openInlineMenu={openInlineMenu}
+            onOpenInlineMenu={setOpenInlineMenu}
+            onInsert={insertBlock}
+            onUpdate={updateBlockFields}
+            onRemove={removeBlock}
+            renderAiControls={(block, blockReadOnly) =>
+              template && reflectionsBlocksField && user ? (
+                <BlockAiSection
+                  confId={confId}
+                  reportId={reportId}
+                  targetFieldId="reflectionsBlocks"
+                  templateHash={template.templateHash}
+                  field={reflectionsBlocksField}
+                  block={block}
+                  focus={membership?.aiFocus ?? ""}
+                  uid={user.uid}
+                  flushPending={flushPending}
+                  getLatestBlock={() =>
+                    reportDataRef.current?.reflectionsBlocks?.find(
+                      (candidate) => candidate.id === block.id,
+                    )
+                  }
+                  commitTranscript={async (next) => {
+                    await flushPending();
+                    await persistBlockPatch("reflectionsBlocks", block.id, {
+                      transcriptRef: next,
+                    });
+                  }}
+                  onSaveContent={async (content) => {
+                    await flushPending();
+                    await persistBlockPatch(
+                      "reflectionsBlocks",
+                      block.id,
+                      {
+                        content,
+                        lastEditedBy: user.uid,
+                        lastEditedAt: Date.now(),
+                      },
+                      block.content,
+                    );
+                  }}
+                  readOnly={blockReadOnly}
+                />
+              ) : null
+            }
+          />
+
+          <ReportBlockSection
+            sectionId="section-rumors"
+            title={t("report.rumors")}
+            titleStyle={{ marginTop: 24 }}
+            field="rumorsBlocks"
+            blocks={reportData?.rumorsBlocks || []}
+            members={members}
+            currentUid={user?.uid}
+            isAdmin={isConfAdmin}
+            readOnly={viewMode}
+            memberColorMap={memberColorMap}
+            conferenceSessions={allConferenceSessions}
+            bodyPlaceholder={t("report.deepAnalysis")}
+            openInlineMenu={openInlineMenu}
+            onOpenInlineMenu={setOpenInlineMenu}
+            onInsert={insertBlock}
+            onUpdate={updateBlockFields}
+            onRemove={removeBlock}
+            renderAiControls={(block, blockReadOnly) =>
+              template && rumorsBlocksField && user ? (
+                <BlockAiSection
+                  confId={confId}
+                  reportId={reportId}
+                  targetFieldId="rumorsBlocks"
+                  templateHash={template.templateHash}
+                  field={rumorsBlocksField}
+                  block={block}
+                  focus={membership?.aiFocus ?? ""}
+                  uid={user.uid}
+                  flushPending={flushPending}
+                  getLatestBlock={() =>
+                    reportDataRef.current?.rumorsBlocks?.find(
+                      (candidate) => candidate.id === block.id,
+                    )
+                  }
+                  commitTranscript={async (next) => {
+                    await flushPending();
+                    await persistBlockPatch("rumorsBlocks", block.id, { transcriptRef: next });
+                  }}
+                  onSaveContent={async (content) => {
+                    await flushPending();
+                    await persistBlockPatch(
+                      "rumorsBlocks",
+                      block.id,
+                      {
+                        content,
+                        lastEditedBy: user.uid,
+                        lastEditedAt: Date.now(),
+                      },
+                      block.content,
+                    );
+                  }}
+                  readOnly={blockReadOnly}
+                />
+              ) : null
+            }
           />
         </div>
 

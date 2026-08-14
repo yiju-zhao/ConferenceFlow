@@ -1,3 +1,3 @@
-export * from "./firestore";
-export * from "./api";
-export * from "./ai-report";
+export * from "./firestore.js";
+export * from "./api.js";
+export * from "./ai-report.js";

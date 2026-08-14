@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import type { ReactNode } from "react";
 import { COLORS } from "../../constants";
 import { SESSION_CATALOG } from "../../sessionCatalog";
 import { EditableField } from "./SharedEditors";
@@ -36,6 +37,7 @@ interface IntelCardProps {
   memberColorMap: Record<string, number>;
   isAdmin?: boolean;
   conferenceSessions?: Session[];
+  aiControls?: ReactNode;
 }
 
 export default function IntelCard({
@@ -49,6 +51,7 @@ export default function IntelCard({
   memberColorMap,
   isAdmin = false,
   conferenceSessions = [],
+  aiControls,
 }: IntelCardProps) {
   const { t } = useTranslation();
   const ph = placeholder || t("report.recordContent");
@@ -63,6 +66,7 @@ export default function IntelCard({
     .map((id) => members.find((m) => m.id === id)?.name)
     .filter(Boolean);
   const contributorText = contributorNames.join("\u3001") || (block.contributor || "").trim();
+  const visibleSources = sources.filter((source) => formatOneSource(source));
 
   const ownerColorIdx = block.ownerId ? (memberColorMap[block.ownerId] ?? null) : null;
   const ownerColor = ownerColorIdx !== null ? COLORS[ownerColorIdx]?.hex || "#5f5e5e" : null;
@@ -117,51 +121,55 @@ export default function IntelCard({
           readOnly={!isEditable}
         />
       </div>
-      {sources.map((src, i) => (
-        <div key={i} className="intel-card-section intel-card-meta no-print">
-          <span className="intel-card-label">
-            {sources.length > 1
-              ? t("report.sourceWithIndex", { index: i + 1 })
-              : t("report.source")}
-          </span>
-          <SessionPicker
-            value={src}
-            onChange={(v) => updateSource(i, v)}
-            conferenceSessions={conferenceSessions}
-          />
-          {sources.length > 1 && (
-            <button
-              className="intel-card-source-remove"
-              onClick={() => removeSource(i)}
-              title={t("report.removeSource")}
-            >
-              ×
-            </button>
+      {aiControls && <div className="intel-card-ai-controls no-print">{aiControls}</div>}
+      {isEditable && (
+        <>
+          {sources.map((src, i) => (
+            <div key={i} className="intel-card-section intel-card-meta no-print">
+              <span className="intel-card-label">
+                {sources.length > 1
+                  ? t("report.sourceWithIndex", { index: i + 1 })
+                  : t("report.source")}
+              </span>
+              <SessionPicker
+                value={src}
+                onChange={(v) => updateSource(i, v)}
+                conferenceSessions={conferenceSessions}
+              />
+              {sources.length > 1 && (
+                <button
+                  className="intel-card-source-remove"
+                  onClick={() => removeSource(i)}
+                  title={t("report.removeSource")}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          {sources.length === 0 && (
+            <div className="intel-card-section intel-card-meta no-print">
+              <span className="intel-card-label">{t("report.source")}</span>
+              <SessionPicker
+                value={{ id: null, manual: "" }}
+                onChange={(v) => onUpdate({ sourceSessions: [v], sourceSession: v })}
+                conferenceSessions={conferenceSessions}
+              />
+            </div>
           )}
-        </div>
-      ))}
-      {sources.length === 0 && (
-        <div className="intel-card-section intel-card-meta no-print">
-          <span className="intel-card-label">{t("report.source")}</span>
-          <SessionPicker
-            value={{ id: null, manual: "" }}
-            onChange={(v) => onUpdate({ sourceSessions: [v], sourceSession: v })}
-            conferenceSessions={conferenceSessions}
-          />
-        </div>
+          <div className="intel-card-section intel-card-meta no-print">
+            <button className="intel-card-add-source" onClick={addSource}>
+              {t("report.addSource")}
+            </button>
+          </div>
+        </>
       )}
-      <div className="intel-card-section intel-card-meta no-print">
-        <button className="intel-card-add-source" onClick={addSource}>
-          {t("report.addSource")}
-        </button>
-      </div>
-      {sources.filter((s) => formatOneSource(s)).length > 0 && (
-        <div className="intel-card-section intel-card-meta print-only">
+      {visibleSources.length > 0 && (
+        <div className={`intel-card-section intel-card-meta${isEditable ? " print-only" : ""}`}>
           <span className="intel-card-label">{t("report.source")}</span>
           <span className="intel-card-static-value">
-            {sources.map((s, i) => {
+            {visibleSources.map((s, i) => {
               const text = formatOneSource(s);
-              if (!text) return null;
               const url = s?.id ? SESSION_CATALOG.get(s.id)?.url : null;
               const inner = (
                 <>
@@ -187,31 +195,31 @@ export default function IntelCard({
           </span>
         </div>
       )}
-      <div
-        className="intel-card-section intel-card-meta no-print"
-        style={{ display: "flex", alignItems: "center", gap: 8 }}
-      >
-        <span className="intel-card-label">{t("report.contributorLabel")}</span>
-        {contributorIds.map((id) => {
-          const name = members.find((m) => m.id === id)?.name || id;
-          const colorIdx = memberColorMap?.[id] ?? 0;
-          const color = COLORS[colorIdx]?.hex || "#5f5e5e";
-          return (
-            <span
-              key={id}
-              style={{
-                background: color,
-                color: "#fff",
-                padding: "1px 8px",
-                fontSize: 10,
-                fontWeight: 600,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              {name}
-              {isEditable && (
+      {isEditable && (
+        <div
+          className="intel-card-section intel-card-meta no-print"
+          style={{ display: "flex", alignItems: "center", gap: 8 }}
+        >
+          <span className="intel-card-label">{t("report.contributorLabel")}</span>
+          {contributorIds.map((id) => {
+            const name = members.find((m) => m.id === id)?.name || id;
+            const colorIdx = memberColorMap?.[id] ?? 0;
+            const color = COLORS[colorIdx]?.hex || "#5f5e5e";
+            return (
+              <span
+                key={id}
+                style={{
+                  background: color,
+                  color: "#fff",
+                  padding: "1px 8px",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                {name}
                 <button
                   style={{
                     background: "none",
@@ -233,50 +241,55 @@ export default function IntelCard({
                 >
                   ×
                 </button>
-              )}
-            </span>
-          );
-        })}
-        <select
-          className="intel-card-contributor-select"
-          value=""
-          style={{
-            fontSize: 10,
-            color: "#888",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-          }}
-          onChange={(e) => {
-            const id = e.target.value;
-            if (!id || contributorIds.includes(id)) return;
-            const next = [...contributorIds, id];
-            onUpdate({
-              contributorIds: next,
-              contributorId: next[0] || "",
-              contributor: members.find((m) => m.id === next[0])?.name || "",
-            });
-          }}
-        >
-          <option value="">
-            {contributorIds.length ? t("report.addContributor") : t("report.selectContributor")}
-          </option>
-          {members
-            .filter((m) => !contributorIds.includes(m.id))
-            .map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-        </select>
-        {editLabel && (
-          <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>{editLabel}</span>
-        )}
-      </div>
-      {contributorText && (
-        <div className="intel-card-section intel-card-meta print-only">
+              </span>
+            );
+          })}
+          <select
+            className="intel-card-contributor-select"
+            value=""
+            style={{
+              fontSize: 10,
+              color: "#888",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
+            onChange={(e) => {
+              const id = e.target.value;
+              if (!id || contributorIds.includes(id)) return;
+              const next = [...contributorIds, id];
+              onUpdate({
+                contributorIds: next,
+                contributorId: next[0] || "",
+                contributor: members.find((m) => m.id === next[0])?.name || "",
+              });
+            }}
+          >
+            <option value="">
+              {contributorIds.length ? t("report.addContributor") : t("report.selectContributor")}
+            </option>
+            {members
+              .filter((m) => !contributorIds.includes(m.id))
+              .map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+          </select>
+          {editLabel && (
+            <span style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>{editLabel}</span>
+          )}
+        </div>
+      )}
+      {(contributorText || (!isEditable && editLabel)) && (
+        <div className={`intel-card-section intel-card-meta${isEditable ? " print-only" : ""}`}>
           <span className="intel-card-label">{t("report.contributorLabel")}</span>
-          <span className="intel-card-static-value">{contributorText}</span>
+          {contributorText && <span className="intel-card-static-value">{contributorText}</span>}
+          {!isEditable && editLabel && (
+            <span className="no-print" style={{ marginLeft: "auto", fontSize: 10, color: "#bbb" }}>
+              {editLabel}
+            </span>
+          )}
         </div>
       )}
     </div>

@@ -41,9 +41,47 @@ const template = {
   ],
 } as const;
 
+const blockField = {
+  id: "onsiteInfoBlocks",
+  label: "现场情报",
+  description: "独立的现场情报内容块",
+  type: "rich_text",
+  scope: "block",
+  ai: {
+    enabled: true,
+    instruction: "仅根据当前 Block 材料生成现场情报。",
+    allowedSources: ["transcript", "current_draft", "user_focus"],
+    evidenceRequired: true,
+    allowedModes: ["rewrite", "append"],
+    maxLength: 3000,
+  },
+} as const;
+
 describe("template contract", () => {
   it("accepts the immutable template shape", () => {
     expect(assertTemplateVersion(template).templateHash).toBe("sha256-template");
+  });
+
+  it("accepts only approved Block-scope field IDs", () => {
+    const valid = { ...template, fields: [...template.fields, blockField] };
+    expect(assertTemplateVersion(valid).fields.at(-1)?.scope).toBe("block");
+
+    const invalid = structuredClone(valid) as unknown as Record<string, unknown>;
+    (invalid.fields as Array<Record<string, unknown>>).at(-1)!.id = "arbitraryBlocks";
+    expect(() => assertTemplateVersion(invalid)).toThrow("invalid AI Block field");
+  });
+
+  it("selects eligible Block fields by mode", () => {
+    const valid = assertTemplateVersion({ ...template, fields: [...template.fields, blockField] });
+    expect(selectEligibleFields(valid, "block", "append").map((field) => field.id)).toEqual([
+      "onsiteInfoBlocks",
+    ]);
+  });
+
+  it.each(["short_text", "bullet_list", "fixed", "image"])("rejects %s at Block scope", (type) => {
+    const invalid = structuredClone({ ...template, fields: [...template.fields, blockField] });
+    (invalid.fields.at(-1) as unknown as Record<string, unknown>).type = type;
+    expect(() => assertTemplateVersion(invalid)).toThrow("invalid AI Block field type");
   });
 
   it("selects only enabled, non-fixed fields that support the mode", () => {
@@ -127,6 +165,14 @@ describe("template contract", () => {
     const invalid = structuredClone(template) as unknown as Record<string, unknown>;
     (invalid.fields as Array<Record<string, unknown>>)[0].id = "calendarSessionId";
     expect(() => assertTemplateVersion(invalid)).toThrow("reserved AI field");
+  });
+
+  it("rejects a daily rumorsBlocks AI field", () => {
+    const invalid = structuredClone(template) as unknown as Record<string, unknown>;
+    const field = (invalid.fields as Array<Record<string, unknown>>)[0];
+    field.id = "rumorsBlocks";
+    field.scope = "daily";
+    expect(() => assertTemplateVersion(invalid)).toThrow("reserved AI field: rumorsBlocks");
   });
 
   it("requires valid field scopes", () => {

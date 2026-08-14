@@ -8,7 +8,7 @@ import type {
 
 export interface SourceBlock {
   sourceId: string;
-  sourceType: "report_field" | "current_draft";
+  sourceType: "report_field" | "current_draft" | "transcript";
   text: string;
 }
 
@@ -27,6 +27,7 @@ const DAILY_METADATA_FIELDS = new Set([
   "deletedSessions",
   "onsiteInfoBlocks",
   "reflectionsBlocks",
+  "rumorsBlocks",
   "sections",
   "citations",
   "onsiteEvents",
@@ -226,6 +227,10 @@ export function buildDailySourceBlocks(
   const target = fields.find((field) => field.id === targetId);
   if (!target || target.scope !== "daily" || !aiReadableField(target, "report_content")) return [];
   const blocks: SourceBlock[] = [];
+  if (target.ai.allowedSources.includes("current_draft")) {
+    const text = toSourceText(readReportFieldValue(report, targetId));
+    if (text) blocks.push({ sourceId: `draft:${targetId}`, sourceType: "current_draft", text });
+  }
   for (const field of fields) {
     if (
       field.id === targetId ||

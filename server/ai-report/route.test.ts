@@ -1,13 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { requireMemberMock, loadContextMock, generateSessionMock, generateDailyMock } = vi.hoisted(
-  () => ({
-    requireMemberMock: vi.fn(),
-    loadContextMock: vi.fn(),
-    generateSessionMock: vi.fn(),
-    generateDailyMock: vi.fn(),
-  }),
-);
+const {
+  requireMemberMock,
+  loadContextMock,
+  generateSessionMock,
+  generateDailyMock,
+  generateBlockMock,
+} = vi.hoisted(() => ({
+  requireMemberMock: vi.fn(),
+  loadContextMock: vi.fn(),
+  generateSessionMock: vi.fn(),
+  generateDailyMock: vi.fn(),
+  generateBlockMock: vi.fn(),
+}));
 
 vi.mock("../../api/lib/auth-middleware.js", () => ({
   AuthError: class AuthError extends Error {
@@ -22,12 +27,11 @@ vi.mock("../../api/lib/auth-middleware.js", () => ({
 }));
 vi.mock("./context.js", () => ({
   GenerationContextError: class GenerationContextError extends Error {
-    constructor(
-      public code: string,
-      public status = 409,
-      message = "safe",
-    ) {
-      super(message);
+    public readonly status: number;
+
+    constructor(public code: string) {
+      super("PRIVATE /transcript/path PRIVATE_SOURCE_QUOTE");
+      this.status = code === "BLOCK_NOT_FOUND" ? 404 : code === "TRANSCRIPT_REQUIRED" ? 400 : 409;
     }
   },
   loadGenerationContext: loadContextMock,
@@ -37,6 +41,9 @@ vi.mock("./generate-session.js", () => ({
 }));
 vi.mock("./generate-daily.js", () => ({
   generateDailyCandidate: generateDailyMock,
+}));
+vi.mock("./generate-block.js", () => ({
+  generateBlockCandidate: generateBlockMock,
 }));
 vi.mock("./deepseek.js", () => ({
   DeepSeekRequestError: class DeepSeekRequestError extends Error {
@@ -50,7 +57,9 @@ vi.mock("./deepseek.js", () => ({
   },
 }));
 
-import handler from "../../api/conferences/[confId]/reports/[reportId]/ai/generate";
+import handler, {
+  parseGenerateRequest,
+} from "../../api/conferences/[confId]/reports/[reportId]/ai/generate";
 
 const sessionContext = {
   scope: "session" as const,
@@ -67,19 +76,113 @@ const dailyContext = {
   scope: "daily" as const,
   input: { mode: "rewrite", field: {}, currentValue: "", sourceBlocks: [], focus: "" },
 };
+const blockField = {
+  id: "rumorsBlocks",
+  label: "深度研判",
+  description: "深度研判内容块",
+  type: "rich_text" as const,
+  scope: "block" as const,
+  ai: {
+    enabled: true,
+    instruction: "PRIVATE_TEMPLATE_INSTRUCTION",
+    allowedSources: ["transcript" as const, "current_draft" as const, "user_focus" as const],
+    evidenceRequired: true,
+    allowedModes: ["rewrite" as const, "append" as const],
+    maxLength: 3_000,
+  },
+};
+const blockContext = {
+  scope: "block" as const,
+  input: {
+    template: {
+      templateId: "industry-conference-daily-report",
+      version: 1,
+      templateHash: "template-hash",
+      fields: [blockField],
+    },
+    field: blockField,
+    targetFieldId: "rumorsBlocks" as const,
+    blockId: "b1",
+    blockKind: "body" as const,
+    currentValue: "PRIVATE_DRAFT_TEXT",
+    segments: [
+      {
+        segmentId: "seg_0001",
+        text: "PRIVATE_SOURCE_QUOTE",
+        normalizedText: "PRIVATE_SOURCE_QUOTE",
+      },
+    ],
+    focus: "PRIVATE_FOCUS",
+    mode: "rewrite" as const,
+    instruction: "PRIVATE_USER_INSTRUCTION",
+    templateHash: "template-hash",
+    transcriptHash: "transcript-hash",
+    baseFieldHashes: { "rumorsBlocks:b1": "block-hash" },
+  },
+};
 const candidateResponse = {
   candidate: [],
   insufficientFieldIds: [],
   evidence: [],
   context: { templateHash: "t", baseFieldHashes: {}, focusUsed: "" },
 };
+const blockCandidateResponse = {
+  candidate: [
+    {
+      fieldId: "rumorsBlocks",
+      value: "PRIVATE_CANDIDATE_TEXT",
+      evidenceIds: ["block_ev_0001"],
+    },
+  ],
+  insufficientFieldIds: [],
+  evidence: [
+    {
+      id: "block_ev_0001",
+      sourceType: "transcript" as const,
+      sourceId: "transcript:seg_0001",
+      quote: "PRIVATE_SOURCE_QUOTE",
+    },
+  ],
+  context: {
+    templateHash: "template-hash",
+    transcriptHash: "transcript-hash",
+    baseFieldHashes: { "rumorsBlocks:b1": "block-hash" },
+    focusUsed: "PRIVATE_FOCUS",
+    blockTarget: { targetFieldId: "rumorsBlocks" as const, blockId: "b1" },
+  },
+};
 
-function request(body: unknown, method = "POST") {
+const blockRequest = {
+  scope: "block",
+  targetFieldId: "rumorsBlocks",
+  blockId: "b1",
+  mode: "rewrite",
+};
+
+const INVALID_BLOCK_IDS = [
+  ["empty", ""],
+  ["dot", "."],
+  ["dot-dot", ".."],
+  ["slash", "b/1"],
+  ["encoded slash", "b%2F1"],
+  ["leading whitespace", " b1"],
+  ["trailing whitespace", "b1 "],
+  ["interior whitespace", "b 1"],
+  ["Unicode", "区块1"],
+  ["control character", "b\u0007"],
+  ["129 characters", `b${"x".repeat(128)}`],
+] as const;
+
+function request(
+  body: unknown,
+  method = "POST",
+  query: { confId: string; reportId: string } = { confId: "conf-1", reportId: "report-1" },
+) {
   const listeners = new Map<string, Array<() => void>>();
   return {
     method,
     body,
-    query: { confId: "conf-1", reportId: "report-1" },
+    query,
     headers: { authorization: "Bearer token", "x-request-id": "request-1" },
     aborted: false,
     on: vi.fn((event: string, listener: () => void) => {
@@ -128,13 +231,88 @@ function response() {
   return res as any;
 }
 
+describe("parseGenerateRequest", () => {
+  it("accepts the exact Block body and trims only its optional instruction", () => {
+    expect(
+      parseGenerateRequest({
+        scope: "block",
+        targetFieldId: "rumorsBlocks",
+        blockId: "b._-Z9",
+        mode: "append",
+        instruction: "  关注供应链影响  ",
+      }),
+    ).toEqual({
+      scope: "block",
+      targetFieldId: "rumorsBlocks",
+      blockId: "b._-Z9",
+      mode: "append",
+      instruction: "关注供应链影响",
+    });
+  });
+
+  it("accepts the exact 128-character Block identity unchanged", () => {
+    const blockId = `b${"x".repeat(127)}`;
+
+    expect(
+      parseGenerateRequest({
+        scope: "block",
+        targetFieldId: "onsiteInfoBlocks",
+        blockId,
+        mode: "rewrite",
+      }),
+    ).toEqual({
+      scope: "block",
+      targetFieldId: "onsiteInfoBlocks",
+      blockId,
+      mode: "rewrite",
+      instruction: undefined,
+    });
+  });
+
+  it.each([
+    ["unknown field", { targetFieldId: "otherBlocks" }],
+    ["missing target field", { targetFieldId: undefined }],
+    ["missing Block ID", { blockId: undefined }],
+    ["extra client content", { transcript: "client content" }],
+    ["wrong mode", { mode: "delete" }],
+    ["wrong Block ID type", { blockId: 1 }],
+    ["wrong instruction type", { instruction: 1 }],
+    ["overlong instruction", { instruction: "中".repeat(4_001) }],
+  ])("rejects a Block body with %s", (_name, override) => {
+    expect(() =>
+      parseGenerateRequest({
+        scope: "block",
+        targetFieldId: "rumorsBlocks",
+        blockId: "b1",
+        mode: "rewrite",
+        ...override,
+      }),
+    ).toThrow("Invalid request");
+  });
+
+  it.each(INVALID_BLOCK_IDS)("rejects a Block ID with %s", (_name, blockId) => {
+    expect(() =>
+      parseGenerateRequest({
+        scope: "block",
+        targetFieldId: "reflectionsBlocks",
+        blockId,
+        mode: "rewrite",
+      }),
+    ).toThrow("Invalid request");
+  });
+});
+
 describe("POST /api/conferences/[confId]/reports/[reportId]/ai/generate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
     requireMemberMock.mockResolvedValue({ uid: "u1" });
     loadContextMock.mockResolvedValue(sessionContext);
     generateSessionMock.mockResolvedValue(candidateResponse);
+    generateBlockMock.mockResolvedValue(blockCandidateResponse);
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it("requires an approved member and returns a Session candidate", async () => {
     const res = response();
@@ -213,6 +391,190 @@ describe("POST /api/conferences/[confId]/reports/[reportId]/ai/generate", () => 
     expect(generateDailyMock).toHaveBeenCalledWith(dailyContext.input, expect.anything());
     expect(generateSessionMock).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(200);
+  });
+
+  it("dispatches Block context only to the Block pipeline and returns its candidate", async () => {
+    loadContextMock.mockResolvedValue(blockContext);
+    const res = response();
+
+    await handler(request(blockRequest), res);
+
+    expect(generateBlockMock).toHaveBeenCalledTimes(1);
+    expect(generateBlockMock).toHaveBeenCalledWith(blockContext.input, expect.any(AbortSignal));
+    expect(generateSessionMock).not.toHaveBeenCalled();
+    expect(generateDailyMock).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(blockCandidateResponse);
+  });
+
+  it.each(INVALID_BLOCK_IDS)(
+    "returns a sanitized request error for a Block ID with %s",
+    async (_name, blockId) => {
+      const res = response();
+
+      await handler(request({ ...blockRequest, blockId }), res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toEqual({ error: "Invalid request", code: "INVALID_REQUEST" });
+      expect(loadContextMock).not.toHaveBeenCalled();
+      expect(generateBlockMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["confId", "slash", "conf/1", true],
+    ["confId", "encoded slash", "conf%2F1", true],
+    ["confId", "whitespace", "conf 1", true],
+    ["confId", "Unicode", "会议1", true],
+    ["confId", "dot", ".", true],
+    ["confId", "dot-dot", "..", true],
+    ["confId", "empty", "", false],
+    ["confId", "129 characters", `c${"x".repeat(128)}`, true],
+    ["reportId", "slash", "report/1", true],
+    ["reportId", "encoded slash", "report%2F1", true],
+    ["reportId", "whitespace", "report 1", true],
+    ["reportId", "Unicode", "日报1", true],
+    ["reportId", "dot", ".", true],
+    ["reportId", "dot-dot", "..", true],
+    ["reportId", "empty", "", false],
+    ["reportId", "129 characters", `r${"x".repeat(128)}`, true],
+  ] as const)(
+    "rejects unsafe Block-scope $0 containing $1 before context loading",
+    async (key, _name, value, authenticated) => {
+      const query = { confId: "conf-1", reportId: "report-1", [key]: value };
+      const res = response();
+
+      await handler(request(blockRequest, "POST", query), res);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body).toEqual({ error: "Invalid request", code: "INVALID_REQUEST" });
+      expect(loadContextMock).not.toHaveBeenCalled();
+      expect(generateBlockMock).not.toHaveBeenCalled();
+      if (authenticated) expect(requireMemberMock).toHaveBeenCalledTimes(1);
+      else expect(requireMemberMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["Session", { scope: "session", sessionId: "S101", mode: "rewrite" }, sessionContext],
+    ["daily", { scope: "daily", targetFieldId: "summaryPoints", mode: "rewrite" }, dailyContext],
+  ] as const)(
+    "keeps existing general route-ID compatibility for %s",
+    async (_name, body, context) => {
+      loadContextMock.mockResolvedValue(context);
+      generateDailyMock.mockResolvedValue(candidateResponse);
+      const res = response();
+
+      await handler(request(body, "POST", { confId: "legacy/conf", reportId: "日报 1" }), res);
+
+      expect(res.statusCode).toBe(200);
+      expect(loadContextMock).toHaveBeenCalledWith(
+        expect.objectContaining({ confId: "legacy/conf", reportId: "日报 1" }),
+      );
+    },
+  );
+
+  it.each([
+    ["BLOCK_NOT_FOUND", 404, "Report Block not found"],
+    ["BLOCK_DUPLICATE", 409, "Report Block identity is ambiguous"],
+    ["BLOCK_TRANSCRIPT_PATH_MISMATCH", 409, "Transcript path is outside the bound Block"],
+    ["TRANSCRIPT_REQUIRED", 400, "A required generation source is missing"],
+  ] as const)("maps %s to its sanitized Block context error", async (code, status, message) => {
+    const { GenerationContextError } = await import("./context.js");
+    loadContextMock.mockRejectedValue(new GenerationContextError(code));
+    const res = response();
+
+    await handler(request(blockRequest), res);
+
+    expect(res.statusCode).toBe(status);
+    expect(res.body).toEqual({ error: message, code });
+    expect(JSON.stringify(res.body)).not.toContain("PRIVATE");
+    expect(JSON.stringify(res.body)).not.toContain("/transcript/path");
+  });
+
+  it("logs only Block success metadata, never private inputs or output content", async () => {
+    const log = vi.mocked(console.info);
+    loadContextMock.mockResolvedValue(blockContext);
+    const res = response();
+
+    await handler(request({ ...blockRequest, instruction: "PRIVATE_REQUEST_INSTRUCTION" }), res);
+
+    expect(log).toHaveBeenCalledWith("ai_report_generation", {
+      requestId: "request-1",
+      scope: "block",
+      durationMs: expect.any(Number),
+      status: 200,
+      candidateCount: 1,
+      insufficientCount: 0,
+    });
+    const logged = JSON.stringify(log.mock.calls);
+    for (const secret of [
+      "PRIVATE_REQUEST_INSTRUCTION",
+      "PRIVATE_TEMPLATE_INSTRUCTION",
+      "PRIVATE_USER_INSTRUCTION",
+      "PRIVATE_FOCUS",
+      "PRIVATE_DRAFT_TEXT",
+      "PRIVATE_SOURCE_QUOTE",
+      "PRIVATE_CANDIDATE_TEXT",
+      "/transcript/path",
+    ]) {
+      expect(logged).not.toContain(secret);
+    }
+  });
+
+  it("logs only sanitized Block error metadata", async () => {
+    const { GenerationContextError } = await import("./context.js");
+    const log = vi.mocked(console.info);
+    loadContextMock.mockRejectedValue(new GenerationContextError("BLOCK_TRANSCRIPT_PATH_MISMATCH"));
+    const res = response();
+
+    await handler(request({ ...blockRequest, instruction: "PRIVATE_REQUEST_INSTRUCTION" }), res);
+
+    expect(log).toHaveBeenCalledWith("ai_report_generation", {
+      requestId: "request-1",
+      scope: "block",
+      durationMs: expect.any(Number),
+      status: 409,
+      candidateCount: 0,
+      insufficientCount: 0,
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain("PRIVATE");
+    expect(JSON.stringify(log.mock.calls)).not.toContain("/transcript/path");
+  });
+
+  it("forwards disconnect cancellation to the Block generator", async () => {
+    const { DeepSeekRequestError } = await import("./deepseek.js");
+    let started!: () => void;
+    const generating = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    loadContextMock.mockResolvedValue(blockContext);
+    generateBlockMock.mockImplementation(async (_input, signal: AbortSignal) => {
+      started();
+      await new Promise((_, reject) => {
+        signal.addEventListener("abort", () =>
+          reject(new DeepSeekRequestError("cancelled", "CANCELLED", false)),
+        );
+      });
+    });
+    const req = request(blockRequest);
+    const res = response();
+
+    const result = handler(req, res);
+    await vi.waitFor(() => expect(generateBlockMock).toHaveBeenCalledTimes(1));
+    await generating;
+    res.emit("close");
+    await result;
+
+    expect(generateBlockMock).toHaveBeenCalledWith(blockContext.input, expect.any(AbortSignal));
+    expect(generateSessionMock).not.toHaveBeenCalled();
+    expect(generateDailyMock).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(499);
+    expect(res.body).toEqual({
+      error: "Request cancelled",
+      code: "CANCELLED",
+      retryable: false,
+    });
   });
 
   it("cancels an in-flight generation when the response closes before completion", async () => {

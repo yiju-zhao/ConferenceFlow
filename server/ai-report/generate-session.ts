@@ -5,20 +5,24 @@ import type {
   GenerationMode,
   ReportTemplateVersion,
   TemplateField,
-} from "../../src/types";
-import { buildSessionDraftBlocks, validateCandidateValue, type SourceBlock } from "./field-policy";
+} from "../../src/types/index.js";
+import {
+  buildSessionDraftBlocks,
+  validateCandidateValue,
+  type SourceBlock,
+} from "./field-policy.js";
 import {
   validateSourceSupports,
   validateTranscriptFacts,
   type RawFact,
   type ValidatedFact,
-} from "./evidence";
-import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek";
-import type { TranscriptSegment } from "./transcript-parser";
+} from "./evidence.js";
+import { requestDeepSeekJson, type DeepSeekMessage } from "./deepseek.js";
+import type { TranscriptSegment } from "./transcript-parser.js";
 import {
   APPEND_ONLY_SYSTEM_INSTRUCTION,
   appendCandidateRepeatsCurrentValue,
-} from "./append-policy";
+} from "./append-policy.js";
 
 const EVIDENCE_SYSTEM = [
   "你是证据提取器。只输出合法 JSON。",

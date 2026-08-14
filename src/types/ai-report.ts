@@ -1,5 +1,7 @@
 export type GenerationMode = "rewrite" | "append";
-export type GenerationScope = "session" | "daily";
+export const AI_BLOCK_FIELDS = ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks"] as const;
+export type AiBlockField = (typeof AI_BLOCK_FIELDS)[number];
+export type GenerationScope = "session" | "daily" | "block";
 export type TemplateFieldType = "rich_text" | "bullet_list" | "short_text" | "image" | "fixed";
 export type AiSource =
   "transcript" | "current_draft" | "calendar" | "user_focus" | "report_content";
@@ -42,7 +44,14 @@ export interface TranscriptRef {
 
 export type GenerateRequest =
   | { scope: "session"; sessionId: string; mode: GenerationMode; instruction?: string }
-  | { scope: "daily"; targetFieldId: string; mode: GenerationMode; instruction?: string };
+  | { scope: "daily"; targetFieldId: string; mode: GenerationMode; instruction?: string }
+  | {
+      scope: "block";
+      targetFieldId: AiBlockField;
+      blockId: string;
+      mode: GenerationMode;
+      instruction?: string;
+    };
 
 export interface CandidateField {
   fieldId: string;
@@ -68,5 +77,6 @@ export interface GenerateResponse {
     transcriptHash?: string;
     baseFieldHashes: Record<string, string>;
     focusUsed: string;
+    blockTarget?: { targetFieldId: AiBlockField; blockId: string };
   };
 }

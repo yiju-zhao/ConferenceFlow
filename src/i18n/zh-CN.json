@@ -274,6 +274,9 @@
       "missingTranscript": "缺少转录文字，无法生成候选内容。",
       "templateError": "报告模板不可用，无法生成候选内容。",
       "generationFailed": "生成候选内容失败，请重试。",
+      "missingBlockSource": "请先填写当前内容块或上传转录文字。",
+      "generateBlock": "AI 生成此内容块",
+      "staleBlock": "当前内容块或转录文字已更新，请重新生成。",
       "source": {
         "transcript": "转录文字",
         "report_field": "报告字段",

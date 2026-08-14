@@ -142,11 +142,11 @@ export interface ReportSourceSession {
   manual: string;
 }
 
-/** Block kind within `onsiteInfoBlocks` / `reflectionsBlocks`. */
+/** Block kind within `onsiteInfoBlocks` / `reflectionsBlocks` / `rumorsBlocks`. */
 export type ReportBlockType = "heading" | "body";
 
 /** Report document fields that hold a `ReportBlock[]`. */
-export type BlockField = "onsiteInfoBlocks" | "reflectionsBlocks";
+export type BlockField = "onsiteInfoBlocks" | "reflectionsBlocks" | "rumorsBlocks";
 
 /**
  * A content block within `onsiteInfoBlocks` / `reflectionsBlocks`.
@@ -157,6 +157,7 @@ export interface ReportBlock {
   id: string;
   type: ReportBlockType;
   content: string;
+  transcriptRef?: TranscriptRef | null;
   ownerId?: string;
   contributorIds?: string[];
   contributorId?: string; // legacy single contributor
@@ -199,6 +200,7 @@ export interface ReportSnapshotData {
   rumors?: string;
   onsiteInfoBlocks?: ReportBlock[];
   reflectionsBlocks?: ReportBlock[];
+  rumorsBlocks?: ReportBlock[];
 }
 
 export interface ReportSnapshot {
@@ -273,6 +275,7 @@ export interface Report {
   deletedSessions?: string[];
   onsiteInfoBlocks?: ReportBlock[];
   reflectionsBlocks?: ReportBlock[];
+  rumorsBlocks?: ReportBlock[];
   // Summary-report content (verified against ReportList summary writer)
   dateStart?: string;
   dateEnd?: string;

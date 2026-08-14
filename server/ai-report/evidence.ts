@@ -1,5 +1,5 @@
-import type { TranscriptSegment } from "./transcript-parser";
-import { normalizeEvidenceText } from "./source-text";
+import type { TranscriptSegment } from "./transcript-parser.js";
+import { normalizeEvidenceText } from "./source-text.js";
 
 export interface RawFact {
   claim: string;
@@ -100,7 +100,7 @@ function containsGroundedToken(text: string, token: string): boolean {
   return false;
 }
 
-function supportsAllGroundingTokens(claim: string, quotes: string[]): boolean {
+export function supportsAllGroundingTokens(claim: string, quotes: string[]): boolean {
   const joined = normalized(quotes.join(" "));
   return groundingTokens(claim).every((token) => containsGroundedToken(joined, token));
 }
