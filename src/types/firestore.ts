@@ -126,6 +126,10 @@ export interface ReportSessionData {
   speakers?: ReportSpeaker[];
   takeaways?: string;
   insights?: string;
+  insightCore?: string;
+  insightExplanation?: string;
+  techHighlights?: string;
+  huaweiImplications?: string;
   illustration?: string; // legacy single illustration URL
   illustrations?: ReportIllustration[];
   lastEditedBy?: string;

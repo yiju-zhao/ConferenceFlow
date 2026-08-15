@@ -52,7 +52,7 @@ import {
   removeReportBlock,
   replaceReportBlock,
 } from "../../lib/ai-report/reportBlocks";
-import { templateHasField } from "../../lib/ai-report/templateFields";
+import { sessionContentFieldsOf, templateHasField } from "../../lib/ai-report/templateFields";
 import { INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING } from "../../lib/ai-report/templates/industryConferenceDailyReport";
 import type {
   BlockField,
@@ -359,6 +359,35 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         field.type !== "fixed" &&
         field.type !== "image",
     ) ?? [];
+  const sessionContentFields = sessionContentFieldsOf(template);
+
+  const LEGACY_SESSION_CONTENT_FIELDS = [
+    { id: "takeaways", type: "rich_text" as const },
+    { id: "insights", type: "rich_text" as const },
+  ];
+  const renderedSessionFields = sessionContentFields ?? LEGACY_SESSION_CONTENT_FIELDS;
+
+  const sessionFieldHeading = (fieldId: string): string => {
+    if (!template) {
+      return fieldId === "takeaways" ? t("report.keyTakeaways") : t("report.insightsLabel");
+    }
+    return fieldById.get(fieldId)?.label ?? fieldId;
+  };
+
+  const sessionFieldPlaceholder = (fieldId: string): string => {
+    if (!template) {
+      return fieldId === "takeaways" ? t("report.recordKeyTakeaways") : t("report.recordInsights");
+    }
+    return fieldById.get(fieldId)?.description ?? "";
+  };
+
+  const sessionHasContent = (sd: ReportSessionData | undefined): boolean => {
+    if (!sd) return false;
+    return renderedSessionFields.some((field) => {
+      const raw = (sd as Record<string, unknown>)[field.id];
+      return typeof raw === "string" && raw.replace(/<[^>]*>/g, "").trim().length > 0;
+    });
+  };
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const memberMap = useMemo(() => {
@@ -1113,17 +1142,15 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   // Collapse init: sessions with content start collapsed
   useEffect(() => {
     if (!reportData || collapsedInit.current) return;
+    if (reportData.templateId && !template) return; // 等模板加载,绑定报告按模板字段判断
     collapsedInit.current = true;
     const initial = new Set(
       activeSessions
-        .filter((s) => {
-          const sd = reportData.sessions?.[s.code];
-          return sd?.takeaways && sd.takeaways !== "";
-        })
+        .filter((s) => sessionHasContent(reportData.sessions?.[s.code]))
         .map((s) => s.code),
     );
     setCollapsedSessions(initial);
-  }, [reportData, activeSessions]);
+  }, [reportData, activeSessions, template]);
 
   const toggleCollapse = useCallback((code: string) => {
     setCollapsedSessions((prev) => {
@@ -2147,12 +2174,7 @@ ${clone.outerHTML}
           {noTopicSessions.map((session) => {
             const sd = sessionData[session.code] || {};
             // In preview/viewMode, skip sessions with no content
-            if (
-              viewMode &&
-              !sd.takeaways?.replace(/<[^>]*>/g, "").trim() &&
-              !sd.insights?.replace(/<[^>]*>/g, "").trim()
-            )
-              return null;
+            if (viewMode && !sessionHasContent(sd)) return null;
             const speakers = reportSessionSpeakers(session, sd, Boolean(reportData?.templateId));
             const isCollapsed = collapsedSessions.has(session.code);
             return (
@@ -2306,28 +2328,44 @@ ${clone.outerHTML}
                           readOnly={viewMode}
                         />
                       )}
-                      <div className="report-field-block">
-                        <h4 className="report-field-heading report-field-heading--highlight">
-                          {t("report.keyTakeaways")}
-                        </h4>
-                        <EditableField
-                          value={sd.takeaways}
-                          onSave={(html) => saveSessionField(session.code, "takeaways", html)}
-                          placeholder={t("report.recordKeyTakeaways")}
-                          readOnly={viewMode}
-                        />
-                      </div>
-                      <div className="report-field-block">
-                        <h4 className="report-field-heading report-field-heading--highlight">
-                          {t("report.insightsLabel")}
-                        </h4>
-                        <EditableField
-                          value={sd.insights}
-                          onSave={(html) => saveSessionField(session.code, "insights", html)}
-                          placeholder={t("report.recordInsights")}
-                          readOnly={viewMode}
-                        />
-                      </div>
+                      {renderedSessionFields.map((field) => (
+                        <div className="report-field-block" key={field.id}>
+                          <h4 className="report-field-heading report-field-heading--highlight">
+                            {sessionFieldHeading(field.id)}
+                          </h4>
+                          {field.type === "short_text" ? (
+                            <span
+                              className="report-short-text"
+                              contentEditable={!viewMode}
+                              suppressContentEditableWarning
+                              onBlur={(e) =>
+                                saveSessionField(
+                                  session.code,
+                                  field.id,
+                                  e.currentTarget.textContent?.trim() || "",
+                                )
+                              }
+                              onPaste={(e) => {
+                                e.preventDefault();
+                                document.execCommand(
+                                  "insertText",
+                                  false,
+                                  e.clipboardData.getData("text/plain"),
+                                );
+                              }}
+                            >
+                              {((sd as Record<string, unknown>)[field.id] as string) ?? ""}
+                            </span>
+                          ) : (
+                            <EditableField
+                              value={((sd as Record<string, unknown>)[field.id] as string) ?? ""}
+                              onSave={(html) => saveSessionField(session.code, field.id, html)}
+                              placeholder={sessionFieldPlaceholder(field.id)}
+                              readOnly={viewMode}
+                            />
+                          )}
+                        </div>
+                      ))}
                       <div
                         className="report-contributors-row"
                         style={{
@@ -2575,28 +2613,46 @@ ${clone.outerHTML}
                               readOnly={viewMode}
                             />
                           )}
-                          <div className="report-field-block">
-                            <h4 className="report-field-heading report-field-heading--highlight">
-                              {t("report.keyTakeaways")}
-                            </h4>
-                            <EditableField
-                              value={sd.takeaways}
-                              onSave={(html) => saveSessionField(session.code, "takeaways", html)}
-                              placeholder={t("report.recordKeyTakeaways")}
-                              readOnly={viewMode}
-                            />
-                          </div>
-                          <div className="report-field-block">
-                            <h4 className="report-field-heading report-field-heading--highlight">
-                              {t("report.insightsLabel")}
-                            </h4>
-                            <EditableField
-                              value={sd.insights}
-                              onSave={(html) => saveSessionField(session.code, "insights", html)}
-                              placeholder={t("report.recordInsights")}
-                              readOnly={viewMode}
-                            />
-                          </div>
+                          {renderedSessionFields.map((field) => (
+                            <div className="report-field-block" key={field.id}>
+                              <h4 className="report-field-heading report-field-heading--highlight">
+                                {sessionFieldHeading(field.id)}
+                              </h4>
+                              {field.type === "short_text" ? (
+                                <span
+                                  className="report-short-text"
+                                  contentEditable={!viewMode}
+                                  suppressContentEditableWarning
+                                  onBlur={(e) =>
+                                    saveSessionField(
+                                      session.code,
+                                      field.id,
+                                      e.currentTarget.textContent?.trim() || "",
+                                    )
+                                  }
+                                  onPaste={(e) => {
+                                    e.preventDefault();
+                                    document.execCommand(
+                                      "insertText",
+                                      false,
+                                      e.clipboardData.getData("text/plain"),
+                                    );
+                                  }}
+                                >
+                                  {((sd as Record<string, unknown>)[field.id] as string) ?? ""}
+                                </span>
+                              ) : (
+                                <EditableField
+                                  value={
+                                    ((sd as Record<string, unknown>)[field.id] as string) ?? ""
+                                  }
+                                  onSave={(html) => saveSessionField(session.code, field.id, html)}
+                                  placeholder={sessionFieldPlaceholder(field.id)}
+                                  readOnly={viewMode}
+                                />
+                              )}
+                            </div>
+                          ))}
 
                           {/* 贡献人 at the end */}
                           {contributors && (
