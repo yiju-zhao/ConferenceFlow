@@ -52,6 +52,7 @@ import {
   removeReportBlock,
   replaceReportBlock,
 } from "../../lib/ai-report/reportBlocks";
+import { templateHasField } from "../../lib/ai-report/templateFields";
 import { INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING } from "../../lib/ai-report/templates/industryConferenceDailyReport";
 import type {
   BlockField,
@@ -325,6 +326,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       reflections: "",
       rumors: "",
       rumorsBlocks: [],
+      trendBlocks: [],
       sitePhotos: [],
       sessions: {},
       topicOrder: [],
@@ -347,6 +349,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const onsiteInfoBlocksField = fieldById.get("onsiteInfoBlocks");
   const reflectionsBlocksField = fieldById.get("reflectionsBlocks");
   const rumorsBlocksField = fieldById.get("rumorsBlocks");
+  const trendBlocksField = fieldById.get("trendBlocks");
+  const sitePhotosField = fieldById.get("sitePhotos");
   const sessionAiFields =
     template?.fields.filter(
       (field) =>
@@ -572,6 +576,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
         onsiteInfoBlocks: blocksWithoutTranscripts(rd.onsiteInfoBlocks || []),
         reflectionsBlocks: blocksWithoutTranscripts(rd.reflectionsBlocks || []),
         rumorsBlocks: blocksWithoutTranscripts(rd.rumorsBlocks || []),
+        trendBlocks: blocksWithoutTranscripts(rd.trendBlocks || []),
       };
       const hash = JSON.stringify(data);
       // Skip auto snapshots when content hasn't changed since last snapshot
@@ -2023,6 +2028,7 @@ ${clone.outerHTML}
                   </ul>
                 )}
               </li>
+              {(!template || templateHasField(template, "onsiteInfoBlocks")) && (
               <li className="report-toc-section-item">
                 <a href="#section-onsite-info" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">{t("report.onsiteInfo")}</span>
@@ -2048,6 +2054,8 @@ ${clone.outerHTML}
                   </ul>
                 )}
               </li>
+              )}
+              {(!template || templateHasField(template, "reflectionsBlocks")) && (
               <li className="report-toc-section-item">
                 <a href="#section-reflections" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">{t("report.reflections")}</span>
@@ -2073,14 +2081,28 @@ ${clone.outerHTML}
                   </ul>
                 )}
               </li>
+              )}
+              {(!template || templateHasField(template, "rumorsBlocks")) && (
               <li className="report-toc-section-item">
                 <a href="#section-rumors" className="report-toc-link report-toc-section-link">
                   <span className="report-toc-title">{t("report.rumors")}</span>
                 </a>
               </li>
+              )}
+              {trendBlocksField && (
+                <li className="report-toc-section-item">
+                  <a href="#section-trends" className="report-toc-link report-toc-section-link">
+                    <span className="report-toc-title">{trendBlocksField.label}</span>
+                  </a>
+                </li>
+              )}
               <li className="report-toc-section-item">
                 <a href="#section-site-photos" className="report-toc-link report-toc-section-link">
-                  <span className="report-toc-title">{t("report.siteRecords")}</span>
+                  <span className="report-toc-title">
+                    {template?.templateId === "academic-conference-daily-report" && sitePhotosField
+                      ? sitePhotosField.label
+                      : t("report.siteRecords")}
+                  </span>
                 </a>
               </li>
             </ul>
@@ -2597,6 +2619,7 @@ ${clone.outerHTML}
 
         {/* Onsite Section */}
         <div className="report-onsite">
+          {(!template || templateHasField(template, "onsiteInfoBlocks")) && (
           <ReportBlockSection
             sectionId="section-onsite-info"
             title={t("report.onsiteInfo")}
@@ -2655,7 +2678,9 @@ ${clone.outerHTML}
               ) : null
             }
           />
+          )}
 
+          {(!template || templateHasField(template, "reflectionsBlocks")) && (
           <ReportBlockSection
             sectionId="section-reflections"
             title={t("report.reflections")}
@@ -2715,7 +2740,9 @@ ${clone.outerHTML}
               ) : null
             }
           />
+          )}
 
+          {(!template || templateHasField(template, "rumorsBlocks")) && (
           <ReportBlockSection
             sectionId="section-rumors"
             title={t("report.rumors")}
@@ -2773,12 +2800,71 @@ ${clone.outerHTML}
               ) : null
             }
           />
+          )}
+
+          {trendBlocksField && (
+            <ReportBlockSection
+              sectionId="section-trends"
+              title={trendBlocksField.label}
+              titleStyle={{ marginTop: 24 }}
+              field="trendBlocks"
+              blocks={reportData?.trendBlocks || []}
+              members={members}
+              currentUid={user?.uid}
+              isAdmin={isConfAdmin}
+              readOnly={viewMode}
+              memberColorMap={memberColorMap}
+              conferenceSessions={allConferenceSessions}
+              bodyPlaceholder={trendBlocksField.description}
+              openInlineMenu={openInlineMenu}
+              onOpenInlineMenu={setOpenInlineMenu}
+              onInsert={insertBlock}
+              onUpdate={updateBlockFields}
+              onRemove={removeBlock}
+              renderAiControls={(block, blockReadOnly) =>
+                template && user ? (
+                  <BlockAiSection
+                    confId={confId}
+                    reportId={reportId}
+                    targetFieldId="trendBlocks"
+                    templateHash={template.templateHash}
+                    field={trendBlocksField}
+                    block={block}
+                    focus={membership?.aiFocus ?? ""}
+                    uid={user.uid}
+                    flushPending={flushPending}
+                    getLatestBlock={() =>
+                      reportDataRef.current?.trendBlocks?.find(
+                        (candidate) => candidate.id === block.id,
+                      )
+                    }
+                    commitTranscript={async (next) => {
+                      await flushPending();
+                      await persistBlockPatch("trendBlocks", block.id, { transcriptRef: next });
+                    }}
+                    onSaveContent={async (content) => {
+                      await flushPending();
+                      await persistBlockPatch(
+                        "trendBlocks",
+                        block.id,
+                        { content, lastEditedBy: user.uid, lastEditedAt: Date.now() },
+                        block.content,
+                      );
+                    }}
+                    readOnly={blockReadOnly}
+                  />
+                ) : null
+              }
+            />
+          )}
         </div>
 
         {/* Site Photos Section */}
         <div id="section-site-photos" className="report-site-photos">
           <h2 className="report-section-title" style={{ marginTop: 32 }}>
-            {t("report.siteRecords")}
+            {template?.templateId === "academic-conference-daily-report" && sitePhotosField
+              ? sitePhotosField.label
+              : t("report.siteRecords")}
           </h2>
           <div className="site-photos-grid">
             {(() => {
