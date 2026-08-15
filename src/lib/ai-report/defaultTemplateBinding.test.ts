@@ -4,7 +4,12 @@ import {
   INDUSTRY_CONFERENCE_DAILY_REPORT_V1,
   INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING,
 } from "./templates/industryConferenceDailyReport";
-import { defaultTemplateBindingPatch, reportTemplateBindingState } from "./defaultTemplateBinding";
+import { ACADEMIC_CONFERENCE_DAILY_REPORT_V1_BINDING } from "./templates/academicConferenceDailyReport";
+import {
+  bindingForConferenceType,
+  defaultTemplateBindingPatch,
+  reportTemplateBindingState,
+} from "./defaultTemplateBinding";
 
 const template: ReportTemplateVersion = INDUSTRY_CONFERENCE_DAILY_REPORT_V1;
 
@@ -66,5 +71,18 @@ describe("defaultTemplateBindingPatch", () => {
         { ...template, templateHash: "different-template" },
       ),
     ).toBeNull();
+  });
+});
+
+describe("bindingForConferenceType", () => {
+  it("binds academic conferences to the academic template", () => {
+    expect(bindingForConferenceType("academic")).toEqual(
+      ACADEMIC_CONFERENCE_DAILY_REPORT_V1_BINDING,
+    );
+  });
+
+  it("defaults missing or industry type to the industry template", () => {
+    expect(bindingForConferenceType(undefined)).toEqual(INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING);
+    expect(bindingForConferenceType("industry")).toEqual(INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING);
   });
 });

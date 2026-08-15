@@ -8,6 +8,7 @@ export type MemberRole = "admin" | "member";
 export type MemberStatus = "approved" | "pending" | "rejected";
 export type AttendanceMode = "onsite" | "online";
 export type ConferenceVisibility = "public" | "private";
+export type ConferenceType = "industry" | "academic";
 
 export interface UserProfile {
   email: string;
@@ -84,6 +85,7 @@ export interface Conference {
   startDate: string;
   endDate: string;
   visibility: ConferenceVisibility;
+  type?: ConferenceType;
   joinCode: string;
   createdBy?: string;
   createdAt?: Timestamp | null;

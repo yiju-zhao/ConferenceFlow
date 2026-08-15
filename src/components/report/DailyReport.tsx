@@ -53,10 +53,11 @@ import {
   replaceReportBlock,
 } from "../../lib/ai-report/reportBlocks";
 import { sessionContentFieldsOf, templateHasField } from "../../lib/ai-report/templateFields";
-import { INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING } from "../../lib/ai-report/templates/industryConferenceDailyReport";
+import { bindingForConferenceType } from "../../lib/ai-report/defaultTemplateBinding";
 import type {
   BlockField,
   AiBlockField,
+  ConferenceType,
   Member,
   Report,
   ReportBlock,
@@ -102,6 +103,8 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   const { user } = useAuth();
   const { membership, isAdmin: isConfAdmin } = useMembership(confId);
   const [confName, setConfName] = useState("");
+  const [confType, setConfType] = useState<ConferenceType | undefined>(undefined);
+  const [confLoaded, setConfLoaded] = useState(false);
   const [allConferenceSessions, setAllConferenceSessions] = useState<Session[]>([]);
   const [members, setMembers] = useState<ResolvedMember[]>([]);
   const [reportData, setReportData] = useState<Report | null>(null);
@@ -259,11 +262,13 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [user, viewMode]);
 
-  // Conference name
+  // Conference name + type (type drives the daily-report template binding)
   useEffect(() => {
     if (!confId) return;
     return onSnapshot(doc(db, "conferences", confId), (snap) => {
       setConfName(snap.exists() ? snap.data().name || confId : confId);
+      setConfType(snap.exists() ? (snap.data().type as ConferenceType | undefined) : undefined);
+      setConfLoaded(true);
     });
   }, [confId]);
 
@@ -316,7 +321,7 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
 
   // Auto-init report
   useEffect(() => {
-    if (!user || loading || reportData || initDone.current) return;
+    if (!user || loading || reportData || !confLoaded || initDone.current) return;
     initDone.current = true;
     setDoc(doc(db, "conferences", confId, "dailyReports", reportId), {
       date,
@@ -331,9 +336,9 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       sessions: {},
       topicOrder: [],
       status: "draft",
-      ...INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING,
+      ...bindingForConferenceType(confType),
     }).catch(console.error);
-  }, [user, loading, reportData, reportId, date, confId]);
+  }, [user, loading, reportData, confLoaded, confType, reportId, date, confId]);
 
   // Keep sessionDataRef and reportDataRef in sync
   const sessionData = reportData?.sessions || {};

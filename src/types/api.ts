@@ -1,5 +1,5 @@
 import type { FieldValue } from "firebase-admin/firestore";
-import type { ConferenceVisibility, SessionSpeaker } from "./firestore";
+import type { ConferenceType, ConferenceVisibility, SessionSpeaker } from "./firestore";
 
 /** Options for apiFetch — a standard fetch options bag. */
 export type ApiFetchOptions = RequestInit;
@@ -22,6 +22,7 @@ export interface CreateConferenceBody {
   startDate: string;
   endDate: string;
   visibility?: ConferenceVisibility;
+  type?: ConferenceType;
 }
 
 /** The conference document payload written by POST /api/conferences. */
@@ -31,6 +32,7 @@ export interface ConferenceWriteData {
   startDate: string;
   endDate: string;
   visibility: ConferenceVisibility;
+  type: ConferenceType;
   joinCode: string;
   createdBy: string;
   createdAt: FieldValue;
@@ -48,6 +50,7 @@ export interface UpdateConferenceBody {
   startDate?: string;
   endDate?: string;
   visibility?: ConferenceVisibility;
+  type?: ConferenceType;
   joinCode?: string;
 }
 

@@ -19,7 +19,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { apiFetch } from "../../lib/api";
 import AppNavbar from "../shell/AppNavbar";
 import { SectionAccentProvider } from "../shell/SectionAccent";
-import type { Conference, ConferenceVisibility } from "../../types";
+import type { Conference, ConferenceType, ConferenceVisibility } from "../../types";
 
 interface ConferenceCreateForm {
   name: string;
@@ -27,6 +27,7 @@ interface ConferenceCreateForm {
   startDate: string;
   endDate: string;
   visibility: ConferenceVisibility;
+  type: ConferenceType;
 }
 
 export default function SuperAdminPanel() {
@@ -40,6 +41,7 @@ export default function SuperAdminPanel() {
     startDate: "",
     endDate: "",
     visibility: "public",
+    type: "industry",
   });
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState("");
@@ -66,6 +68,7 @@ export default function SuperAdminPanel() {
         startDate: "",
         endDate: "",
         visibility: "public",
+        type: "industry",
       });
     } catch (err) {
       setMessage(`Error: ${err instanceof Error ? err.message : String(err)}`);
@@ -253,6 +256,19 @@ export default function SuperAdminPanel() {
                   onValueChange={(v) =>
                     setCreateForm({ ...createForm, visibility: v as ConferenceVisibility })
                   }
+                />
+              </div>
+            </FormGroup>
+            <FormGroup label={t("admin.conferenceType")}>
+              <div>
+                <SegmentedControl
+                  small
+                  options={[
+                    { label: t("admin.typeIndustry"), value: "industry" },
+                    { label: t("admin.typeAcademic"), value: "academic" },
+                  ]}
+                  value={createForm.type}
+                  onValueChange={(v) => setCreateForm({ ...createForm, type: v as ConferenceType })}
                 />
               </div>
             </FormGroup>
