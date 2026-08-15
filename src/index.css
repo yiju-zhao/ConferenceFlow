@@ -1706,6 +1706,9 @@ input[type="checkbox"].gtc-check:checked::after {
   font-family: "Work Sans", sans-serif;
   font-size: 12px;
 }
+.report-editor-toolbar-menu .bp6-menu-item {
+  min-height: 36px;
+}
 .report-editor-primary-action.bp6-button {
   background: var(--accent);
   color: #fff;

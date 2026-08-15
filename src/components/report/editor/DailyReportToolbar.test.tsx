@@ -78,6 +78,22 @@ it("announces save state and invokes export actions", async () => {
   expect(props.onExportMarkdown).toHaveBeenCalledOnce();
 });
 
+it("marks portalled command menus for toolbar touch-target styling", async () => {
+  const user = userEvent.setup();
+  renderToolbar(makeProps());
+
+  await user.click(screen.getByRole("button", { name: "导出" }));
+  expect(
+    screen.getByRole("menuitem", { name: "导出 Markdown" }).closest("[role=menu]"),
+  ).toHaveClass("report-editor-toolbar-menu");
+
+  await user.click(screen.getByRole("button", { name: "导出" }));
+  await user.click(screen.getByRole("button", { name: "更多" }));
+  expect(screen.getByRole("menuitem", { name: "版本历史" }).closest("[role=menu]")).toHaveClass(
+    "report-editor-toolbar-menu",
+  );
+});
+
 it("navigates back and preserves disabled command states", async () => {
   const user = userEvent.setup();
   const props = makeProps({ publishing: true, syncing: true });
