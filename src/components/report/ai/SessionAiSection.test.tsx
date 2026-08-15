@@ -258,7 +258,9 @@ describe("SessionAiSection", () => {
     const onSaveFields = vi.fn().mockResolvedValue(undefined);
     render(<SessionAiSection {...props({ onSaveFields })} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
-    expect(onSaveFields).toHaveBeenCalledWith("S101", { takeaways: expect.any(String) });
+    await waitFor(() =>
+      expect(onSaveFields).toHaveBeenCalledWith("S101", { takeaways: expect.any(String) }),
+    );
     expect(onSaveFields.mock.calls[0][1]).not.toHaveProperty("insights");
   });
 

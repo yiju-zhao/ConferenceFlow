@@ -213,9 +213,10 @@ describe("AiFieldAction", () => {
     await user.click(screen.getByRole("button", { name: "AI 生成" }));
     await user.click(screen.getByRole("button", { name: "追加" }));
     await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await vi.waitFor(() => expect(generation.phase).toBe("preview"));
     rerender(<AiFieldAction {...actionProps} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
-    expect(onSave).toHaveBeenCalledWith(["旧值", "新的要点"]);
+    await vi.waitFor(() => expect(onSave).toHaveBeenCalledWith(["旧值", "新的要点"]));
   });
 
   it("blocks adoption when the subscribed daily value changed", async () => {

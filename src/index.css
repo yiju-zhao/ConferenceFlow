@@ -2634,6 +2634,31 @@ input[type="checkbox"].gtc-check:checked::after {
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* Short-text (single-line) editable session fields */
+.report-short-text {
+  display: block;
+  min-height: 1.85em;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  outline: none;
+  font-size: var(--report-fs-body);
+  line-height: 1.85;
+  color: var(--text-secondary);
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+  word-break: break-word;
+}
+.report-short-text:hover {
+  border-color: var(--border);
+  background: var(--surface-dim);
+}
+.report-short-text:focus {
+  border-color: rgba(207, 10, 44, 0.3);
+  background: var(--surface);
+}
+
 .report-inline-editable {
   display: inline-block;
   min-width: 80px;

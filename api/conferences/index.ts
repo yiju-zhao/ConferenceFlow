@@ -15,9 +15,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   try {
     const decoded = await requireSuperAdmin(req);
-    const { name, description, startDate, endDate, visibility } = req.body as CreateConferenceBody;
+    const { name, description, startDate, endDate, visibility, type } = req.body as CreateConferenceBody;
     if (!name || !startDate || !endDate)
       return res.status(400).json({ error: "name, startDate, and endDate are required" });
+    if (type !== undefined && type !== "industry" && type !== "academic")
+      return res.status(400).json({ error: "invalid conference type" });
     const confRef = db.collection("conferences").doc();
     const confData: ConferenceWriteData = {
       name,
@@ -25,6 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       startDate,
       endDate,
       visibility: visibility || "public",
+      type: type ?? "industry",
       joinCode: visibility === "private" ? generateJoinCode() : "",
       createdBy: decoded.uid,
       createdAt: FieldValue.serverTimestamp(),

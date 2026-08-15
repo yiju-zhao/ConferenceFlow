@@ -42,6 +42,7 @@ const RESERVED_AI_FIELD_IDS = {
     "onsiteInfoBlocks",
     "reflectionsBlocks",
     "rumorsBlocks",
+    "trendBlocks",
     "sections",
     "citations",
     "onsiteEvents",

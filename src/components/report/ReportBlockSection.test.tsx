@@ -396,8 +396,8 @@ describe("DailyReport Block integration", () => {
   const source = readFileSync("src/components/report/DailyReport.tsx", "utf8");
 
   it("wires exactly one shared renderer to every canonical Block field", () => {
-    expect(source.match(/<ReportBlockSection/g)).toHaveLength(3);
-    for (const field of ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks"]) {
+    expect(source.match(/<ReportBlockSection/g)).toHaveLength(4);
+    for (const field of ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks", "trendBlocks"]) {
       expect(source.match(new RegExp(`field="${field}"`, "g"))).toHaveLength(1);
       expect(source).toContain(`targetFieldId="${field}"`);
     }
@@ -412,11 +412,11 @@ describe("DailyReport Block integration", () => {
   });
 
   it("coordinates AI using each loop Block, member focus, and latest exact identity", () => {
-    expect(source.match(/block=\{block\}/g)).toHaveLength(3);
+    expect(source.match(/block=\{block\}/g)).toHaveLength(4);
     expect(
       (source.match(/focus=\{membership\?\.aiFocus \?\? ""\}/g) ?? []).length,
-    ).toBeGreaterThanOrEqual(3);
-    for (const field of ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks"]) {
+    ).toBeGreaterThanOrEqual(4);
+    for (const field of ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks", "trendBlocks"]) {
       expect(source).toContain(`reportDataRef.current?.${field}?.find(`);
       expect(source).toContain(`persistBlockPatch("${field}", block.id, {`);
     }
@@ -448,15 +448,15 @@ describe("DailyReport Block integration", () => {
   });
 
   it("flushes candidate saves before a content-preconditioned transaction", () => {
-    expect(source.match(/onSaveContent=\{async \(content\) => \{/g)).toHaveLength(3);
-    expect(source.match(/await flushPending\(\);/g)).toHaveLength(6);
-    expect(source.match(/block\.content,\s*\);/g)).toHaveLength(3);
-    expect(source.match(/transcriptRef: next/g)).toHaveLength(3);
+    expect(source.match(/onSaveContent=\{async \(content\) => \{/g)).toHaveLength(4);
+    expect(source.match(/await flushPending\(\);/g)).toHaveLength(8);
+    expect(source.match(/block\.content,\s*\);/g)).toHaveLength(4);
+    expect(source.match(/transcriptRef: next/g)).toHaveLength(4);
   });
 
   it("flushes transcript edits and limits candidate adoption to content metadata", () => {
-    expect((source.match(/await flushPending\(\);/g) ?? []).length).toBeGreaterThanOrEqual(3);
-    expect(source.match(/transcriptRef: next/g)).toHaveLength(3);
+    expect((source.match(/await flushPending\(\);/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(source.match(/transcriptRef: next/g)).toHaveLength(4);
     expect((source.match(/lastEditedBy: user\.uid/g) ?? []).length).toBeGreaterThanOrEqual(3);
     expect((source.match(/lastEditedAt: Date\.now\(\)/g) ?? []).length).toBeGreaterThanOrEqual(3);
   });

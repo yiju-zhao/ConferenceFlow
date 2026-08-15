@@ -3,11 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../i18n";
+import { ACADEMIC_CONFERENCE_DAILY_REPORT_V1 } from "../../lib/ai-report/templates/academicConferenceDailyReport";
 import DailyReport from "./DailyReport";
 
-const { onSnapshotMock } = vi.hoisted(() => ({
+const { onSnapshotMock, useBoundReportTemplateMock } = vi.hoisted(() => ({
   onSnapshotMock:
     vi.fn<(referenceValue: unknown, callback: (snapshot: never) => void) => () => void>(),
+  useBoundReportTemplateMock: vi.fn(),
 }));
 
 vi.mock("../../firebase", () => ({ db: {}, storage: {} }));
@@ -62,10 +64,7 @@ vi.mock("../../hooks/useDebouncedSave", () => ({
   })(),
 }));
 vi.mock("../../hooks/useBoundReportTemplate", () => ({
-  useBoundReportTemplate: (() => {
-    const value = { template: null, loading: false, error: null };
-    return () => value;
-  })(),
+  useBoundReportTemplate: useBoundReportTemplateMock,
 }));
 vi.mock("../../hooks/useDefaultReportTemplateBinding", () => ({
   useDefaultReportTemplateBinding: vi.fn(),
@@ -106,6 +105,24 @@ const report = {
   status: "draft",
 };
 
+const academicReport = {
+  ...report,
+  templateId: ACADEMIC_CONFERENCE_DAILY_REPORT_V1.templateId,
+  templateVersion: ACADEMIC_CONFERENCE_DAILY_REPORT_V1.version,
+  templateHash: ACADEMIC_CONFERENCE_DAILY_REPORT_V1.templateHash,
+  sessions: {
+    S101: {
+      insightCore: "学术洞察核心",
+      insightExplanation: "<p>学术启示说明</p>",
+      techHighlights: "<p>学术技术亮点</p>",
+      huaweiImplications: "<p>学术业务启示</p>",
+    },
+  },
+  trendBlocks: [{ id: "trend-1", type: "body" as const, content: "方向性信号" }],
+};
+
+let currentReport: typeof report | typeof academicReport = report;
+
 const snapshot = {
   id: "snapshot-abcdef",
   data: () => ({
@@ -143,6 +160,8 @@ function renderReport(viewMode: boolean) {
 describe("DailyReport Session visibility", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("zh-CN");
+    currentReport = report;
+    useBoundReportTemplateMock.mockReturnValue({ template: null, loading: false, error: null });
     vi.stubGlobal(
       "IntersectionObserver",
       class {
@@ -158,7 +177,7 @@ describe("DailyReport Session visibility", () => {
       else if (path.endsWith("/sessions")) {
         callback(collectionSnapshot([{ id: session.id, data: () => session }]) as never);
       } else if (path.endsWith("/dailyReports/2026-08-14-v1")) {
-        callback(documentSnapshot(report) as never);
+        callback(documentSnapshot(currentReport) as never);
       }
       return vi.fn();
     });
@@ -199,6 +218,65 @@ describe("DailyReport Session visibility", () => {
 
     await user.click(screen.getByRole("heading", { name: "Agent Workflow", level: 3 }));
     expect(screen.getByText("Visible session body")).toBeVisible();
+  });
+
+  it("collapses a populated academic Session until its explicit edit control expands it", async () => {
+    currentReport = academicReport;
+    useBoundReportTemplateMock.mockReturnValue({
+      template: ACADEMIC_CONFERENCE_DAILY_REPORT_V1,
+      loading: false,
+      error: null,
+    });
+    const user = userEvent.setup();
+    renderReport(false);
+
+    const toggle = await screen.findByRole("button", { name: "展开 S101 · Agent Workflow" });
+    expect(screen.queryByText("学术洞察核心")).toBeNull();
+
+    await user.click(toggle);
+    expect(await screen.findByText("学术洞察核心")).toBeVisible();
+    expect(screen.getByText("学术启示说明")).toBeVisible();
+  });
+
+  it("keeps a populated academic Session expanded in view mode", async () => {
+    currentReport = academicReport;
+    useBoundReportTemplateMock.mockReturnValue({
+      template: ACADEMIC_CONFERENCE_DAILY_REPORT_V1,
+      loading: false,
+      error: null,
+    });
+    renderReport(true);
+
+    expect(await screen.findByText("学术洞察核心")).toBeVisible();
+    expect(screen.getByText("学术技术亮点")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /S101 · Agent Workflow/ })).toBeNull();
+  });
+
+  it("keeps the editor outline aligned with academic-only visible sections", async () => {
+    currentReport = academicReport;
+    useBoundReportTemplateMock.mockReturnValue({
+      template: ACADEMIC_CONFERENCE_DAILY_REPORT_V1,
+      loading: false,
+      error: null,
+    });
+    const { container } = renderReport(false);
+
+    const outline = await waitFor(() => {
+      const navigation = container.querySelector(".report-editor-outline");
+      expect(navigation).not.toBeNull();
+      return navigation as HTMLElement;
+    });
+    expect(within(outline).getByRole("link", { name: "趋势研判" })).toHaveAttribute(
+      "href",
+      "#section-trends",
+    );
+    expect(within(outline).getByRole("link", { name: "现场速记" })).toHaveAttribute(
+      "href",
+      "#section-site-photos",
+    );
+    expect(within(outline).queryByRole("link", { name: "现场情报" })).toBeNull();
+    expect(within(outline).queryByRole("link", { name: "圈内声音" })).toBeNull();
+    expect(within(outline).queryByRole("link", { name: "深度研判" })).toBeNull();
   });
 
   it("keeps delete, restore, and history controls on the shared editor touch-target contract", async () => {

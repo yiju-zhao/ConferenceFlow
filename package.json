@@ -10,6 +10,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "template:publish:industry-daily": "tsx scripts/publish-industry-conference-daily-report.ts",
+    "template:publish:academic-daily": "tsx scripts/publish-academic-conference-daily-report.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -1,5 +1,5 @@
 export type GenerationMode = "rewrite" | "append";
-export const AI_BLOCK_FIELDS = ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks"] as const;
+export const AI_BLOCK_FIELDS = ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks", "trendBlocks"] as const;
 export type AiBlockField = (typeof AI_BLOCK_FIELDS)[number];
 export type GenerationScope = "session" | "daily" | "block";
 export type TemplateFieldType = "rich_text" | "bullet_list" | "short_text" | "image" | "fixed";
