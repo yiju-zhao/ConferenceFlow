@@ -319,6 +319,10 @@ body {
   border-radius: var(--radius-sm);
 }
 
+button.report-editor-touch-target {
+  min-height: 36px;
+}
+
 .ai-report-action:disabled,
 .ai-report-mode-selector button:disabled,
 .ai-report-evidence button:disabled {

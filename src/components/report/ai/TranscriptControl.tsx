@@ -217,7 +217,7 @@ export default function TranscriptControl({
               <button
                 type="button"
                 ref={replaceCancelRef}
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closeReplace}
                 disabled={actions.busy}
               >
@@ -225,7 +225,7 @@ export default function TranscriptControl({
               </button>
               <button
                 type="button"
-                className="delete-confirm-submit"
+                className="delete-confirm-submit report-editor-touch-target"
                 onClick={() => void saveFile(replacementFile)}
                 disabled={actions.busy}
               >
@@ -262,7 +262,7 @@ export default function TranscriptControl({
             <div className="delete-confirm-actions">
               <button
                 type="button"
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closePaste}
                 disabled={actions.busy}
               >
@@ -270,7 +270,7 @@ export default function TranscriptControl({
               </button>
               <button
                 type="button"
-                className="delete-confirm-submit"
+                className="delete-confirm-submit report-editor-touch-target"
                 onClick={() => void savePaste()}
                 disabled={actions.busy}
               >
@@ -301,7 +301,7 @@ export default function TranscriptControl({
               <button
                 type="button"
                 ref={sourceCloseRef}
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closeSource}
                 disabled={actions.busy}
               >
@@ -335,7 +335,7 @@ export default function TranscriptControl({
               <button
                 type="button"
                 ref={deleteCancelRef}
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closeDelete}
                 disabled={actions.busy}
               >
@@ -343,7 +343,7 @@ export default function TranscriptControl({
               </button>
               <button
                 type="button"
-                className="delete-confirm-submit"
+                className="delete-confirm-submit report-editor-touch-target"
                 onClick={() => void remove()}
                 disabled={actions.busy}
               >

@@ -105,7 +105,7 @@ export default function AiCandidateModal({
         <header className="ai-report-dialog-header">
           <h2 id="ai-candidate-title">{t("report.ai.candidate")}</h2>
           <button
-            className="ai-report-action"
+            className="ai-report-action report-editor-touch-target"
             ref={closeRef}
             onClick={onCancel}
             disabled={busy}
@@ -156,6 +156,7 @@ export default function AiCandidateModal({
                     <div className="ai-report-evidence">
                       <button
                         type="button"
+                        className="report-editor-touch-target"
                         aria-expanded={evidenceOpen}
                         onClick={() => toggleEvidence(field.fieldId)}
                       >
@@ -185,12 +186,17 @@ export default function AiCandidateModal({
           </p>
         ))}
         <footer className="ai-report-action-row">
-          <button className="ai-report-action" type="button" onClick={onCancel} disabled={busy}>
+          <button
+            className="ai-report-action report-editor-touch-target"
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+          >
             {t("common.cancel")}
           </button>
           {(response || retryable) && (
             <button
-              className="ai-report-action"
+              className="ai-report-action report-editor-touch-target"
               type="button"
               onClick={onRegenerate}
               disabled={busy}
@@ -200,7 +206,7 @@ export default function AiCandidateModal({
           )}
           {response && (
             <button
-              className="ai-report-action ai-report-action-primary"
+              className="ai-report-action ai-report-action-primary report-editor-touch-target"
               type="button"
               onClick={onAdopt}
               disabled={busy}

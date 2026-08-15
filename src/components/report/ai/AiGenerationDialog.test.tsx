@@ -9,6 +9,23 @@ describe("AiGenerationDialog", () => {
     await i18n.changeLanguage("zh-CN");
   });
 
+  it("gives every generation dialog action the shared editor touch-target contract", () => {
+    render(
+      <AiGenerationDialog
+        open
+        availableModes={["rewrite", "append"]}
+        focus="关注成本"
+        busy={false}
+        onGenerate={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    ["关闭", "改写", "追加", "取消", "生成候选内容"].forEach((name) => {
+      expect(screen.getByRole("button", { name })).toHaveClass("report-editor-touch-target");
+    });
+  });
+
   it("starts with rewrite and only offers append when available", () => {
     const { rerender } = render(
       <AiGenerationDialog

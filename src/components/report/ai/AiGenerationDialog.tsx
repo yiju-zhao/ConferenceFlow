@@ -79,7 +79,7 @@ export default function AiGenerationDialog({
         <header className="ai-report-dialog-header">
           <h2 id="ai-generation-title">{t("report.ai.generate")}</h2>
           <button
-            className="ai-report-action"
+            className="ai-report-action report-editor-touch-target"
             onClick={onClose}
             disabled={busy}
             aria-label={t("common.close")}
@@ -91,6 +91,7 @@ export default function AiGenerationDialog({
           <span>{t("report.ai.generationMode")}</span>
           <button
             type="button"
+            className="report-editor-touch-target"
             ref={rewriteRef}
             aria-pressed={mode === "rewrite"}
             onClick={() => setMode("rewrite")}
@@ -101,6 +102,7 @@ export default function AiGenerationDialog({
           {availableModes.includes("append") && (
             <button
               type="button"
+              className="report-editor-touch-target"
               aria-pressed={mode === "append"}
               onClick={() => setMode("append")}
               disabled={formBusy}
@@ -129,11 +131,16 @@ export default function AiGenerationDialog({
           </p>
         )}
         <footer className="ai-report-action-row">
-          <button className="ai-report-action" type="button" onClick={onClose} disabled={busy}>
+          <button
+            className="ai-report-action report-editor-touch-target"
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+          >
             {t("common.cancel")}
           </button>
           <button
-            className="ai-report-action ai-report-action-primary"
+            className="ai-report-action ai-report-action-primary report-editor-touch-target"
             type="button"
             onClick={submit}
             disabled={formBusy}
