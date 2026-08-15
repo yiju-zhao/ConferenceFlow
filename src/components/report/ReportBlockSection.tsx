@@ -44,19 +44,28 @@ export default function ReportBlockSection({
   onRemove,
   renderAiControls,
 }: ReportBlockSectionProps) {
+  const sectionHeading = (
+    <h2 id={sectionId} className="report-section-title" style={titleStyle}>
+      {title}
+    </h2>
+  );
+
   return (
     <>
-      <h2 id={sectionId} className="report-section-title" style={titleStyle}>
-        {title}
-      </h2>
-      {!readOnly && (
-        <InlineAddButton
-          field={field}
-          afterId={null}
-          openKey={openInlineMenu}
-          onOpen={onOpenInlineMenu}
-          onInsert={onInsert}
-        />
+      {readOnly ? (
+        sectionHeading
+      ) : (
+        <div className="report-section-heading-row">
+          {sectionHeading}
+          <InlineAddButton
+            variant="section"
+            field={field}
+            afterId={null}
+            openKey={openInlineMenu}
+            onOpen={onOpenInlineMenu}
+            onInsert={onInsert}
+          />
+        </div>
       )}
       {blocks.map((block) => {
         const blockReadOnly =
@@ -97,14 +106,16 @@ export default function ReportBlockSection({
                 )}
                 {!blockReadOnly && (
                   <button
-                    className="onsite-category-remove no-print"
+                    className="onsite-category-remove report-editor-touch-target no-print"
                     onClick={() => onRemove(field, block.id)}
                   >
                     ×
                   </button>
                 )}
                 {!blockReadOnly && aiControls && (
-                  <div className="report-block-heading-ai no-print">{aiControls}</div>
+                  <div className="report-block-heading-ai report-block-heading-ai--shrinkable no-print">
+                    {aiControls}
+                  </div>
                 )}
               </div>
             ) : (
@@ -128,6 +139,7 @@ export default function ReportBlockSection({
             )}
             {!readOnly && (
               <InlineAddButton
+                variant="insertion"
                 field={field}
                 afterId={block.id}
                 openKey={openInlineMenu}

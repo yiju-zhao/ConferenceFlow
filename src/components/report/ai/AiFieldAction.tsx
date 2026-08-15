@@ -123,7 +123,11 @@ export default function AiFieldAction({
 
   return (
     <span className="no-print ai-field-action">
-      <button type="button" className="ai-report-action" onClick={() => setSetupOpen(true)}>
+      <button
+        type="button"
+        className="ai-report-action ai-report-action--generate"
+        onClick={() => setSetupOpen(true)}
+      >
         {t("report.ai.generate")}
       </button>
       {localError && setupOpen && <p role="alert">{localError}</p>}

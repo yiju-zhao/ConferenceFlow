@@ -81,7 +81,9 @@ describe("ReportBlockSection", () => {
     expect(screen.getByText("Category heading")).toHaveClass("onsite-category-title");
     expect(document.getElementById("block-heading-1")).toHaveClass("onsite-category-header");
     expect(document.getElementById("block-heading-1")).toHaveStyle({ marginTop: "8px" });
-    expect(document.querySelector(".onsite-category-remove")).toBeInTheDocument();
+    expect(document.querySelector(".onsite-category-remove")).toHaveClass(
+      "report-editor-touch-target",
+    );
     expect(screen.getByText("Body intelligence").closest(".intel-card")).toBeInTheDocument();
   });
 
@@ -95,6 +97,9 @@ describe("ReportBlockSection", () => {
     expect(renderAiControls).toHaveBeenNthCalledWith(1, heading, false);
     expect(renderAiControls).toHaveBeenNthCalledWith(2, body, false);
     expect(screen.getByTestId("ai-heading-1").closest(".onsite-category-header")).toBeVisible();
+    expect(screen.getByTestId("ai-heading-1").parentElement).toHaveClass(
+      "report-block-heading-ai--shrinkable",
+    );
     expect(screen.getByTestId("ai-body-1").closest(".intel-card")).toBeVisible();
   });
 
@@ -106,6 +111,9 @@ describe("ReportBlockSection", () => {
     const { rerender } = render(<ReportBlockSection {...sectionProps} />);
     const insertButtons = screen.getAllByRole("button", { name: i18n.t("report.addBlock") });
 
+    expect(document.querySelector(".inline-add-zone--section")).toBeInTheDocument();
+    expect(document.querySelectorAll(".inline-add-zone--insertion").length).toBeGreaterThan(0);
+
     await user.click(insertButtons[0]);
     expect(onOpenInlineMenu).toHaveBeenCalledWith("onsiteInfoBlocks::null");
     rerender(<ReportBlockSection {...sectionProps} openInlineMenu="onsiteInfoBlocks::null" />);
@@ -116,6 +124,25 @@ describe("ReportBlockSection", () => {
     rerender(<ReportBlockSection {...sectionProps} openInlineMenu="onsiteInfoBlocks::heading-1" />);
     await user.click(screen.getByRole("button", { name: "正文" }));
     expect(onInsert).toHaveBeenCalledWith("onsiteInfoBlocks", "body", "heading-1");
+  });
+
+  it("keeps the section heading action available when the section has no Blocks", async () => {
+    const user = userEvent.setup();
+    const onOpenInlineMenu = vi.fn();
+    render(
+      <ReportBlockSection
+        {...props({
+          blocks: [],
+          onOpenInlineMenu,
+        })}
+      />,
+    );
+
+    const heading = screen.getByRole("heading", { name: "现场情报", level: 2 });
+    const addButton = screen.getByRole("button", { name: i18n.t("report.addBlock") });
+    expect(heading.closest(".report-section-heading-row")).toContainElement(addButton);
+    await user.click(addButton);
+    expect(onOpenInlineMenu).toHaveBeenCalledWith("onsiteInfoBlocks::null");
   });
 
   it("routes heading and body edits and removals to the exact field and Block", () => {
@@ -339,6 +366,9 @@ describe("ReportBlockSection", () => {
       />,
     );
 
+    const sectionHeading = screen.getByRole("heading", { name: "现场情报", level: 2 });
+    expect(sectionHeading).toBeVisible();
+    expect(sectionHeading.closest(".report-section-heading-row")).toBeNull();
     expect(screen.getByText("Category heading")).toBeVisible();
     expect(screen.getByText("Body intelligence")).toBeVisible();
     expect(

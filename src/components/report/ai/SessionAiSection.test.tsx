@@ -129,7 +129,15 @@ describe("SessionAiSection", () => {
 
   it("disables generation without a transcript while leaving transcript controls available", () => {
     render(<SessionAiSection {...props({ transcriptRef: null })} />);
-    expect(screen.getByRole("button", { name: "AI 生成 Session 内容" })).toBeDisabled();
+    const transcript = screen.getByRole("region", { name: "转录文字" });
+    const sourceRow = transcript.closest(".ai-editor-source-row");
+    const generate = screen.getByRole("button", { name: "AI 生成 Session 内容" });
+
+    expect(sourceRow).toContainElement(transcript);
+    expect(sourceRow).toContainElement(generate);
+    expect(generate).toBeVisible();
+    expect(generate).toHaveClass("ai-report-action--generate");
+    expect(generate).toBeDisabled();
     expect(screen.getByRole("button", { name: "粘贴转录文字" })).toBeEnabled();
   });
 
@@ -250,7 +258,9 @@ describe("SessionAiSection", () => {
     const onSaveFields = vi.fn().mockResolvedValue(undefined);
     render(<SessionAiSection {...props({ onSaveFields })} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
-    expect(onSaveFields).toHaveBeenCalledWith("S101", { takeaways: expect.any(String) });
+    await waitFor(() =>
+      expect(onSaveFields).toHaveBeenCalledWith("S101", { takeaways: expect.any(String) }),
+    );
     expect(onSaveFields.mock.calls[0][1]).not.toHaveProperty("insights");
   });
 

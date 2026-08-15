@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../../i18n";
@@ -46,6 +46,52 @@ describe("TranscriptControl", () => {
     expect(screen.getByRole("button", { name: "查看转录文字" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "替换转录文字" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "删除转录文字" })).toBeInTheDocument();
+  });
+
+  it("gives every transcript modal action the shared editor touch-target contract", async () => {
+    const user = userEvent.setup();
+    const actions = transcriptActions({ loadText: vi.fn().mockResolvedValue("私有原文") });
+    const { container, rerender } = render(
+      <TranscriptControl transcriptRef={currentTranscript} actions={actions} />,
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File(["新内容"], "new.txt", { type: "text/plain" }));
+    let dialog = screen.getByRole("dialog", { name: "替换转录文字" });
+    expect(within(dialog).getByRole("button", { name: "取消" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    expect(within(dialog).getByRole("button", { name: "确认替换" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
+
+    await user.click(screen.getByRole("button", { name: "查看转录文字" }));
+    dialog = await screen.findByRole("dialog", { name: "转录文字" });
+    expect(within(dialog).getByRole("button", { name: "关闭" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "关闭" }));
+
+    await user.click(screen.getByRole("button", { name: "删除转录文字" }));
+    dialog = screen.getByRole("dialog", { name: "删除转录文字" });
+    expect(within(dialog).getByRole("button", { name: "取消" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    expect(within(dialog).getByRole("button", { name: "确认删除" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "取消" }));
+
+    rerender(<TranscriptControl transcriptRef={null} actions={actions} />);
+    await user.click(screen.getByRole("button", { name: "粘贴转录文字" }));
+    dialog = screen.getByRole("dialog", { name: "粘贴转录文字" });
+    expect(within(dialog).getByRole("button", { name: "取消" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    expect(within(dialog).getByRole("button", { name: "确认" })).toHaveClass(
+      "report-editor-touch-target",
+    );
   });
 
   it("reveals private text only after View and confirms deletion", async () => {

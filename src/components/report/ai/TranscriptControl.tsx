@@ -122,32 +122,52 @@ export default function TranscriptControl({
   };
 
   return (
-    <section className="no-print transcript-control" aria-label={t("report.ai.transcript")}>
+    <section
+      className="no-print transcript-control transcript-control--compact transcript-control--shrinkable"
+      aria-label={t("report.ai.transcript")}
+    >
       <p className="transcript-control-hint">{t("report.ai.privateSourceHint")}</p>
       {transcriptRef ? (
-        <div className="transcript-control-current">
-          <span>{transcriptRef.fileName}</span>
-          <button type="button" onClick={viewSource} disabled={actions.busy}>
+        <div className="transcript-control-current transcript-control-actions--compact">
+          <span className="transcript-control-file-name">{transcriptRef.fileName}</span>
+          <button
+            type="button"
+            className="transcript-control-action"
+            onClick={viewSource}
+            disabled={actions.busy}
+          >
             {t("report.ai.viewTranscript")}
           </button>
           <button
             type="button"
+            className="transcript-control-action"
             onClick={() => fileInputRef.current?.click()}
             disabled={actions.busy}
           >
             {t("report.ai.replaceTranscript")}
           </button>
-          <button type="button" onClick={() => setDeleteOpen(true)} disabled={actions.busy}>
+          <button
+            type="button"
+            className="transcript-control-action"
+            onClick={() => setDeleteOpen(true)}
+            disabled={actions.busy}
+          >
             {t("report.ai.deleteTranscript")}
           </button>
         </div>
       ) : (
-        <div className="transcript-control-actions">
-          <button type="button" onClick={() => setPasteOpen(true)} disabled={actions.busy}>
+        <div className="transcript-control-actions transcript-control-actions--compact">
+          <button
+            type="button"
+            className="transcript-control-action"
+            onClick={() => setPasteOpen(true)}
+            disabled={actions.busy}
+          >
             {t("report.ai.pasteTranscript")}
           </button>
           <button
             type="button"
+            className="transcript-control-action"
             onClick={() => fileInputRef.current?.click()}
             disabled={actions.busy}
           >
@@ -197,7 +217,7 @@ export default function TranscriptControl({
               <button
                 type="button"
                 ref={replaceCancelRef}
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closeReplace}
                 disabled={actions.busy}
               >
@@ -205,7 +225,7 @@ export default function TranscriptControl({
               </button>
               <button
                 type="button"
-                className="delete-confirm-submit"
+                className="delete-confirm-submit report-editor-touch-target"
                 onClick={() => void saveFile(replacementFile)}
                 disabled={actions.busy}
               >
@@ -242,7 +262,7 @@ export default function TranscriptControl({
             <div className="delete-confirm-actions">
               <button
                 type="button"
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closePaste}
                 disabled={actions.busy}
               >
@@ -250,7 +270,7 @@ export default function TranscriptControl({
               </button>
               <button
                 type="button"
-                className="delete-confirm-submit"
+                className="delete-confirm-submit report-editor-touch-target"
                 onClick={() => void savePaste()}
                 disabled={actions.busy}
               >
@@ -281,7 +301,7 @@ export default function TranscriptControl({
               <button
                 type="button"
                 ref={sourceCloseRef}
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closeSource}
                 disabled={actions.busy}
               >
@@ -315,7 +335,7 @@ export default function TranscriptControl({
               <button
                 type="button"
                 ref={deleteCancelRef}
-                className="delete-confirm-cancel"
+                className="delete-confirm-cancel report-editor-touch-target"
                 onClick={closeDelete}
                 disabled={actions.busy}
               >
@@ -323,7 +343,7 @@ export default function TranscriptControl({
               </button>
               <button
                 type="button"
-                className="delete-confirm-submit"
+                className="delete-confirm-submit report-editor-touch-target"
                 onClick={() => void remove()}
                 disabled={actions.busy}
               >

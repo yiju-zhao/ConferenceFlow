@@ -62,6 +62,23 @@ describe("AiCandidateModal", () => {
     await i18n.changeLanguage("zh-CN");
   });
 
+  it("gives every candidate dialog action the shared editor touch-target contract", () => {
+    render(
+      <AiCandidateModal
+        template={template}
+        response={response}
+        busy={false}
+        onAdopt={vi.fn()}
+        onRegenerate={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    ["关闭", "查看证据", "取消", "重新生成", "采纳候选内容"].forEach((name) => {
+      expect(screen.getByRole("button", { name })).toHaveClass("report-editor-touch-target");
+    });
+  });
+
   it("keeps candidate evidence collapsed until requested", async () => {
     const user = userEvent.setup();
     render(

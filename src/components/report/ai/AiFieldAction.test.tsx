@@ -71,6 +71,25 @@ describe("AiFieldAction", () => {
     });
   });
 
+  it("keeps the AI generation action visibly persistent", () => {
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus=""
+        getCurrentValue={() => []}
+        flushPending={() => Promise.resolve()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "AI 生成" })).toHaveClass(
+      "ai-report-action--generate",
+    );
+  });
+
   it("flushes manual edits before it starts daily generation", async () => {
     const user = userEvent.setup();
     let releaseFlush!: () => void;
@@ -194,9 +213,10 @@ describe("AiFieldAction", () => {
     await user.click(screen.getByRole("button", { name: "AI 生成" }));
     await user.click(screen.getByRole("button", { name: "追加" }));
     await user.click(screen.getByRole("button", { name: "生成候选内容" }));
+    await vi.waitFor(() => expect(generation.phase).toBe("preview"));
     rerender(<AiFieldAction {...actionProps} />);
     await user.click(screen.getByRole("button", { name: "采纳候选内容" }));
-    expect(onSave).toHaveBeenCalledWith(["旧值", "新的要点"]);
+    await vi.waitFor(() => expect(onSave).toHaveBeenCalledWith(["旧值", "新的要点"]));
   });
 
   it("blocks adoption when the subscribed daily value changed", async () => {

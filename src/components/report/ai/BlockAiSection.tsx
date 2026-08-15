@@ -235,19 +235,21 @@ export default function BlockAiSection({
   if (!eligible || modes.length === 0 || readOnly) return null;
 
   return (
-    <section className="no-print ai-session-section">
-      <TranscriptControl transcriptRef={block.transcriptRef} actions={transcriptActions} />
-      <button
-        type="button"
-        className="ai-report-action"
-        onClick={() => {
-          setLocalError(null);
-          setSetupOpen(true);
-        }}
-        disabled={!hasSource}
-      >
-        {t("report.ai.generateBlock")}
-      </button>
+    <section className="no-print ai-session-section ai-session-section--shrinkable">
+      <div className="ai-editor-source-row ai-editor-source-row--wrappable">
+        <TranscriptControl transcriptRef={block.transcriptRef} actions={transcriptActions} />
+        <button
+          type="button"
+          className="ai-report-action ai-report-action--generate"
+          onClick={() => {
+            setLocalError(null);
+            setSetupOpen(true);
+          }}
+          disabled={!hasSource}
+        >
+          {t("report.ai.generateBlock")}
+        </button>
+      </div>
       {!hasSource && <p>{t("report.ai.missingBlockSource")}</p>}
       <AiGenerationDialog
         open={setupOpen}
