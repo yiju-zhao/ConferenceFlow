@@ -69,6 +69,8 @@ import type {
   SitePhoto,
   TemplateFieldValue,
 } from "../../types";
+import DailyReportEditorShell from "./editor/DailyReportEditorShell";
+import type { DailyReportOutlineItem } from "./editor/DailyReportOutline";
 import DailyReportSkeleton from "./editor/DailyReportSkeleton";
 
 // A conference session scoped to a single day's report. `attendees` is
@@ -84,6 +86,7 @@ type DailySession = Omit<Session, "attendees" | "code"> & {
 type ResolvedMember = Member & { name: string };
 
 type SnapshotType = "auto" | "manual";
+const EMPTY_REPORT_BLOCKS: ReportBlock[] = [];
 
 interface DailyReportProps {
   viewMode?: boolean;
@@ -433,6 +436,74 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     });
     return result;
   }, [topicsMap, reportData]);
+
+  const onsiteInfoBlocks = reportData?.onsiteInfoBlocks ?? EMPTY_REPORT_BLOCKS;
+  const reflectionsBlocks = reportData?.reflectionsBlocks ?? EMPTY_REPORT_BLOCKS;
+  const rumorsBlocks = reportData?.rumorsBlocks ?? EMPTY_REPORT_BLOCKS;
+  const outlineLabel = t("report.toc");
+  const relatedTopicsLabel = t("report.relatedTopics");
+  const onsiteInfoLabel = t("report.onsiteInfo");
+  const reflectionsLabel = t("report.reflections");
+  const rumorsLabel = t("report.rumors");
+  const siteRecordsLabel = t("report.siteRecords");
+  const outlineItems = useMemo<DailyReportOutlineItem[]>(
+    () => [
+      {
+        href: "#section-related",
+        label: relatedTopicsLabel,
+        children: [
+          ...noTopicSessions.map((session) => ({
+            href: `#session-${session.code}`,
+            label: `${session.code} · ${SESSION_CATALOG.get(session.code)?.title || session.title}`,
+          })),
+          ...orderedTopics.map((topic) => ({
+            href: `#topic-${topicSlug(topic)}`,
+            label: topic,
+            accent: true,
+            children: (topicsMap[topic] || []).map((session) => ({
+              href: `#session-${session.code}`,
+              label: `${session.code} · ${SESSION_CATALOG.get(session.code)?.title || session.title}`,
+            })),
+          })),
+        ],
+      },
+      {
+        href: "#section-onsite-info",
+        label: onsiteInfoLabel,
+        children: onsiteInfoBlocks
+          .filter((block) => block.type === "heading" && block.content.trim())
+          .map((block) => ({ href: `#block-${block.id}`, label: block.content })),
+      },
+      {
+        href: "#section-reflections",
+        label: reflectionsLabel,
+        children: reflectionsBlocks
+          .filter((block) => block.type === "heading" && block.content.trim())
+          .map((block) => ({ href: `#block-${block.id}`, label: block.content })),
+      },
+      {
+        href: "#section-rumors",
+        label: rumorsLabel,
+        children: rumorsBlocks
+          .filter((block) => block.type === "heading" && block.content.trim())
+          .map((block) => ({ href: `#block-${block.id}`, label: block.content })),
+      },
+      { href: "#section-site-photos", label: siteRecordsLabel },
+    ],
+    [
+      noTopicSessions,
+      orderedTopics,
+      topicsMap,
+      onsiteInfoBlocks,
+      reflectionsBlocks,
+      rumorsBlocks,
+      relatedTopicsLabel,
+      onsiteInfoLabel,
+      reflectionsLabel,
+      rumorsLabel,
+      siteRecordsLabel,
+    ],
+  );
 
   // ── Save helpers ────────────────────────────────────────────────────────────
   const saveField = useCallback(
@@ -1474,11 +1545,8 @@ ${clone.outerHTML}
   if (loading) return <DailyReportSkeleton viewMode={viewMode} />;
 
   // ── Render ──────────────────────────────────────────────────────────────────
-  return (
-    <div className={`report-page${viewMode ? " report-view-mode" : ""}`}>
-      {/* ── Toolbar (redesigned) ────────────────────────────────── */}
-      {!viewMode && (
-        <div
+  const toolbar = (
+    <div
           className="no-print"
           style={{
             position: "sticky",
@@ -1775,13 +1843,15 @@ ${clone.outerHTML}
               {t("report.deleteSession")}
             </button>
           </div>
-        </div>
-      )}
-      {!viewMode && templateError && (
-        <p className="no-print ai-report-error" role="status">
-          {t("report.ai.templateError")}
-        </p>
-      )}
+      </div>
+  );
+  const status = templateError ? (
+    <p className="no-print ai-report-error" role="status">
+      {t("report.ai.templateError")}
+    </p>
+  ) : null;
+  const leadingOverlays = (
+    <>
 
       {/* ── Floating formatting toolbar (appears on text selection) ── */}
       {!viewMode && floatingToolbar && (
@@ -1936,9 +2006,11 @@ ${clone.outerHTML}
           </div>
         </div>
       )}
+    </>
+  );
 
-      {/* ── Report Content ───────────────────────────────────────── */}
-      <div className="report-container" ref={reportContainerRef}>
+  const reportDocument = (
+    <div className="report-container" ref={reportContainerRef}>
         {/* Title bar */}
         <div
           className="report-title-bar"
@@ -2899,7 +2971,12 @@ ${clone.outerHTML}
             </p>
           </div>
         </div>
-      </div>
+    </div>
+  );
+
+  const overlays = (
+    <>
+      {leadingOverlays}
 
       {/* Floating back-to-TOC button — only when TOC is scrolled out of view */}
       {!tocVisible && (
@@ -3494,6 +3571,19 @@ ${clone.outerHTML}
           </div>
         </div>
       )}
-    </div>
+    </>
+  );
+
+  return (
+    <DailyReportEditorShell
+      viewMode={viewMode}
+      toolbar={toolbar}
+      outlineLabel={outlineLabel}
+      outlineItems={outlineItems}
+      status={status}
+      overlays={overlays}
+    >
+      {reportDocument}
+    </DailyReportEditorShell>
   );
 }
