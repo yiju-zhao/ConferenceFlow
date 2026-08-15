@@ -1855,12 +1855,16 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-editor-focus-menu-item {
   display: none;
 }
+.report-editor-mobile-only {
+  display: none;
+}
 
 @media (max-width: 700px) {
   .report-editor-toolbar-inner {
+    align-items: flex-start;
     flex-wrap: wrap;
-    gap: 4px 8px;
-    padding: 6px 12px;
+    gap: 8px;
+    padding: 8px 12px;
   }
   .report-editor-toolbar-context {
     width: 100%;
@@ -1871,8 +1875,10 @@ input[type="checkbox"].gtc-check:checked::after {
   .report-editor-toolbar-inner > .bp6-divider,
   .report-editor-toolbar-actions > .presence-bar,
   .report-editor-save-state,
-  .report-editor-focus-action {
-    display: none;
+  .report-editor-focus-action,
+  .report-editor-desktop-only,
+  .presence-count {
+    display: none !important;
   }
   .report-editor-toolbar-actions {
     width: 100%;
@@ -1882,8 +1888,8 @@ input[type="checkbox"].gtc-check:checked::after {
   .report-editor-toolbar-actions .bp6-button {
     flex-shrink: 0;
   }
-  .report-editor-focus-menu-item {
-    display: flex;
+  .report-editor-mobile-only {
+    display: flex !important;
   }
   .report-editor-sync-status {
     padding: 0 12px 6px;
@@ -1932,7 +1938,9 @@ input[type="checkbox"].gtc-check:checked::after {
   margin-top: 3px;
 }
 .report-editor-outline-list a {
-  display: block;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
   overflow: hidden;
   padding: 4px 6px;
   border-radius: var(--radius-sm);
@@ -1962,8 +1970,9 @@ input[type="checkbox"].gtc-check:checked::after {
 
 @media (max-width: 960px) {
   .report-editor-workspace {
-    grid-template-columns: minmax(0, 1152px);
-    gap: 0;
+    display: block;
+    max-width: 1152px;
+    padding: 0 16px;
   }
   .report-editor-outline {
     display: none;
@@ -1973,7 +1982,7 @@ input[type="checkbox"].gtc-check:checked::after {
     top: 0;
     z-index: 90;
     display: block;
-    margin: 12px 0 0;
+    margin: 16px 0 0;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface);
@@ -1981,6 +1990,7 @@ input[type="checkbox"].gtc-check:checked::after {
   }
   .report-editor-outline-mobile > button {
     width: 100%;
+    min-height: 36px;
     padding: 10px 12px;
     border: 0;
     background: transparent;
@@ -1999,6 +2009,18 @@ input[type="checkbox"].gtc-check:checked::after {
   }
   .report-editor-outline-mobile > nav > .report-editor-outline-list {
     padding-top: 8px;
+  }
+  .report-editor-document .report-container {
+    margin-top: 12px;
+  }
+}
+
+@media (max-width: 700px) {
+  .report-editor-workspace {
+    padding: 0 10px;
+  }
+  .report-editor-toolbar .bp6-button {
+    min-height: 36px;
   }
 }
 
@@ -2067,6 +2089,8 @@ input[type="checkbox"].gtc-check:checked::after {
   box-shadow: var(--shadow-md);
 }
 .report-skeleton-workspace.is-view-mode {
+  display: block;
+  max-width: 1152px;
   min-height: 100vh;
 }
 .report-skeleton-title {
@@ -3205,6 +3229,13 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 
 @media print {
+  .report-editor-toolbar,
+  .report-editor-outline,
+  .report-editor-outline-mobile,
+  .report-format-toolbar,
+  .report-skeleton-page {
+    display: none !important;
+  }
   .no-print {
     display: none !important;
   }

@@ -19,7 +19,7 @@ function renderShell(viewMode: boolean) {
     <MemoryRouter initialEntries={["/conference/conf-1/report/report-1"]}>
       <DailyReportEditorShell
         viewMode={viewMode}
-        toolbar={<div>Report toolbar</div>}
+        toolbar={<div className="report-editor-toolbar no-print">Report toolbar</div>}
         outlineLabel="Report outline"
         outlineItems={outlineItems}
         status={<div>Saved</div>}
@@ -44,6 +44,7 @@ it("renders the real navbar and editor slots around the document in edit mode", 
   expect(screen.getByText("Report overlay")).toBeInTheDocument();
   expect(screen.getByText("Report document")).toBeInTheDocument();
   expect(container.querySelector(".report-editor-workspace")).toBeInTheDocument();
+  expect(container.querySelector(".bp6-navbar")?.parentElement).toHaveClass("no-print");
 });
 
 it("renders only overlays and the document in view mode", () => {
@@ -54,6 +55,9 @@ it("renders only overlays and the document in view mode", () => {
   expect(screen.queryByText("Report toolbar")).not.toBeInTheDocument();
   expect(screen.queryByText("Saved")).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "Conference Flow" })).not.toBeInTheDocument();
+  expect(container.querySelector(".report-editor-toolbar")).not.toBeInTheDocument();
+  expect(container.querySelector(".report-editor-outline")).not.toBeInTheDocument();
+  expect(container.querySelector(".bp6-navbar")).not.toBeInTheDocument();
   expect(container.querySelector(".report-view-mode")).toBeInTheDocument();
   expect(container.querySelector(".report-editor-workspace")).not.toBeInTheDocument();
 });

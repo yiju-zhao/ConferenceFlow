@@ -20,7 +20,9 @@ const items = [
 ];
 
 it("renders every outline level as an anchor", () => {
-  render(<DailyReportOutline label="日报目录" items={items} />);
+  const { container } = render(<DailyReportOutline label="日报目录" items={items} />);
+  expect(container.querySelector(".report-editor-outline")).toHaveClass("no-print");
+  expect(container.querySelector(".report-editor-outline-mobile")).toHaveClass("no-print");
   expect(screen.getAllByRole("link", { name: "相关议题" })[0]).toHaveAttribute(
     "href",
     "#section-related",

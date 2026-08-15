@@ -18,7 +18,11 @@ export default function DailyReportEditorShell(props: DailyReportEditorShellProp
   return (
     <SectionAccentProvider accent="report">
       <div className={`report-page${viewMode ? " report-view-mode" : " report-editor-page"}`}>
-        {!viewMode && <AppNavbar showConfTabs />}
+        {!viewMode && (
+          <div className="no-print">
+            <AppNavbar showConfTabs />
+          </div>
+        )}
         {!viewMode ? toolbar : null}
         {!viewMode ? status : null}
         {overlays}

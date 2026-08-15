@@ -121,6 +121,25 @@ describe("ReportBlockSection", () => {
     expect(onInsert).toHaveBeenCalledWith("onsiteInfoBlocks", "body", "heading-1");
   });
 
+  it("keeps the section heading action available when the section has no Blocks", async () => {
+    const user = userEvent.setup();
+    const onOpenInlineMenu = vi.fn();
+    render(
+      <ReportBlockSection
+        {...props({
+          blocks: [],
+          onOpenInlineMenu,
+        })}
+      />,
+    );
+
+    const heading = screen.getByRole("heading", { name: "现场情报", level: 2 });
+    const addButton = screen.getByRole("button", { name: i18n.t("report.addBlock") });
+    expect(heading.closest(".report-section-heading-row")).toContainElement(addButton);
+    await user.click(addButton);
+    expect(onOpenInlineMenu).toHaveBeenCalledWith("onsiteInfoBlocks::null");
+  });
+
   it("routes heading and body edits and removals to the exact field and Block", () => {
     const onUpdate = vi.fn();
     const onRemove = vi.fn();

@@ -50,15 +50,21 @@ beforeEach(async () => {
 it("shows primary commands and moves maintenance actions into More", async () => {
   const user = userEvent.setup();
   const props = makeProps();
-  renderToolbar(props);
+  const { container } = renderToolbar(props);
 
+  expect(container.querySelector(".report-editor-toolbar")).toHaveClass("no-print");
   expect(screen.getByRole("button", { name: "保存" })).toBeVisible();
-  expect(screen.getByRole("button", { name: "我的关注方向" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "我的关注方向" })).toHaveClass(
+    "report-editor-desktop-only",
+  );
   expect(screen.getByRole("button", { name: "预览" })).toBeVisible();
   expect(screen.queryByText("版本历史")).not.toBeInTheDocument();
 
   await user.click(screen.getByRole("button", { name: "更多" }));
 
+  expect(screen.getByRole("menuitem", { name: "我的关注方向" })).toHaveClass(
+    "report-editor-mobile-only",
+  );
   expect(screen.getByRole("menuitem", { name: "版本历史" })).toBeVisible();
   expect(screen.getByRole("menuitem", { name: "更新 Session 信息" })).toBeVisible();
   expect(screen.getByRole("menuitem", { name: "删除 Session" })).toBeVisible();

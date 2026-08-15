@@ -21,6 +21,7 @@ describe("ReportSessionCollapseButton", () => {
     );
 
     const button = screen.getByRole("button", { name: "收起 S1 · Agent Workflow" });
+    expect(button).toHaveClass("no-print");
     expect(button).toHaveAttribute("aria-expanded", "true");
     await user.click(button);
     expect(onToggle).toHaveBeenCalledOnce();

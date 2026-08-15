@@ -74,7 +74,7 @@ export default function DailyReportToolbar({
   const moreMenu = (
     <Menu className="report-editor-toolbar-menu">
       <MenuItem
-        className="report-editor-focus-menu-item"
+        className="report-editor-focus-menu-item report-editor-mobile-only"
         icon="target"
         text={t("report.ai.aiFocus")}
         onClick={onOpenFocus}
@@ -127,7 +127,7 @@ export default function DailyReportToolbar({
               small
               icon="target"
               text={t("report.ai.aiFocus")}
-              className="report-editor-focus-action"
+              className="report-editor-focus-action report-editor-desktop-only"
               onClick={onOpenFocus}
             />
           </Tooltip>
