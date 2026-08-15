@@ -2090,7 +2090,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .report-skeleton-workspace.is-view-mode {
   display: block;
-  max-width: 1152px;
+  max-width: 1192px;
   min-height: 100vh;
 }
 .report-skeleton-title {
@@ -3233,6 +3233,7 @@ input[type="checkbox"].gtc-check:checked::after {
   .report-editor-outline,
   .report-editor-outline-mobile,
   .report-format-toolbar,
+  .report-editor-toolbar-menu,
   .report-skeleton-page {
     display: none !important;
   }

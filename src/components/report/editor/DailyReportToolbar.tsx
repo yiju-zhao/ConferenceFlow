@@ -59,7 +59,7 @@ export default function DailyReportToolbar({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const exportMenu = (
-    <Menu className="report-editor-toolbar-menu">
+    <Menu className="report-editor-toolbar-menu no-print">
       <MenuItem
         icon="share"
         text={publishing ? t("report.sharing") : t("report.shareReport")}
@@ -72,7 +72,7 @@ export default function DailyReportToolbar({
     </Menu>
   );
   const moreMenu = (
-    <Menu className="report-editor-toolbar-menu">
+    <Menu className="report-editor-toolbar-menu no-print">
       <MenuItem
         className="report-editor-focus-menu-item report-editor-mobile-only"
         icon="target"
