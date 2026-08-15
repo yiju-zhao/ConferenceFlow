@@ -46,18 +46,21 @@ export default function ReportBlockSection({
 }: ReportBlockSectionProps) {
   return (
     <>
-      <h2 id={sectionId} className="report-section-title" style={titleStyle}>
-        {title}
-      </h2>
-      {!readOnly && (
-        <InlineAddButton
-          field={field}
-          afterId={null}
-          openKey={openInlineMenu}
-          onOpen={onOpenInlineMenu}
-          onInsert={onInsert}
-        />
-      )}
+      <div className="report-section-heading-row">
+        <h2 id={sectionId} className="report-section-title" style={titleStyle}>
+          {title}
+        </h2>
+        {!readOnly ? (
+          <InlineAddButton
+            variant="section"
+            field={field}
+            afterId={null}
+            openKey={openInlineMenu}
+            onOpen={onOpenInlineMenu}
+            onInsert={onInsert}
+          />
+        ) : null}
+      </div>
       {blocks.map((block) => {
         const blockReadOnly =
           readOnly || Boolean(block.ownerId && block.ownerId !== currentUid && !isAdmin);
@@ -128,6 +131,7 @@ export default function ReportBlockSection({
             )}
             {!readOnly && (
               <InlineAddButton
+                variant="insertion"
                 field={field}
                 afterId={block.id}
                 openKey={openInlineMenu}

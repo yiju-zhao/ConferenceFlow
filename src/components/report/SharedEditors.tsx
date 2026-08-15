@@ -70,6 +70,7 @@ interface InlineAddButtonProps {
   field: BlockField;
   afterId: string | null;
   openKey: string | null;
+  variant?: "insertion" | "section";
   onOpen: (key: string | null) => void;
   onInsert: (field: BlockField, type: ReportBlockType, afterId: string | null) => void;
 }
@@ -78,13 +79,14 @@ export function InlineAddButton({
   field,
   afterId,
   openKey,
+  variant = "insertion",
   onOpen,
   onInsert,
 }: InlineAddButtonProps) {
   const { t } = useTranslation();
   const isOpen = openKey === `${field}::${afterId}`;
   return (
-    <div className="inline-add-zone no-print">
+    <div className={`inline-add-zone inline-add-zone--${variant} no-print`}>
       <button
         className="inline-add-btn"
         onClick={() => (isOpen ? onOpen(null) : onOpen(`${field}::${afterId}`))}

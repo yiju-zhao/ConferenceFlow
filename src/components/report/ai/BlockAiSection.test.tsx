@@ -189,10 +189,15 @@ describe("BlockAiSection", () => {
     ["no source", body({ content: "<p><br></p>", transcriptRef: null }), true],
   ])("handles %s generation availability", (_label, block, disabled) => {
     render(<BlockAiSection {...props({ block })} />);
-    expect(screen.getByRole("button", { name: "AI 生成此内容块" })).toHaveProperty(
-      "disabled",
-      disabled,
-    );
+    const transcript = screen.getByRole("region", { name: "转录文字" });
+    const sourceRow = transcript.closest(".ai-editor-source-row");
+    const generate = screen.getByRole("button", { name: "AI 生成此内容块" });
+
+    expect(sourceRow).toContainElement(transcript);
+    expect(sourceRow).toContainElement(generate);
+    expect(generate).toBeVisible();
+    expect(generate).toHaveClass("ai-report-action--generate");
+    expect(generate).toHaveProperty("disabled", disabled);
     expect(screen.queryByText("请先填写当前内容块或上传转录文字。")).toBe(
       disabled ? screen.getByText("请先填写当前内容块或上传转录文字。") : null,
     );

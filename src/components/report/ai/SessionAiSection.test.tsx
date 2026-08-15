@@ -129,7 +129,15 @@ describe("SessionAiSection", () => {
 
   it("disables generation without a transcript while leaving transcript controls available", () => {
     render(<SessionAiSection {...props({ transcriptRef: null })} />);
-    expect(screen.getByRole("button", { name: "AI 生成 Session 内容" })).toBeDisabled();
+    const transcript = screen.getByRole("region", { name: "转录文字" });
+    const sourceRow = transcript.closest(".ai-editor-source-row");
+    const generate = screen.getByRole("button", { name: "AI 生成 Session 内容" });
+
+    expect(sourceRow).toContainElement(transcript);
+    expect(sourceRow).toContainElement(generate);
+    expect(generate).toBeVisible();
+    expect(generate).toHaveClass("ai-report-action--generate");
+    expect(generate).toBeDisabled();
     expect(screen.getByRole("button", { name: "粘贴转录文字" })).toBeEnabled();
   });
 

@@ -106,6 +106,9 @@ describe("ReportBlockSection", () => {
     const { rerender } = render(<ReportBlockSection {...sectionProps} />);
     const insertButtons = screen.getAllByRole("button", { name: i18n.t("report.addBlock") });
 
+    expect(document.querySelector(".inline-add-zone--section")).toBeInTheDocument();
+    expect(document.querySelectorAll(".inline-add-zone--insertion").length).toBeGreaterThan(0);
+
     await user.click(insertButtons[0]);
     expect(onOpenInlineMenu).toHaveBeenCalledWith("onsiteInfoBlocks::null");
     rerender(<ReportBlockSection {...sectionProps} openInlineMenu="onsiteInfoBlocks::null" />);

@@ -182,21 +182,19 @@ export default function SessionAiSection({
 
   return (
     <section className="no-print ai-session-section">
-      <TranscriptControl
-        transcriptRef={transcriptRef}
-        actions={transcriptActions}
-        readOnly={readOnly}
-      />
       {!readOnly && (
         <>
-          <button
-            type="button"
-            className="ai-report-action"
-            onClick={() => setSetupOpen(true)}
-            disabled={!transcriptRef}
-          >
-            AI 生成 Session 内容
-          </button>
+          <div className="ai-editor-source-row">
+            <TranscriptControl transcriptRef={transcriptRef} actions={transcriptActions} />
+            <button
+              type="button"
+              className="ai-report-action ai-report-action--generate"
+              onClick={() => setSetupOpen(true)}
+              disabled={!transcriptRef}
+            >
+              AI 生成 Session 内容
+            </button>
+          </div>
           {localError && setupOpen && <p role="alert">{localError}</p>}
           <AiGenerationDialog
             open={setupOpen}

@@ -348,6 +348,8 @@
     "addIllustration": "+ Add illustration",
     "toc": "Table of Contents",
     "relatedTopics": "Related Topics",
+    "expandSession": "Expand {{session}}",
+    "collapseSession": "Collapse {{session}}",
     "siteRecords": "Site Records",
     "keyTakeaways": "Key Takeaways",
     "insightsLabel": "Insights",

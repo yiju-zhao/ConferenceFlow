@@ -122,32 +122,52 @@ export default function TranscriptControl({
   };
 
   return (
-    <section className="no-print transcript-control" aria-label={t("report.ai.transcript")}>
+    <section
+      className="no-print transcript-control transcript-control--compact"
+      aria-label={t("report.ai.transcript")}
+    >
       <p className="transcript-control-hint">{t("report.ai.privateSourceHint")}</p>
       {transcriptRef ? (
-        <div className="transcript-control-current">
+        <div className="transcript-control-current transcript-control-actions--compact">
           <span>{transcriptRef.fileName}</span>
-          <button type="button" onClick={viewSource} disabled={actions.busy}>
+          <button
+            type="button"
+            className="transcript-control-action"
+            onClick={viewSource}
+            disabled={actions.busy}
+          >
             {t("report.ai.viewTranscript")}
           </button>
           <button
             type="button"
+            className="transcript-control-action"
             onClick={() => fileInputRef.current?.click()}
             disabled={actions.busy}
           >
             {t("report.ai.replaceTranscript")}
           </button>
-          <button type="button" onClick={() => setDeleteOpen(true)} disabled={actions.busy}>
+          <button
+            type="button"
+            className="transcript-control-action"
+            onClick={() => setDeleteOpen(true)}
+            disabled={actions.busy}
+          >
             {t("report.ai.deleteTranscript")}
           </button>
         </div>
       ) : (
-        <div className="transcript-control-actions">
-          <button type="button" onClick={() => setPasteOpen(true)} disabled={actions.busy}>
+        <div className="transcript-control-actions transcript-control-actions--compact">
+          <button
+            type="button"
+            className="transcript-control-action"
+            onClick={() => setPasteOpen(true)}
+            disabled={actions.busy}
+          >
             {t("report.ai.pasteTranscript")}
           </button>
           <button
             type="button"
+            className="transcript-control-action"
             onClick={() => fileInputRef.current?.click()}
             disabled={actions.busy}
           >

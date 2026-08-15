@@ -348,6 +348,8 @@
     "addIllustration": "+ 添加插图",
     "toc": "目录",
     "relatedTopics": "相关议题",
+    "expandSession": "展开 {{session}}",
+    "collapseSession": "收起 {{session}}",
     "siteRecords": "现场记录",
     "keyTakeaways": "关键收获",
     "insightsLabel": "启示",

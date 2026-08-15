@@ -71,6 +71,25 @@ describe("AiFieldAction", () => {
     });
   });
 
+  it("keeps the AI generation action visibly persistent", () => {
+    render(
+      <AiFieldAction
+        confId="conf-1"
+        reportId="r1"
+        templateHash="template-v1"
+        field={summaryPointsField}
+        focus=""
+        getCurrentValue={() => []}
+        flushPending={() => Promise.resolve()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "AI 生成" })).toHaveClass(
+      "ai-report-action--generate",
+    );
+  });
+
   it("flushes manual edits before it starts daily generation", async () => {
     const user = userEvent.setup();
     let releaseFlush!: () => void;

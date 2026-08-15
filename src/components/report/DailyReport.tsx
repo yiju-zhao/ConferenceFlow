@@ -36,6 +36,7 @@ import AiFocusDialog from "./ai/AiFocusDialog";
 import AiFieldAction from "./ai/AiFieldAction";
 import BlockAiSection from "./ai/BlockAiSection";
 import SessionAiSection from "./ai/SessionAiSection";
+import ReportSessionCollapseButton from "./editor/ReportSessionCollapseButton";
 import SnapshotViewer from "./SnapshotViewer";
 import { useBoundReportTemplate } from "../../hooks/useBoundReportTemplate";
 import { useDefaultReportTemplateBinding } from "../../hooks/useDefaultReportTemplateBinding";
@@ -1564,105 +1565,53 @@ ${clone.outerHTML}
       {/* ── Floating formatting toolbar (appears on text selection) ── */}
       {!viewMode && floatingToolbar && (
         <div
-          className="no-print"
+          className="no-print report-format-toolbar"
           style={{
-            position: "absolute",
             top: floatingToolbar.top,
             left: floatingToolbar.left,
-            transform: "translateX(-50%)",
-            zIndex: 200,
-            background: "#222",
-            padding: "4px 6px",
-            display: "flex",
-            alignItems: "center",
-            gap: 3,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
           }}
           onMouseDown={(e) => e.preventDefault()} /* prevent losing selection */
         >
           <button
+            className="report-format-action report-format-action--bold"
             onMouseDown={(e) => {
               e.preventDefault();
               execBold();
             }}
             title={t("report.bold")}
-            style={{
-              width: 28,
-              height: 28,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "transparent",
-              border: "none",
-              color: "#ccc",
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 700,
-            }}
           >
             B
           </button>
           <button
+            className="report-format-action report-format-action--italic"
             onMouseDown={(e) => {
               e.preventDefault();
               execCmd("italic");
             }}
             title={t("report.italic")}
-            style={{
-              width: 28,
-              height: 28,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "transparent",
-              border: "none",
-              color: "#ccc",
-              cursor: "pointer",
-              fontSize: 13,
-              fontStyle: "italic",
-            }}
           >
             I
           </button>
           <button
+            className="report-format-action report-format-action--underline"
             onMouseDown={(e) => {
               e.preventDefault();
               execCmd("underline");
             }}
             title={t("report.underline")}
-            style={{
-              width: 28,
-              height: 28,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "transparent",
-              border: "none",
-              color: "#ccc",
-              cursor: "pointer",
-              fontSize: 13,
-              textDecoration: "underline",
-            }}
           >
             U
           </button>
-          <div style={{ width: 1, height: 18, background: "#444" }} />
-          {COLOR_PRESETS.map((c) => (
+          <div className="report-format-divider" />
+          {COLOR_PRESETS.map((c, index) => (
             <button
               key={c}
+              className={`report-format-action report-format-color report-format-color--${index}`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 execColor(c);
               }}
               title={c}
-              style={{
-                width: 18,
-                height: 18,
-                background: c,
-                border: "none",
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
             />
           ))}
         </div>
@@ -1743,19 +1692,20 @@ ${clone.outerHTML}
                 </span>
               )}
             </h1>
-            {template && titleField && user && (
-              <AiFieldAction
-                confId={confId}
-                reportId={reportId}
-                templateHash={template.templateHash}
-                field={titleField}
-                focus={membership?.aiFocus ?? ""}
-                getCurrentValue={() => reportDataRef.current?.title}
-                flushPending={flushPending}
-                onSave={(value) => saveAiDailyField("title", value)}
-                readOnly={viewMode}
-              />
-            )}
+            {!viewMode && template && titleField && user ? (
+              <div className="report-title-ai no-print">
+                <AiFieldAction
+                  confId={confId}
+                  reportId={reportId}
+                  templateHash={template.templateHash}
+                  field={titleField}
+                  focus={membership?.aiFocus ?? ""}
+                  getCurrentValue={() => reportDataRef.current?.title}
+                  flushPending={flushPending}
+                  onSave={(value) => saveAiDailyField("title", value)}
+                />
+              </div>
+            ) : null}
           </div>
           <img
             src={huaweiLogo}
@@ -1861,20 +1811,21 @@ ${clone.outerHTML}
 
           {/* Summary */}
           <div className="report-summary">
-            <h2 className="report-section-title">{t("report.corePoints")}</h2>
-            {template && summaryPointsField && user && (
-              <AiFieldAction
-                confId={confId}
-                reportId={reportId}
-                templateHash={template.templateHash}
-                field={summaryPointsField}
-                focus={membership?.aiFocus ?? ""}
-                getCurrentValue={() => reportDataRef.current?.summaryPoints}
-                flushPending={flushPending}
-                onSave={(value) => saveAiDailyField("summaryPoints", value)}
-                readOnly={viewMode}
-              />
-            )}
+            <div className="report-section-heading-row">
+              <h2 className="report-section-title">{t("report.corePoints")}</h2>
+              {!viewMode && template && summaryPointsField && user ? (
+                <AiFieldAction
+                  confId={confId}
+                  reportId={reportId}
+                  templateHash={template.templateHash}
+                  field={summaryPointsField}
+                  focus={membership?.aiFocus ?? ""}
+                  getCurrentValue={() => reportDataRef.current?.summaryPoints}
+                  flushPending={flushPending}
+                  onSave={(value) => saveAiDailyField("summaryPoints", value)}
+                />
+              ) : null}
+            </div>
             <BulletEditor
               points={reportData?.summaryPoints}
               onSave={(pts) => saveField("summaryPoints", pts)}
@@ -1886,14 +1837,17 @@ ${clone.outerHTML}
 
         {/* Session Reports – organized by topic */}
         <div id="section-related" className="report-sessions">
-          <h2 className="report-section-title" style={{ marginTop: 32 }}>
-            {t("report.relatedTopics")}
-          </h2>
-          {!viewMode && (
-            <button className="no-print btn-ghost" onClick={() => setShowAddSession(true)}>
-              {t("report.addSession")}
-            </button>
-          )}
+          <div className="report-section-heading-row" style={{ marginTop: 32 }}>
+            <h2 className="report-section-title">{t("report.relatedTopics")}</h2>
+            {!viewMode ? (
+              <button
+                className="no-print btn-ghost report-section-add-action"
+                onClick={() => setShowAddSession(true)}
+              >
+                {t("report.addSession")}
+              </button>
+            ) : null}
+          </div>
 
           {noTopicSessions.map((session) => {
             const sd = sessionData[session.code] || {};
@@ -1910,9 +1864,7 @@ ${clone.outerHTML}
               <div key={session.code} id={`session-${session.code}`} className="report-session">
                 <div
                   className="report-session-header"
-                  onClick={() => toggleCollapse(session.code)}
                   style={{
-                    cursor: "pointer",
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 8,
@@ -1960,7 +1912,11 @@ ${clone.outerHTML}
                       </div>
                     )}
                   </div>
-                  <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
+                  <ReportSessionCollapseButton
+                    collapsed={isCollapsed}
+                    sessionLabel={`${session.code} · ${SESSION_CATALOG.get(session.code)?.title || session.title}`}
+                    onToggle={() => toggleCollapse(session.code)}
+                  />
                 </div>
                 {!isCollapsed && (
                   <>
@@ -2165,12 +2121,10 @@ ${clone.outerHTML}
                 const isCollapsed = collapsedSessions.has(session.code);
                 return (
                   <div key={session.code} id={`session-${session.code}`} className="report-session">
-                    {/* Session Header: clickable to collapse */}
+                    {/* Session Header */}
                     <div
                       className="report-session-header"
-                      onClick={() => toggleCollapse(session.code)}
                       style={{
-                        cursor: "pointer",
                         display: "flex",
                         alignItems: "flex-start",
                         gap: 8,
@@ -2223,7 +2177,11 @@ ${clone.outerHTML}
                           </div>
                         )}
                       </div>
-                      <span className="session-collapse-btn">{isCollapsed ? "▶" : "▼"}</span>
+                      <ReportSessionCollapseButton
+                        collapsed={isCollapsed}
+                        sessionLabel={`${session.code} · ${SESSION_CATALOG.get(session.code)?.title || session.title}`}
+                        onToggle={() => toggleCollapse(session.code)}
+                      />
                     </div>
 
                     {!isCollapsed && (
