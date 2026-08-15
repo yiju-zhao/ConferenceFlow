@@ -43,3 +43,16 @@ it("omits editor chrome in view mode", () => {
   expect(status.querySelector(".report-skeleton-outline")).not.toBeInTheDocument();
   expect(status.querySelector(".report-skeleton-document")).toBeInTheDocument();
 });
+
+it("marks editor-only skeleton chrome as non-printing", () => {
+  render(
+    <MemoryRouter initialEntries={["/conference/conf-1/report/report-1"]}>
+      <DailyReportSkeleton />
+    </MemoryRouter>,
+  );
+
+  const status = screen.getByRole("status", { name: "正在加载日报编辑器" });
+  expect(screen.getByRole("navigation").parentElement).toHaveClass("no-print");
+  expect(status.querySelector(".report-skeleton-toolbar")).toHaveClass("no-print");
+  expect(status.querySelector(".report-skeleton-outline")).toHaveClass("no-print");
+});

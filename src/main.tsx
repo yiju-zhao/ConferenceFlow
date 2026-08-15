@@ -1,7 +1,7 @@
 import "./i18n";
 import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { inject } from "@vercel/analytics";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import "@blueprintjs/icons/lib/css/blueprint-icons.css";
@@ -12,12 +12,10 @@ import AuthGuard from "./components/AuthGuard";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import Dashboard from "./components/Dashboard";
-import DailyReportSkeleton from "./components/report/editor/DailyReportSkeleton";
+import ReportRouter from "./components/report/ReportRouter";
 
 // Lazy-loaded route components (heavy pages loaded on demand)
 const CalendarPage = lazy(() => import("./components/calendar/CalendarPage"));
-const DailyReport = lazy(() => import("./components/report/DailyReport"));
-const ConferenceReport = lazy(() => import("./components/report/ConferenceReport"));
 const ReportList = lazy(() => import("./components/report/ReportList"));
 const ViewReport = lazy(() => import("./components/report/ViewReport"));
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
@@ -44,22 +42,6 @@ function LoadingFallback() {
         Loading...
       </span>
     </div>
-  );
-}
-
-interface ReportRouterProps {
-  viewMode?: boolean;
-}
-
-function ReportRouter({ viewMode = false }: ReportRouterProps) {
-  const { reportId } = useParams() as { reportId: string };
-  if (reportId.startsWith("summary-")) {
-    return <ConferenceReport />;
-  }
-  return (
-    <Suspense fallback={<DailyReportSkeleton viewMode={viewMode} />}>
-      <DailyReport viewMode={viewMode} />
-    </Suspense>
   );
 }
 
