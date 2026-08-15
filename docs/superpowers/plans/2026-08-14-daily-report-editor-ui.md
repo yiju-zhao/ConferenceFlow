@@ -98,27 +98,39 @@ i18next, Vitest, Testing Library, agent-browser.
 
 ```tsx
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 import DailyReportSkeleton from "./DailyReportSkeleton";
 
-vi.mock("../../shell/AppNavbar", () => ({
-  default: () => <nav data-testid="app-navbar">ConferenceFlow</nav>,
+vi.mock("../../UserAvatar", () => ({
+  default: () => <span aria-hidden="true" />,
 }));
 
 it("mirrors the editor shell while report data loads", () => {
-  render(<DailyReportSkeleton />);
+  render(
+    <MemoryRouter initialEntries={["/conference/conf-1/report/report-1"]}>
+      <DailyReportSkeleton />
+    </MemoryRouter>,
+  );
   const status = screen.getByRole("status", { name: "正在加载日报编辑器" });
   expect(status).toHaveAttribute("aria-busy", "true");
-  expect(screen.getByTestId("app-navbar")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "ConferenceFlow" })).toHaveAttribute(
+    "href",
+    "/dashboard",
+  );
   expect(status.querySelector(".report-skeleton-toolbar")).toBeInTheDocument();
   expect(status.querySelector(".report-skeleton-outline")).toBeInTheDocument();
   expect(status.querySelectorAll(".report-skeleton-session")).toHaveLength(3);
 });
 
 it("omits editor chrome in view mode", () => {
-  render(<DailyReportSkeleton viewMode />);
+  render(
+    <MemoryRouter initialEntries={["/view/report/report-1"]}>
+      <DailyReportSkeleton viewMode />
+    </MemoryRouter>,
+  );
   const status = screen.getByRole("status", { name: "正在加载日报" });
-  expect(screen.queryByTestId("app-navbar")).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "ConferenceFlow" })).not.toBeInTheDocument();
   expect(status.querySelector(".report-skeleton-toolbar")).not.toBeInTheDocument();
   expect(status.querySelector(".report-skeleton-outline")).not.toBeInTheDocument();
   expect(status.querySelector(".report-skeleton-document")).toBeInTheDocument();
@@ -340,9 +352,10 @@ it("opens and closes the mobile disclosure", async () => {
 });
 ```
 
-In `DailyReportEditorShell.test.tsx`, mock `AppNavbar` and assert edit mode renders navbar,
-toolbar, outline, status, overlays, and document; assert view mode renders only overlays and the
-document with `report-view-mode` and no editor workspace.
+In `DailyReportEditorShell.test.tsx`, render inside `MemoryRouter`, mock only `UserAvatar`, and
+assert the real ConferenceFlow `/dashboard` link plus toolbar, outline, status, overlays, and
+document in edit mode. Assert view mode renders only overlays and the document with
+`report-view-mode` and no editor workspace.
 
 - [ ] **Step 2: Run Task 2 tests and record RED**
 
