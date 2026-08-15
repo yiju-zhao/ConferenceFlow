@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   collection,
   doc,
@@ -70,6 +70,7 @@ import type {
   TemplateFieldValue,
 } from "../../types";
 import DailyReportEditorShell from "./editor/DailyReportEditorShell";
+import DailyReportToolbar from "./editor/DailyReportToolbar";
 import type { DailyReportOutlineItem } from "./editor/DailyReportOutline";
 import DailyReportSkeleton from "./editor/DailyReportSkeleton";
 
@@ -113,7 +114,6 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     null,
   );
   const [exporting, setExporting] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [urlCopied, setUrlCopied] = useState(false);
@@ -191,23 +191,6 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
       document.body.style.overflow = prev;
     };
   }, [showHistory]);
-
-  // Close export dropdown on outside click or Escape
-  useEffect(() => {
-    if (!showExportMenu) return;
-    const close = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest(".export-dropdown-wrapper")) setShowExportMenu(false);
-    };
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setShowExportMenu(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", onEsc);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", onEsc);
-    };
-  }, [showExportMenu]);
 
   // Close inline add menu on outside click or Escape
   useEffect(() => {
@@ -1011,7 +994,6 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
   // Export handler for markdown format
   const handleExport = async (format: string) => {
     setExporting(true);
-    setShowExportMenu(false);
 
     const prevCollapsed = new Set(collapsedSessions);
     setCollapsedSessions(new Set());
@@ -1246,7 +1228,6 @@ export default function DailyReport({ viewMode: viewModeProp = false }: DailyRep
     string | undefined
   > => {
     setPublishing(true);
-    setShowExportMenu(false);
 
     const prevCollapsed = new Set(collapsedSessions);
     setCollapsedSessions(new Set());
@@ -1412,8 +1393,6 @@ ${clone.outerHTML}
   }
 
   const handleEmailExport = async () => {
-    setShowExportMenu(false);
-
     let url: string | undefined = shareUrl ?? undefined;
     if (!url) {
       url = await handlePublish({ silent: true });
@@ -1546,304 +1525,33 @@ ${clone.outerHTML}
 
   // ── Render ──────────────────────────────────────────────────────────────────
   const toolbar = (
-    <div
-          className="no-print"
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 100,
-            background: "#222",
-            borderBottom: "1px solid #333",
-            padding: "10px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          {/* Left: nav + title + status badge */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Link
-              to={`/conference/${confId}/reports`}
-              style={{ color: "#888", fontSize: 12, textDecoration: "none" }}
-            >
-              {t("report.backToReportList")}
-            </Link>
-            <span style={{ color: "#555" }}>|</span>
-            <span
-              style={{
-                color: "#eee",
-                fontSize: 14,
-                fontWeight: 700,
-                fontFamily: "'Work Sans', sans-serif",
-              }}
-            >
-              {reportData?.title || t("report.dailyReportTitle", { date })}
-            </span>
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                padding: "2px 8px",
-                background: "rgba(255,255,255,0.1)",
-                color: "#888",
-                fontFamily: "'Work Sans', sans-serif",
-              }}
-            >
-              {reportData?.status === "published" ? "PUBLISHED" : "DRAFT"}
-            </span>
-          </div>
-
-          {/* Right: presence + grouped actions */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <PresenceBar
-              activeUsers={activeUsers}
-              memberColorMap={memberColorMap}
-              currentUid={user?.uid}
-            />
-
-            {/* ① Save status + button */}
-            {saveState === "saving" && (
-              <span style={{ fontSize: 11, color: "#666" }}>● {t("common.saving")}</span>
-            )}
-            {saveState === "saved" && (
-              <span style={{ fontSize: 11, color: "#27AE60" }}>✓ {t("admin.saved")}</span>
-            )}
-            <button
-              onClick={handleSave}
-              title={t("report.saveTip")}
-              style={{
-                padding: "5px 14px",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                background: "#333",
-                color: "#ccc",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "'Work Sans', sans-serif",
-              }}
-            >
-              {t("common.save")}
-            </button>
-
-            <button
-              onClick={() => setShowAiFocus(true)}
-              title={membership?.aiFocus || t("report.ai.noAiFocus")}
-              style={{
-                padding: "5px 14px",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                background: "#333",
-                color: "#ccc",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "'Work Sans', sans-serif",
-              }}
-            >
-              {t("report.ai.aiFocus")}
-            </button>
-
-            {/* ② Preview — primary action, visually distinct */}
-            <button
-              onClick={() =>
-                window.open(`/conference/${confId}/report/${reportId}?preview=1`, "_blank")
-              }
-              style={{
-                padding: "5px 16px",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                background: "#a20513",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "'Work Sans', sans-serif",
-              }}
-            >
-              {t("report.preview")}
-            </button>
-
-            {/* ③ Export/Share dropdown */}
-            <div className="export-dropdown-wrapper" style={{ position: "relative" }}>
-              <button
-                onClick={() => !exporting && setShowExportMenu((v) => !v)}
-                disabled={exporting}
-                style={{
-                  padding: "5px 14px",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  letterSpacing: 0.5,
-                  textTransform: "uppercase",
-                  background: "#333",
-                  color: "#ccc",
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "'Work Sans', sans-serif",
-                }}
-              >
-                {exporting ? t("report.generating") : t("report.export")}
-              </button>
-              {showExportMenu && (
-                <div className="export-dropdown-menu">
-                  <button
-                    className="export-menu-item export-menu-item--publish"
-                    onClick={() => handlePublish()}
-                  >
-                    <span className="export-menu-icon">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.4" />
-                        <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.4" />
-                        <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.4" />
-                        <path
-                          d="M6 7l4-2M6 9l4 2"
-                          stroke="currentColor"
-                          strokeWidth="1.3"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </span>
-                    <span className="export-menu-label">
-                      {publishing ? t("report.sharing") : t("report.shareReport")}
-                    </span>
-                  </button>
-                  <div className="export-menu-divider" />
-                  <button className="export-menu-item" onClick={() => handleExport("markdown")}>
-                    <span className="export-menu-icon">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <rect
-                          x="1.5"
-                          y="3.5"
-                          width="13"
-                          height="9"
-                          rx="1.5"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                        />
-                        <path
-                          d="M4 10V6l2 2 2-2v4M11 10V8.5M11 6.5v.5"
-                          stroke="currentColor"
-                          strokeWidth="1.3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-                    <span className="export-menu-label">{t("report.exportMarkdown")}</span>
-                  </button>
-                  <div className="export-menu-divider" />
-                  <button className="export-menu-item" onClick={handleEmailExport}>
-                    <span className="export-menu-icon">
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                        <rect
-                          x="1.5"
-                          y="3.5"
-                          width="13"
-                          height="9"
-                          rx="1.5"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                        />
-                        <path
-                          d="M1.5 5.5l6.5 4 6.5-4"
-                          stroke="currentColor"
-                          strokeWidth="1.3"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </span>
-                    <span className="export-menu-label">{t("report.exportEmailHtml")}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div
-              style={{
-                width: 1,
-                height: 20,
-                background: "#444",
-                margin: "0 2px",
-              }}
-            />
-
-            {/* ④ Maintenance: history + sync */}
-            <button
-              onClick={() => setShowHistory(true)}
-              title={t("report.versionHistory")}
-              style={{
-                padding: "5px 14px",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                background: "transparent",
-                color: "#888",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "'Work Sans', sans-serif",
-              }}
-            >
-              {t("report.versionHistory")}
-            </button>
-            <button
-              onClick={handleSyncFromCatalog}
-              disabled={syncing}
-              title={t("report.syncFromCatalog")}
-              style={{
-                padding: "5px 14px",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                background: "transparent",
-                color: "#888",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "'Work Sans', sans-serif",
-                opacity: syncing ? 0.5 : 1,
-              }}
-            >
-              {syncing ? t("report.syncing") : t("report.syncFromCatalog")}
-            </button>
-            {syncMsg && (
-              <span style={{ fontSize: 11, color: "#2980B9", marginRight: 4 }}>{syncMsg}</span>
-            )}
-
-            <div
-              style={{
-                width: 1,
-                height: 20,
-                background: "#444",
-                margin: "0 2px",
-              }}
-            />
-
-            {/* ⑤ Destructive: delete — far right, red */}
-            <button
-              onClick={() => setShowDeleteSelect(true)}
-              title={t("report.deleteSession")}
-              style={{
-                padding: "5px 14px",
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                background: "transparent",
-                color: "#a20513",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "'Work Sans', sans-serif",
-              }}
-            >
-              {t("report.deleteSession")}
-            </button>
-          </div>
-      </div>
+    <DailyReportToolbar
+      backTo={`/conference/${confId}/reports`}
+      title={reportData?.title || t("report.dailyReportTitle", { date })}
+      status={reportData?.status === "published" ? "published" : "draft"}
+      saveState={saveState}
+      presence={
+        <PresenceBar
+          activeUsers={activeUsers}
+          memberColorMap={memberColorMap}
+          currentUid={user?.uid}
+        />
+      }
+      focusHint={membership?.aiFocus || t("report.ai.noAiFocus")}
+      exporting={exporting}
+      publishing={publishing}
+      syncing={syncing}
+      syncMessage={syncMsg}
+      onSave={() => void handleSave()}
+      onOpenFocus={() => setShowAiFocus(true)}
+      onPreview={() => window.open(`/conference/${confId}/report/${reportId}?preview=1`, "_blank")}
+      onPublish={() => void handlePublish()}
+      onExportMarkdown={() => void handleExport("markdown")}
+      onExportEmail={handleEmailExport}
+      onOpenHistory={() => setShowHistory(true)}
+      onSync={() => void handleSyncFromCatalog()}
+      onDeleteSession={() => setShowDeleteSelect(true)}
+    />
   );
   const status = templateError ? (
     <p className="no-print ai-report-error" role="status">

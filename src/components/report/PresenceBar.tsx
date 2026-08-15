@@ -15,8 +15,8 @@ export default function PresenceBar({ activeUsers, memberColorMap, currentUid }:
   if (others.length === 0) return null;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ display: "flex" }}>
+    <div className="presence-bar">
+      <div className="presence-avatars">
         {others.slice(0, 5).map((u, i) => {
           const colorIdx = memberColorMap[u.uid] ?? 0;
           const color = COLORS[colorIdx]?.hex || "#5f5e5e";
@@ -24,23 +24,12 @@ export default function PresenceBar({ activeUsers, memberColorMap, currentUid }:
           return (
             <div
               key={u.uid}
+              className="presence-avatar"
               title={u.displayName}
               style={{
-                width: 26,
-                height: 26,
-                borderRadius: "50%",
                 background: color,
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 11,
-                fontWeight: 700,
-                fontFamily: "'Work Sans', sans-serif",
                 marginLeft: i > 0 ? -6 : 0,
-                border: "2px solid #222",
                 zIndex: 5 - i,
-                position: "relative",
               }}
             >
               {initial}
@@ -48,7 +37,7 @@ export default function PresenceBar({ activeUsers, memberColorMap, currentUid }:
           );
         })}
       </div>
-      <span style={{ fontSize: 11, color: "var(--text-muted, #999)" }}>
+      <span className="presence-count">
         {others.length} {t("report.onlineCount")}
       </span>
     </div>

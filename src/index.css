@@ -767,76 +767,6 @@ h3,
   box-shadow: var(--shadow-xl);
 }
 
-/* ── Export dropdown menu ───────────────────── */
-.export-dropdown-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  width: 220px;
-  padding: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg);
-  z-index: 200;
-}
-.export-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  text-align: left;
-  padding: 8px 10px;
-  background: none;
-  border: none;
-  border-radius: 7px;
-  color: var(--text-primary);
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.export-menu-item:hover {
-  background: var(--surface-dim);
-}
-.export-menu-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  background: var(--border-dim);
-  border-radius: 7px;
-  color: var(--text-tertiary);
-  flex-shrink: 0;
-  transition:
-    background 0.12s,
-    color 0.12s;
-}
-.export-menu-item:hover .export-menu-icon {
-  background: var(--brand-bg);
-  color: var(--brand);
-}
-.export-menu-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-.export-menu-divider {
-  height: 1px;
-  background: var(--border-soft);
-  margin: 5px 4px;
-}
-.export-menu-item--publish .export-menu-label {
-  color: var(--brand);
-}
-.export-menu-item--publish .export-menu-icon {
-  background: var(--brand-bg);
-  color: var(--brand);
-}
-.export-menu-item--publish:hover .export-menu-icon {
-  background: #fbcfcf;
-}
-
 /* ── Code badge ──────────────────────────────── */
 .code-badge {
   font-family: "DM Mono", monospace;
@@ -1709,6 +1639,161 @@ input[type="checkbox"].gtc-check:checked::after {
   font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Helvetica Neue", sans-serif;
   color: var(--text-secondary);
   -webkit-font-smoothing: antialiased;
+}
+
+.report-editor-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
+}
+.report-editor-toolbar-inner {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 1440px;
+  min-height: 54px;
+  margin: 0 auto;
+  padding: 8px 20px;
+}
+.report-editor-toolbar-context,
+.report-editor-toolbar-actions,
+.presence-bar,
+.presence-avatars {
+  display: flex;
+  align-items: center;
+}
+.report-editor-toolbar-context {
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 8px;
+}
+.report-editor-toolbar-context > .bp6-button,
+.report-editor-toolbar-context > .bp6-tag {
+  flex: 0 0 auto;
+}
+.report-editor-toolbar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: "Work Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-editor-toolbar-inner > .bp6-divider {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 24px;
+  margin: 0;
+  border: 0;
+  background: var(--border);
+}
+.report-editor-toolbar-actions {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+.report-editor-toolbar .bp6-button {
+  min-height: 36px;
+  font-family: "Work Sans", sans-serif;
+  font-size: 12px;
+}
+.report-editor-primary-action.bp6-button {
+  background: var(--accent);
+  color: #fff;
+}
+.report-editor-primary-action.bp6-button:hover,
+.report-editor-primary-action.bp6-button:focus-visible,
+.report-editor-primary-action.bp6-button:active {
+  background: var(--accent);
+  color: #fff;
+  filter: brightness(0.94);
+}
+.report-editor-save-state {
+  min-width: 0;
+  color: var(--text-muted);
+  font-family: "Work Sans", sans-serif;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.report-editor-save-state.is-saved {
+  color: var(--success);
+}
+.report-editor-sync-status {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 20px 7px;
+  color: var(--text-tertiary);
+  font-family: "Work Sans", sans-serif;
+  font-size: 12px;
+}
+.presence-bar {
+  gap: 6px;
+}
+.presence-avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  color: #fff;
+  font-family: "Work Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+}
+.presence-count {
+  color: var(--text-muted);
+  font-family: "Work Sans", sans-serif;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.report-editor-focus-menu-item {
+  display: none;
+}
+
+@media (max-width: 700px) {
+  .report-editor-toolbar-inner {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    padding: 6px 12px;
+  }
+  .report-editor-toolbar-context {
+    width: 100%;
+  }
+  .report-editor-toolbar-context .bp6-tag {
+    flex: 0 0 auto;
+  }
+  .report-editor-toolbar-inner > .bp6-divider,
+  .report-editor-toolbar-actions > .presence-bar,
+  .report-editor-save-state,
+  .report-editor-focus-action {
+    display: none;
+  }
+  .report-editor-toolbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .report-editor-toolbar-actions > *,
+  .report-editor-toolbar-actions .bp6-button {
+    flex-shrink: 0;
+  }
+  .report-editor-focus-menu-item {
+    display: flex;
+  }
+  .report-editor-sync-status {
+    padding: 0 12px 6px;
+  }
 }
 
 .report-editor-workspace {
