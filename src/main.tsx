@@ -12,6 +12,7 @@ import AuthGuard from "./components/AuthGuard";
 import LoginPage from "./components/LoginPage";
 import RegisterPage from "./components/RegisterPage";
 import Dashboard from "./components/Dashboard";
+import DailyReportSkeleton from "./components/report/editor/DailyReportSkeleton";
 
 // Lazy-loaded route components (heavy pages loaded on demand)
 const CalendarPage = lazy(() => import("./components/calendar/CalendarPage"));
@@ -55,7 +56,11 @@ function ReportRouter({ viewMode = false }: ReportRouterProps) {
   if (reportId.startsWith("summary-")) {
     return <ConferenceReport />;
   }
-  return <DailyReport viewMode={viewMode} />;
+  return (
+    <Suspense fallback={<DailyReportSkeleton viewMode={viewMode} />}>
+      <DailyReport viewMode={viewMode} />
+    </Suspense>
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

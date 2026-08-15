@@ -212,6 +212,8 @@
     "formatGuideDesc": "Upload a .json file containing an array of session objects. Maximum 1000 sessions per upload."
   },
   "report": {
+    "editorLoading": "Loading report editor",
+    "loadingReport": "Loading report",
     "searchSession": "Search session or enter custom text...",
     "clear": "Clear",
     "recordContent": "Record content...",

@@ -69,6 +69,7 @@ import type {
   SitePhoto,
   TemplateFieldValue,
 } from "../../types";
+import DailyReportSkeleton from "./editor/DailyReportSkeleton";
 
 // A conference session scoped to a single day's report. `attendees` is
 // normalized to a Set for membership lookups (source Session.attendees is an
@@ -1470,15 +1471,7 @@ ${clone.outerHTML}
   }, [viewMode]);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="report-page">
-        <div className="report-container" style={{ textAlign: "center", padding: "80px 20px" }}>
-          <p style={{ color: "var(--text-muted)" }}>{t("common.loading")}</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <DailyReportSkeleton viewMode={viewMode} />;
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (

@@ -212,6 +212,8 @@
     "formatGuideDesc": "上传包含 session 对象数组的 .json 文件。每次最多上传 1000 个 session。"
   },
   "report": {
+    "editorLoading": "正在加载日报编辑器",
+    "loadingReport": "正在加载日报",
     "searchSession": "搜索 session 或输入自定义文字...",
     "clear": "清除",
     "recordContent": "记录内容...",
