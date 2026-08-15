@@ -1,6 +1,7 @@
 import { stripHtml } from "../diffUtils";
-import type { Report, ReportTemplateVersion } from "../../types";
+import type { ConferenceType, Report, ReportTemplateVersion } from "../../types";
 import { INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING } from "./templates/industryConferenceDailyReport";
+import { ACADEMIC_CONFERENCE_DAILY_REPORT_V1_BINDING } from "./templates/academicConferenceDailyReport";
 
 const LEGACY_RUMORS_BLOCK_ID = "legacy-rumors-v1";
 
@@ -35,4 +36,10 @@ export function defaultTemplateBindingPatch(
         : [];
 
   return { ...INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING, rumorsBlocks };
+}
+
+export function bindingForConferenceType(type: ConferenceType | undefined) {
+  return type === "academic"
+    ? ACADEMIC_CONFERENCE_DAILY_REPORT_V1_BINDING
+    : INDUSTRY_CONFERENCE_DAILY_REPORT_V1_BINDING;
 }

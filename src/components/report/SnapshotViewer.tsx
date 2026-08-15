@@ -4,7 +4,12 @@ import { stripHtml } from "../../lib/diffUtils";
 import { formatDateTime } from "../../i18n/dateUtils";
 import type { Report, ReportSnapshot } from "../../types";
 
-const BLOCK_DIFF_FIELDS = ["onsiteInfoBlocks", "reflectionsBlocks", "rumorsBlocks"] as const;
+const BLOCK_DIFF_FIELDS = [
+  "onsiteInfoBlocks",
+  "reflectionsBlocks",
+  "rumorsBlocks",
+  "trendBlocks",
+] as const;
 type BlockDiffField = (typeof BLOCK_DIFF_FIELDS)[number];
 
 interface SnapshotViewerProps {
@@ -23,6 +28,14 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
     reflections: t("report.reflections"),
     rumors: t("report.rumors"),
   };
+  const SESSION_CONTENT_DIFF_FIELDS = [
+    { id: "takeaways", label: t("report.keyTakeaways") },
+    { id: "insights", label: t("report.insightsLabel") },
+    { id: "insightCore", label: t("report.insightCore") },
+    { id: "insightExplanation", label: t("report.insightExplanation") },
+    { id: "techHighlights", label: t("report.techHighlights") },
+    { id: "huaweiImplications", label: t("report.huaweiImplications") },
+  ] as const;
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 24px" }}>
       <p className="text-caption" style={{ margin: "0 0 20px", color: "var(--text-muted)" }}>
@@ -50,9 +63,12 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
       {Object.keys({ ...data?.sessions, ...currentData?.sessions }).map((code) => {
         const snapshotSd = data?.sessions?.[code] || {};
         const currentSd = currentData?.sessions?.[code] || {};
-        const hasTakeawaysDiff = stripHtml(snapshotSd.takeaways) !== stripHtml(currentSd.takeaways);
-        const hasInsightsDiff = stripHtml(snapshotSd.insights) !== stripHtml(currentSd.insights);
-        if (!hasTakeawaysDiff && !hasInsightsDiff) return null;
+        const fieldDiffs = SESSION_CONTENT_DIFF_FIELDS.map(({ id, label }) => ({
+          id,
+          label,
+          hasDiff: stripHtml(snapshotSd[id]) !== stripHtml(currentSd[id]),
+        })).filter((f) => f.hasDiff);
+        if (fieldDiffs.length === 0) return null;
         return (
           <section
             key={code}
@@ -73,22 +89,14 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
             >
               {code}
             </h4>
-            {hasTakeawaysDiff && (
-              <div style={{ marginBottom: 8 }}>
+            {fieldDiffs.map(({ id, label }, i) => (
+              <div key={id} style={i < fieldDiffs.length - 1 ? { marginBottom: 8 } : undefined}>
                 <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>
-                  {t("report.keyTakeaways")}
+                  {label}
                 </div>
-                <DiffText oldText={snapshotSd.takeaways} newText={currentSd.takeaways} />
+                <DiffText oldText={snapshotSd[id]} newText={currentSd[id]} />
               </div>
-            )}
-            {hasInsightsDiff && (
-              <div>
-                <div className="text-label" style={{ color: "var(--text-dim)", marginBottom: 4 }}>
-                  {t("report.insightsLabel")}
-                </div>
-                <DiffText oldText={snapshotSd.insights} newText={currentSd.insights} />
-              </div>
-            )}
+            ))}
           </section>
         );
       })}
@@ -120,7 +128,9 @@ export default function SnapshotViewer({ snapshot, currentData }: SnapshotViewer
             ? t("report.onsiteInfoBlocks")
             : field === "reflectionsBlocks"
               ? t("report.reflectionsBlocks")
-              : t("report.rumors");
+              : field === "trendBlocks"
+                ? t("report.trendBlocks")
+                : t("report.rumors");
         const snapshotBlocks = data?.[field] || [];
         const currentBlocks = currentData?.[field] || [];
 

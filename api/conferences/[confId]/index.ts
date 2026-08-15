@@ -21,6 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         "startDate",
         "endDate",
         "visibility",
+        "type",
         "joinCode",
       ] as const;
       const body = req.body as UpdateConferenceBody;
@@ -28,6 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const f of allowedFields) {
         if (body[f] !== undefined) updates[f] = body[f];
       }
+      if (updates.type !== undefined && updates.type !== "industry" && updates.type !== "academic")
+        return res.status(400).json({ error: "invalid conference type" });
       updates.updatedAt = FieldValue.serverTimestamp();
       const ref = db.collection("conferences").doc(confId);
       const snap = await ref.get();

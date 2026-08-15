@@ -8,6 +8,7 @@ export type MemberRole = "admin" | "member";
 export type MemberStatus = "approved" | "pending" | "rejected";
 export type AttendanceMode = "onsite" | "online";
 export type ConferenceVisibility = "public" | "private";
+export type ConferenceType = "industry" | "academic";
 
 export interface UserProfile {
   email: string;
@@ -84,6 +85,7 @@ export interface Conference {
   startDate: string;
   endDate: string;
   visibility: ConferenceVisibility;
+  type?: ConferenceType;
   joinCode: string;
   createdBy?: string;
   createdAt?: Timestamp | null;
@@ -126,6 +128,10 @@ export interface ReportSessionData {
   speakers?: ReportSpeaker[];
   takeaways?: string;
   insights?: string;
+  insightCore?: string;
+  insightExplanation?: string;
+  techHighlights?: string;
+  huaweiImplications?: string;
   illustration?: string; // legacy single illustration URL
   illustrations?: ReportIllustration[];
   lastEditedBy?: string;
@@ -142,11 +148,11 @@ export interface ReportSourceSession {
   manual: string;
 }
 
-/** Block kind within `onsiteInfoBlocks` / `reflectionsBlocks` / `rumorsBlocks`. */
+/** Block kind within `onsiteInfoBlocks` / `reflectionsBlocks` / `rumorsBlocks` / `trendBlocks`. */
 export type ReportBlockType = "heading" | "body";
 
 /** Report document fields that hold a `ReportBlock[]`. */
-export type BlockField = "onsiteInfoBlocks" | "reflectionsBlocks" | "rumorsBlocks";
+export type BlockField = "onsiteInfoBlocks" | "reflectionsBlocks" | "rumorsBlocks" | "trendBlocks";
 
 /**
  * A content block within `onsiteInfoBlocks` / `reflectionsBlocks`.
@@ -201,6 +207,7 @@ export interface ReportSnapshotData {
   onsiteInfoBlocks?: ReportBlock[];
   reflectionsBlocks?: ReportBlock[];
   rumorsBlocks?: ReportBlock[];
+  trendBlocks?: ReportBlock[];
 }
 
 export interface ReportSnapshot {
@@ -276,6 +283,7 @@ export interface Report {
   onsiteInfoBlocks?: ReportBlock[];
   reflectionsBlocks?: ReportBlock[];
   rumorsBlocks?: ReportBlock[];
+  trendBlocks?: ReportBlock[];
   // Summary-report content (verified against ReportList summary writer)
   dateStart?: string;
   dateEnd?: string;
