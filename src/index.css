@@ -2005,7 +2005,9 @@ input[type="checkbox"].gtc-check:checked::after {
 .report-editor-anchor-scroll-region #section-onsite-info,
 .report-editor-anchor-scroll-region #section-reflections,
 .report-editor-anchor-scroll-region #section-rumors,
+.report-editor-anchor-scroll-region #section-trends,
 .report-editor-anchor-scroll-region #section-site-photos,
+.report-editor-anchor-scroll-region [id^="block-"],
 .report-editor-anchor-scroll-region .report-topic-divider,
 .report-editor-anchor-scroll-region .report-session {
   scroll-margin-top: 80px;
@@ -2074,7 +2076,9 @@ input[type="checkbox"].gtc-check:checked::after {
   .report-editor-anchor-scroll-region #section-onsite-info,
   .report-editor-anchor-scroll-region #section-reflections,
   .report-editor-anchor-scroll-region #section-rumors,
+  .report-editor-anchor-scroll-region #section-trends,
   .report-editor-anchor-scroll-region #section-site-photos,
+  .report-editor-anchor-scroll-region [id^="block-"],
   .report-editor-anchor-scroll-region .report-topic-divider,
   .report-editor-anchor-scroll-region .report-session {
     scroll-margin-top: 120px;

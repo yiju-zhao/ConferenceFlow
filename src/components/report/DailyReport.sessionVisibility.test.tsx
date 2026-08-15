@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import postcss, { type Rule } from "postcss";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../i18n";
 import { ACADEMIC_CONFERENCE_DAILY_REPORT_V1 } from "../../lib/ai-report/templates/academicConferenceDailyReport";
@@ -87,6 +89,17 @@ const session = {
   attendees: ["u1"],
 };
 
+const categorizedSession = {
+  id: "calendar-session-2",
+  code: "S202",
+  title: "Categorized Research",
+  date: "2026-08-14",
+  start: "10:00",
+  end: "11:00",
+  mainTopic: "Academic Systems",
+  attendees: ["u1"],
+};
+
 const report = {
   date: "2026-08-14",
   title: "Daily Report",
@@ -117,11 +130,37 @@ const academicReport = {
       techHighlights: "<p>学术技术亮点</p>",
       huaweiImplications: "<p>学术业务启示</p>",
     },
+    S202: {
+      insightCore: "分类学术洞察",
+      insightExplanation: "<p>分类学术说明</p>",
+      techHighlights: "<p>分类技术亮点</p>",
+      huaweiImplications: "<p>分类业务启示</p>",
+    },
   },
-  trendBlocks: [{ id: "trend-1", type: "body" as const, content: "方向性信号" }],
+  trendBlocks: [
+    { id: "trend-heading-1", type: "heading" as const, content: "方法论转变" },
+    { id: "trend-1", type: "body" as const, content: "方向性信号" },
+  ],
 };
 
 let currentReport: typeof report | typeof academicReport = report;
+let currentConferenceSessions = [session];
+
+const reportStyleRoot = postcss.parse(readFileSync("src/index.css", "utf8"));
+
+function scrollMarginContract(element: Element): Record<string, string> {
+  const contract: Record<string, string> = {};
+  reportStyleRoot.walkDecls("scroll-margin-top", (declaration) => {
+    const rule = declaration.parent;
+    if (rule?.type !== "rule") return;
+    if (!(rule as Rule).selectors.some((selector) => element.matches(selector))) return;
+    const parent = rule.parent;
+    const context =
+      parent?.type === "atrule" && parent.name === "media" ? `@media ${parent.params}` : "desktop";
+    contract[context] = declaration.value;
+  });
+  return contract;
+}
 
 const snapshot = {
   id: "snapshot-abcdef",
@@ -157,10 +196,21 @@ function renderReport(viewMode: boolean) {
   );
 }
 
+function selectAcademicFixture() {
+  currentReport = academicReport;
+  currentConferenceSessions = [session, categorizedSession];
+  useBoundReportTemplateMock.mockReturnValue({
+    template: ACADEMIC_CONFERENCE_DAILY_REPORT_V1,
+    loading: false,
+    error: null,
+  });
+}
+
 describe("DailyReport Session visibility", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("zh-CN");
     currentReport = report;
+    currentConferenceSessions = [session];
     useBoundReportTemplateMock.mockReturnValue({ template: null, loading: false, error: null });
     vi.stubGlobal(
       "IntersectionObserver",
@@ -175,7 +225,11 @@ describe("DailyReport Session visibility", () => {
       else if (path === "conferences/conf-1") callback(documentSnapshot({ name: "Conf" }) as never);
       else if (path.endsWith("/members")) callback(collectionSnapshot([]) as never);
       else if (path.endsWith("/sessions")) {
-        callback(collectionSnapshot([{ id: session.id, data: () => session }]) as never);
+        callback(
+          collectionSnapshot(
+            currentConferenceSessions.map((item) => ({ id: item.id, data: () => item })),
+          ) as never,
+        );
       } else if (path.endsWith("/dailyReports/2026-08-14-v1")) {
         callback(documentSnapshot(currentReport) as never);
       }
@@ -221,12 +275,7 @@ describe("DailyReport Session visibility", () => {
   });
 
   it("collapses a populated academic Session until its explicit edit control expands it", async () => {
-    currentReport = academicReport;
-    useBoundReportTemplateMock.mockReturnValue({
-      template: ACADEMIC_CONFERENCE_DAILY_REPORT_V1,
-      loading: false,
-      error: null,
-    });
+    selectAcademicFixture();
     const user = userEvent.setup();
     renderReport(false);
 
@@ -239,12 +288,7 @@ describe("DailyReport Session visibility", () => {
   });
 
   it("keeps a populated academic Session expanded in view mode", async () => {
-    currentReport = academicReport;
-    useBoundReportTemplateMock.mockReturnValue({
-      template: ACADEMIC_CONFERENCE_DAILY_REPORT_V1,
-      loading: false,
-      error: null,
-    });
+    selectAcademicFixture();
     renderReport(true);
 
     expect(await screen.findByText("学术洞察核心")).toBeVisible();
@@ -253,12 +297,7 @@ describe("DailyReport Session visibility", () => {
   });
 
   it("keeps the editor outline aligned with academic-only visible sections", async () => {
-    currentReport = academicReport;
-    useBoundReportTemplateMock.mockReturnValue({
-      template: ACADEMIC_CONFERENCE_DAILY_REPORT_V1,
-      loading: false,
-      error: null,
-    });
+    selectAcademicFixture();
     const { container } = renderReport(false);
 
     const outline = await waitFor(() => {
@@ -274,9 +313,57 @@ describe("DailyReport Session visibility", () => {
       "href",
       "#section-site-photos",
     );
+    expect(within(outline).getByRole("link", { name: "Academic Systems" })).toHaveAttribute(
+      "href",
+      "#topic-academic-systems",
+    );
+    expect(
+      within(outline).getByRole("link", { name: "S202 · Categorized Research" }),
+    ).toHaveAttribute("href", "#session-S202");
+    const headingLink = within(outline).getByRole("link", { name: "方法论转变" });
+    expect(headingLink).toHaveAttribute("href", "#block-trend-heading-1");
+    const headingTargetId = headingLink.getAttribute("href")?.slice(1);
+    expect(headingTargetId).toBe("block-trend-heading-1");
+    expect(document.getElementById(headingTargetId!)).toHaveTextContent("方法论转变");
     expect(within(outline).queryByRole("link", { name: "现场情报" })).toBeNull();
     expect(within(outline).queryByRole("link", { name: "圈内声音" })).toBeNull();
     expect(within(outline).queryByRole("link", { name: "深度研判" })).toBeNull();
+  });
+
+  it("renders template fields for a categorized academic Session", async () => {
+    selectAcademicFixture();
+    const user = userEvent.setup();
+    renderReport(false);
+
+    const toggle = await screen.findByRole("button", {
+      name: "展开 S202 · Categorized Research",
+    });
+    await user.click(toggle);
+
+    expect(screen.getByText("分类学术洞察")).toBeVisible();
+    expect(screen.getByText("分类学术说明")).toBeVisible();
+    expect(screen.getByText("分类技术亮点")).toBeVisible();
+    expect(screen.getByText("分类业务启示")).toBeVisible();
+    expect(document.getElementById("topic-academic-systems")).toBeVisible();
+  });
+
+  it("offsets academic section and heading anchors below desktop and mobile editor toolbars", async () => {
+    selectAcademicFixture();
+    const { container } = renderReport(false);
+
+    const trendSection = await waitFor(() => {
+      const target = container.querySelector("#section-trends");
+      expect(target).not.toBeNull();
+      return target as Element;
+    });
+    const trendHeading = container.querySelector("#block-trend-heading-1")!;
+    const expectedContract = {
+      desktop: "80px",
+      "@media (max-width: 700px)": "120px",
+    };
+
+    expect(scrollMarginContract(trendSection)).toEqual(expectedContract);
+    expect(scrollMarginContract(trendHeading)).toEqual(expectedContract);
   });
 
   it("keeps delete, restore, and history controls on the shared editor touch-target contract", async () => {
