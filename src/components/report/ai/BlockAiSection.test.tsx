@@ -203,6 +203,30 @@ describe("BlockAiSection", () => {
     );
   });
 
+  it("keeps a long heading-Block source row shrinkable without losing its actions", () => {
+    const longFileName = `${"internationalized-transcript-source-".repeat(8)}.vtt`;
+    render(
+      <BlockAiSection
+        {...props({
+          block: body({
+            type: "heading",
+            transcriptRef: { ...transcriptRef, fileName: longFileName },
+          }),
+        })}
+      />,
+    );
+
+    const transcript = screen.getByRole("region", { name: "转录文字" });
+    const sourceRow = transcript.closest(".ai-editor-source-row");
+    const fileName = screen.getByText(longFileName);
+
+    expect(sourceRow).toHaveClass("ai-editor-source-row--wrappable");
+    expect(transcript).toHaveClass("transcript-control--shrinkable");
+    expect(fileName).toHaveClass("transcript-control-file-name");
+    expect(sourceRow).toContainElement(screen.getByRole("button", { name: "AI 生成此内容块" }));
+    expect(screen.getByRole("button", { name: "删除转录文字" })).toBeInTheDocument();
+  });
+
   it("offers body modes in canonical rewrite/append order and heading rewrite only", async () => {
     const user = userEvent.setup();
     const sectionProps = props();

@@ -181,10 +181,10 @@ export default function SessionAiSection({
   if (eligibleFields.length === 0) return null;
 
   return (
-    <section className="no-print ai-session-section">
+    <section className="no-print ai-session-section ai-session-section--shrinkable">
       {!readOnly && (
         <>
-          <div className="ai-editor-source-row">
+          <div className="ai-editor-source-row ai-editor-source-row--wrappable">
             <TranscriptControl transcriptRef={transcriptRef} actions={transcriptActions} />
             <button
               type="button"

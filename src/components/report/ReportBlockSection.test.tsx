@@ -81,7 +81,9 @@ describe("ReportBlockSection", () => {
     expect(screen.getByText("Category heading")).toHaveClass("onsite-category-title");
     expect(document.getElementById("block-heading-1")).toHaveClass("onsite-category-header");
     expect(document.getElementById("block-heading-1")).toHaveStyle({ marginTop: "8px" });
-    expect(document.querySelector(".onsite-category-remove")).toBeInTheDocument();
+    expect(document.querySelector(".onsite-category-remove")).toHaveClass(
+      "report-editor-touch-target",
+    );
     expect(screen.getByText("Body intelligence").closest(".intel-card")).toBeInTheDocument();
   });
 
@@ -95,6 +97,9 @@ describe("ReportBlockSection", () => {
     expect(renderAiControls).toHaveBeenNthCalledWith(1, heading, false);
     expect(renderAiControls).toHaveBeenNthCalledWith(2, body, false);
     expect(screen.getByTestId("ai-heading-1").closest(".onsite-category-header")).toBeVisible();
+    expect(screen.getByTestId("ai-heading-1").parentElement).toHaveClass(
+      "report-block-heading-ai--shrinkable",
+    );
     expect(screen.getByTestId("ai-body-1").closest(".intel-card")).toBeVisible();
   });
 
@@ -361,6 +366,9 @@ describe("ReportBlockSection", () => {
       />,
     );
 
+    const sectionHeading = screen.getByRole("heading", { name: "现场情报", level: 2 });
+    expect(sectionHeading).toBeVisible();
+    expect(sectionHeading.closest(".report-section-heading-row")).toBeNull();
     expect(screen.getByText("Category heading")).toBeVisible();
     expect(screen.getByText("Body intelligence")).toBeVisible();
     expect(

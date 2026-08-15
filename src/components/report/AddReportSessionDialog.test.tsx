@@ -31,6 +31,36 @@ describe("AddReportSessionDialog", () => {
     await i18n.changeLanguage("zh-CN");
   });
 
+  it("gives close, tabs, and result actions the shared editor touch-target contract", async () => {
+    const user = userEvent.setup();
+    render(
+      <AddReportSessionDialog
+        open
+        sessions={sessions}
+        selectedIds={new Set()}
+        currentUid="u1"
+        onAdd={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "关闭" })).toHaveClass("report-editor-touch-target");
+    expect(screen.getByRole("button", { name: "我的 Session" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    expect(screen.getByRole("button", { name: "全部日程" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+    expect(screen.getByRole("button", { name: "添加 A" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+
+    await user.click(screen.getByRole("button", { name: "全部日程" }));
+    expect(screen.getByRole("button", { name: "添加 B" })).toHaveClass(
+      "report-editor-touch-target",
+    );
+  });
+
   it("starts with My Sessions and can add a result from the full calendar", async () => {
     const user = userEvent.setup();
     const onAdd = vi.fn();

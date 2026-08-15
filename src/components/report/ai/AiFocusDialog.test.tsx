@@ -8,6 +8,22 @@ beforeEach(async () => {
   await i18n.changeLanguage("zh-CN");
 });
 
+it("gives both focus actions the shared editor touch-target contract", () => {
+  render(
+    <AiFocusDialog
+      open
+      value="关注成本"
+      onSave={vi.fn().mockResolvedValue(undefined)}
+      onClose={vi.fn()}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: "取消" })).toHaveClass("report-editor-touch-target");
+  expect(screen.getByRole("button", { name: "保存关注方向" })).toHaveClass(
+    "report-editor-touch-target",
+  );
+});
+
 it("preserves multiline focus and saves only after confirmation", async () => {
   const user = userEvent.setup();
   const onSave = vi.fn().mockResolvedValue(undefined);

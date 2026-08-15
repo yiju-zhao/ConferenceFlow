@@ -44,13 +44,19 @@ export default function ReportBlockSection({
   onRemove,
   renderAiControls,
 }: ReportBlockSectionProps) {
+  const sectionHeading = (
+    <h2 id={sectionId} className="report-section-title" style={titleStyle}>
+      {title}
+    </h2>
+  );
+
   return (
     <>
-      <div className="report-section-heading-row">
-        <h2 id={sectionId} className="report-section-title" style={titleStyle}>
-          {title}
-        </h2>
-        {!readOnly ? (
+      {readOnly ? (
+        sectionHeading
+      ) : (
+        <div className="report-section-heading-row">
+          {sectionHeading}
           <InlineAddButton
             variant="section"
             field={field}
@@ -59,8 +65,8 @@ export default function ReportBlockSection({
             onOpen={onOpenInlineMenu}
             onInsert={onInsert}
           />
-        ) : null}
-      </div>
+        </div>
+      )}
       {blocks.map((block) => {
         const blockReadOnly =
           readOnly || Boolean(block.ownerId && block.ownerId !== currentUid && !isAdmin);
@@ -100,14 +106,16 @@ export default function ReportBlockSection({
                 )}
                 {!blockReadOnly && (
                   <button
-                    className="onsite-category-remove no-print"
+                    className="onsite-category-remove report-editor-touch-target no-print"
                     onClick={() => onRemove(field, block.id)}
                   >
                     ×
                   </button>
                 )}
                 {!blockReadOnly && aiControls && (
-                  <div className="report-block-heading-ai no-print">{aiControls}</div>
+                  <div className="report-block-heading-ai report-block-heading-ai--shrinkable no-print">
+                    {aiControls}
+                  </div>
                 )}
               </div>
             ) : (

@@ -31,7 +31,9 @@ export default function DailyReportEditorShell(props: DailyReportEditorShellProp
         ) : (
           <main className="report-editor-workspace">
             <DailyReportOutline label={outlineLabel} items={outlineItems} />
-            <div className="report-editor-document">{children}</div>
+            <div className="report-editor-document report-editor-anchor-scroll-region">
+              {children}
+            </div>
           </main>
         )}
       </div>

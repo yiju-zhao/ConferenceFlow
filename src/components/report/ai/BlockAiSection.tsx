@@ -235,8 +235,8 @@ export default function BlockAiSection({
   if (!eligible || modes.length === 0 || readOnly) return null;
 
   return (
-    <section className="no-print ai-session-section">
-      <div className="ai-editor-source-row">
+    <section className="no-print ai-session-section ai-session-section--shrinkable">
+      <div className="ai-editor-source-row ai-editor-source-row--wrappable">
         <TranscriptControl transcriptRef={block.transcriptRef} actions={transcriptActions} />
         <button
           type="button"

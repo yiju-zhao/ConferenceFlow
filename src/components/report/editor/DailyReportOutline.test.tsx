@@ -44,3 +44,16 @@ it("opens and closes the mobile disclosure", async () => {
   await user.click(screen.getAllByRole("link", { name: "圈内声音" }).at(-1)!);
   expect(button).toHaveAttribute("aria-expanded", "false");
 });
+
+it("renders an open desktop rail and keeps the mobile disclosure in document flow", () => {
+  const { container } = render(<DailyReportOutline label="日报目录" items={items} />);
+  const desktopOutline = container.querySelector(".report-editor-outline");
+  const mobileOutline = container.querySelector(".report-editor-outline-mobile");
+
+  expect(desktopOutline).toHaveClass("report-editor-outline--open-rail");
+  expect(desktopOutline).toHaveStyle(
+    "border: 0px; border-radius: 0; background: transparent; box-shadow: none",
+  );
+  expect(mobileOutline).toHaveClass("report-editor-outline-mobile--flow");
+  expect(mobileOutline).toHaveStyle("position: static; top: auto; z-index: auto");
+});

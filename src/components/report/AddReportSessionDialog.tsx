@@ -72,15 +72,27 @@ export default function AddReportSessionDialog({
         <div className="add-session-header">
           <div className="add-session-header-bar">
             <h3 className="add-session-header-title">{t("report.addSession")}</h3>
-            <button className="add-session-close" onClick={onClose} aria-label={t("common.close")}>
+            <button
+              className="add-session-close report-editor-touch-target"
+              onClick={onClose}
+              aria-label={t("common.close")}
+            >
               ×
             </button>
           </div>
           <div aria-label={t("report.addSession")}>
-            <button aria-pressed={view === "mine"} onClick={() => setView("mine")}>
+            <button
+              className="report-editor-touch-target"
+              aria-pressed={view === "mine"}
+              onClick={() => setView("mine")}
+            >
               {t("report.mySessions")}
             </button>
-            <button aria-pressed={view === "all"} onClick={() => setView("all")}>
+            <button
+              className="report-editor-touch-target"
+              aria-pressed={view === "all"}
+              onClick={() => setView("all")}
+            >
               {t("report.allSessions")}
             </button>
           </div>
@@ -113,6 +125,7 @@ export default function AddReportSessionDialog({
                     </div>
                   </div>
                   <button
+                    className="report-editor-touch-target"
                     onClick={() => onAdd(key)}
                     aria-label={`${t("common.add")} ${session.title}`}
                   >

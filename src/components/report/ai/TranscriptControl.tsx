@@ -123,13 +123,13 @@ export default function TranscriptControl({
 
   return (
     <section
-      className="no-print transcript-control transcript-control--compact"
+      className="no-print transcript-control transcript-control--compact transcript-control--shrinkable"
       aria-label={t("report.ai.transcript")}
     >
       <p className="transcript-control-hint">{t("report.ai.privateSourceHint")}</p>
       {transcriptRef ? (
         <div className="transcript-control-current transcript-control-actions--compact">
-          <span>{transcriptRef.fileName}</span>
+          <span className="transcript-control-file-name">{transcriptRef.fileName}</span>
           <button
             type="button"
             className="transcript-control-action"

@@ -25,7 +25,10 @@ function renderShell(viewMode: boolean) {
         status={<div>Saved</div>}
         overlays={<div>Report overlay</div>}
       >
-        <article>Report document</article>
+        <article>
+          Report document
+          <section id="section-related">Anchor target</section>
+        </article>
       </DailyReportEditorShell>
     </MemoryRouter>,
   );
@@ -60,4 +63,13 @@ it("renders only overlays and the document in view mode", () => {
   expect(container.querySelector(".bp6-navbar")).not.toBeInTheDocument();
   expect(container.querySelector(".report-view-mode")).toBeInTheDocument();
   expect(container.querySelector(".report-editor-workspace")).not.toBeInTheDocument();
+});
+
+it("offsets outline anchors below the sticky editor toolbar", () => {
+  const { container } = renderShell(false);
+  const documentRegion = container.querySelector(".report-editor-document");
+  const anchorTarget = document.getElementById("section-related");
+
+  expect(documentRegion).toHaveClass("report-editor-anchor-scroll-region");
+  expect(documentRegion).toContainElement(anchorTarget);
 });

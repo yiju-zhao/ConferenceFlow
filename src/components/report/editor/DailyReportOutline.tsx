@@ -45,11 +45,18 @@ export default function DailyReportOutline({
   const mobileId = useId();
   return (
     <>
-      <nav className="report-editor-outline no-print" aria-label={label}>
+      <nav
+        className="report-editor-outline report-editor-outline--open-rail no-print"
+        aria-label={label}
+        style={{ border: 0, borderRadius: 0, background: "transparent", boxShadow: "none" }}
+      >
         <h2>{label}</h2>
         <OutlineList items={items} />
       </nav>
-      <div className="report-editor-outline-mobile no-print">
+      <div
+        className="report-editor-outline-mobile report-editor-outline-mobile--flow no-print"
+        style={{ position: "static", top: "auto", zIndex: "auto" }}
+      >
         <button
           type="button"
           aria-expanded={mobileOpen}

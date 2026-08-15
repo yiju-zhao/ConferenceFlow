@@ -319,7 +319,10 @@ body {
   border-radius: var(--radius-sm);
 }
 
-button.report-editor-touch-target {
+button.report-editor-touch-target,
+.report-editor-toolbar button,
+.report-editor-workspace button {
+  min-width: 36px;
   min-height: 36px;
 }
 
@@ -364,11 +367,29 @@ button.report-editor-touch-target {
 }
 
 .ai-editor-source-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
   margin-bottom: var(--space-2);
+}
+
+.ai-editor-source-row--wrappable,
+.ai-session-section--shrinkable,
+.transcript-control--shrinkable {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ai-editor-source-row--wrappable > .transcript-control {
+  flex: 1 1 360px;
+}
+
+.ai-editor-source-row--wrappable > .ai-report-action--generate {
+  flex: 0 1 auto;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .transcript-control--compact {
@@ -389,6 +410,7 @@ button.report-editor-touch-target {
 .transcript-control-actions--compact {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
   gap: var(--space-1);
   align-items: center;
 }
@@ -403,7 +425,17 @@ button.report-editor-touch-target {
   white-space: nowrap;
 }
 
+.transcript-control-current > .transcript-control-file-name {
+  flex: 1 1 160px;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .transcript-control-action {
+  flex: 0 1 auto;
+  max-width: 100%;
   min-height: 36px;
   padding: var(--space-1) var(--space-2);
   color: var(--text-secondary);
@@ -411,6 +443,8 @@ button.report-editor-touch-target {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .transcript-control-action:hover:not(:disabled),
@@ -1914,9 +1948,12 @@ input[type="checkbox"].gtc-check:checked::after {
   overflow: auto;
   margin-top: 20px;
   padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+}
+.report-editor-outline--open-rail {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 .report-editor-outline h2 {
   margin: 0 0 12px;
@@ -1964,8 +2001,22 @@ input[type="checkbox"].gtc-check:checked::after {
   width: 100%;
   margin: 20px 0 48px;
 }
+.report-editor-anchor-scroll-region #section-related,
+.report-editor-anchor-scroll-region #section-onsite-info,
+.report-editor-anchor-scroll-region #section-reflections,
+.report-editor-anchor-scroll-region #section-rumors,
+.report-editor-anchor-scroll-region #section-site-photos,
+.report-editor-anchor-scroll-region .report-topic-divider,
+.report-editor-anchor-scroll-region .report-session {
+  scroll-margin-top: 80px;
+}
 .report-editor-outline-mobile {
   display: none;
+}
+.report-editor-outline-mobile--flow {
+  position: static;
+  top: auto;
+  z-index: auto;
 }
 
 @media (max-width: 960px) {
@@ -1978,9 +2029,6 @@ input[type="checkbox"].gtc-check:checked::after {
     display: none;
   }
   .report-editor-outline-mobile {
-    position: sticky;
-    top: 0;
-    z-index: 90;
     display: block;
     margin: 16px 0 0;
     border: 1px solid var(--border);
@@ -2021,6 +2069,15 @@ input[type="checkbox"].gtc-check:checked::after {
   }
   .report-editor-toolbar .bp6-button {
     min-height: 36px;
+  }
+  .report-editor-anchor-scroll-region #section-related,
+  .report-editor-anchor-scroll-region #section-onsite-info,
+  .report-editor-anchor-scroll-region #section-reflections,
+  .report-editor-anchor-scroll-region #section-rumors,
+  .report-editor-anchor-scroll-region #section-site-photos,
+  .report-editor-anchor-scroll-region .report-topic-divider,
+  .report-editor-anchor-scroll-region .report-session {
+    scroll-margin-top: 120px;
   }
 }
 
@@ -3616,11 +3673,11 @@ input[type="checkbox"].gtc-check:checked::after {
 
 /* DailyReport mobile */
 @media (max-width: 700px) {
-  .ai-editor-source-row {
-    grid-template-columns: minmax(0, 1fr);
+  .ai-editor-source-row--wrappable > .transcript-control {
+    flex-basis: 100%;
   }
   .ai-editor-source-row > .ai-report-action--generate {
-    justify-self: start;
+    align-self: flex-start;
   }
   .report-format-toolbar {
     max-width: calc(100vw - 16px);
@@ -3932,6 +3989,7 @@ input[type="checkbox"].gtc-check:checked::after {
 }
 .onsite-category-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
@@ -3942,10 +4000,11 @@ input[type="checkbox"].gtc-check:checked::after {
   color: var(--brand);
   border-bottom: 1px dashed #e8b4b8;
   padding-bottom: 2px;
-  flex: 1;
+  flex: 1 1 160px;
   outline: none;
   cursor: text;
-  min-width: 40px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .onsite-category-title:empty::before {
   content: "分类标题...";
@@ -3953,6 +4012,7 @@ input[type="checkbox"].gtc-check:checked::after {
   font-weight: 400;
 }
 .onsite-category-remove {
+  flex: 0 0 auto;
   background: none;
   border: none;
   color: var(--text-placeholder);
@@ -3965,7 +4025,13 @@ input[type="checkbox"].gtc-check:checked::after {
   color: var(--brand);
 }
 .report-block-heading-ai {
-  flex-shrink: 0;
+  flex: 1 1 480px;
+  min-width: 0;
+  max-width: 100%;
+}
+.report-block-heading-ai--shrinkable > .ai-session-section {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .onsite-block-body {

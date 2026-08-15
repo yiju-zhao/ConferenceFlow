@@ -84,13 +84,18 @@ export default function AiFocusDialog({ open, value, onSave, onClose }: AiFocusD
         <div className="delete-confirm-actions">
           <button
             type="button"
-            className="delete-confirm-cancel"
+            className="delete-confirm-cancel report-editor-touch-target"
             onClick={onClose}
             disabled={saving}
           >
             {t("common.cancel")}
           </button>
-          <button type="button" className="delete-confirm-submit" onClick={save} disabled={saving}>
+          <button
+            type="button"
+            className="delete-confirm-submit report-editor-touch-target"
+            onClick={save}
+            disabled={saving}
+          >
             {t("report.ai.saveAiFocus")}
           </button>
         </div>
