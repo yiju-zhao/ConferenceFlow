@@ -144,6 +144,7 @@ export interface BulkSessionInput {
   mainTopic?: string;
   url?: string;
   key_themes?: string[];
+  keyThemes?: string[];
 }
 
 export interface BulkSessionsBody {
