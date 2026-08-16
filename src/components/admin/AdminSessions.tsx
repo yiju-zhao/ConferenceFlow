@@ -60,7 +60,7 @@ const FORMAT_GUIDE_MD = `# Session Upload JSON Format Guide
 ## Optional Fields
 | Field | Description | Alias |
 |-------|-------------|-------|
-| session_id | Unique code (used as doc ID) | code |
+| session_id | Unique code; sets the document ID (required to overwrite existing sessions) | code (fills the code field only) |
 | room | Room or venue name | location |
 | speakers | Array of {name, title, company} | — |
 | format | "In-Person", "Virtual", "Both" | — |
@@ -608,7 +608,7 @@ export default function AdminSessions() {
                 </thead>
                 <tbody>
                   {[
-                    ["session_id", 'Unique code (e.g. "S62911"). Used as document ID.', "code"],
+                    ["session_id", 'Unique code (e.g. "S62911"). Sets the document ID; required to overwrite existing sessions.', "code (fills the code field only)"],
                     ["room", "Room or venue name", "location"],
                     ["speakers", "Array of speaker objects", "—"],
                     ["format", '"In-Person", "Virtual", "Both"', "—"],

@@ -96,7 +96,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             sessionType: s.session_type || s.sessionType || "",
             mainTopic: s.topic || s.mainTopic || "",
             url: s.url || "",
-            keyThemes: Array.isArray(s.key_themes) ? s.key_themes : [],
+            keyThemes: Array.isArray(s.key_themes)
+              ? s.key_themes
+              : Array.isArray(s.keyThemes)
+                ? s.keyThemes
+                : [],
             attendees: [],
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
