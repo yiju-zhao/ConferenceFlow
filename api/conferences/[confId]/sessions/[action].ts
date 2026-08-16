@@ -10,60 +10,16 @@ import type {
   BulkSessionsResponse,
   UpdateSessionBody,
 } from "@/types/api";
-import type { Session } from "@/types/firestore";
 
+// Single-param route (not a catch-all): the deployed router does not forward
+// catch-all segments to the function, so /sessions/[...path] never received
+// its path param in production. `action` is "bulk", "create", or a session id.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const confId = req.query.confId as string;
-  const path = req.query.path;
-  const segments = Array.isArray(path) ? path : path ? [path] : [];
+  const action = req.query.action as string;
   const col = db.collection("conferences").doc(confId).collection("sessions");
   try {
-    if (req.method === "GET" && segments.length === 0) {
-      const snap = await col.get();
-      return res.json(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Session, "id">) })));
-    }
-    if (req.method === "POST" && segments.length === 0) {
-      await requireConfAdmin(req, confId);
-      const {
-        code,
-        title,
-        date,
-        start,
-        end,
-        room,
-        speakers,
-        format,
-        recording,
-        sessionType,
-        mainTopic,
-        url,
-        keyThemes,
-      } = req.body as CreateSessionBody;
-      if (!title || !date || !start || !end)
-        return res.status(400).json({ error: "title, date, start, and end are required" });
-      const ref = col.doc();
-      const data: SessionWriteData = {
-        code: code || "",
-        title,
-        date,
-        start,
-        end,
-        room: room || "",
-        speakers: speakers || [],
-        format: format || "",
-        recording: recording || "",
-        sessionType: sessionType || "",
-        mainTopic: mainTopic || "",
-        url: url || "",
-        keyThemes: keyThemes || [],
-        attendees: [],
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      };
-      await ref.set(data);
-      return res.status(201).json({ id: ref.id, ...data } satisfies CreateSessionResponse);
-    }
-    if (req.method === "POST" && segments[0] === "bulk") {
+    if (req.method === "POST" && action === "bulk") {
       await requireConfAdmin(req, confId);
       const { sessions } = req.body as BulkSessionsBody;
       if (!Array.isArray(sessions) || !sessions.length)
@@ -114,8 +70,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...results,
       } satisfies BulkSessionsResponse);
     }
-    if (segments.length === 1 && segments[0] !== "bulk") {
-      const sessionId = segments[0];
+    if (req.method === "POST" && action === "create") {
+      await requireConfAdmin(req, confId);
+      const {
+        code,
+        title,
+        date,
+        start,
+        end,
+        room,
+        speakers,
+        format,
+        recording,
+        sessionType,
+        mainTopic,
+        url,
+        keyThemes,
+      } = req.body as CreateSessionBody;
+      if (!title || !date || !start || !end)
+        return res.status(400).json({ error: "title, date, start, and end are required" });
+      const ref = col.doc();
+      const data: SessionWriteData = {
+        code: code || "",
+        title,
+        date,
+        start,
+        end,
+        room: room || "",
+        speakers: speakers || [],
+        format: format || "",
+        recording: recording || "",
+        sessionType: sessionType || "",
+        mainTopic: mainTopic || "",
+        url: url || "",
+        keyThemes: keyThemes || [],
+        attendees: [],
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      await ref.set(data);
+      return res.status(201).json({ id: ref.id, ...data } satisfies CreateSessionResponse);
+    }
+    if (action !== "bulk" && action !== "create") {
+      const sessionId = action;
       await requireConfAdmin(req, confId);
       const ref = col.doc(sessionId);
       const snap = await ref.get();

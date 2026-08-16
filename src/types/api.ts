@@ -79,7 +79,7 @@ export interface MemberActionResponse {
   status: "approved" | "rejected";
 }
 
-// ── POST /api/conferences/[confId]/sessions/[...path] (single create) ──
+// ── POST /api/conferences/[confId]/sessions/create (single create) ──
 export interface CreateSessionBody {
   code?: string;
   title: string;

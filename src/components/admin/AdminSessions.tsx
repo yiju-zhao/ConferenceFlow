@@ -214,7 +214,7 @@ export default function AdminSessions() {
     const { mode, session } = editModal;
     try {
       if (mode === "add") {
-        await apiFetch(`/api/conferences/${confId}/sessions`, {
+        await apiFetch(`/api/conferences/${confId}/sessions/create`, {
           method: "POST",
           body: JSON.stringify(session),
         });
