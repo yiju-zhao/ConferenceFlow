@@ -1,0 +1,24 @@
+[
+  {
+    "origin": [
+      "https://conference-flow.vercel.app",
+      "https://conference-flow-*.vercel.app",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Disposition",
+      "Cache-Control",
+      "ETag",
+      "Expires",
+      "Range",
+      "X-Goog-Generation",
+      "X-Goog-Metageneration",
+      "X-Goog-Hash"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]
