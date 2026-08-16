@@ -28,7 +28,7 @@ export interface SessionSpeaker {
 
 /**
  * A session document. Field set verified against the writer
- * `api/conferences/[confId]/sessions/[...path].js` (POST `data` and the PUT
+ * `api/conferences/[confId]/sessions/[action].ts` (POST `data` and the PUT
  * `allowed` list). `title`/`date`/`start`/`end` are validated as required by
  * the writer; the rest default to "" or [] and are kept optional.
  */
